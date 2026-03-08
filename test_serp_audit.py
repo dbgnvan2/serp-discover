@@ -425,6 +425,40 @@ class TestSerpAudit(unittest.TestCase):
         self.assertIn("A.1", labels)
         self.assertIn("A.2", labels)
 
+    def test_apply_no_cache_toggle(self):
+        """no_cache should only be added when enabled."""
+        with patch.object(serp_audit, "NO_CACHE_ENABLED", True):
+            params = {"engine": "google"}
+            serp_audit._apply_no_cache(params)
+            self.assertTrue(params.get("no_cache"))
+
+        with patch.object(serp_audit, "NO_CACHE_ENABLED", False):
+            params = {"engine": "google"}
+            serp_audit._apply_no_cache(params)
+            self.assertNotIn("no_cache", params)
+
+    @patch("os.path.exists", return_value=False)
+    @patch("pandas.read_csv")
+    def test_load_keywords_uses_single_keyword_override(self, mock_read_csv, mock_exists):
+        """Single keyword override should bypass CSV reads."""
+        with patch.object(serp_audit, "SINGLE_KEYWORD_OVERRIDE", "family estrangement help"):
+            keywords = serp_audit.load_keywords("keywords.csv")
+        self.assertEqual(keywords, ["family estrangement help"])
+        mock_exists.assert_not_called()
+        mock_read_csv.assert_not_called()
+
+    @patch("os.path.exists", return_value=True)
+    @patch("pandas.read_csv")
+    def test_load_keywords_reads_csv_when_no_override(self, mock_read_csv, _mock_exists):
+        """Without override, keywords should come from CSV first column."""
+        with patch.object(serp_audit, "SINGLE_KEYWORD_OVERRIDE", ""):
+            mock_read_csv.return_value = MagicMock(**{
+                "__getitem__.return_value.tolist.return_value": ["k1", "k2"]
+            })
+            keywords = serp_audit.load_keywords("keywords.csv")
+        self.assertEqual(keywords, ["k1", "k2"])
+        mock_read_csv.assert_called_once_with("keywords.csv", header=None)
+
     @patch('builtins.open', new_callable=mock_open)
     @patch('os.makedirs')
     def test_save_raw_json(self, mock_makedirs, mock_file):

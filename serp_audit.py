@@ -1,5 +1,4 @@
 import pandas as pd
-from serpapi import GoogleSearch
 import time
 import os
 import re
@@ -9,7 +8,6 @@ import logging
 import json
 from datetime import datetime
 from collections import Counter
-from openpyxl import Workbook
 import hashlib
 import generate_insight_report
 import generate_content_brief
@@ -19,6 +17,13 @@ from urllib.parse import urlparse
 from classifiers import ContentClassifier, EntityClassifier
 from url_enricher import UrlEnricher
 from storage import SerpStorage
+
+try:
+    from serpapi import GoogleSearch
+    SERPAPI_AVAILABLE = True
+except ImportError:
+    GoogleSearch = None
+    SERPAPI_AVAILABLE = False
 
 try:
     from textblob import TextBlob
@@ -96,10 +101,52 @@ def _env_bool(name, default=False):
     return default
 
 
+def _env_int(name, default):
+    """Read int env var safely."""
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw.strip())
+    except (TypeError, ValueError):
+        return default
+
+
 AI_QUERY_ALTERNATIVES_ENABLED = _env_bool(
     "SERP_ENABLE_AI_QUERY_ALTERNATIVES",
     bool(CONFIG.get("app", {}).get("ai_query_alternatives_enabled", False))
 )
+LOW_API_MODE = _env_bool("SERP_LOW_API_MODE", False)
+SINGLE_KEYWORD_OVERRIDE = os.getenv("SERP_SINGLE_KEYWORD", "").strip()
+NO_CACHE_ENABLED = _env_bool(
+    "SERP_ENABLE_NO_CACHE",
+    bool(CONFIG.get("serpapi", {}).get("no_cache", True))
+)
+
+if LOW_API_MODE:
+    AI_QUERY_ALTERNATIVES_ENABLED = False
+    RELATED_QUESTIONS_AI_MAX_CALLS = 2
+    GOOGLE_MAX_PAGES = 1
+    MAPS_MAX_PAGES = 1
+    AI_FALLBACK_WITHOUT_LOCATION = False
+    NO_CACHE_ENABLED = False
+
+# Explicit env overrides (still possible without low mode)
+GOOGLE_MAX_PAGES = max(1, _env_int("SERP_GOOGLE_MAX_PAGES", GOOGLE_MAX_PAGES))
+MAPS_MAX_PAGES = max(1, _env_int("SERP_MAPS_MAX_PAGES", MAPS_MAX_PAGES))
+RELATED_QUESTIONS_AI_MAX_CALLS = max(
+    0, _env_int("SERP_RELATED_QUESTIONS_AI_MAX_CALLS", RELATED_QUESTIONS_AI_MAX_CALLS)
+)
+AI_FALLBACK_WITHOUT_LOCATION = _env_bool(
+    "SERP_AI_FALLBACK_WITHOUT_LOCATION", AI_FALLBACK_WITHOUT_LOCATION
+)
+
+
+def _apply_no_cache(params):
+    """Add no_cache only when enabled."""
+    if NO_CACHE_ENABLED:
+        params["no_cache"] = True
+    return params
 
 
 def setup_logging(run_id):
@@ -118,6 +165,12 @@ def setup_logging(run_id):
 
 def _fetch_serp_api(params):
     """Internal function to query SerpApi with retry logic."""
+    if not SERPAPI_AVAILABLE:
+        logging.error(
+            "SerpApi client library is not installed. Install dependencies with: pip install -r requirements.txt"
+        )
+        return None
+
     # Redact API Key for logging
     log_params = params.copy()
     if "api_key" in log_params:
@@ -300,9 +353,9 @@ def fetch_serp_data(keyword, run_id):
         "gl": GOOGLE_GL,
         "api_key": API_KEY,
         "num": GOOGLE_NUM,
-        "device": GOOGLE_DEVICE,
-        "no_cache": True
+        "device": GOOGLE_DEVICE
     }
+    _apply_no_cache(primary_params)
 
     # Create a stable hash of the parameters for audit trails
     params_hash = hashlib.md5(json.dumps(
@@ -392,9 +445,9 @@ def fetch_serp_data(keyword, run_id):
                 "gl": GOOGLE_GL,
                 "device": GOOGLE_DEVICE,
                 "num": 10,
-                "api_key": API_KEY,
-                "no_cache": True
+                "api_key": API_KEY
             }
+            _apply_no_cache(fallback_params)
             fallback_results = _fetch_serp_api(fallback_params)
             if fallback_results and fallback_results.get("ai_overview"):
                 all_results["google_ai_overview_probe"] = fallback_results.get("ai_overview", {})
@@ -416,9 +469,9 @@ def fetch_serp_data(keyword, run_id):
             aio_params = {
                 "engine": "google_ai_overview",
                 "page_token": page_token,
-                "api_key": API_KEY,
-                "no_cache": True  # Maintain freshness preference
+                "api_key": API_KEY
             }
+            _apply_no_cache(aio_params)
 
             start_time = datetime.now()
             aio_log["followup_started_at"] = start_time.isoformat()
@@ -461,9 +514,9 @@ def fetch_serp_data(keyword, run_id):
             rq_params = {
                 "engine": "google_related_questions",
                 "next_page_token": token,
-                "api_key": API_KEY,
-                "no_cache": True
+                "api_key": API_KEY
             }
+            _apply_no_cache(rq_params)
             rq_results = _fetch_serp_api(rq_params)
             if not rq_results:
                 continue
@@ -495,9 +548,9 @@ def fetch_serp_data(keyword, run_id):
             "type": "search",
             "hl": GOOGLE_HL,
             "gl": GOOGLE_GL,
-            "api_key": API_KEY,
-            "no_cache": True
+            "api_key": API_KEY
         }
+        _apply_no_cache(maps_params)
 
         # Attempt to extract 'll' (latitude, longitude) from metadata to pin location
         # This ensures the maps view matches the SERP location context
@@ -1201,27 +1254,44 @@ def build_help_rows():
     ]
 
 
+def load_keywords(input_file):
+    """Load keywords from env override or CSV file."""
+    if SINGLE_KEYWORD_OVERRIDE:
+        print("Using single keyword override from SERP_SINGLE_KEYWORD...")
+        return [SINGLE_KEYWORD_OVERRIDE]
+
+    if not os.path.exists(input_file):
+        logging.error(f"{input_file} not found.")
+        return None
+
+    print("Reading keywords...")
+    try:
+        df_input = pd.read_csv(input_file, header=None)
+        return df_input[0].tolist()
+    except Exception as e:
+        logging.error(f"Error reading CSV: {e}")
+        return None
+
+
 def main():
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     setup_logging(run_id)
+
+    if not SERPAPI_AVAILABLE:
+        logging.error(
+            "Missing dependency: google-search-results (serpapi client). Run: pip install -r requirements.txt"
+        )
+        return
 
     if not API_KEY:
         logging.error(
             "SERPAPI_KEY environment variable not set. Please run: export SERPAPI_KEY='your_key'")
         return
 
-    if not os.path.exists(INPUT_FILE):
-        logging.error(f"{INPUT_FILE} not found.")
-        return
-
     print(f"--- STARTING RUN: {run_id} ---")
 
-    print("Reading keywords...")
-    try:
-        df_input = pd.read_csv(INPUT_FILE, header=None)
-        keywords = df_input[0].tolist()
-    except Exception as e:
-        logging.error(f"Error reading CSV: {e}")
+    keywords = load_keywords(INPUT_FILE)
+    if keywords is None:
         return
 
     query_jobs = expand_keywords_for_ai(keywords)
@@ -1252,7 +1322,12 @@ def main():
     all_autocomplete = []
 
     print(f"--- Base keywords: {len(keywords)} ---")
+    print(f"--- LOW API MODE: {LOW_API_MODE} ---")
     print(f"--- AI query alternatives enabled: {AI_QUERY_ALTERNATIVES_ENABLED} ---")
+    print(f"--- no_cache enabled: {NO_CACHE_ENABLED} ---")
+    print(f"--- Google max pages: {GOOGLE_MAX_PAGES} | Maps max pages: {MAPS_MAX_PAGES} ---")
+    print(f"--- Related-questions AI max calls: {RELATED_QUESTIONS_AI_MAX_CALLS} ---")
+    print(f"--- AI fallback without location: {AI_FALLBACK_WITHOUT_LOCATION} ---")
     print(f"--- Queries to run: {len(query_jobs)} ---")
     print(f"--- FORCE LOCAL INTENT: {FORCE_LOCAL_INTENT} ---")
     print(f"--- BRIDGE STRATEGY: Mapping Symptoms -> Systems ---")
@@ -1458,9 +1533,11 @@ def main():
         if deltas:
             count = 0
             for item in all_organic:
+                keyword_text = item.get("Source_Keyword") or item.get("Root_Keyword")
                 url = item.get("Link")
-                if url in deltas:
-                    item["Rank_Delta"] = int(deltas[url])
+                delta_key = (keyword_text, url)
+                if delta_key in deltas:
+                    item["Rank_Delta"] = int(deltas[delta_key])
                     count += 1
             print(f"Updated {count} rows with rank changes.")
         else:

@@ -26,7 +26,7 @@ All data analysis must serve the **Bridge Strategy**:
 
 The main script performs a Deep SERP Audit.
 
-- **Input:** `keywords.csv` (No headers, one keyword per line).
+- **Input:** `keywords.csv` (No headers, one keyword per line) or `SERP_SINGLE_KEYWORD` env override for one-off runs.
 - **Output:** `market_analysis_v2.xlsx` (Multi-tab Excel file).
 
 ### Key Features & Constraints
@@ -61,4 +61,4 @@ When I ask for code updates or data analysis:
 1.  **Prioritize "The Bridge":** Always look for opportunities to connect the search term to Bowen Theory concepts.
 2.  **Respect the API:** Do not suggest web scraping (BeautifulSoup/Selenium). Stick to `google-search-results`.
 3.  **Data Integrity:** Ensure all Pandas DataFrames handle missing values (`NaN`) gracefully before exporting to Excel.
-4.  **CSV Formatting:** Remember `keywords.csv` has NO header. Read it with `header=None`.
+4.  **CSV Formatting:** Remember `keywords.csv` has NO header. Read it with `header=None` unless `SERP_SINGLE_KEYWORD` is set.

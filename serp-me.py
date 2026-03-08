@@ -129,6 +129,27 @@ class SerpLauncherApp:
         )
         self.ai_query_alts_chk.pack(side="left", padx=5)
 
+        self.low_api_mode_var = tk.BooleanVar(value=False)
+        self.low_api_mode_chk = ttk.Checkbutton(
+            btn_frame,
+            text="Low API Mode",
+            variable=self.low_api_mode_var,
+            command=self.on_low_api_mode_toggle
+        )
+        self.low_api_mode_chk.pack(side="left", padx=5)
+
+        keyword_frame = ttk.Frame(root)
+        keyword_frame.pack(fill="x", padx=20, pady=(0, 8))
+        ttk.Label(
+            keyword_frame,
+            text="Single Search Term (optional, overrides keywords.csv):"
+        ).pack(side="left", padx=(0, 6))
+        self.single_keyword_var = tk.StringVar(value="")
+        self.single_keyword_entry = ttk.Entry(
+            keyword_frame, textvariable=self.single_keyword_var, width=52
+        )
+        self.single_keyword_entry.pack(side="left", fill="x", expand=True)
+
         self.run_btn = ttk.Button(
             btn_frame, text="Run Selected Script", command=self.run_script, state="disabled")
         self.run_btn.pack(side="right", padx=5)
@@ -169,14 +190,22 @@ class SerpLauncherApp:
         script_info = self.scripts[selection[0]]
         cmd = [sys.executable, script_info["file"]] + script_info["args"]
         env = os.environ.copy()
+        env["SERP_LOW_API_MODE"] = "1" if self.low_api_mode_var.get() else "0"
         env["SERP_ENABLE_AI_QUERY_ALTERNATIVES"] = (
-            "1" if self.ai_query_alts_var.get() else "0"
+            "0" if self.low_api_mode_var.get()
+            else ("1" if self.ai_query_alts_var.get() else "0")
         )
+        env["SERP_SINGLE_KEYWORD"] = self.single_keyword_var.get().strip()
 
         self.log(f"> Executing: {' '.join(cmd)}\n")
+        self.log(f"> SERP_LOW_API_MODE={env['SERP_LOW_API_MODE']}\n")
         self.log(
             f"> SERP_ENABLE_AI_QUERY_ALTERNATIVES={env['SERP_ENABLE_AI_QUERY_ALTERNATIVES']}\n"
         )
+        if env["SERP_SINGLE_KEYWORD"]:
+            self.log(f"> SERP_SINGLE_KEYWORD={env['SERP_SINGLE_KEYWORD']}\n")
+        else:
+            self.log("> SERP_SINGLE_KEYWORD=<empty; using keywords.csv>\n")
         self.run_btn.config(state="disabled")
 
         threading.Thread(target=self.execute_thread,
@@ -217,6 +246,13 @@ class SerpLauncherApp:
         self.log_text.config(state="normal")
         self.log_text.delete("1.0", tk.END)
         self.log_text.config(state="disabled")
+
+    def on_low_api_mode_toggle(self):
+        if self.low_api_mode_var.get():
+            self.ai_query_alts_var.set(False)
+            self.ai_query_alts_chk.state(["disabled"])
+        else:
+            self.ai_query_alts_chk.state(["!disabled"])
 
 
 if __name__ == "__main__":

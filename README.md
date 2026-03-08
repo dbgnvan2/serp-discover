@@ -37,6 +37,20 @@ To execute the full pipeline (Audit -> Validation -> Verification):
 python run_pipeline.py
 ```
 
+To launch the GUI with the pinned Python 3.12 interpreter:
+
+```bash
+./run_serp_launcher.sh
+```
+
+In the GUI, you can optionally enter one term in `Single Search Term` to override `keywords.csv` for that run.
+
+CLI equivalent override:
+
+```bash
+SERP_SINGLE_KEYWORD="estrangement Vancouver" python serp_audit.py
+```
+
 ## Utilities
 
 **Visualize Volatility:** Plot rank history for a keyword.
