@@ -54,20 +54,24 @@ The launcher now:
 - auto-creates keyword files named from the first keyword
 - updates `config.yml` to point `files.input_csv` at the selected file
 - auto-names outputs to match the keyword-file slug
-- archives previous outputs into `runs/` with a date stamp before overwriting
+- never overwrites prior outputs; each run gets a timestamp suffix
 - keeps SerpApi cache enabled by default (`serpapi.no_cache: false`)
 - limits `A.1/A.2` AI-likely query alternatives to high-priority keywords from the latest analysis
 - runs related-question AI follow-up only when `Deep Research Mode` is enabled
+- exposes three API usage modes in the launcher:
+  - `Low API Mode`
+  - `Balanced Mode`
+  - `Deep Research Mode`
 
 Example:
 
 ```bash
 keywords_estrangement.csv
-market_analysis_estrangement.xlsx
-market_analysis_estrangement.json
-market_analysis_estrangement.md
-content_opportunities_estrangement.md
-advisory_briefing_estrangement.md
+market_analysis_estrangement_20260311_1415.xlsx
+market_analysis_estrangement_20260311_1415.json
+market_analysis_estrangement_20260311_1415.md
+content_opportunities_estrangement_20260311_1415.md
+advisory_briefing_estrangement_20260311_1415.md
 ```
 
 ## Content Opportunities Report
@@ -90,9 +94,35 @@ Required for launcher mode:
 
 For lower SerpApi usage in routine runs:
 
-- leave `Deep Research Mode` off
-- leave `Run 2 AI-likely alternatives` off unless you want A.1/A.2 on priority keywords
-- use `Low API Mode` for the cheapest monitoring runs
+### Low API Mode
+
+- cheapest monitoring mode
+- 1 Google page
+- 1 Maps page
+- no A.1 / A.2
+- no related-question AI follow-up
+
+### Balanced Mode
+
+- recommended default for real analysis
+- 2 Google pages
+- 1 Maps page
+- keeps main AI Overview collection
+- no related-question AI follow-up
+- A.1 / A.2 only for `defend` / `strengthen` keywords when enabled
+
+### Deep Research Mode
+
+- highest-cost exploratory mode
+- use for monthly or quarterly strategic research
+- allows related-question AI exploration
+
+Recommended routine setting:
+
+- `Balanced Mode` on
+- `Deep Research Mode` off
+- `Low API Mode` off
+- `Run 2 AI-likely alternatives` off unless you specifically want A.1 / A.2 on top-priority terms
 
 The audit log now prints a running `SerpApi Call Count` and a final
 `Total SerpApi Calls` summary for each run.

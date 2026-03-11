@@ -118,6 +118,10 @@ AI_QUERY_ALTERNATIVES_ENABLED = _env_bool(
     bool(CONFIG.get("app", {}).get("ai_query_alternatives_enabled", False))
 )
 LOW_API_MODE = _env_bool("SERP_LOW_API_MODE", False)
+BALANCED_MODE = _env_bool(
+    "SERP_BALANCED_MODE",
+    bool(CONFIG.get("app", {}).get("balanced_mode", True))
+)
 SINGLE_KEYWORD_OVERRIDE = os.getenv("SERP_SINGLE_KEYWORD", "").strip()
 NO_CACHE_ENABLED = _env_bool(
     "SERP_ENABLE_NO_CACHE",
@@ -127,7 +131,7 @@ DEEP_RESEARCH_MODE = _env_bool(
     "SERP_DEEP_RESEARCH_MODE",
     bool(CONFIG.get("app", {}).get("deep_research_mode", False))
 )
-AI_QUERY_PRIORITY_ACTIONS = set(
+DEFAULT_AI_QUERY_PRIORITY_ACTIONS = set(
     CONFIG.get("app", {}).get(
         "ai_query_priority_actions",
         ["defend", "strengthen", "enter_cautiously"],
@@ -137,28 +141,61 @@ AI_PRIORITY_KEYWORDS_ENV = {
     item.strip() for item in os.getenv("SERP_AI_PRIORITY_KEYWORDS", "").split("||") if item.strip()
 }
 
-if LOW_API_MODE:
-    AI_QUERY_ALTERNATIVES_ENABLED = False
-    RELATED_QUESTIONS_AI_MAX_CALLS = 2
-    GOOGLE_MAX_PAGES = 1
-    MAPS_MAX_PAGES = 1
-    AI_FALLBACK_WITHOUT_LOCATION = False
-    NO_CACHE_ENABLED = False
-    DEEP_RESEARCH_MODE = False
+if not LOW_API_MODE and not BALANCED_MODE:
+    GOOGLE_MAX_PAGES = max(1, _env_int("SERP_GOOGLE_MAX_PAGES", GOOGLE_MAX_PAGES))
+    MAPS_MAX_PAGES = max(1, _env_int("SERP_MAPS_MAX_PAGES", MAPS_MAX_PAGES))
+    RELATED_QUESTIONS_AI_MAX_CALLS = max(
+        0, _env_int("SERP_RELATED_QUESTIONS_AI_MAX_CALLS", RELATED_QUESTIONS_AI_MAX_CALLS)
+    )
+    AI_FALLBACK_WITHOUT_LOCATION = _env_bool(
+        "SERP_AI_FALLBACK_WITHOUT_LOCATION", AI_FALLBACK_WITHOUT_LOCATION
+    )
 
-if not DEEP_RESEARCH_MODE:
-    RELATED_QUESTIONS_AI_FOLLOWUP = False
-    RELATED_QUESTIONS_AI_MAX_CALLS = 0
 
-# Explicit env overrides (still possible without low mode)
-GOOGLE_MAX_PAGES = max(1, _env_int("SERP_GOOGLE_MAX_PAGES", GOOGLE_MAX_PAGES))
-MAPS_MAX_PAGES = max(1, _env_int("SERP_MAPS_MAX_PAGES", MAPS_MAX_PAGES))
-RELATED_QUESTIONS_AI_MAX_CALLS = max(
-    0, _env_int("SERP_RELATED_QUESTIONS_AI_MAX_CALLS", RELATED_QUESTIONS_AI_MAX_CALLS)
-)
-AI_FALLBACK_WITHOUT_LOCATION = _env_bool(
-    "SERP_AI_FALLBACK_WITHOUT_LOCATION", AI_FALLBACK_WITHOUT_LOCATION
-)
+def configure_runtime_mode():
+    global AI_QUERY_ALTERNATIVES_ENABLED, RELATED_QUESTIONS_AI_FOLLOWUP
+    global RELATED_QUESTIONS_AI_MAX_CALLS, GOOGLE_MAX_PAGES, MAPS_MAX_PAGES
+    global AI_FALLBACK_WITHOUT_LOCATION, NO_CACHE_ENABLED
+    global DEEP_RESEARCH_MODE, BALANCED_MODE
+
+    if LOW_API_MODE:
+        BALANCED_MODE = False
+        DEEP_RESEARCH_MODE = False
+        AI_QUERY_ALTERNATIVES_ENABLED = False
+        RELATED_QUESTIONS_AI_MAX_CALLS = 2
+        GOOGLE_MAX_PAGES = 1
+        MAPS_MAX_PAGES = 1
+        AI_FALLBACK_WITHOUT_LOCATION = False
+        RELATED_QUESTIONS_AI_FOLLOWUP = False
+        NO_CACHE_ENABLED = False
+        return
+
+    if DEEP_RESEARCH_MODE:
+        return
+
+    if BALANCED_MODE:
+        GOOGLE_MAX_PAGES = 2
+        MAPS_MAX_PAGES = 1
+        AI_FALLBACK_WITHOUT_LOCATION = False
+        RELATED_QUESTIONS_AI_FOLLOWUP = False
+        RELATED_QUESTIONS_AI_MAX_CALLS = 0
+        NO_CACHE_ENABLED = False
+        return
+
+    if not DEEP_RESEARCH_MODE:
+        RELATED_QUESTIONS_AI_FOLLOWUP = False
+        RELATED_QUESTIONS_AI_MAX_CALLS = 0
+
+
+def get_effective_ai_priority_actions():
+    if LOW_API_MODE:
+        return set()
+    if BALANCED_MODE and not DEEP_RESEARCH_MODE:
+        return {"defend", "strengthen"}
+    return set(DEFAULT_AI_QUERY_PRIORITY_ACTIONS)
+
+
+configure_runtime_mode()
 
 
 def _apply_no_cache(params):
@@ -1200,7 +1237,7 @@ def load_priority_keywords_from_analysis(path):
     for item in priorities:
         action = item.get("action")
         keyword = (item.get("keyword") or "").strip()
-        if keyword and action in AI_QUERY_PRIORITY_ACTIONS:
+        if keyword and action in get_effective_ai_priority_actions():
             keywords.add(keyword)
     return keywords
 
@@ -1377,12 +1414,16 @@ def main():
 
     print(f"--- Base keywords: {len(keywords)} ---")
     print(f"--- LOW API MODE: {LOW_API_MODE} ---")
+    print(f"--- BALANCED MODE: {BALANCED_MODE} ---")
+    print(f"--- DEEP RESEARCH MODE: {DEEP_RESEARCH_MODE} ---")
     print(f"--- AI query alternatives enabled: {AI_QUERY_ALTERNATIVES_ENABLED} ---")
     print(f"--- no_cache enabled: {NO_CACHE_ENABLED} ---")
     print(f"--- Google max pages: {GOOGLE_MAX_PAGES} | Maps max pages: {MAPS_MAX_PAGES} ---")
+    print(f"--- Related-questions AI follow-up: {RELATED_QUESTIONS_AI_FOLLOWUP} ---")
     print(f"--- Related-questions AI max calls: {RELATED_QUESTIONS_AI_MAX_CALLS} ---")
     print(f"--- AI fallback without location: {AI_FALLBACK_WITHOUT_LOCATION} ---")
     print(f"--- Queries to run: {len(query_jobs)} ---")
+    print(f"--- AI priority actions for A.1/A.2: {sorted(get_effective_ai_priority_actions())} ---")
     print(f"--- FORCE LOCAL INTENT: {FORCE_LOCAL_INTENT} ---")
     print(f"--- BRIDGE STRATEGY: Mapping Symptoms -> Systems ---")
 

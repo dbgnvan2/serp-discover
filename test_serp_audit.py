@@ -362,7 +362,10 @@ class TestSerpAudit(unittest.TestCase):
             {"ai_overview": {"snippet": "AI fallback snippet"}}
         ]
 
-        results, aio_log, _ = serp_audit.fetch_serp_data("keyword", "run123")
+        with patch.object(serp_audit, "BALANCED_MODE", False), \
+             patch.object(serp_audit, "DEEP_RESEARCH_MODE", False), \
+             patch.object(serp_audit, "AI_FALLBACK_WITHOUT_LOCATION", True):
+            results, aio_log, _ = serp_audit.fetch_serp_data("keyword", "run123")
 
         self.assertIn("google_ai_overview_probe", results)
         self.assertEqual(
@@ -380,7 +383,6 @@ class TestSerpAudit(unittest.TestCase):
                 "serpapi_pagination": {},
                 "organic_results": []
             },
-            None,  # AI fallback probe
             {
                 "related_questions": [
                     {"type": "ai_overview", "question": "Q1", "text_blocks": [{"text": "A1"}]}
@@ -388,7 +390,9 @@ class TestSerpAudit(unittest.TestCase):
             }
         ]
 
-        with patch.object(serp_audit, "DEEP_RESEARCH_MODE", True), \
+        with patch.object(serp_audit, "BALANCED_MODE", False), \
+             patch.object(serp_audit, "DEEP_RESEARCH_MODE", True), \
+             patch.object(serp_audit, "AI_FALLBACK_WITHOUT_LOCATION", False), \
              patch.object(serp_audit, "RELATED_QUESTIONS_AI_FOLLOWUP", True), \
              patch.object(serp_audit, "RELATED_QUESTIONS_AI_MAX_CALLS", 1):
             results, aio_log, _ = serp_audit.fetch_serp_data("keyword", "run123")
@@ -435,6 +439,47 @@ class TestSerpAudit(unittest.TestCase):
              patch.object(serp_audit, "get_ai_priority_keywords", return_value={"different keyword"}):
             jobs = serp_audit.expand_keywords_for_ai(["help with stress in vancouver"])
         self.assertEqual([j[2] for j in jobs], ["A"])
+
+    def test_balanced_mode_limits_ai_priority_actions(self):
+        with patch.object(serp_audit, "LOW_API_MODE", False), \
+             patch.object(serp_audit, "BALANCED_MODE", True), \
+             patch.object(serp_audit, "DEEP_RESEARCH_MODE", False):
+            self.assertEqual(
+                serp_audit.get_effective_ai_priority_actions(),
+                {"defend", "strengthen"},
+            )
+
+    def test_balanced_mode_overrides_runtime_settings(self):
+        with patch.object(serp_audit, "LOW_API_MODE", False), \
+             patch.object(serp_audit, "BALANCED_MODE", True), \
+             patch.object(serp_audit, "DEEP_RESEARCH_MODE", False), \
+             patch.object(serp_audit, "GOOGLE_MAX_PAGES", 3), \
+             patch.object(serp_audit, "MAPS_MAX_PAGES", 3), \
+             patch.object(serp_audit, "AI_FALLBACK_WITHOUT_LOCATION", True), \
+             patch.object(serp_audit, "RELATED_QUESTIONS_AI_FOLLOWUP", True), \
+             patch.object(serp_audit, "RELATED_QUESTIONS_AI_MAX_CALLS", 5), \
+             patch.object(serp_audit, "NO_CACHE_ENABLED", True):
+            serp_audit.configure_runtime_mode()
+            self.assertEqual(serp_audit.GOOGLE_MAX_PAGES, 2)
+            self.assertEqual(serp_audit.MAPS_MAX_PAGES, 1)
+            self.assertFalse(serp_audit.AI_FALLBACK_WITHOUT_LOCATION)
+            self.assertFalse(serp_audit.RELATED_QUESTIONS_AI_FOLLOWUP)
+            self.assertEqual(serp_audit.RELATED_QUESTIONS_AI_MAX_CALLS, 0)
+            self.assertFalse(serp_audit.NO_CACHE_ENABLED)
+
+    def test_low_mode_overrides_balanced_mode(self):
+        with patch.object(serp_audit, "LOW_API_MODE", True), \
+             patch.object(serp_audit, "BALANCED_MODE", True), \
+             patch.object(serp_audit, "DEEP_RESEARCH_MODE", True), \
+             patch.object(serp_audit, "AI_QUERY_ALTERNATIVES_ENABLED", True), \
+             patch.object(serp_audit, "GOOGLE_MAX_PAGES", 3), \
+             patch.object(serp_audit, "MAPS_MAX_PAGES", 3):
+            serp_audit.configure_runtime_mode()
+            self.assertFalse(serp_audit.BALANCED_MODE)
+            self.assertFalse(serp_audit.DEEP_RESEARCH_MODE)
+            self.assertFalse(serp_audit.AI_QUERY_ALTERNATIVES_ENABLED)
+            self.assertEqual(serp_audit.GOOGLE_MAX_PAGES, 1)
+            self.assertEqual(serp_audit.MAPS_MAX_PAGES, 1)
 
     def test_load_priority_keywords_from_analysis(self):
         with patch("os.path.exists", return_value=True), patch(

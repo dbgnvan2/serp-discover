@@ -1,10 +1,10 @@
 serpapi:
-  engine: "google"
-  gl: "ca"
-  hl: "en"
-  location: "Vancouver, British Columbia, Canada"
+  engine: google
+  gl: ca
+  hl: en
+  location: Vancouver, British Columbia, Canada
   num: 100
-  device: "desktop"
+  device: desktop
   google_max_pages: 3
   google_max_results: 300
   maps_max_pages: 3
@@ -15,37 +15,37 @@ serpapi:
   ai_fallback_without_location: true
   related_questions_ai_followup: true
   related_questions_ai_max_calls: 5
-
 files:
-  input_csv: "keywords.csv"
-  output_xlsx: "market_analysis_v2.xlsx"
-  output_json: "market_analysis_v2.json"
-  output_md: "market_analysis_v2.md"
-  domain_overrides: "domain_overrides.yml"
-
+  input_csv: keywords_estrangement.csv
+  output_xlsx: market_analysis_estrangement.xlsx
+  output_json: market_analysis_estrangement.json
+  output_md: market_analysis_estrangement.md
+  domain_overrides: domain_overrides.yml
 enrichment:
   enabled: true
   max_urls_per_keyword: 5
   timeout_seconds: 10
-  user_agent: "MarketIntelligenceBot/1.0"
+  user_agent: MarketIntelligenceBot/1.0
   enable_domain_age: false
-
 app:
   force_local_intent: true
+  balanced_mode: true
   deep_research_mode: false
   ai_query_priority_actions:
-    - "defend"
-    - "strengthen"
-    - "enter_cautiously"
-  # Add extra stop words here if needed
-
+  - defend
+  - strengthen
+  - enter_cautiously
 analysis_report:
-  client_name: "Living Systems Counselling"
-  client_domain: "livingsystems.ca"
+  client_name: Living Systems Counselling
+  client_domain: livingsystems.ca
   client_name_patterns:
-    - "Living Systems"
-  org_type: "Small nonprofit counselling organization, established 1971"
-  location: "North Vancouver, BC, Canada"
-  framework_description: "Bowen Family Systems Theory. Core concepts include differentiation of self, emotional cutoff, triangles, and multigenerational transmission."
-  content_focus: "Counselling services, Bowen Theory training programs, conferences, and educational content."
-  additional_context: "Budget is limited. Prioritize practical recommendations that fit a small nonprofit and avoid mismatched audiences such as court-mandated reunification services."
+  - Living Systems
+  org_type: Small nonprofit counselling organization, established 1971
+  location: North Vancouver, BC, Canada
+  framework_description: Bowen Family Systems Theory. Core concepts include differentiation
+    of self, emotional cutoff, triangles, and multigenerational transmission.
+  content_focus: Counselling services, Bowen Theory training programs, conferences,
+    and educational content.
+  additional_context: Budget is limited. Prioritize practical recommendations that
+    fit a small nonprofit and avoid mismatched audiences such as court-mandated reunification
+    services.

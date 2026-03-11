@@ -6,7 +6,6 @@ import threading
 import os
 import json
 import re
-import shutil
 import time
 from datetime import datetime
 import yaml
@@ -190,6 +189,14 @@ class SerpLauncherApp:
         )
         self.low_api_mode_chk.pack(side="left", padx=5)
 
+        self.balanced_mode_var = tk.BooleanVar(value=True)
+        self.balanced_mode_chk = ttk.Checkbutton(
+            btn_frame,
+            text="Balanced Mode",
+            variable=self.balanced_mode_var,
+        )
+        self.balanced_mode_chk.pack(side="left", padx=5)
+
         self.deep_research_mode_var = tk.BooleanVar(value=False)
         self.deep_research_mode_chk = ttk.Checkbutton(
             btn_frame,
@@ -325,33 +332,31 @@ class SerpLauncherApp:
         return os.path.splitext(filename)[0]
 
     def build_output_names(self, topic_slug):
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M")
         return {
-            "output_xlsx": f"market_analysis_{topic_slug}.xlsx",
-            "output_json": f"market_analysis_{topic_slug}.json",
-            "output_md": f"market_analysis_{topic_slug}.md",
-            "report_out": f"content_opportunities_{topic_slug}.md",
-            "advisory_out": f"advisory_briefing_{topic_slug}.md",
+            "output_xlsx": f"market_analysis_{topic_slug}_{timestamp}.xlsx",
+            "output_json": f"market_analysis_{topic_slug}_{timestamp}.json",
+            "output_md": f"market_analysis_{topic_slug}_{timestamp}.md",
+            "report_out": f"content_opportunities_{topic_slug}_{timestamp}.md",
+            "advisory_out": f"advisory_briefing_{topic_slug}_{timestamp}.md",
         }
 
-    def archive_existing_outputs(self, output_names, keys=None):
-        archive_dir = os.path.join(os.getcwd(), "runs")
-        os.makedirs(archive_dir, exist_ok=True)
-        date_stamp = datetime.now().strftime("%Y%m%d")
-        archived = []
-        selected_keys = keys or list(output_names.keys())
-        for key in selected_keys:
-            output_file = output_names[key]
-            file_path = os.path.join(os.getcwd(), output_file)
-            if not os.path.exists(file_path):
+    def find_latest_topic_output(self, prefix, topic_slug, extension):
+        pattern = re.compile(
+            rf"^{re.escape(prefix)}_{re.escape(topic_slug)}(?:_\d{{8}}_\d{{4}})?{re.escape(extension)}$"
+        )
+        matches = []
+        cwd = os.getcwd()
+        for name in os.listdir(cwd):
+            if not pattern.match(name):
                 continue
-            base_name = os.path.basename(output_file)
-            stem, ext = os.path.splitext(base_name)
-            archived_path = os.path.join(archive_dir, f"{stem}_{date_stamp}{ext}")
-            if os.path.exists(archived_path):
-                continue
-            shutil.move(file_path, archived_path)
-            archived.append((output_file, os.path.relpath(archived_path, os.getcwd())))
-        return archived
+            path = os.path.join(cwd, name)
+            if os.path.isfile(path):
+                matches.append((os.path.getmtime(path), path))
+        if not matches:
+            return None
+        matches.sort(key=lambda item: item[0], reverse=True)
+        return matches[0][1]
 
     def refresh_keyword_file_options(self):
         options = []
@@ -381,7 +386,7 @@ class SerpLauncherApp:
         if self.keyword_file_var.get() not in self.keyword_file_options:
             self.keyword_file_var.set(values[0] if values else "")
 
-    def prepare_keyword_run_context(self):
+    def prepare_keyword_run_context(self, script_file):
         selected_display = self.keyword_file_var.get().strip()
         selected_path = self.keyword_file_options.get(selected_display) if selected_display else None
         new_keywords = self.parse_new_keywords(self.new_keywords_var.get())
@@ -414,14 +419,21 @@ class SerpLauncherApp:
 
         topic_slug = self.derive_topic_slug(keyword_file)
         output_names = self.build_output_names(topic_slug)
+        latest_json = self.find_latest_topic_output("market_analysis", topic_slug, ".json")
+        latest_xlsx = self.find_latest_topic_output("market_analysis", topic_slug, ".xlsx")
+        latest_md = self.find_latest_topic_output("market_analysis", topic_slug, ".md")
 
-        config = self.load_config()
-        files_cfg = config.setdefault("files", {})
-        files_cfg["input_csv"] = os.path.basename(keyword_file)
-        files_cfg["output_xlsx"] = output_names["output_xlsx"]
-        files_cfg["output_json"] = output_names["output_json"]
-        files_cfg["output_md"] = output_names["output_md"]
-        self.save_config(config)
+        if script_file == "run_pipeline.py":
+            config = self.load_config()
+            files_cfg = config.setdefault("files", {})
+            files_cfg["input_csv"] = os.path.basename(keyword_file)
+            files_cfg["output_xlsx"] = output_names["output_xlsx"]
+            files_cfg["output_json"] = output_names["output_json"]
+            files_cfg["output_md"] = output_names["output_md"]
+            self.save_config(config)
+            input_json = os.path.join(os.getcwd(), output_names["output_json"])
+        else:
+            input_json = latest_json
 
         self.refresh_keyword_file_options()
         selected_base = os.path.basename(keyword_file)
@@ -436,6 +448,10 @@ class SerpLauncherApp:
             "added_keywords": added_keywords,
             "topic_slug": topic_slug,
             "output_names": output_names,
+            "input_json": input_json,
+            "latest_json": latest_json,
+            "latest_xlsx": latest_xlsx,
+            "latest_md": latest_md,
         }
 
     def run_script(self):
@@ -452,23 +468,24 @@ class SerpLauncherApp:
         output_names = None
         if script_info["file"] in {"run_pipeline.py", "generate_content_brief.py"}:
             try:
-                run_context = self.prepare_keyword_run_context()
+                run_context = self.prepare_keyword_run_context(script_info["file"])
             except ValueError as exc:
                 messagebox.showerror("Keyword Setup", str(exc))
                 return
             output_names = run_context["output_names"]
-            if script_info["file"] == "run_pipeline.py":
-                archive_keys = ["output_xlsx", "output_json", "output_md"]
-            else:
-                archive_keys = ["report_out", "advisory_out"]
-            archived = self.archive_existing_outputs(output_names, keys=archive_keys)
+            if script_info["file"] == "generate_content_brief.py" and not run_context.get("input_json"):
+                messagebox.showerror(
+                    "Content Opportunities",
+                    "No existing market analysis JSON was found for this topic. Run Full Pipeline first."
+                )
+                return
         else:
             archived = []
 
         cmd = [sys.executable, script_info["file"]]
         if script_info["file"] == "generate_content_brief.py":
             cmd.extend([
-                "--json", output_names["output_json"],
+                "--json", run_context["input_json"],
                 "--list",
                 "--report-out", output_names["report_out"],
                 "--advisory-briefing",
@@ -485,13 +502,17 @@ class SerpLauncherApp:
             "0" if self.low_api_mode_var.get()
             else ("1" if self.ai_query_alts_var.get() else "0")
         )
+        env["SERP_BALANCED_MODE"] = (
+            "0" if self.low_api_mode_var.get()
+            else ("1" if self.balanced_mode_var.get() else "0")
+        )
         env["SERP_DEEP_RESEARCH_MODE"] = (
             "0" if self.low_api_mode_var.get()
             else ("1" if self.deep_research_mode_var.get() else "0")
         )
         env["SERP_SINGLE_KEYWORD"] = ""
         if run_context and output_names:
-            previous_json = os.path.join(cwd, output_names["output_json"])
+            previous_json = run_context.get("latest_json")
             priority_keywords = self.extract_priority_keywords_from_analysis(previous_json)
             env["SERP_AI_PRIORITY_KEYWORDS"] = "||".join(priority_keywords)
         started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -517,9 +538,10 @@ class SerpLauncherApp:
                 f"> Outputs: {output_names['output_xlsx']}, {output_names['output_json']}, "
                 f"{output_names['output_md']}, {output_names['report_out']}, {output_names['advisory_out']}\n"
             )
-        for original, archived_path in archived:
-            self.log(f"> Archived existing {original} -> {archived_path}\n")
+            if run_context.get("latest_json"):
+                self.log(f"> Latest existing JSON input: {os.path.basename(run_context['latest_json'])}\n")
         self.log(f"> SERP_LOW_API_MODE={env['SERP_LOW_API_MODE']}\n")
+        self.log(f"> SERP_BALANCED_MODE={env['SERP_BALANCED_MODE']}\n")
         self.log(f"> SERP_ENABLE_AI_QUERY_ALTERNATIVES={env['SERP_ENABLE_AI_QUERY_ALTERNATIVES']}\n")
         self.log(f"> SERP_DEEP_RESEARCH_MODE={env['SERP_DEEP_RESEARCH_MODE']}\n")
         if env.get("SERP_AI_PRIORITY_KEYWORDS"):
@@ -594,10 +616,14 @@ class SerpLauncherApp:
         if self.low_api_mode_var.get():
             self.ai_query_alts_var.set(False)
             self.ai_query_alts_chk.state(["disabled"])
+            self.balanced_mode_var.set(False)
+            self.balanced_mode_chk.state(["disabled"])
             self.deep_research_mode_var.set(False)
             self.deep_research_mode_chk.state(["disabled"])
         else:
             self.ai_query_alts_chk.state(["!disabled"])
+            self.balanced_mode_var.set(True)
+            self.balanced_mode_chk.state(["!disabled"])
             self.deep_research_mode_chk.state(["!disabled"])
 
     def open_domain_override_review(self):
