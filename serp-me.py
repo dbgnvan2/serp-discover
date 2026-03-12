@@ -490,7 +490,7 @@ class SerpLauncherApp:
                 "--report-out", output_names["report_out"],
                 "--advisory-briefing",
                 "--advisory-out", output_names["advisory_out"],
-                "--prompt-spec", "serp_analysis_prompt_v3.md",
+                "--prompt-spec", os.path.join("prompts", "main_report"),
                 "--use-llm",
             ])
         else:

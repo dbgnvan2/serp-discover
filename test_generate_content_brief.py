@@ -154,6 +154,27 @@ class TestGenerateContentBrief(unittest.TestCase):
         self.assertEqual(context["location"], "Vancouver, BC")
         self.assertEqual(context["framework_terms"], ["family systems", "differentiation"])
 
+    def test_load_prompt_blocks_from_directory(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prompt_dir = Path(tmpdir) / "prompts"
+            prompt_dir.mkdir()
+            (prompt_dir / "system.md").write_text("SYSTEM", encoding="utf-8")
+            (prompt_dir / "user_template.md").write_text("USER", encoding="utf-8")
+            system_prompt, user_template = gcb.load_prompt_blocks(str(prompt_dir))
+            self.assertEqual(system_prompt, "SYSTEM")
+            self.assertEqual(user_template, "USER")
+
+    def test_load_prompt_blocks_from_legacy_markdown(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            prompt_file = Path(tmpdir) / "legacy.md"
+            prompt_file.write_text(
+                "### System Prompt\n```text\nSYSTEM\n```\n\n### User Prompt Template\n```text\nUSER\n```\n",
+                encoding="utf-8",
+            )
+            system_prompt, user_template = gcb.load_prompt_blocks(str(prompt_file))
+            self.assertEqual(system_prompt, "SYSTEM")
+            self.assertEqual(user_template, "USER")
+
     def test_validate_llm_report_flags_unsupported_claims(self):
         extracted = gcb.extract_analysis_data_from_json(
             self._sample_data(), "livingsystems.ca", ["Living Systems"]
@@ -222,6 +243,21 @@ If you don't act now, you'll lose your rank #3 position entirely.
             self.assertIn("# Content Opportunity Report Validation Issues", text)
             self.assertIn("- Unsupported claim.", text)
             self.assertIn("Bad draft text.", text)
+
+    def test_build_correction_message_uses_template_file(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            template_path = Path(tmpdir) / "correction.md"
+            template_path.write_text(
+                "Fix these:\n{{VALIDATION_ISSUES}}\n",
+                encoding="utf-8",
+            )
+            message = gcb.build_correction_message(
+                ["Issue one", "Issue two"],
+                template_path=str(template_path),
+            )
+            self.assertIn("Fix these:", message)
+            self.assertIn("- Issue one", message)
+            self.assertIn("- Issue two", message)
 
     def test_generate_brief_uses_theme_relevant_paa_and_competitors(self):
         data = {

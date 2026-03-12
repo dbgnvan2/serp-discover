@@ -84,8 +84,19 @@ content_opportunities_<topic>.md
 advisory_briefing_<topic>.md
 ```
 
-It uses the prompt spec in `serp_analysis_prompt_v3.md` with Anthropic and
-loads client context from `config.yml` under `analysis_report`.
+It uses Anthropic with file-based prompt assets and loads client context
+from `config.yml` under `analysis_report`.
+
+Prompt assets now live in dedicated files:
+
+- `prompts/main_report/system.md`
+- `prompts/main_report/user_template.md`
+- `prompts/advisory/system.md`
+- `prompts/advisory/user_template.md`
+- `prompts/correction/user_template.md`
+
+The combined file `serp_analysis_prompt_v3.md` is now a legacy reference.
+The extraction and implementation notes are split into `docs/extraction_spec.md`.
 
 Required for launcher mode:
 

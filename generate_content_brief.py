@@ -51,6 +51,11 @@ DEFAULT_CLIENT_CONTEXT = {
     ],
 }
 
+MAIN_REPORT_PROMPT_DEFAULT = os.path.join("prompts", "main_report")
+ADVISORY_PROMPT_DEFAULT = os.path.join("prompts", "advisory")
+CORRECTION_PROMPT_DEFAULT = os.path.join("prompts", "correction", "user_template.md")
+
+
 BRIEF_PAA_THEMES = {
     "The Medical Model Trap": [
         "therapy", "therapist", "counselling", "counselor",
@@ -85,107 +90,6 @@ BRIEF_KEYWORD_HINTS = {
     "The Resource Trap": ["grief", "counselling", "therapy", "bc"],
     "The Blame/Reactivity Trap": ["estrangement", "toxic", "no-contact", "family member"],
 }
-
-ADVISORY_SYSTEM_PROMPT = """You are a senior SEO and content strategy advisor briefing the
-executive director of a small nonprofit counselling organization.
-Your job is to explain what market intelligence data means for their
-organization - not to describe data, but to recommend specific actions
-and explain consequences.
-
-## How to communicate
-
-Write as if you are sitting across a table from someone who
-understands their clinical work deeply but relies on you for digital
-strategy. Be direct. Use plain language. When you reference a number,
-state it once and then explain what it means - do not list data points
-without interpretation.
-
-For every finding, follow this structure:
-- What the data shows (one sentence)
-- Why this matters to you specifically (one to two sentences
-  connecting the finding to their business situation)
-- What to do about it (concrete action)
-- What happens if you don't (consequence of inaction)
-
-## Rules
-
-- Do not repeat or summarize the market intelligence report. The
-  reader has already seen it. Reference findings by topic, not by
-  restating them.
-- Do not describe data without interpreting it.
-- Do not recommend more than 3 actions. A small nonprofit cannot
-  execute more than 3 content initiatives in a quarter.
-- If the strategic flags show defensive_urgency as "high", the first
-  action MUST be defending the declining position. Do not recommend
-  creating new content ahead of stabilizing existing visibility.
-- If the strategic flags show a keyword with action "skip", do not
-  recommend content for it regardless of how interesting the topic
-  seems.
-- Do not soften bad news. If the client's position is deteriorating,
-  say so plainly.
-- Do not fabricate data. Every number you cite must appear in either
-  the strategic flags or the market intelligence report.
-- Use risk language accurately. Say "risk losing" or "could lose"
-  when describing possible future outcomes unless the loss has
-  already happened in the data.
-
-## Output structure
-
-### The Headline
-One paragraph. State the single most important thing the client needs
-to understand from this analysis. Lead with the most urgent finding,
-not the most interesting one.
-
-### Action 1 (highest urgency)
-Two to three paragraphs. What to do, specifically. Why this is
-urgent (reference the data). What happens if the client does nothing.
-Include the specific page or content asset involved if one exists.
-
-### Action 2
-Same structure.
-
-### Action 3
-Same structure.
-
-### What to Stop Thinking About
-One paragraph. Name the specific keywords, content ideas, or
-strategies that the data does NOT support. Explain briefly why. This
-prevents the client from spending time on low-value activities.
-
-### Next Measurement
-One paragraph. What specific metrics to check in the next data run
-(e.g., "rank for keyword X should be at or above Y") to assess
-whether these actions worked. Be specific enough that the result is
-unambiguous.
-"""
-
-ADVISORY_USER_TEMPLATE = """## Client Context
-
-Organization: {client_name}
-Website: {client_domain}
-Type: {org_type}
-Location: {location}
-Theoretical framework: {framework_description}
-Current content focus: {content_focus}
-Additional context: {additional_context}
-
-## Strategic Flags (pre-computed from SERP data)
-
-<strategic_flags>
-{strategic_flags_json}
-</strategic_flags>
-
-## Market Intelligence Report (verified, from first-pass analysis)
-
-<market_report>
-{market_report_text}
-</market_report>
-
-Based on the strategic flags and the verified market intelligence
-report, produce the advisory briefing as specified in your
-instructions.
-"""
-
 
 def progress(message):
     print(message, flush=True)
@@ -1072,14 +976,33 @@ def _extract_code_block_after_heading(markdown_text, heading_text):
     return match.group(1).strip()
 
 
-def load_prompt_blocks(prompt_spec_path):
-    if not os.path.exists(prompt_spec_path):
+def _read_prompt_file(path):
+    if not os.path.exists(path):
+        return None
+    with open(path, "r", encoding="utf-8") as f:
+        return f.read().strip()
+
+
+def load_prompt_blocks(prompt_source, progress_label="[5/7]", progress_name="prompt spec"):
+    if not os.path.exists(prompt_source):
         return None, None
-    progress(f"[5/7] Loading prompt spec from {prompt_spec_path}...")
-    text = open(prompt_spec_path, "r", encoding="utf-8").read()
+    progress(f"{progress_label} Loading {progress_name} from {prompt_source}...")
+    if os.path.isdir(prompt_source):
+        system_prompt = _read_prompt_file(os.path.join(prompt_source, "system.md"))
+        user_template = _read_prompt_file(os.path.join(prompt_source, "user_template.md"))
+        return system_prompt, user_template
+
+    with open(prompt_source, "r", encoding="utf-8") as f:
+        text = f.read()
     system_prompt = _extract_code_block_after_heading(text, "### System Prompt")
     user_template = _extract_code_block_after_heading(text, "### User Prompt Template")
     return system_prompt, user_template
+
+
+def load_single_prompt(prompt_path, progress_label=None, progress_name="prompt template"):
+    if progress_label:
+        progress(f"{progress_label} Loading {progress_name} from {prompt_path}...")
+    return _read_prompt_file(prompt_path)
 
 
 def build_user_prompt(template, context, extracted_data, warnings):
@@ -1107,22 +1030,12 @@ def build_user_prompt(template, context, extracted_data, warnings):
     return user_prompt
 
 
-def build_correction_message(validation_issues):
+def build_correction_message(validation_issues, template_path=CORRECTION_PROMPT_DEFAULT):
+    template = load_single_prompt(template_path)
+    if not template:
+        raise RuntimeError(f"Correction prompt template could not be loaded from {template_path}")
     issues_text = "\n".join(f"- {issue}" for issue in validation_issues)
-    correction_rules = [
-        "Return the full corrected document, not notes about the correction.",
-        "Delete unsupported claims if you cannot restate them with verified evidence.",
-        "Do not restate any rejected claim below.",
-        "Use risk language for future outcomes unless the loss already happened in the data.",
-    ]
-    return (
-        "IMPORTANT REVISION INSTRUCTIONS:\n"
-        "A previous draft failed evidence validation. Revise it so every claim matches the verified evidence exactly.\n"
-        + "\n".join(f"- {rule}" for rule in correction_rules)
-        + "\n"
-        "Rejected claims:\n"
-        f"{issues_text}\n"
-    )
+    return template.replace("{{VALIDATION_ISSUES}}", issues_text)
 
 
 def write_validation_artifact(output_path, title, validation_issues, draft_text):
@@ -1626,7 +1539,11 @@ def list_recommendations(data, args):
             print("Error: ANTHROPIC_API_KEY is not set.")
             sys.exit(2)
 
-        system_prompt, user_template = load_prompt_blocks(args.prompt_spec)
+        system_prompt, user_template = load_prompt_blocks(
+            args.prompt_spec,
+            progress_label="[5/7]",
+            progress_name="main report prompt",
+        )
         if not (system_prompt and user_template):
             print(f"Error: Prompt blocks could not be loaded from {args.prompt_spec}")
             sys.exit(2)
@@ -1642,7 +1559,10 @@ def list_recommendations(data, args):
             validation_issues = validate_llm_report(report, extracted)
             if validation_issues and not args.allow_unverified_report:
                 progress("[retry] Initial LLM draft failed evidence validation. Requesting one corrected revision...")
-                correction_msg = build_correction_message(validation_issues)
+                correction_msg = build_correction_message(
+                    validation_issues,
+                    template_path=args.correction_prompt,
+                )
                 report = run_llm_report(
                     system_prompt=system_prompt,
                     user_prompt=user_prompt,
@@ -1685,7 +1605,15 @@ def list_recommendations(data, args):
         else:
             progress("[advisory] Running second-pass strategic briefing...")
             advisory_model = args.advisory_model or args.llm_model
-            advisory_user = ADVISORY_USER_TEMPLATE.format(
+            advisory_system_prompt, advisory_user_template = load_prompt_blocks(
+                args.advisory_prompt_dir,
+                progress_label="[advisory]",
+                progress_name="advisory prompt",
+            )
+            if not (advisory_system_prompt and advisory_user_template):
+                print(f"Error: Advisory prompt files could not be loaded from {args.advisory_prompt_dir}")
+                sys.exit(2)
+            advisory_user = advisory_user_template.format(
                 client_name=context["client_name"],
                 client_domain=context["client_domain"],
                 org_type=context["org_type"],
@@ -1701,16 +1629,19 @@ def list_recommendations(data, args):
                 market_report_text=report,
             )
             advisory_report = run_llm_report(
-                system_prompt=ADVISORY_SYSTEM_PROMPT,
+                system_prompt=advisory_system_prompt,
                 user_prompt=advisory_user,
                 model=advisory_model,
                 max_tokens=4000,
             )
             advisory_issues = validate_advisory_briefing(advisory_report, extracted)
             if advisory_issues:
-                correction_msg = build_correction_message(advisory_issues)
+                correction_msg = build_correction_message(
+                    advisory_issues,
+                    template_path=args.correction_prompt,
+                )
                 advisory_report = run_llm_report(
-                    system_prompt=ADVISORY_SYSTEM_PROMPT,
+                    system_prompt=advisory_system_prompt,
                     user_prompt=advisory_user,
                     model=advisory_model,
                     max_tokens=4000,
@@ -1800,8 +1731,12 @@ def main():
     parser.add_argument("--list", action="store_true", help="Generate improved opportunity report")
     parser.add_argument("--report-out", default="content_opportunities_report.md",
                         help="Output markdown path for improved report mode")
-    parser.add_argument("--prompt-spec", default="serp_analysis_prompt_v3.md",
-                        help="Path to prompt spec markdown")
+    parser.add_argument("--prompt-spec", default=MAIN_REPORT_PROMPT_DEFAULT,
+                        help="Main report prompt directory (system.md + user_template.md) or legacy combined markdown spec")
+    parser.add_argument("--advisory-prompt-dir", default=ADVISORY_PROMPT_DEFAULT,
+                        help="Advisory prompt directory containing system.md and user_template.md")
+    parser.add_argument("--correction-prompt", default=CORRECTION_PROMPT_DEFAULT,
+                        help="Correction prompt template file used for LLM revision retries")
     parser.add_argument("--use-llm", action="store_true",
                         help="Use Anthropic API with prompt spec (fails if LLM path is unavailable)")
     parser.add_argument("--config", default="config.yml",
