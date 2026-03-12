@@ -70,6 +70,19 @@ def get_volatility_metrics(current_run_id):
         curr_df = curr_df.dropna(subset=['rank'])
         prev_df = prev_df.dropna(subset=['rank'])
 
+        current_keywords = set(curr_df['keyword_text'].dropna().unique())
+        previous_keywords = set(prev_df['keyword_text'].dropna().unique())
+        comparability_warning = None
+        if current_keywords != previous_keywords:
+            missing_from_prev = sorted(current_keywords - previous_keywords)
+            missing_from_curr = sorted(previous_keywords - current_keywords)
+            parts = ["Volatility is based on non-identical keyword sets."]
+            if missing_from_prev:
+                parts.append(f"Only in current run: {', '.join(missing_from_prev)}.")
+            if missing_from_curr:
+                parts.append(f"Only in previous run: {', '.join(missing_from_curr)}.")
+            comparability_warning = " ".join(parts)
+
         # Merge on keyword + url
         merged = pd.merge(curr_df, prev_df, on=[
                           'keyword_text', 'url'], suffixes=('_curr', '_prev'))
@@ -92,6 +105,7 @@ def get_volatility_metrics(current_run_id):
             "volatility_score": round(volatility_score, 2),
             "stable_urls_count": len(merged[merged['rank_delta'] == 0]),
             "total_compared": len(merged),
+            "comparability_warning": comparability_warning,
             "winners": winners[['keyword_text', 'url', 'rank_curr', 'rank_delta']].to_dict('records'),
             "losers": losers[['keyword_text', 'url', 'rank_curr', 'rank_delta']].to_dict('records')
         }
@@ -151,43 +165,57 @@ def get_rank_deltas(current_run_id):
         return {}
 
     try:
-        conn = sqlite3.connect(DB_PATH)
-        runs_df = pd.read_sql(
-            "SELECT run_id, run_date FROM runs ORDER BY run_date DESC", conn)
+        with sqlite3.connect(DB_PATH) as conn:
+            runs_df = pd.read_sql(
+                "SELECT run_id, run_date FROM runs ORDER BY run_date DESC", conn)
 
-        if len(runs_df) < 2:
-            conn.close()
+            if len(runs_df) < 2:
+                return {}
+
+            # Identify previous run
+            current_run_date_row = runs_df[runs_df['run_id'] == current_run_id]
+            if current_run_date_row.empty:
+                return {}
+
+            current_date = current_run_date_row.iloc[0]['run_date']
+            prev_runs = runs_df[runs_df['run_date'] < current_date]
+
+            if prev_runs.empty:
+                return {}
+
+            prev_run_id = prev_runs.iloc[0]['run_id']
+
+            # Keep keyword + url to avoid collisions when the same URL ranks for multiple keywords.
+            query = """
+                SELECT keyword_text, url, rank
+                FROM serp_results
+                WHERE run_id = ? AND result_type = 'organic'
+            """
+            curr_df = pd.read_sql(query, conn, params=(current_run_id,))
+            prev_df = pd.read_sql(query, conn, params=(prev_run_id,))
+
+        if curr_df.empty or prev_df.empty:
             return {}
 
-        # Identify previous run
-        current_run_date_row = runs_df[runs_df['run_id'] == current_run_id]
-        if current_run_date_row.empty:
-            conn.close()
+        curr_df['rank'] = pd.to_numeric(curr_df['rank'], errors='coerce')
+        prev_df['rank'] = pd.to_numeric(prev_df['rank'], errors='coerce')
+        curr_df = curr_df.dropna(subset=['rank'])
+        prev_df = prev_df.dropna(subset=['rank'])
+
+        merged = pd.merge(
+            curr_df,
+            prev_df,
+            on=['keyword_text', 'url'],
+            suffixes=('_curr', '_prev')
+        )
+        if merged.empty:
             return {}
 
-        current_date = current_run_date_row.iloc[0]['run_date']
-        prev_runs = runs_df[runs_df['run_date'] < current_date]
-
-        if prev_runs.empty:
-            conn.close()
-            return {}
-
-        prev_run_id = prev_runs.iloc[0]['run_id']
-
-        # Get Deltas
-        query = "SELECT url, rank FROM serp_results WHERE run_id = ? AND result_type = 'organic'"
-        curr = pd.read_sql(query, conn, params=(
-            current_run_id,)).set_index('url')['rank']
-        prev = pd.read_sql(query, conn, params=(
-            prev_run_id,)).set_index('url')['rank']
-
-        # Ensure numeric types
-        curr = pd.to_numeric(curr, errors='coerce')
-        prev = pd.to_numeric(prev, errors='coerce')
-
-        # Calculate delta (Prev - Curr). Positive = Improved.
-        delta_series = prev - curr
-        return delta_series.dropna().to_dict()
+        merged['rank_delta'] = merged['rank_prev'] - merged['rank_curr']
+        return {
+            (row['keyword_text'], row['url']): row['rank_delta']
+            for _, row in merged.dropna(subset=['rank_delta']).iterrows()
+        }
 
     except Exception as e:
         logging.error(f"Error getting rank deltas: {e}")

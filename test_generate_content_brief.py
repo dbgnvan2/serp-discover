@@ -253,6 +253,32 @@ If you don't act now, you'll lose your rank #3 position entirely.
         self.assertIn("Free grief counselling resources", brief)
         self.assertIn("Therapy coverage in BC", brief)
 
+    def test_generate_brief_dedupes_and_separates_blame_questions(self):
+        data = {
+            "strategic_recommendations": [
+                {
+                    "Pattern_Name": "The Blame/Reactivity Trap",
+                    "Status_Quo_Message": "They are the problem",
+                    "Bowen_Bridge_Reframe": "Observe self",
+                    "Content_Angle": "Reactivity content",
+                    "Detected_Triggers": "toxic, abusive",
+                }
+            ],
+            "paa_questions": [
+                {"Question": "What are the signs of a toxic adult child?", "Category": "Reactivity", "Source_Keyword": "estrangement"},
+                {"Question": "What are the signs of a toxic adult child?", "Category": "Reactivity", "Source_Keyword": "estrangement"},
+                {"Question": "When should you stop reaching out to an estranged child?", "Category": "Distress", "Source_Keyword": "estrangement"},
+                {"Question": "When to go no-contact with a family member?", "Category": "Reactivity", "Source_Keyword": "estrangement"},
+            ],
+            "organic_results": [
+                {"Rank": 1, "Title": "Toxic family signs", "Snippet": "abusive mean behaviour"},
+                {"Rank": 2, "Title": "No-contact with family member", "Snippet": "toxic family member guidance"},
+            ],
+        }
+        brief = gcb.generate_brief(data, 0)
+        self.assertEqual(brief.count("What are the signs of a toxic adult child?"), 1)
+        self.assertIn("When to go no-contact with a family member?", brief)
+
 
 if __name__ == "__main__":
     unittest.main()

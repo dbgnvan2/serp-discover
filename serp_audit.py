@@ -1066,7 +1066,19 @@ def calculate_subjectivity(text):
         return "N/A"
 
 
-def analyze_strategic_opportunities(ngram_results):
+def _dataset_topic_profile(keywords):
+    text = " ".join((keywords or [])).lower()
+    return {
+        "estrangement_family": any(term in text for term in [
+            "estrangement", "adult children", "family cutoff", "reunification"
+        ]),
+        "marriage_couples": any(term in text for term in [
+            "marriage", "couples", "partner", "relationship"
+        ]),
+    }
+
+
+def analyze_strategic_opportunities(ngram_results, keywords=None):
     """
     Maps detected N-Gram patterns to Bowen Theory strategic recommendations.
     Returns a list of dictionaries for the 'Strategic_Recommendations' sheet.
@@ -1074,6 +1086,8 @@ def analyze_strategic_opportunities(ngram_results):
     recommendations = []
 
     # Define the Knowledge Base (The "Bridge")
+    profile = _dataset_topic_profile(keywords)
+
     strategies = [
         {
             "Pattern_Name": "The Medical Model Trap",
@@ -1104,6 +1118,19 @@ def analyze_strategic_opportunities(ngram_results):
             "Content_Angle": "Stop diagnosing the other person and start observing your own reactivity."
         }
     ]
+
+    if profile["estrangement_family"] and not profile["marriage_couples"]:
+        for strategy in strategies:
+            if strategy["Pattern_Name"] == "The Medical Model Trap":
+                strategy["Content_Angle"] = "Why turning family estrangement into a diagnosis keeps you stuck."
+            elif strategy["Pattern_Name"] == "The Fusion Trap":
+                strategy["Content_Angle"] = "Why trying to force reconnection may deepen the cutoff."
+                strategy["Status_Quo_Message"] = "The goal is to force closeness, agreement, or reconnection as quickly as possible."
+                strategy["Bowen_Bridge_Reframe"] = "Sustainable contact requires differentiation. Anxiety-driven pursuit often increases reactivity and deepens cutoff."
+            elif strategy["Pattern_Name"] == "The Resource Trap":
+                strategy["Content_Angle"] = "When short-term relief becomes a substitute for working the family pattern."
+            elif strategy["Pattern_Name"] == "The Blame/Reactivity Trap":
+                strategy["Content_Angle"] = "Stop diagnosing the other person and start observing your own reactivity."
 
     # Flatten ngrams for searching
     all_phrases = " ".join([item["Phrase"] for item in ngram_results]).lower()
@@ -1624,7 +1651,7 @@ def main():
 
     # --- STRATEGIC ANALYSIS (The Bridge) ---
     print("Generating Strategic Recommendations...")
-    strategic_recs = analyze_strategic_opportunities(ngram_results)
+    strategic_recs = analyze_strategic_opportunities(ngram_results, keywords=keywords)
     print(f"Generated {len(strategic_recs)} strategic recommendations.")
 
     # --- MERGE RANK DELTAS (Volatility) ---

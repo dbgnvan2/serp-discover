@@ -72,6 +72,20 @@ BRIEF_PAA_THEMES = {
     ],
 }
 
+BRIEF_PAA_CATEGORIES = {
+    "The Medical Model Trap": {"General", "Commercial"},
+    "The Fusion Trap": {"General", "Distress"},
+    "The Resource Trap": {"Commercial", "Distress"},
+    "The Blame/Reactivity Trap": {"Reactivity", "Distress"},
+}
+
+BRIEF_KEYWORD_HINTS = {
+    "The Medical Model Trap": ["therapy", "counselling", "counseling", "mental health"],
+    "The Fusion Trap": ["estrangement", "adult child", "reach out", "contact"],
+    "The Resource Trap": ["grief", "counselling", "therapy", "bc"],
+    "The Blame/Reactivity Trap": ["estrangement", "toxic", "no-contact", "family member"],
+}
+
 ADVISORY_SYSTEM_PROMPT = """You are a senior SEO and content strategy advisor briefing the
 executive director of a small nonprofit counselling organization.
 Your job is to explain what market intelligence data means for their
@@ -1506,30 +1520,38 @@ def score_paa_for_brief(question_text, theme_words):
 
 def get_relevant_paa(paa_questions, pattern_name, max_results=5):
     theme_words = BRIEF_PAA_THEMES.get(pattern_name, [])
-    if not theme_words:
-        return paa_questions[:max_results]
+    category_hints = BRIEF_PAA_CATEGORIES.get(pattern_name, set())
+    keyword_hints = BRIEF_KEYWORD_HINTS.get(pattern_name, [])
+    if not theme_words and not category_hints and not keyword_hints:
+        return _dedupe_question_records(paa_questions)[:max_results]
 
-    scored = [
-        (q, score_paa_for_brief(q.get("Question", ""), theme_words), idx)
-        for idx, q in enumerate(paa_questions)
-    ]
+    scored = []
+    for idx, q in enumerate(_dedupe_question_records(paa_questions)):
+        question = q.get("Question", "")
+        category = q.get("Category")
+        source_keyword = str(q.get("Source_Keyword", "")).lower()
+        theme_score = score_paa_for_brief(question, theme_words)
+        category_score = 1 if category in category_hints else 0
+        keyword_score = sum(1 for hint in keyword_hints if hint in source_keyword)
+        score = (theme_score * 3) + (category_score * 2) + keyword_score
+        scored.append((q, score, idx))
+
     scored.sort(key=lambda item: (-item[1], item[2]))
-
     matched = [q for q, score, _idx in scored if score > 0][:max_results]
 
     if len(matched) < max_results:
         matched_texts = {q.get("Question") for q in matched}
-        distress = [
-            q for q in paa_questions
-            if q.get("Category") in ("Distress", "Reactivity")
+        category_fill = [
+            q for q, _score, _idx in scored
+            if q.get("Category") in category_hints
             and q.get("Question") not in matched_texts
         ]
-        matched.extend(distress[:max_results - len(matched)])
+        matched.extend(category_fill[:max_results - len(matched)])
 
     if len(matched) < max_results:
         matched_texts = {q.get("Question") for q in matched}
         remaining = [
-            q for q in paa_questions
+            q for q, _score, _idx in scored
             if q.get("Question") not in matched_texts
         ]
         matched.extend(remaining[:max_results - len(matched)])
@@ -1560,6 +1582,19 @@ def get_relevant_competitors(organic_results, pattern_name, max_results=3):
         ]
         top.extend(remaining[:max_results - len(top)])
     return top[:max_results]
+
+
+def _dedupe_question_records(paa_questions):
+    out = []
+    seen = set()
+    for q in paa_questions:
+        question = q.get("Question")
+        key = str(question or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(q)
+    return out
 
 
 def list_recommendations(data, args):

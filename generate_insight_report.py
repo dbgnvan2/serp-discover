@@ -63,13 +63,23 @@ def generate_report(data):
 
     paa = data.get("paa_questions", [])
     if paa:
+        seen_questions = set()
+        deduped_paa = []
+        for item in paa:
+            question = str(item.get("Question", "")).strip()
+            key = question.lower()
+            if not question or key in seen_questions:
+                continue
+            seen_questions.add(key)
+            deduped_paa.append(item)
+
         # Group by category if available
         commercial = [q["Question"]
-                      for q in paa if q.get("Category") == "Commercial"]
+                      for q in deduped_paa if q.get("Category") == "Commercial"]
         distress = [q["Question"]
-                    for q in paa if q.get("Category") == "Distress"]
+                    for q in deduped_paa if q.get("Category") == "Distress"]
         reactivity = [q["Question"]
-                      for q in paa if q.get("Category") == "Reactivity"]
+                      for q in deduped_paa if q.get("Category") == "Reactivity"]
 
         if distress:
             report.append("\n### 🚨 High Distress Signals")
@@ -88,7 +98,7 @@ def generate_report(data):
 
         # General top questions if no categories matched
         if not (commercial or distress or reactivity):
-            for q in paa[:5]:
+            for q in deduped_paa[:5]:
                 report.append(f"- {q['Question']}")
     else:
         report.append("_No PAA data found._")
@@ -165,6 +175,8 @@ def generate_report(data):
                     f"**Volatility Score:** {vol['volatility_score']} (Avg rank change)")
                 report.append(
                     f"**Stable URLs:** {vol['stable_urls_count']} / {vol['total_compared']}")
+                if vol.get("comparability_warning"):
+                    report.append(f"**Comparability Warning:** {vol['comparability_warning']}")
 
                 if vol['winners']:
                     report.append("\n### 🚀 Top Movers (Winners)")
