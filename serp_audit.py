@@ -174,9 +174,9 @@ def configure_runtime_mode():
         return
 
     if BALANCED_MODE:
-        GOOGLE_MAX_PAGES = 2
+        GOOGLE_MAX_PAGES = 3
         MAPS_MAX_PAGES = 1
-        AI_FALLBACK_WITHOUT_LOCATION = False
+        AI_FALLBACK_WITHOUT_LOCATION = True
         RELATED_QUESTIONS_AI_FOLLOWUP = False
         RELATED_QUESTIONS_AI_MAX_CALLS = 0
         NO_CACHE_ENABLED = False
@@ -1080,28 +1080,28 @@ def analyze_strategic_opportunities(ngram_results):
             "Triggers": ["clinical", "registered", "diagnosis", "disorder", "mental health", "patient", "treatment"],
             "Status_Quo_Message": "You are sick/broken and need an expert to fix you (External Locus of Control).",
             "Bowen_Bridge_Reframe": "Shift from pathology to functioning. You don't need a diagnosis; you need a map of your emotional system.",
-            "Content_Angle": "Why treating your marriage like a medical condition keeps you stuck."
+            "Content_Angle": "Why turning family estrangement into a diagnosis keeps you stuck."
         },
         {
             "Pattern_Name": "The Fusion Trap",
-            "Triggers": ["connection", "bond", "close", "intimacy", "communication", "save marriage", "stop fighting"],
-            "Status_Quo_Message": "The goal is to merge, agree, and be 'close' at all costs.",
-            "Bowen_Bridge_Reframe": "Real intimacy requires differentiation. Seeking closeness to reduce anxiety often increases reactivity.",
-            "Content_Angle": "Why trying to get 'closer' might be pushing your partner away."
+            "Triggers": ["connection", "bond", "close", "intimacy", "communication", "reconnect", "reach out"],
+            "Status_Quo_Message": "The goal is to force closeness, agreement, or reconnection as quickly as possible.",
+            "Bowen_Bridge_Reframe": "Sustainable contact requires differentiation. Anxiety-driven pursuit often increases reactivity and deepens cutoff.",
+            "Content_Angle": "Why trying to force reconnection may deepen the cutoff."
         },
         {
             "Pattern_Name": "The Resource Trap",
             "Triggers": ["free", "low cost", "sliding scale", "cheap", "affordable", "covered", "insurance"],
             "Status_Quo_Message": "High anxiety about resources/access. Seeking immediate symptom relief (venting).",
             "Bowen_Bridge_Reframe": "Address the anxiety driving the search. Cheap relief often delays real structural change.",
-            "Content_Angle": "When 'free venting' costs you more than you think."
+            "Content_Angle": "When short-term relief becomes a substitute for working the family pattern."
         },
         {
             "Pattern_Name": "The Blame/Reactivity Trap",
             "Triggers": ["narcissist", "toxic", "abusive", "mean", "angry", "hate", "deal with"],
             "Status_Quo_Message": "The problem is the other person (The Identified Patient).",
             "Bowen_Bridge_Reframe": "Focus on self-regulation. You cannot change them, only your response to them.",
-            "Content_Angle": "Stop diagnosing your partner and start observing your reaction."
+            "Content_Angle": "Stop diagnosing the other person and start observing your own reactivity."
         }
     ]
 

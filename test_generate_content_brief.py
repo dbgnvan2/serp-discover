@@ -169,6 +169,16 @@ This may indicate a data collection issue.
         self.assertGreaterEqual(len(issues), 2)
         self.assertTrue(any("data collection issue" in issue for issue in issues))
 
+    def test_validate_llm_report_flags_monthly_search_claim(self):
+        extracted = gcb.extract_analysis_data_from_json(
+            self._sample_data(), "livingsystems.ca", ["Living Systems"]
+        )
+        issues = gcb.validate_llm_report(
+            "This keyword gets 1,000 monthly searches.",
+            extracted,
+        )
+        self.assertTrue(any("monthly search volume" in issue.lower() for issue in issues))
+
     def test_validate_advisory_briefing_flags_overconfident_language(self):
         extracted = gcb.extract_analysis_data_from_json(
             self._sample_data(), "livingsystems.ca", ["Living Systems"]

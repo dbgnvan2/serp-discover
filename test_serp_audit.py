@@ -460,9 +460,9 @@ class TestSerpAudit(unittest.TestCase):
              patch.object(serp_audit, "RELATED_QUESTIONS_AI_MAX_CALLS", 5), \
              patch.object(serp_audit, "NO_CACHE_ENABLED", True):
             serp_audit.configure_runtime_mode()
-            self.assertEqual(serp_audit.GOOGLE_MAX_PAGES, 2)
+            self.assertEqual(serp_audit.GOOGLE_MAX_PAGES, 3)
             self.assertEqual(serp_audit.MAPS_MAX_PAGES, 1)
-            self.assertFalse(serp_audit.AI_FALLBACK_WITHOUT_LOCATION)
+            self.assertTrue(serp_audit.AI_FALLBACK_WITHOUT_LOCATION)
             self.assertFalse(serp_audit.RELATED_QUESTIONS_AI_FOLLOWUP)
             self.assertEqual(serp_audit.RELATED_QUESTIONS_AI_MAX_CALLS, 0)
             self.assertFalse(serp_audit.NO_CACHE_ENABLED)
@@ -495,6 +495,14 @@ class TestSerpAudit(unittest.TestCase):
         ):
             keywords = serp_audit.load_priority_keywords_from_analysis("market_analysis.json")
         self.assertEqual(keywords, {"family cutoff counselling Vancouver"})
+
+    def test_strategic_recommendation_templates_avoid_partner_marriage_bias(self):
+        recs = serp_audit.analyze_strategic_opportunities(
+            [{"Phrase": "clinical registered communication free toxic", "Count": 1}]
+        )
+        combined = " ".join(rec.get("Content_Angle", "") for rec in recs).lower()
+        self.assertNotIn("marriage", combined)
+        self.assertNotIn("partner", combined)
 
     def test_apply_no_cache_toggle(self):
         """no_cache should only be added when enabled."""

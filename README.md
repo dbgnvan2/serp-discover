@@ -105,9 +105,10 @@ For lower SerpApi usage in routine runs:
 ### Balanced Mode
 
 - recommended default for real analysis
-- 2 Google pages
+- 3 Google pages
 - 1 Maps page
 - keeps main AI Overview collection
+- keeps AI fallback without location
 - no related-question AI follow-up
 - A.1 / A.2 only for `defend` / `strengthen` keywords when enabled
 

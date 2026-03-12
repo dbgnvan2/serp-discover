@@ -1245,6 +1245,21 @@ def validate_llm_report(report_text, extracted_data):
             "Report speculates about a data collection issue without verified extraction evidence."
         )
 
+    if re.search(r"monthly searches|monthly search volume", report_l):
+        issues.append(
+            "Report describes total_results as monthly search volume, which is not supported by the extracted data."
+        )
+
+    estrangement_profile = extracted_data.get("keyword_profiles", {}).get("estrangement", {})
+    entity_distribution = estrangement_profile.get("entity_distribution", {}) or {}
+    counselling_count = entity_distribution.get("counselling", 0)
+    legal_count = entity_distribution.get("legal", 0)
+    if counselling_count >= 3 and legal_count >= 3:
+        if "estrangement" in report_l and re.search(r"counselling-dominat|counselling services dominat", report_l):
+            issues.append(
+                "Report labels the broad estrangement landscape as counselling-dominant despite a mixed legal and counselling entity distribution."
+            )
+
     return issues
 
 
@@ -1283,6 +1298,21 @@ def validate_advisory_briefing(report_text, extracted_data):
                 "Advisory briefing uses unsupported certainty language where the data supports risk, not certainty."
             )
             break
+
+    if re.search(r"monthly searches|monthly search volume", report_l):
+        issues.append(
+            "Advisory briefing describes total_results as monthly search volume, which is not supported by the extracted data."
+        )
+
+    estrangement_profile = extracted_data.get("keyword_profiles", {}).get("estrangement", {})
+    entity_distribution = estrangement_profile.get("entity_distribution", {}) or {}
+    counselling_count = entity_distribution.get("counselling", 0)
+    legal_count = entity_distribution.get("legal", 0)
+    if counselling_count >= 3 and legal_count >= 3:
+        if "estrangement" in report_l and re.search(r"counselling practices dominat|counselling services dominat", report_l):
+            issues.append(
+                "Advisory briefing overstates broad estrangement as counselling-dominant despite mixed legal and counselling signals."
+            )
 
     return issues
 

@@ -722,11 +722,17 @@ STRATEGIC FLAGS (pre-computed prioritization):
       contain Maps data even when the actual SERP has no local pack.
     - Counts: Use exact numbers from the data. Do not say "multiple"
       when the count is 1.
+    - total_results is a rough SERP-size proxy, not monthly search
+      volume. Do not describe total_results as "monthly searches",
+      "monthly search volume", or similar.
     - Data quality: Do not speculate about data collection problems,
       tracking bugs, or sampling errors unless the extracted warnings
       explicitly report such a problem.
     - Certainty: When describing future outcomes, use risk language
       unless the loss or change has already occurred in the data.
+    - Mixed landscapes: If legal and counselling entities are both
+      materially present for a keyword or cluster, describe the SERP as
+      mixed rather than claiming a single dominant type.
 
 2. IDENTIFY MISMATCHES. Evaluate the tool-generated recommendations
    against the actual SERP data. Flag cases where:
