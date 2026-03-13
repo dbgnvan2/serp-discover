@@ -166,9 +166,15 @@ advisory_briefing.validation.md
 ```
 
 These files list the rejected claims and include the rejected draft text.
-Hard factual contradictions such as `entity_label` mismatches and AI
-Overview count mismatches now fail fast without a retry. Softer issues,
-such as wording or speculative phrasing, still get one correction retry.
+Hard factual contradictions such as AI Overview count mismatches now fail
+fast without a retry. Softer issues, such as wording or speculative
+phrasing, still get one correction retry.
+
+Entity-label interpretation conflicts are now treated as recoverable
+report notes rather than fatal errors. If the model describes a mixed or
+plurality keyword too strongly, the report is still written with a
+`Data Interpretation Notes` section that tells the reader to treat that
+keyword as mixed/contested.
 
 The report-generation log now distinguishes:
 

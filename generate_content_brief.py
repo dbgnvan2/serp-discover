@@ -1183,7 +1183,6 @@ def build_correction_message(validation_issues, template_path=CORRECTION_PROMPT_
 
 def has_hard_validation_failures(validation_issues):
     hard_patterns = [
-        "contradicts keyword_profiles.entity_label",
         "queries have ai overviews",
         "claims ai overviews appear for all",
         "cites 'toxic' as a high-volume autocomplete term",
@@ -1201,6 +1200,50 @@ def has_hard_validation_failures(validation_issues):
         if any(pattern in normalized for pattern in hard_patterns):
             return True
     return False
+
+
+def partition_validation_issues(validation_issues):
+    blocking = []
+    notes = []
+    for issue in validation_issues:
+        normalized = _normalize_text(issue)
+        if "contradicts keyword_profiles.entity_label" in normalized:
+            notes.append(issue)
+        else:
+            blocking.append(issue)
+    return blocking, notes
+
+
+def append_interpretation_notes(report_text, note_issues):
+    if not note_issues:
+        return report_text
+
+    note_lines = []
+    seen = set()
+    for issue in note_issues:
+        match = re.search(
+            r"for '([^']+)': ([^ ]+) should be described as ([^.]+)\.",
+            issue,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            keyword = match.group(1)
+            entity_label = match.group(2)
+            guidance = match.group(3)
+            line = (
+                f"For '{keyword}', the pre-computed entity label is `{entity_label}`. "
+                f"Treat this SERP as {guidance} and interpret any single-category dominance wording cautiously."
+            )
+        else:
+            line = issue
+        if line not in seen:
+            seen.add(line)
+            note_lines.append(f"- {line}")
+
+    section = "\n\n## Data Interpretation Notes\n" + "\n".join(note_lines) + "\n"
+    if "## Data Interpretation Notes" in report_text:
+        return report_text
+    return report_text.rstrip() + section
 
 
 def write_validation_artifact(output_path, title, validation_issues, draft_text):
@@ -1825,13 +1868,18 @@ def list_recommendations(data, args):
                 max_tokens=args.llm_max_tokens,
             )
             validation_issues = validate_llm_report(report, extracted)
+            blocking_issues, note_issues = partition_validation_issues(validation_issues)
             if validation_issues and not args.allow_unverified_report:
-                if has_hard_validation_failures(validation_issues):
+                if not blocking_issues and note_issues:
+                    progress("[note] LLM draft produced recoverable interpretation warnings. Writing report with notes.")
+                    report = append_interpretation_notes(report, note_issues)
+                    validation_issues = []
+                elif has_hard_validation_failures(blocking_issues):
                     progress("[fail-fast] Initial LLM draft failed hard factual validation. Skipping retry.")
                 else:
                     progress("[retry] Initial LLM draft failed evidence validation. Requesting one corrected revision...")
                     correction_msg = build_correction_message(
-                        validation_issues,
+                        blocking_issues,
                         template_path=args.correction_prompt,
                     )
                     report = run_llm_report(
@@ -1843,6 +1891,11 @@ def list_recommendations(data, args):
                         correction_message=correction_msg,
                     )
                     validation_issues = validate_llm_report(report, extracted)
+                    blocking_issues, note_issues = partition_validation_issues(validation_issues)
+                    if not blocking_issues and note_issues:
+                        progress("[note] Corrected draft still has interpretation warnings. Writing report with notes.")
+                        report = append_interpretation_notes(report, note_issues)
+                        validation_issues = []
                 if validation_issues:
                     artifact_path = write_validation_artifact(
                         args.report_out,

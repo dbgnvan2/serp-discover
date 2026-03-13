@@ -245,7 +245,7 @@ This may indicate a data collection issue.
                 "Report says 5 of 6 queries have AI Overviews, but keyword_profiles shows 6 of 6."
             ])
         )
-        self.assertTrue(
+        self.assertFalse(
             gcb.has_hard_validation_failures([
                 "Report contradicts keyword_profiles.entity_label for 'estrangement from adult children': mixed_counselling_legal_media should be described as mixed or contested, not dominant."
             ])
@@ -255,6 +255,23 @@ This may indicate a data collection issue.
                 "Report contains speculative causal language matching pattern: possibly due to"
             ])
         )
+
+    def test_partition_validation_issues_treats_entity_label_as_note(self):
+        blocking, notes = gcb.partition_validation_issues([
+            "Report contradicts keyword_profiles.entity_label for 'estrangement from adult children': mixed_counselling_legal_media should be described as mixed or contested, not dominant.",
+            "Report says 5 of 6 queries have AI Overviews, but keyword_profiles shows 6 of 6.",
+        ])
+        self.assertEqual(len(notes), 1)
+        self.assertEqual(len(blocking), 1)
+
+    def test_append_interpretation_notes_adds_client_facing_note(self):
+        report = "## Section 2\nExisting content."
+        updated = gcb.append_interpretation_notes(report, [
+            "Report contradicts keyword_profiles.entity_label for 'parental alienation therapy BC': mixed_counselling_legal should be described as mixed or contested, not dominant."
+        ])
+        self.assertIn("## Data Interpretation Notes", updated)
+        self.assertIn("parental alienation therapy BC", updated)
+        self.assertIn("mixed_counselling_legal", updated)
 
     def test_validate_llm_report_flags_mixed_keyword_dominance(self):
         extracted = {
