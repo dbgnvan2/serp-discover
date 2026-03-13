@@ -84,6 +84,10 @@ content_opportunities_<topic>.md
 advisory_briefing_<topic>.md
 ```
 
+If you select plain `keywords.csv`, the launcher now falls back to the
+latest matching analysis topic instead of assuming the topic slug is
+literally `keywords`.
+
 It uses Anthropic with file-based prompt assets and loads client context
 from `config.yml` under `analysis_report`.
 

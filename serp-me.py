@@ -21,6 +21,17 @@ from generate_domain_override_candidates import (
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 
 
+def normalize_keyword_list(keywords):
+    return [value.strip().lower() for value in keywords if str(value).strip()]
+
+
+def derive_topic_slug_from_keyword_file(keyword_file):
+    filename = os.path.basename(keyword_file)
+    if filename.startswith("keywords_") and filename.endswith(".csv"):
+        return filename[len("keywords_"):-4]
+    return os.path.splitext(filename)[0]
+
+
 class SerpLauncherApp:
     EXIT_STATUS_LABELS = {
         0: "SUCCESS",
@@ -355,10 +366,7 @@ class SerpLauncherApp:
         return slug or "custom"
 
     def derive_topic_slug(self, keyword_file):
-        filename = os.path.basename(keyword_file)
-        if filename.startswith("keywords_") and filename.endswith(".csv"):
-            return filename[len("keywords_"):-4]
-        return os.path.splitext(filename)[0]
+        return derive_topic_slug_from_keyword_file(keyword_file)
 
     def build_output_names(self, topic_slug):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -386,6 +394,92 @@ class SerpLauncherApp:
             return None
         matches.sort(key=lambda item: item[0], reverse=True)
         return matches[0][1]
+
+    def find_latest_any_output(self, prefix, extension):
+        pattern = re.compile(
+            rf"^{re.escape(prefix)}_.+?(?:_\d{{8}}_\d{{4}})?{re.escape(extension)}$"
+        )
+        matches = []
+        cwd = os.getcwd()
+        for name in os.listdir(cwd):
+            if not pattern.match(name):
+                continue
+            path = os.path.join(cwd, name)
+            if os.path.isfile(path):
+                matches.append((os.path.getmtime(path), path))
+        if not matches:
+            return None
+        matches.sort(key=lambda item: item[0], reverse=True)
+        return matches[0][1]
+
+    def find_matching_topic_slug(self, keyword_file):
+        target_keywords = normalize_keyword_list(self.read_keyword_file(keyword_file))
+        if not target_keywords:
+            return None
+        cwd = os.getcwd()
+        candidates = []
+        for name in os.listdir(cwd):
+            if not (name.startswith("keywords_") and name.endswith(".csv")):
+                continue
+            path = os.path.join(cwd, name)
+            if not os.path.isfile(path) or os.path.abspath(path) == os.path.abspath(keyword_file):
+                continue
+            candidate_keywords = normalize_keyword_list(self.read_keyword_file(path))
+            if candidate_keywords == target_keywords:
+                candidates.append((os.path.getmtime(path), derive_topic_slug_from_keyword_file(path)))
+        if not candidates:
+            return None
+        candidates.sort(key=lambda item: item[0], reverse=True)
+        return candidates[0][1]
+
+    def resolve_existing_analysis_outputs(self, keyword_file, topic_slug):
+        latest_json = self.find_latest_topic_output("market_analysis", topic_slug, ".json")
+        latest_xlsx = self.find_latest_topic_output("market_analysis", topic_slug, ".xlsx")
+        latest_md = self.find_latest_topic_output("market_analysis", topic_slug, ".md")
+
+        if latest_json or latest_xlsx or latest_md:
+            return topic_slug, latest_json, latest_xlsx, latest_md
+
+        config = self.load_config()
+        files_cfg = config.get("files", {}) if isinstance(config, dict) else {}
+        configured_json = files_cfg.get("output_json")
+        configured_xlsx = files_cfg.get("output_xlsx")
+        configured_md = files_cfg.get("output_md")
+        config_json_path = os.path.join(os.getcwd(), configured_json) if configured_json else None
+        config_xlsx_path = os.path.join(os.getcwd(), configured_xlsx) if configured_xlsx else None
+        config_md_path = os.path.join(os.getcwd(), configured_md) if configured_md else None
+
+        if (
+            os.path.basename(keyword_file) == "keywords.csv"
+            and config_json_path and os.path.exists(config_json_path)
+        ):
+            inferred_slug = re.sub(r"(?:_\d{8}_\d{4})?\.json$", "", os.path.basename(config_json_path))
+            inferred_slug = re.sub(r"^market_analysis_", "", inferred_slug)
+            return (
+                inferred_slug or topic_slug,
+                config_json_path,
+                config_xlsx_path if config_xlsx_path and os.path.exists(config_xlsx_path) else None,
+                config_md_path if config_md_path and os.path.exists(config_md_path) else None,
+            )
+
+        matching_slug = self.find_matching_topic_slug(keyword_file)
+        if matching_slug:
+            return (
+                matching_slug,
+                self.find_latest_topic_output("market_analysis", matching_slug, ".json"),
+                self.find_latest_topic_output("market_analysis", matching_slug, ".xlsx"),
+                self.find_latest_topic_output("market_analysis", matching_slug, ".md"),
+            )
+
+        if os.path.basename(keyword_file) == "keywords.csv":
+            return (
+                topic_slug,
+                self.find_latest_any_output("market_analysis", ".json"),
+                self.find_latest_any_output("market_analysis", ".xlsx"),
+                self.find_latest_any_output("market_analysis", ".md"),
+            )
+
+        return topic_slug, latest_json, latest_xlsx, latest_md
 
     def refresh_keyword_file_options(self):
         options = []
@@ -448,9 +542,13 @@ class SerpLauncherApp:
 
         topic_slug = self.derive_topic_slug(keyword_file)
         output_names = self.build_output_names(topic_slug)
-        latest_json = self.find_latest_topic_output("market_analysis", topic_slug, ".json")
-        latest_xlsx = self.find_latest_topic_output("market_analysis", topic_slug, ".xlsx")
-        latest_md = self.find_latest_topic_output("market_analysis", topic_slug, ".md")
+        resolved_topic_slug, latest_json, latest_xlsx, latest_md = self.resolve_existing_analysis_outputs(
+            keyword_file,
+            topic_slug,
+        )
+        if resolved_topic_slug != topic_slug:
+            topic_slug = resolved_topic_slug
+            output_names = self.build_output_names(topic_slug)
 
         if script_file == "run_pipeline.py":
             config = self.load_config()
