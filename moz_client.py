@@ -164,6 +164,16 @@ class MozClient:
                 json=payload,
                 timeout=REQUEST_TIMEOUT,
             )
+            if not response.ok:
+                try:
+                    body = response.json()
+                except ValueError:
+                    body = response.text[:300]
+                logger.warning(
+                    "Moz API %d error for batch of %d URLs: %s",
+                    response.status_code, len(urls), body,
+                )
+                return {}
             response.raise_for_status()
         except requests.RequestException as exc:
             logger.warning("Moz API request failed for batch of %d URLs: %s", len(urls), exc)

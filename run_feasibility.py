@@ -63,12 +63,11 @@ except ImportError:
     logger.error("feasibility.py not found — cannot proceed.")
     sys.exit(1)
 
-# SerpAPI fetch for pivot validation (optional)
 try:
-    from serp_audit import fetch_serp_data
-    SERP_FETCH_AVAILABLE = True
-except Exception:
-    SERP_FETCH_AVAILABLE = False
+    import requests as _requests
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +86,63 @@ def _extract_domain(url: str) -> str:
         return urlparse(url).netloc.lower().lstrip("www.")
     except Exception:
         return ""
+
+
+def _fetch_pivot_local_pack(keyword: str, config: dict) -> list[dict]:
+    """Fetch Maps/local pack results for a pivot keyword via SerpAPI.
+
+    Returns a list of local result dicts, or empty list on failure.
+    """
+    if not REQUESTS_AVAILABLE:
+        return []
+    serpapi_key = os.environ.get("SERPAPI_KEY", "")
+    if not serpapi_key:
+        return []
+    serpapi_cfg = config.get("serpapi", {})
+    params = {
+        "api_key": serpapi_key,
+        "engine": "google_maps",
+        "q": keyword,
+        "gl": serpapi_cfg.get("gl", "ca"),
+        "hl": serpapi_cfg.get("hl", "en"),
+        "location": serpapi_cfg.get("location", "Vancouver, British Columbia, Canada"),
+        "type": "search",
+    }
+    try:
+        resp = _requests.get("https://serpapi.com/search", params=params, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        return data.get("local_results", [])
+    except Exception as exc:
+        logger.warning("Pivot Maps fetch failed for '%s': %s", keyword, exc)
+        return []
+
+
+def _fetch_pivot_organic_urls(keyword: str, config: dict, max_urls: int = 10) -> list[str]:
+    """Fetch organic results for a pivot keyword and return URLs."""
+    if not REQUESTS_AVAILABLE:
+        return []
+    serpapi_key = os.environ.get("SERPAPI_KEY", "")
+    if not serpapi_key:
+        return []
+    serpapi_cfg = config.get("serpapi", {})
+    params = {
+        "api_key": serpapi_key,
+        "engine": "google",
+        "q": keyword,
+        "gl": serpapi_cfg.get("gl", "ca"),
+        "hl": serpapi_cfg.get("hl", "en"),
+        "location": serpapi_cfg.get("location", "Vancouver, British Columbia, Canada"),
+        "num": 10,
+    }
+    try:
+        resp = _requests.get("https://serpapi.com/search", params=params, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        return [r.get("link", "") for r in data.get("organic_results", [])[:max_urls] if r.get("link")]
+    except Exception as exc:
+        logger.warning("Pivot organic fetch failed for '%s': %s", keyword, exc)
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -147,10 +203,17 @@ def run_feasibility_analysis(
     all_urls = list({url for urls in urls_by_kw.values() for url in urls})
 
     moz_metrics: dict[str, dict] = {}
+    moz_data_available = False
     if moz_client and all_urls:
         logger.info("Fetching Moz DA for %d unique URLs...", len(all_urls))
         moz_metrics = moz_client.get_moz_metrics(all_urls)
+        moz_data_available = bool(moz_metrics)
         logger.info("Moz returned DA for %d URLs", len(moz_metrics))
+        if not moz_data_available:
+            logger.warning(
+                "Moz returned no data — feasibility scores will be skipped. "
+                "Check your MOZ_TOKEN and Moz plan limits."
+            )
 
     results: list[dict] = []
     pivot_jobs: list[dict] = []
@@ -165,12 +228,26 @@ def run_feasibility_analysis(
             for url in urls
             if url in moz_metrics and _extract_domain(url) != client_domain
         ]
-        feas = compute_feasibility(client_da, competitor_das)
-        pivot_input = {
-            "status": feas["feasibility_status"],
-            "avg_competitor_da": feas["avg_serp_da"],
-        }
-        pivot = generate_hyper_local_pivot(kw, location, pivot_input, neighborhoods)
+
+        if not moz_data_available:
+            # No Moz data — report without scores rather than falsely showing all as Low
+            feas = {
+                "avg_serp_da": None,
+                "client_da": client_da,
+                "gap": None,
+                "feasibility_score": None,
+                "feasibility_status": "No DA Data",
+            }
+            pivot = {"pivot_status": "Stay the course", "suggested_keyword": None,
+                     "strategy": "Moz DA data unavailable — run again once MOZ_TOKEN is set.",
+                     "all_variants": [f"{kw} {nb}" for nb in neighborhoods]}
+        else:
+            feas = compute_feasibility(client_da, competitor_das)
+            pivot_input = {
+                "status": feas["feasibility_status"],
+                "avg_competitor_da": feas["avg_serp_da"],
+            }
+            pivot = generate_hyper_local_pivot(kw, location, pivot_input, neighborhoods)
 
         row: dict = {
             "Keyword": kw,
@@ -194,58 +271,49 @@ def run_feasibility_analysis(
                 "pivot_keyword": pivot["suggested_keyword"],
             })
 
-    # Pivot SERP validation (optional secondary fetch)
-    if do_pivot_serp and pivot_jobs and SERP_FETCH_AVAILABLE:
+    # Pivot SERP validation — direct SerpAPI Maps call (no serp_audit import needed)
+    if do_pivot_serp and pivot_jobs and REQUESTS_AVAILABLE:
         serpapi_key = os.environ.get("SERPAPI_KEY", "")
         if serpapi_key:
-            logger.info("Fetching pivot SERPs for %d Low Feasibility keywords...", len(pivot_jobs))
+            logger.info("Fetching pivot Maps SERPs for %d Low Feasibility keywords...", len(pivot_jobs))
             for job in pivot_jobs:
                 pivot_kw = job["pivot_keyword"]
                 source_kw = job["source_keyword"]
-                logger.info("  Pivot SERP: '%s'", pivot_kw)
-                try:
-                    pivot_serp = fetch_serp_data(pivot_kw, config, force_local=True)
-                    local_rows = pivot_serp.get("local_results", []) + pivot_serp.get("map_results", [])
-                    in_pack = any(
-                        client_domain and client_domain in str(r.get("website") or r.get("Website") or "").lower()
-                        for r in local_rows
-                    )
+                logger.info("  Pivot Maps: '%s'", pivot_kw)
 
-                    pivot_das = []
-                    if moz_client:
-                        pivot_organic_urls = [
-                            r.get("link") or r.get("Link") or ""
-                            for r in pivot_serp.get("organic_results", [])[:10]
-                            if r.get("link") or r.get("Link")
-                        ]
-                        if pivot_organic_urls:
-                            pivot_moz = moz_client.get_moz_metrics(pivot_organic_urls)
-                            pivot_das = [v["da"] for v in pivot_moz.values()]
+                local_rows = _fetch_pivot_local_pack(pivot_kw, config)
+                in_pack = any(
+                    client_domain and client_domain in str(r.get("website") or "").lower()
+                    for r in local_rows
+                )
 
-                    pivot_feas = compute_feasibility(client_da, pivot_das)
+                pivot_das = []
+                if moz_client:
+                    pivot_urls = _fetch_pivot_organic_urls(pivot_kw, config)
+                    if pivot_urls:
+                        pivot_moz = moz_client.get_moz_metrics(pivot_urls)
+                        pivot_das = [v["da"] for v in pivot_moz.values()]
 
-                    pivot_row: dict = {
-                        "Keyword": pivot_kw,
-                        "Query_Label": "P",
-                        "Source_Keyword": source_kw,
-                        "client_da": client_da,
-                        "avg_serp_da": pivot_feas["avg_serp_da"],
-                        "gap": pivot_feas["gap"],
-                        "feasibility_score": pivot_feas["feasibility_score"],
-                        "feasibility_status": pivot_feas["feasibility_status"],
-                        "Client_In_Local_Pack": int(in_pack),
-                        "pivot_status": None,
-                        "suggested_keyword": None,
-                        "strategy": None,
-                        "all_variants": [],
-                    }
-                    results.append(pivot_row)
-                except Exception as exc:
-                    logger.warning("Pivot SERP fetch failed for '%s': %s", pivot_kw, exc)
+                pivot_feas = compute_feasibility(client_da, pivot_das)
+
+                pivot_row: dict = {
+                    "Keyword": pivot_kw,
+                    "Query_Label": "P",
+                    "Source_Keyword": source_kw,
+                    "client_da": client_da,
+                    "avg_serp_da": pivot_feas["avg_serp_da"],
+                    "gap": pivot_feas["gap"],
+                    "feasibility_score": pivot_feas["feasibility_score"],
+                    "feasibility_status": pivot_feas["feasibility_status"],
+                    "Client_In_Local_Pack": int(in_pack),
+                    "pivot_status": None,
+                    "suggested_keyword": None,
+                    "strategy": None,
+                    "all_variants": [],
+                }
+                results.append(pivot_row)
         else:
             logger.warning("SERPAPI_KEY not set — skipping pivot SERP validation.")
-    elif pivot_jobs and not SERP_FETCH_AVAILABLE:
-        logger.warning("serp_audit.fetch_serp_data not importable — skipping pivot SERP fetch.")
 
     return results
 
@@ -258,6 +326,7 @@ STATUS_ICONS = {
     "High Feasibility":     "✅ High",
     "Moderate Feasibility": "⚠️ Moderate",
     "Low Feasibility":      "🔴 Low",
+    "No DA Data":           "❓ No DA Data",
 }
 
 
