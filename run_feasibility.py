@@ -49,11 +49,16 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 try:
+    from dataforseo_client import DataForSEOClient
+    DATAFORSEO_AVAILABLE = True
+except ImportError:
+    DATAFORSEO_AVAILABLE = False
+
+try:
     from moz_client import MozClient
     MOZ_AVAILABLE = True
 except ImportError:
     MOZ_AVAILABLE = False
-    logger.warning("moz_client not found — DA scores will be unavailable.")
 
 try:
     from feasibility import compute_feasibility, generate_hyper_local_pivot
@@ -186,33 +191,56 @@ def run_feasibility_analysis(
     location = feasibility_cfg.get("non_profit_location", "North Vancouver")
     client_domain = (config.get("analysis_report", {}).get("client_domain") or "").lower()
 
-    moz_cache_ttl = config.get("moz", {}).get("cache_ttl_days", 30)
-    moz_client: MozClient | None = None
-    if MOZ_AVAILABLE:
-        token = os.environ.get("MOZ_TOKEN", "")
-        if token:
-            try:
-                moz_client = MozClient(cache_ttl_days=moz_cache_ttl)
-                logger.info("Moz client ready (cache TTL: %d days)", moz_cache_ttl)
-            except RuntimeError as exc:
-                logger.warning("Moz unavailable: %s", exc)
-        else:
-            logger.warning("MOZ_TOKEN not set — skipping DA lookup, feasibility will be DA-blind.")
+    cache_ttl = config.get("moz", {}).get("cache_ttl_days", 30)
+
+    # DA client: prefer DataForSEO, fall back to Moz
+    da_client = None
+    da_source = "none"
+
+    if DATAFORSEO_AVAILABLE and os.environ.get("DATAFORSEO_LOGIN") and os.environ.get("DATAFORSEO_PASSWORD"):
+        try:
+            da_client = DataForSEOClient(cache_ttl_days=cache_ttl)
+            da_source = "dataforseo"
+            logger.info("DA client: DataForSEO (cache TTL: %d days)", cache_ttl)
+        except RuntimeError as exc:
+            logger.warning("DataForSEO unavailable: %s", exc)
+
+    if da_client is None and MOZ_AVAILABLE and os.environ.get("MOZ_TOKEN"):
+        try:
+            da_client = MozClient(cache_ttl_days=cache_ttl)
+            da_source = "moz"
+            logger.info("DA client: Moz (cache TTL: %d days)", cache_ttl)
+        except RuntimeError as exc:
+            logger.warning("Moz unavailable: %s", exc)
+
+    if da_client is None:
+        logger.warning(
+            "No DA client available — set DATAFORSEO_LOGIN/PASSWORD or MOZ_TOKEN in .env. "
+            "Keywords will be marked 'No DA Data'."
+        )
+
+    # Unified fetch method regardless of which client is active
+    def _get_metrics(urls: list[str]) -> dict[str, dict]:
+        if da_client is None:
+            return {}
+        if da_source == "dataforseo":
+            return da_client.get_domain_metrics(urls)
+        return da_client.get_moz_metrics(urls)  # Moz interface
 
     urls_by_kw = _get_organic_urls_by_keyword(data)
     all_urls = list({url for urls in urls_by_kw.values() for url in urls})
 
-    moz_metrics: dict[str, dict] = {}
-    moz_data_available = False
-    if moz_client and all_urls:
-        logger.info("Fetching Moz DA for %d unique URLs...", len(all_urls))
-        moz_metrics = moz_client.get_moz_metrics(all_urls)
-        moz_data_available = bool(moz_metrics)
-        logger.info("Moz returned DA for %d URLs", len(moz_metrics))
-        if not moz_data_available:
+    da_metrics: dict[str, dict] = {}
+    da_data_available = False
+    if da_client and all_urls:
+        logger.info("Fetching DA for %d unique URLs via %s...", len(all_urls), da_source)
+        da_metrics = _get_metrics(all_urls)
+        da_data_available = bool(da_metrics)
+        logger.info("%s returned DA for %d URLs", da_source, len(da_metrics))
+        if not da_data_available:
             logger.warning(
-                "Moz returned no data — feasibility scores will be skipped. "
-                "Check your MOZ_TOKEN and Moz plan limits."
+                "%s returned no data — keywords will be marked 'No DA Data'. "
+                "Check credentials and account limits.", da_source
             )
 
     results: list[dict] = []
@@ -224,12 +252,12 @@ def run_feasibility_analysis(
     for kw in keywords:
         urls = urls_by_kw[kw]
         competitor_das = [
-            moz_metrics[url]["da"]
+            da_metrics[url]["da"]
             for url in urls
-            if url in moz_metrics and _extract_domain(url) != client_domain
+            if url in da_metrics and _extract_domain(url) != client_domain
         ]
 
-        if not moz_data_available:
+        if not da_data_available:
             # No Moz data — report without scores rather than falsely showing all as Low
             feas = {
                 "avg_serp_da": None,
@@ -288,11 +316,11 @@ def run_feasibility_analysis(
                 )
 
                 pivot_das = []
-                if moz_client:
+                if da_client:
                     pivot_urls = _fetch_pivot_organic_urls(pivot_kw, config)
                     if pivot_urls:
-                        pivot_moz = moz_client.get_moz_metrics(pivot_urls)
-                        pivot_das = [v["da"] for v in pivot_moz.values()]
+                        pivot_da_data = _get_metrics(pivot_urls)
+                        pivot_das = [v["da"] for v in pivot_da_data.values()]
 
                 pivot_feas = compute_feasibility(client_da, pivot_das)
 
