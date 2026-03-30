@@ -26,10 +26,18 @@ def normalize_keyword_list(keywords):
 
 
 def derive_topic_slug_from_keyword_file(keyword_file):
-    filename = os.path.basename(keyword_file)
-    if filename.startswith("keywords_") and filename.endswith(".csv"):
-        return filename[len("keywords_"):-4]
-    return os.path.splitext(filename)[0]
+    """Return a normalized lowercase slug from the keyword CSV filename.
+
+    Examples:
+        keywords.csv                  -> keywords
+        keywords_estrangement.csv     -> estrangement
+        Substance_Use.csv             -> substance_use
+        Basic Series Tape 7.csv       -> basic_series_tape_7
+    """
+    stem = os.path.splitext(os.path.basename(keyword_file))[0]
+    if stem.lower().startswith("keywords_"):
+        stem = stem[len("keywords_"):]
+    return stem.lower().replace(" ", "_")
 
 
 class SerpLauncherApp:
@@ -182,7 +190,23 @@ class SerpLauncherApp:
                     "WHY: Opens an in-app checklist of recurring domains not yet in domain_overrides.yml.\n\n"
                     "OUTPUT: Lets you approve checked items directly into domain_overrides.yml."
                 )
-            }
+            },
+            {
+                "label": "7. Run Feasibility Analysis (Moz DA)",
+                "file": "run_feasibility.py",
+                "args": [],
+                "desc": (
+                    "WHEN: Run after a pipeline run, or any time you want to check DA competitiveness.\n\n"
+                    "WHY: Uses the Moz API to score each keyword by Domain Authority gap. "
+                    "Generates a standalone feasibility report with:\n"
+                    "  - High / Moderate / Low Feasibility per keyword\n"
+                    "  - Hyper-local pivot suggestions for Low Feasibility keywords\n"
+                    "  - Local 3-pack check for pivot variants (optional)\n\n"
+                    "NOTE: Requires MOZ_TOKEN in .env (free Moz tier: 50 rows/month). "
+                    "Results are cached for 30 days so repeat runs don't burn quota.\n\n"
+                    "OUTPUT: Writes feasibility_{topic}_{timestamp}.md"
+                )
+            },
         ]
 
         for s in self.scripts:
@@ -378,6 +402,7 @@ class SerpLauncherApp:
             "output_md": f"market_analysis_{topic_slug}_{timestamp}.md",
             "report_out": f"content_opportunities_{topic_slug}_{timestamp}.md",
             "advisory_out": f"advisory_briefing_{topic_slug}_{timestamp}.md",
+            "feasibility_out": f"feasibility_{topic_slug}_{timestamp}.md",
         }
 
     def find_latest_topic_output(self, prefix, topic_slug, extension):
@@ -595,7 +620,7 @@ class SerpLauncherApp:
 
         run_context = None
         output_names = None
-        if script_info["file"] in {"run_pipeline.py", "generate_content_brief.py"}:
+        if script_info["file"] in {"run_pipeline.py", "generate_content_brief.py", "run_feasibility.py"}:
             try:
                 run_context = self.prepare_keyword_run_context(script_info["file"])
             except ValueError as exc:
@@ -605,6 +630,12 @@ class SerpLauncherApp:
             if script_info["file"] == "generate_content_brief.py" and not run_context.get("input_json"):
                 messagebox.showerror(
                     "Content Opportunities",
+                    "No existing market analysis JSON was found for this topic. Run Full Pipeline first."
+                )
+                return
+            if script_info["file"] == "run_feasibility.py" and not run_context.get("input_json"):
+                messagebox.showerror(
+                    "Feasibility Analysis",
                     "No existing market analysis JSON was found for this topic. Run Full Pipeline first."
                 )
                 return
@@ -626,10 +657,16 @@ class SerpLauncherApp:
                 "--advisory-model", advisory_model,
                 "--use-llm",
             ])
+        elif script_info["file"] == "run_feasibility.py":
+            feasibility_out = output_names.get("feasibility_out", "")
+            cmd.extend(["--json", run_context["input_json"]])
+            if feasibility_out:
+                cmd.extend(["--out", feasibility_out])
         else:
             cmd.extend(script_info["args"])
         cwd = os.getcwd()
         env = os.environ.copy()
+        env["PYTHONUNBUFFERED"] = "1"  # force line-by-line stdout flush into the log
         env["SERP_LOW_API_MODE"] = "1" if self.low_api_mode_var.get() else "0"
         env["SERP_ENABLE_AI_QUERY_ALTERNATIVES"] = (
             "0" if self.low_api_mode_var.get()
@@ -669,7 +706,8 @@ class SerpLauncherApp:
                 )
             self.log(
                 f"> Outputs: {output_names['output_xlsx']}, {output_names['output_json']}, "
-                f"{output_names['output_md']}, {output_names['report_out']}, {output_names['advisory_out']}\n"
+                f"{output_names['output_md']}, {output_names['report_out']}, "
+                f"{output_names['advisory_out']}, {output_names['feasibility_out']}\n"
             )
             if run_context.get("latest_json"):
                 self.log(f"> Latest existing JSON input: {os.path.basename(run_context['latest_json'])}\n")
