@@ -58,6 +58,15 @@ if os.path.exists("config.yml"):
     with open("config.yml", "r") as f:
         CONFIG = yaml.safe_load(f) or {}
 
+SHARED_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "shared_config.json")
+SHARED_CONFIG = {}
+if os.path.exists(SHARED_CONFIG_PATH):
+    try:
+        with open(SHARED_CONFIG_PATH, "r") as f:
+            SHARED_CONFIG = json.load(f)
+    except Exception as e:
+        print(f"Warning: Could not load shared config: {e}")
+
 INPUT_FILE = CONFIG.get("files", {}).get("input_csv", "keywords.csv")
 
 
@@ -95,9 +104,9 @@ def _resolve_output_names(input_csv, config):
         )
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     return (
-        f"market_analysis_{slug}_{ts}.xlsx",
-        f"market_analysis_{slug}_{ts}.json",
-        f"market_analysis_{slug}_{ts}.md",
+        f"output/market_analysis_{slug}_{ts}.xlsx",
+        f"output/market_analysis_{slug}_{ts}.json",
+        f"output/market_analysis_{slug}_{ts}.md",
     )
 
 
@@ -133,18 +142,32 @@ MAX_URLS_TO_ENRICH = CONFIG.get(
 # --- FEASIBILITY / MOZ ---
 _feas_cfg = CONFIG.get("feasibility", {})
 FEASIBILITY_ENABLED      = _feas_cfg.get("enabled", False)
-FEASIBILITY_CLIENT_DA    = int(_feas_cfg.get("client_da", 0))
-FEASIBILITY_LOCATION     = _feas_cfg.get("non_profit_location", "")
+FEASIBILITY_CLIENT_DA    = int(SHARED_CONFIG.get("client", {}).get("da", _feas_cfg.get("client_da", 0)))
+FEASIBILITY_LOCATION     = SHARED_CONFIG.get("client", {}).get("location", _feas_cfg.get("non_profit_location", ""))
 FEASIBILITY_PIVOT_FETCH  = _feas_cfg.get("pivot_serp_fetch", True)
 FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
-CLIENT_DOMAIN            = CONFIG.get("analysis_report", {}).get("client_domain", "")
+CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.get("analysis_report", {}).get("client_domain", ""))
 MOZ_CACHE_TTL_DAYS       = int(CONFIG.get("moz", {}).get("cache_ttl_days", 30))
 
-STOP_WORDS = {"the", "and", "to", "of", "a", "in", "is", "for", "on", "with", "as", "at", "by", "an", "be", "or", "are", "from", "that",
-              "this", "it", "we", "our", "us", "can", "will", "your", "you", "my", "me", "not", "have", "has", "but", "so", "if", "their", "they",
-              "vancouver", "bc", "british", "columbia", "canada", "north", "west", "counselling", "counseling", "therapy", "therapist",
-              "counsellor", "counselor", "service", "services", "clinic", "centre", "center", "help", "support",
-              "highlytrained"}
+STOP_WORDS = set(SHARED_CONFIG.get("stop_words", [
+    "the", "and", "to", "of", "a", "in", "is", "for", "on", "with", "as", "at", "by", "an", "be", "or", "are", "from", "that",
+    "this", "it", "we", "our", "us", "can", "will", "your", "you", "my", "me", "not", "have", "has", "but", "so", "if", "their", "they",
+    "vancouver", "bc", "british", "columbia", "canada", "north", "west", "counselling", "counseling", "therapy", "therapist",
+    "counsellor", "counselor", "service", "services", "clinic", "centre", "center", "help", "support",
+    "highlytrained"
+]))
+
+# Load Omitted Domains from external file (Single Source of Truth)
+OMITTED_DOMAINS = set()
+_omitted_path_rel = SHARED_CONFIG.get("filtering", {}).get("omitted_domains_path", "omitted_domains.txt")
+_omitted_path = os.path.abspath(os.path.join(os.path.dirname(SHARED_CONFIG_PATH), _omitted_path_rel))
+if os.path.exists(_omitted_path):
+    try:
+        with open(_omitted_path, 'r') as f:
+            OMITTED_DOMAINS = set(line.strip().lower() for line in f if line.strip())
+    except Exception as e:
+        print(f"Warning: Could not load omitted domains from {_omitted_path}: {e}")
+
 SERPAPI_CALL_COUNT = 0
 
 
