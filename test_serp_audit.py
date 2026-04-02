@@ -53,7 +53,7 @@ class TestOutputSlugDerivation(unittest.TestCase):
 
     def test_resolve_generates_fresh_names_when_no_config(self):
         xlsx, json_path, md = serp_audit._resolve_output_names("Substance_Use.csv", {})
-        self.assertTrue(json_path.startswith("market_analysis_substance_use_"))
+        self.assertTrue(json_path.startswith("output/market_analysis_substance_use_"))
         self.assertTrue(json_path.endswith(".json"))
 
 
