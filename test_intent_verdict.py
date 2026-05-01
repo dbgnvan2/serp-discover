@@ -426,7 +426,8 @@ class TestComputeSerpIntent:
         # 50/50: top share = 0.5, second share = 0.5 → fails primary (≥0.6)
         # and fallback (≥0.4 with second ≤0.2) → mixed
         assert result["is_mixed"] is True
-        assert result["primary_intent"] in ("informational", "transactional")
+        assert result["primary_intent"] == "mixed"
+        assert set(result["mixed_components"]) == {"informational", "transactional"}
 
     def test_fallback_threshold_40_with_low_runner_up(self, real_mapping):
         # 4 informational + 1 transactional + 5 uncategorised → among classified
@@ -560,6 +561,8 @@ class TestThresholdOverrides:
                         "fallback_runner_up_max": 0.0},
         )
         assert strict["is_mixed"] is True
+        assert strict["primary_intent"] == "mixed"
+        assert "mixed_components" in strict
         # Loose: ≥0.5 share counts → 5/10 passes
         loose = compute_serp_intent(
             rows, has_local_pack=False, mapping=real_mapping,

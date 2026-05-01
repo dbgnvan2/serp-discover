@@ -322,7 +322,7 @@ def _compute_strategic_flags(
         if profile.get("client_visible"):
             si = profile.get("serp_intent") or {}
             primary = si.get("primary_intent")
-            if primary and primary not in ("uncategorised",):
+            if primary and primary not in ("uncategorised", "mixed"):
                 client_intent_presence.add(primary)
 
     flags = {}
@@ -428,8 +428,9 @@ def _compute_strategic_flags(
         mixed_intent_strategy = None
         si = profile.get("serp_intent") or {}
         if si.get("is_mixed"):
-            dominant = si.get("primary_intent")
+            # primary_intent is "mixed" when is_mixed=True; derive dominant from distribution
             distribution = si.get("intent_distribution") or {}
+            dominant = max(distribution, key=distribution.get) if distribution else None
             non_dominant_intents = {
                 intent for intent, share in distribution.items()
                 if share > 0 and intent != dominant
@@ -1775,7 +1776,7 @@ def validate_llm_report(report_text, extracted_data):
             if not is_mixed and re.search(r"mixed[- ]intent serp|mixed intent", section_l):
                 issues.append(
                     f"Report describes '{keyword}' as mixed-intent, "
-                    f"but keyword_profiles shows serp_intent.is_mixed=False (primary={primary})."
+                    f"but keyword_profiles shows serp_intent.is_mixed=False."
                 )
 
         # ── Spec v2 Gap 4: mixed_intent_strategy contradictions ──

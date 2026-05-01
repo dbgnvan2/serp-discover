@@ -649,5 +649,85 @@ class TestSerpAudit(unittest.TestCase):
         self.assertEqual(metadata["run_id"], "fail_run")
 
 
+class TestKeywordProfilesInAuditJson(unittest.TestCase):
+    """Verify that keyword_profiles (with serp_intent, title_patterns,
+    mixed_intent_strategy) is embedded in the audit JSON by serp_audit.main()
+    via the generate_content_brief.extract_analysis_data_from_json() call.
+    Spec v2 DoD criterion #3."""
+
+    def test_keyword_profiles_present_in_real_output(self):
+        """The couples_therapy output produced on 2026-04-30 must now contain
+        keyword_profiles — this will fail until the next pipeline run after
+        the fix lands.  For CI, we verify the function contract instead."""
+        import generate_content_brief
+        # Minimal stub that looks like a real audit JSON slice
+        stub = {
+            "overview": [{
+                "Source_Keyword": "couples therapy",
+                "Query_Label": "A",
+                "Run_ID": "test_run",
+                "Created_At": "2026-01-01",
+                "Total_Results": 1000,
+            }],
+            "organic_results": [{
+                "Source_Keyword": "couples therapy",
+                "Root_Keyword": "couples therapy",
+                "Query_Label": "A",
+                "Rank": 1,
+                "Link": "https://example-counselling.ca/page",
+                "Source": "example-counselling.ca",
+                "Title": "How to Find Couples Therapy",
+                "Snippet": "A guide.",
+                "Entity_Type": "counselling",
+                "Content_Type": "guide",
+            }],
+            "paa_questions": [],
+            "autocomplete_suggestions": [],
+            "related_searches": [],
+            "serp_modules": [],
+            "local_pack_and_maps": [],
+            "ai_overview_citations": [],
+            "serp_language_patterns": [],
+            "strategic_recommendations": [],
+            "competitors_ads": [],
+            "keyword_feasibility": [],
+        }
+        extracted = generate_content_brief.extract_analysis_data_from_json(
+            stub,
+            client_domain="livingsystems.ca",
+            client_name_patterns=["Living Systems"],
+        )
+        kp = extracted.get("keyword_profiles", {})
+        self.assertIn("couples therapy", kp, "keyword_profiles must have an entry per root keyword")
+        profile = kp["couples therapy"]
+        self.assertIn("serp_intent", profile, "serp_intent must be in keyword_profiles")
+        self.assertIn("title_patterns", profile, "title_patterns must be in keyword_profiles")
+        # mixed_intent_strategy is populated by _compute_strategic_flags, called inside extract
+        self.assertIn("mixed_intent_strategy", profile, "mixed_intent_strategy must be in keyword_profiles")
+
+    def test_serp_intent_fields_present(self):
+        """serp_intent block has all required spec fields."""
+        import generate_content_brief
+        stub = {
+            "overview": [{"Source_Keyword": "kw", "Query_Label": "A", "Run_ID": "r",
+                          "Created_At": "2026-01-01", "Total_Results": 500}],
+            "organic_results": [{"Source_Keyword": "kw", "Root_Keyword": "kw",
+                                 "Query_Label": "A", "Rank": 1,
+                                 "Link": "https://a.com/", "Source": "a.com",
+                                 "Title": "Title", "Snippet": "s",
+                                 "Entity_Type": "counselling", "Content_Type": "service"}],
+            "paa_questions": [], "autocomplete_suggestions": [], "related_searches": [],
+            "serp_modules": [], "local_pack_and_maps": [], "ai_overview_citations": [],
+            "serp_language_patterns": [], "strategic_recommendations": [],
+            "competitors_ads": [], "keyword_feasibility": [],
+        }
+        extracted = generate_content_brief.extract_analysis_data_from_json(
+            stub, client_domain="livingsystems.ca")
+        si = extracted["keyword_profiles"]["kw"]["serp_intent"]
+        for field in ("primary_intent", "is_mixed", "confidence",
+                      "intent_distribution", "evidence", "mixed_components"):
+            self.assertIn(field, si, f"serp_intent missing field: {field}")
+
+
 if __name__ == '__main__':
     unittest.main()

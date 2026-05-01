@@ -8,9 +8,12 @@ the rule table in intent_mapping.yml.
 Output (stored at keyword_profiles[kw]["serp_intent"]):
     {
         "primary_intent": str,        # informational | commercial_investigation |
-                                      # transactional | navigational | local
+                                      # transactional | navigational | local |
+                                      # "mixed" (when is_mixed=True) |
+                                      # "uncategorised" (when classified_total=0)
         "intent_distribution": dict,  # share per intent among CLASSIFIED URLs
         "is_mixed": bool,             # True when no intent passes thresholds
+        "mixed_components": list,     # intents with ≥2 URLs when is_mixed=True
         "confidence": str,            # high | medium | low
         "evidence": {
             "total_url_count": int,
@@ -160,7 +163,7 @@ def _determine_primary(
         and second_share <= thresholds["fallback_runner_up_max"]
     ):
         return (top_intent, False)
-    return (top_intent, True)
+    return ("mixed", True)
 
 
 def compute_serp_intent(
@@ -227,6 +230,16 @@ def compute_serp_intent(
 
     primary_intent, is_mixed = _determine_primary(intent_counts, classified_total, th)
 
+    # mixed_components: intents with ≥2 URLs when no single intent wins.
+    # Present only when is_mixed=True; empty list otherwise.
+    if is_mixed:
+        mixed_components = sorted(
+            intent for intent in VALID_INTENTS
+            if intent != "uncategorised" and intent_counts.get(intent, 0) >= 2
+        )
+    else:
+        mixed_components = []
+
     classified_share = (classified_total / total) if total else 0.0
     confidence = _bucket_confidence(classified_share, th)
 
@@ -234,6 +247,7 @@ def compute_serp_intent(
         "primary_intent": primary_intent,
         "intent_distribution": distribution,
         "is_mixed": is_mixed,
+        "mixed_components": mixed_components,
         "confidence": confidence,
         "evidence": {
             "total_url_count": total,

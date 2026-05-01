@@ -487,7 +487,7 @@ If you don't act now, you'll lose your rank #3 position entirely.
     def test_validate_llm_report_flags_is_mixed_contradiction(self):
         # is_mixed=True but report claims single-intent — HARD-FAIL
         extracted = self._intent_extracted(
-            primary_intent="informational", is_mixed=True, confidence="medium"
+            primary_intent="mixed", is_mixed=True, confidence="medium"
         )
         report = (
             "**couples therapy vancouver (50,000 total results)**\n"
@@ -565,7 +565,7 @@ If you don't act now, you'll lose your rank #3 position entirely.
                 "client_rank": None,
                 "client_rank_delta": None,
                 "serp_intent": {
-                    "primary_intent": "informational",
+                    "primary_intent": "mixed",
                     "is_mixed": True,
                     "confidence": "medium",
                     "intent_distribution": {
@@ -603,7 +603,7 @@ If you don't act now, you'll lose your rank #3 position entirely.
                 "client_rank": None,
                 "client_rank_delta": None,
                 "serp_intent": {
-                    "primary_intent": "transactional",
+                    "primary_intent": "mixed",
                     "is_mixed": True,
                     "confidence": "medium",
                     "intent_distribution": {
@@ -636,7 +636,7 @@ If you don't act now, you'll lose your rank #3 position entirely.
                 "client_rank": None,
                 "client_rank_delta": None,
                 "serp_intent": {
-                    "primary_intent": "commercial_investigation",
+                    "primary_intent": "mixed",
                     "is_mixed": True,
                     "confidence": "medium",
                     "intent_distribution": {

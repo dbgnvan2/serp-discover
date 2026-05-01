@@ -2130,6 +2130,26 @@ def main():
         "keyword_feasibility": all_feasibility,
     }
 
+    # --- BUILD KEYWORD_PROFILES ---
+    # Compute serp_intent, title_patterns, and mixed_intent_strategy for every
+    # keyword and embed them in full_data before writing, so the audit JSON is
+    # the authoritative source of these fields (not just an in-memory artifact
+    # of generate_content_brief.py). Spec v2 DoD criterion #3.
+    print("Building keyword_profiles...")
+    try:
+        _gcb_cfg = CONFIG.get("analysis_report", {})
+        _gcb_extracted = generate_content_brief.extract_analysis_data_from_json(
+            full_data,
+            client_domain=CLIENT_DOMAIN,
+            client_name_patterns=_gcb_cfg.get("client_name_patterns", []),
+            known_brands=CONFIG.get("known_brands", []),
+            preferred_intents=CONFIG.get("client", {}).get("preferred_intents", []),
+        )
+        full_data["keyword_profiles"] = _gcb_extracted.get("keyword_profiles", {})
+        print(f"Built keyword_profiles for {len(full_data['keyword_profiles'])} keywords.")
+    except Exception as _kpe:
+        logging.warning(f"keyword_profiles build failed — audit JSON will not include it: {_kpe}")
+
     print(f"Saving JSON to {OUTPUT_JSON}...")
     try:
         with open(OUTPUT_JSON, 'w', encoding='utf-8') as f:
