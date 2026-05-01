@@ -1219,7 +1219,8 @@ def analyze_strategic_opportunities(ngram_results, keywords=None):
     all_phrases = " ".join([item["Phrase"] for item in ngram_results]).lower()
 
     for strategy in strategies:
-        found_triggers = [t for t in strategy["Triggers"] if t in all_phrases]
+        found_triggers = [t for t in strategy["Triggers"]
+                         if re.search(r'\b' + re.escape(t) + r'\b', all_phrases)]
         if found_triggers:
             # Create a copy to avoid mutating the template if we were reusing it
             rec = strategy.copy()

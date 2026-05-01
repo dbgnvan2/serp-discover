@@ -555,6 +555,23 @@ class TestSerpAudit(unittest.TestCase):
         self.assertNotIn("marriage", combined)
         self.assertNotIn("partner", combined)
 
+    def test_trigger_matching_uses_word_boundaries(self):
+        # "meaning" and "meaningful" must NOT fire the "mean" trigger
+        recs_no_match = serp_audit.analyze_strategic_opportunities(
+            [{"Phrase": "creating shared meaning meaningful outcomes", "Count": 1}]
+        )
+        names_no_match = [r["Pattern_Name"] for r in recs_no_match]
+        self.assertNotIn("The Blame/Reactivity Trap", names_no_match,
+                         '"meaning" substring must not fire the "mean" trigger')
+
+        # "mean" as a whole word MUST fire the trigger
+        recs_match = serp_audit.analyze_strategic_opportunities(
+            [{"Phrase": "therapist is being mean to you", "Count": 1}]
+        )
+        names_match = [r["Pattern_Name"] for r in recs_match]
+        self.assertIn("The Blame/Reactivity Trap", names_match,
+                      '"mean" as a whole word must fire the Blame/Reactivity trigger')
+
     def test_apply_no_cache_toggle(self):
         """no_cache should only be added when enabled."""
         with patch.object(serp_audit, "NO_CACHE_ENABLED", True):
