@@ -1,0 +1,1137 @@
+# Prompt Iteration Package: Main Report System Prompt
+
+## Objective
+
+Rewrite the main report system prompt so the first-pass market intelligence report is harder to break and less likely to invent unsupported strategy claims.
+
+## Current Prompt File
+
+- [`prompts/main_report/system.md`](/Users/davemini2/ProjectsLocal/serp/prompts/main_report/system.md)
+
+## Current Prompt Text
+
+```md
+You are a market intelligence analyst producing a factual SERP
+assessment for a specific client organization. Your job is to
+report what the data shows, identify where the client is vulnerable,
+and recommend actions grounded in verified evidence. You are not
+a strategist inventing narratives — you are an auditor reporting
+findings.
+
+## Data Structure Reference
+
+The JSON payload contains pre-computed, deterministically verified
+data. You do not need to count, cross-reference, or infer anything
+that is already computed. Use the pre-computed values exactly.
+
+METADATA:
+- metadata: run_id, created_at, google_url_sample
+- root_keywords: the distinct root keywords searched
+- queries: one entry per query with source_keyword, query_label,
+  total_results, SERP features, top-3 organic source names, and
+  client AIO text mention flag. total_results is Google's estimated
+  indexed page count — NOT monthly search volume. Use phrases like
+  "total indexed results" or "estimated market scale." Never say
+  "monthly searches."
+
+QUERY LABELS:
+- "A" = Root keyword + geo-location
+- "A.1" = Informational variant (auto-generated)
+- "A.2" = Cost variant (auto-generated)
+
+PER-KEYWORD PROFILES (primary data source for Section 2):
+- keyword_profiles: one pre-joined profile per root keyword
+  containing total_results, SERP modules, AI Overview presence,
+  local pack presence, entity distribution, dominant entity type,
+  entity_label, top-5 organic results, AIO citation count + top
+  sources, PAA questions, autocomplete, related searches, local
+  pack count, and client visibility flags. Each keyword profile
+  is self-contained. Report from it directly.
+- entity_label: pre-computed entity mix classification. One of:
+  "dominated_by_[type]" (>60% of classified),
+  "[type]_plurality" (highest count but below 60%),
+  "mixed_[type1]_[type2]..." (top types tied or within 2 results),
+  or "unclassified". Use this as the starting point for Section 2.
+
+COMPETITIVE LANDSCAPE:
+- competitive_landscape: per-keyword summaries with entity breakdown
+  (including N/A counts), top sources with appearances + best rank
+  + entity type, and content type breakdown.
+- source_frequency_top30: global source frequency. Distinguish
+  direct competitors from directories (Psychology Today,
+  CounsellingBC, TherapyTribe) and informational sources.
+
+CLIENT POSITION (primary data source for Section 3):
+- client_position: pre-computed vulnerability assessment with:
+  - organic: each appearance with rank, rank_delta, stability
+    classification (new/stable/improving/declining), and
+    competitors_above list
+  - aio_citations: citations with AIO text mention flags
+  - aio_text_mentions: body text mentions with excerpts
+  - local_pack: local pack appearances
+  - language_pattern_mentions: brand mentions in SERP bigrams
+  - summary: total counts, visible/invisible keyword lists,
+    has_declining_positions, worst_delta
+  Use the stability field directly. "new" = no prior data, NOT
+  stable. "declining" = measured drop, requires defensive action.
+
+STRATEGIC FLAGS (primary data source for Section 7 priorities):
+- strategic_flags: deterministic prioritization computed from
+  rank deltas, visibility concentration, and market scale.
+  - defensive_urgency: high / low / none
+  - defensive_detail: explanation
+  - visibility_concentration: critical / high / distributed / absent
+  - concentration_detail: explanation
+  - opportunity_scale: per-keyword action (defend / strengthen /
+    enter / enter_cautiously / skip) with reason
+  - content_priorities: ordered list. defend before enter. skip
+    means do not recommend.
+  These are computed facts, not suggestions. Follow them.
+
+AI OVERVIEW:
+- aio_analysis: per-keyword AIO profile with has_aio,
+  sources_named_in_text, client_mentioned, client_excerpt,
+  key_phrases, opening_excerpt
+- aio_citations_top25, aio_total_citations, aio_unique_sources
+
+PAA ANALYSIS (primary data source for Section 5):
+- paa_analysis: pre-computed cross-cluster analysis.
+  - cross_cluster: questions appearing for 2+ keywords with exact
+    cluster_count and combined_total_results
+  - single_cluster: questions for 1 keyword only
+  - summary: counts
+  These lists are exhaustive. If a question is not in cross_cluster,
+  it is NOT cross-cutting regardless of how it reads.
+
+AUTOCOMPLETE AND RELATED SEARCHES:
+- autocomplete_by_keyword, related_searches_by_keyword: raw terms
+- autocomplete_summary: total count, per-keyword counts,
+  trigger_word_hits (empty arrays = absent, not unchecked)
+
+MARKET LANGUAGE:
+- market_language: top bigrams/trigrams, client mentions,
+  bowen_theory_terms with explicit zero counts
+
+TOOL-GENERATED RECOMMENDATIONS (APPENDIX MATERIAL ONLY):
+- tool_recommendations_verified: pattern-matched recommendation
+  hypotheses with pre-verified trigger counts broken down by data
+  source. These are generated by a fixed template system, not by
+  analysis of user intent. Treat them as background context only.
+  Do NOT use them to organize the report, frame content gaps, or
+  justify recommendations. If you reference them at all, do so
+  only in Section 6 and only by citing the exact pre-computed
+  trigger counts per data source.
+
+LOCAL PACK:
+- local_pack_summary: per-keyword business counts, categories,
+  ratings. serp_local_pack_confirmed lists keywords where the
+  local pack actually appears on the SERP page.
+
+PAID COMPETITION:
+- competitor_ads: any Google Ads found
+
+## Evidence Rules
+
+These rules are non-negotiable. A claim that violates any rule
+makes the report fail validation.
+
+RULE 1: CITE THE SOURCE OBJECT.
+Every factual claim must name the data object it comes from. If
+you state a count, name the field. If you state a PAA question,
+it must appear verbatim in paa_analysis. If you describe an entity
+mix, cite keyword_profiles or competitive_landscape for that
+specific keyword.
+
+RULE 2: NO CROSS-CUTTING CLAIMS FROM SINGLE-CLUSTER DATA.
+A question or term is "cross-cutting" ONLY if it appears in
+paa_analysis.cross_cluster. A term appearing once for one keyword
+is a single-cluster signal. Do not use words like "cross-cutting,"
+"spans multiple clusters," or "appears broadly" for single-cluster
+data.
+
+RULE 3: PER-KEYWORD BEFORE AGGREGATE.
+Section 2 must present each keyword individually before grouping
+them into clusters. State entity counts, top sources, and intent
+signals per keyword. Only then synthesize into clusters. This
+prevents misapplying one keyword's characteristics to another.
+
+RULE 4: NO FABRICATED QUESTIONS.
+Every PAA question you quote must exist word-for-word in
+paa_analysis.cross_cluster or paa_analysis.single_cluster. If
+you want to describe a gap that no PAA question directly
+addresses, say "no PAA question directly targets this area" and
+cite the autocomplete or related search evidence instead.
+
+RULE 5: TRIGGER SOURCES MUST BE NAMED.
+When discussing tool recommendations (Section 6 only), state
+which data source each trigger was found in (in_paa_questions,
+in_organic_snippets, in_aio_text, etc.) using the pre-computed
+triggers_found sub-dicts. "Appears frequently" is not acceptable.
+"Appears 10 times in organic_snippets and 3 times in aio_text"
+is acceptable.
+
+RULE 6: STABILITY LABELS ARE FINAL.
+Use client_position stability labels exactly: new, stable,
+improving, declining. Do not reinterpret. "new" means unmeasured,
+not stable. "declining" means act defensively.
+
+RULE 7: STRATEGIC FLAGS ARE BINDING.
+Section 7 must follow strategic_flags.content_priorities ordering.
+Keywords with action="skip" get no recommendation. Keywords with
+action="defend" come before action="enter". State the action and
+reason from strategic_flags for each recommendation.
+
+RULE 8: ABSENT EVIDENCE IS STATED, NOT INVENTED.
+If a keyword has no PAA questions (paa_questions is empty), say
+"No PAA questions were captured for this keyword." Do not fill
+the gap with questions from other keywords. If a term has zero
+mentions, say so. If client_position shows zero AIO citations,
+do not describe AIO citation opportunities as if the client
+currently has them. When two pre-computed values look unusual
+(for example has_ai_overview=True but aio_citation_count=0),
+state both facts and stop. Do not speculate about the cause.
+Phrases like "indicating technical issues," "suggesting content
+filtering," "possibly due to," or "likely because" are not
+permitted when explaining data anomalies.
+
+RULE 9: ENTITY LABELING THRESHOLDS.
+Use keyword_profiles.entity_label as the starting point for every
+Section 2 keyword description. You may expand it with counts, but
+you must not contradict it.
+- "dominated by [type]": that type exceeds 60% of classified
+  entities
+- "[type] plurality" or "[type] leads": highest count but below
+  60%
+- "mixed" or "contested": two or more types are tied or within
+  2 entities of each other
+Example: counselling 6, media 6, legal 4, directory 3 out of 20
+classified -> mixed, with counselling and media tied at 6 each
+and legal at 4. NOT "counselling dominance."
+Example: counselling 17, directory 3, nonprofit 2 out of 24
+classified -> dominated by counselling entities (17 of 24, 71%).
+Example: legal 12, counselling 5 out of 24 classified -> legal
+plurality (12 of 24, 50%) with counselling secondary at 5. NOT
+"dominated by legal."
+
+RULE 10: TOTAL RESULTS IS NOT SEARCH VOLUME.
+Never describe total_results as "monthly searches," "search
+volume," or "demand." Use "total indexed results," "estimated
+market scale," or "Google's result count estimate."
+
+RULE 11: DO NOT OVERRIDE PRE-COMPUTED FLAGS.
+If a pre-computed field (has_ai_overview, has_local_pack,
+stability, entity_label, etc.) seems inconsistent with other
+data, state both facts. Do not silently adjust counts based on
+your interpretation of the underlying data.
+Example: if has_ai_overview=True but aio_citation_count=0, say
+"AI Overview is present but returned 0 citations for this
+keyword." Do NOT say "5 of 6 queries feature AI Overviews" when
+the data shows 6 of 6.
+Example: if has_local_pack=True but local_pack_count=2, say
+"Local pack is present with 2 businesses listed." Do NOT say
+"no meaningful local pack presence."
+
+RULE 12: DISTINGUISH EVIDENCE FROM CLIENT-ANGLE INFERENCE.
+If a recommendation comes directly from observed SERP behavior,
+label it as a SERP-evidenced demand gap. If it comes from the
+client's framework being different from current results, label it
+as a client differentiation hypothesis. Do not present a client
+angle hypothesis as if it were directly measured demand.
+
+## Report Structure
+
+Write in prose paragraphs. Use tables only for genuinely tabular
+comparisons. No bullet-point lists for analysis.
+
+### Section 1: Data Summary
+How many root keywords, total queries, geo-location. Total organic
+results and classification rate. Total AIO citations and unique
+sources. Data quality issues if any (low result counts, high
+unclassified rate, missing data).
+
+### Section 2: Per-Keyword Market Profiles
+
+For EACH root keyword, produce a subsection:
+
+**[keyword] ([total_results] total results)**
+State the entity_distribution counts and describe the entity mix
+using entity_label. Name the top 3 organic sources with entity
+types. State AIO status exactly from has_ai_overview and
+aio_citation_count, even if the values look unusual. State whether
+the client is visible, at what rank, and with what stability. List
+SERP modules present. List PAA questions for this keyword (or state
+none were captured). Note if total_results < 500.
+
+After all 6 subsections, write one synthesis paragraph grouping
+keywords that share entity mixes and intent patterns. This
+synthesis must reference the per-keyword data above.
+
+### Section 3: Client Position Assessment
+Report from client_position data. State total organic appearances,
+AIO citations, AIO text mentions, local pack presence. For each
+organic appearance: keyword, rank, stability, and how many
+competitors rank above. If has_declining_positions is true, state
+the risk explicitly and recommend defensive action before new
+content. State which keywords have zero visibility.
+
+### Section 4: AI Overview / GEO Opportunity Analysis
+Which queries have AIO at what position. Citation concentration
+(top sources, total vs unique). What content type gets cited.
+Where the client has or lacks AIO presence. Use aio_analysis
+excerpts for language framing, not speculation.
+
+### Section 5: Content Gap Analysis
+Report from paa_analysis. List cross_cluster questions first with
+exact cluster_count and combined_total_results. Then note
+significant single_cluster questions. For each gap, state whether
+the client's framework addresses it differently from current
+results — but base this on what keyword_profiles.top5_organic
+actually shows, not on assumed competitor weaknesses. If a gap has
+no PAA question, cite autocomplete or related search evidence and
+label it as "inferred from autocomplete/related searches" rather
+than PAA-confirmed. For each gap, explicitly label whether it is a
+SERP-evidenced demand gap or a client differentiation hypothesis.
+
+### Section 6: Tool Recommendation Assessment
+For each entry in tool_recommendations_verified, state: pattern
+name, total trigger occurrences, which data sources had hits
+(name the sub-dicts), whether PAA evidence exists (yes/no with
+count), whether autocomplete evidence exists (yes/no). State
+whether the content angle matches the search intent observed in
+Section 2's per-keyword profiles. This section is assessment only
+— it does not drive the recommendations in Section 7.
+
+### Section 7: Prioritized Content Recommendations
+Follow strategic_flags.content_priorities exactly. For each
+keyword with action != skip, state:
+- The action (defend/strengthen/enter/enter_cautiously) and
+  the reason from strategic_flags
+- What specific content to create or update
+- Which PAA questions or autocomplete terms it should address
+  (cite from the keyword's paa_questions list)
+- Whether the recommendation is primarily a SERP-evidenced demand
+  gap or a client differentiation hypothesis
+- What success looks like (rank improvement, AIO citation gain)
+- What to avoid (audience mismatch, competing with legal firms)
+Do not recommend content for skip keywords. Limit to 5
+recommendations maximum.
+
+### Section 8: Keyword Expansion Recommendations
+Based on autocomplete_by_keyword and related_searches_by_keyword,
+suggest keywords for the next analysis run. For each, cite the
+specific autocomplete suggestion or related search term that
+prompted the recommendation.
+```
+
+## Shared Evidence Bundle
+
+Use these files with this package if your chatbot tool supports multiple attachments:
+
+- [`extracted_payload_summary_estrangement_20260311_1733.json`](/Users/davemini2/ProjectsLocal/serp/prompt_iteration_packages/examples/extracted_payload_summary_estrangement_20260311_1733.json)
+- [`extracted_payload_estrangement_20260311_1733.json`](/Users/davemini2/ProjectsLocal/serp/prompt_iteration_packages/examples/extracted_payload_estrangement_20260311_1733.json)
+- [`failed_main_report_draft_20260311_1737.md`](/Users/davemini2/ProjectsLocal/serp/prompt_iteration_packages/examples/failed_main_report_draft_20260311_1737.md)
+- [`reference_main_report_20260311_1554.md`](/Users/davemini2/ProjectsLocal/serp/prompt_iteration_packages/examples/reference_main_report_20260311_1554.md)
+- [`reference_advisory_20260311_1554.md`](/Users/davemini2/ProjectsLocal/serp/prompt_iteration_packages/examples/reference_advisory_20260311_1554.md)
+
+Use the summary JSON first. Only inspect the full extracted payload if you need field-level detail.
+
+
+## Representative Data Summary
+
+Use this fixed summary snapshot while iterating the prompt so prompt changes are evaluated against stable evidence.
+
+```json
+{
+  "run_id": "20260311_173328",
+  "root_keywords": [
+    "estrangement",
+    "estrangement from adult children",
+    "estrangement grief",
+    "family cutoff counselling Vancouver",
+    "reunification counselling BC",
+    "reunification therapy near me"
+  ],
+  "query_count": 6,
+  "aio_total_citations": 88,
+  "client_position_summary": {
+    "total_organic_appearances": 1,
+    "total_aio_citations": 0,
+    "total_aio_text_mentions": 0,
+    "total_local_pack": 0,
+    "keywords_with_any_visibility": [
+      "family cutoff counselling Vancouver"
+    ],
+    "keywords_with_zero_visibility": [
+      "estrangement",
+      "estrangement from adult children",
+      "estrangement grief",
+      "reunification counselling BC",
+      "reunification therapy near me"
+    ],
+    "has_declining_positions": true,
+    "worst_delta": -3
+  },
+  "strategic_flags": {
+    "defensive_urgency": "high",
+    "defensive_detail": "Client's content 'Can cutting off family be good therapy?' dropped 3 positions to rank #7 for 'family cutoff counselling Vancouver'. This page provides 0 of the client's AIO citations. If organic rank continues declining, AIO citation loss is probable.",
+    "visibility_concentration": "critical",
+    "concentration_detail": "Client visible for 1 of 6 tracked keywords ('family cutoff counselling Vancouver'). 100% of organic and AIO visibility depends on a single keyword cluster.",
+    "opportunity_scale": {
+      "estrangement": {
+        "total_results": 231000,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter_cautiously",
+        "reason": "Legal entities dominate this SERP. Entry requires differentiated content that avoids competing on legal topics directly."
+      },
+      "estrangement from adult children": {
+        "total_results": 16400,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter",
+        "reason": "16,400 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      "estrangement grief": {
+        "total_results": 31700,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter",
+        "reason": "31,700 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      "family cutoff counselling Vancouver": {
+        "total_results": 686000,
+        "client_rank": 7,
+        "client_trend": "declining",
+        "action": "defend",
+        "reason": "Client ranks #7, declined 3 positions. Protect existing visibility before expanding elsewhere."
+      },
+      "reunification counselling BC": {
+        "total_results": 91,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "skip",
+        "reason": "Only 91 total results. Market too small to justify dedicated content investment."
+      },
+      "reunification therapy near me": {
+        "total_results": 15300,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter",
+        "reason": "15,300 total results. Client has no current visibility. Dominant entity type: counselling."
+      }
+    },
+    "content_priorities": [
+      {
+        "action": "defend",
+        "keyword": "family cutoff counselling Vancouver",
+        "total_results": 686000,
+        "reason": "Client ranks #7, declined 3 positions. Protect existing visibility before expanding elsewhere."
+      },
+      {
+        "action": "enter",
+        "keyword": "estrangement grief",
+        "total_results": 31700,
+        "reason": "31,700 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      {
+        "action": "enter",
+        "keyword": "estrangement from adult children",
+        "total_results": 16400,
+        "reason": "16,400 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      {
+        "action": "enter",
+        "keyword": "reunification therapy near me",
+        "total_results": 15300,
+        "reason": "15,300 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      {
+        "action": "enter_cautiously",
+        "keyword": "estrangement",
+        "total_results": 231000,
+        "reason": "Legal entities dominate this SERP. Entry requires differentiated content that avoids competing on legal topics directly."
+      },
+      {
+        "action": "skip",
+        "keyword": "reunification counselling BC",
+        "total_results": 91,
+        "reason": "Only 91 total results. Market too small to justify dedicated content investment."
+      }
+    ],
+    "top_cross_cluster_paa": {
+      "question": "How do I reach out to an estranged adult child?",
+      "cluster_count": 2,
+      "combined_total_results": 247400
+    }
+  },
+  "paa_cross_cluster": [
+    {
+      "question": "How do I reach out to an estranged adult child?",
+      "source_keywords": [
+        "estrangement",
+        "estrangement from adult children"
+      ],
+      "cluster_count": 2,
+      "combined_total_results": 247400,
+      "category": "General"
+    },
+    {
+      "question": "When should you stop reaching out to an estranged child?",
+      "source_keywords": [
+        "estrangement",
+        "estrangement from adult children"
+      ],
+      "cluster_count": 2,
+      "combined_total_results": 247400,
+      "category": "General"
+    },
+    {
+      "question": "What should I expect in reunification therapy?",
+      "source_keywords": [
+        "reunification counselling BC",
+        "reunification therapy near me"
+      ],
+      "cluster_count": 2,
+      "combined_total_results": 15391,
+      "category": "General"
+    }
+  ],
+  "keyword_profiles_excerpt": {
+    "estrangement": {
+      "total_results": 231000,
+      "entity_distribution": {
+        "counselling": 5,
+        "legal": 12,
+        "nonprofit": 2,
+        "directory": 1,
+        "professional_association": 1,
+        "government": 2,
+        "media": 1
+      },
+      "dominant_entity_type": null,
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "paa_questions": [
+        "How do I reach out to an estranged adult child?",
+        "How long does the average family estrangement last?",
+        "When should you stop reaching out to an estranged child?",
+        "When to go no-contact with a family member?"
+      ],
+      "autocomplete": [],
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Family Estrangement Therapy in Victoria, Vancouver & Kelowna",
+          "source": "estrangedfamilytherapy.com",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "Laws on Parental Alienation in BC",
+          "source": "Pathway Legal Family Lawyers",
+          "entity_type": "legal",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Family Estrangement Counselling for Parents & Children",
+          "source": "Restored Hope Counselling Services",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "British Columbia \u2013 CCMF",
+          "source": "Men and Families",
+          "entity_type": "nonprofit",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Court allows disinheritance of estranged children",
+          "source": "Clark Wilson LLP",
+          "entity_type": "legal",
+          "content_type": "news"
+        }
+      ]
+    },
+    "estrangement from adult children": {
+      "total_results": 16400,
+      "entity_distribution": {
+        "counselling": 6,
+        "legal": 4,
+        "directory": 3,
+        "media": 6,
+        "education": 1
+      },
+      "dominant_entity_type": null,
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "paa_questions": [
+        "How do I reach out to an estranged adult child?",
+        "How long does parent-child estrangement usually last?",
+        "Should you leave inheritance to an estranged child?",
+        "When should you stop reaching out to an estranged child?"
+      ],
+      "autocomplete": [],
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Family Estrangement Therapy in Victoria, Vancouver & Kelowna",
+          "source": "estrangedfamilytherapy.com",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "Family estrangements rise in Canada due to social, cultural ...",
+          "source": "Canadian Affairs",
+          "entity_type": "media",
+          "content_type": "news"
+        },
+        {
+          "rank": 1,
+          "title": "Those of you who are estranged from your children, what ...",
+          "source": "Reddit \u00b7 r/AskOldPeople",
+          "entity_type": "media",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Family Estrangement Counselling for Parents & Children",
+          "source": "Restored Hope Counselling Services",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Tina Gilbertson, LPC",
+          "source": "LinkedIn \u00b7 Tina Gilbertson",
+          "entity_type": "N/A",
+          "content_type": "other"
+        }
+      ]
+    },
+    "estrangement grief": {
+      "total_results": 31700,
+      "entity_distribution": {
+        "nonprofit": 3,
+        "government": 2,
+        "directory": 4,
+        "counselling": 7,
+        "media": 1
+      },
+      "dominant_entity_type": null,
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "paa_questions": [],
+      "autocomplete": [],
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "British Columbia Bereavement Helpline - Homepage New",
+          "source": "British Columbia Bereavement Helpline",
+          "entity_type": "nonprofit",
+          "content_type": "news"
+        },
+        {
+          "rank": 1,
+          "title": "Grieving in the Age of Estrangement and Division",
+          "source": "The Tyee",
+          "entity_type": "N/A",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "After a Death: Get Support When Someone Dies - Gov.bc.ca",
+          "source": "gov.bc.ca",
+          "entity_type": "government",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Death of estranged parent : r/legaladvicecanada",
+          "source": "Reddit \u00b7 r/legaladvicecanada",
+          "entity_type": "media",
+          "content_type": "other"
+        },
+        {
+          "rank": 3,
+          "title": "Professional Grief Counselling - Vancouver - Pathways",
+          "source": "Pathways BC",
+          "entity_type": "government",
+          "content_type": "other"
+        }
+      ]
+    },
+    "family cutoff counselling Vancouver": {
+      "total_results": 686000,
+      "entity_distribution": {
+        "counselling": 17,
+        "directory": 3,
+        "nonprofit": 2,
+        "government": 2
+      },
+      "dominant_entity_type": null,
+      "has_ai_overview": true,
+      "has_local_pack": true,
+      "paa_questions": [],
+      "autocomplete": [],
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Reduced-Cost Counselling Options in Vancouver January ...",
+          "source": "Willow Tree Counselling",
+          "entity_type": "counselling",
+          "content_type": "pdf"
+        },
+        {
+          "rank": 1,
+          "title": "Family & Parent Counselling Therapy in Vancouver, BC",
+          "source": "wellspringcounselling.ca",
+          "entity_type": "counselling",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Family Counselling Vancouver",
+          "source": "Blue Sky Wellness Clinic",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Trauma Counselling",
+          "source": "Family Services of Greater Vancouver",
+          "entity_type": "government",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "North Vancouver Counselling - Boomerang Centre",
+          "source": "Boomerang Counselling Centre",
+          "entity_type": "counselling",
+          "content_type": "other"
+        }
+      ]
+    },
+    "reunification counselling BC": {
+      "total_results": 91,
+      "entity_distribution": {
+        "counselling": 11,
+        "nonprofit": 3,
+        "legal": 1,
+        "government": 6,
+        "professional_association": 1,
+        "directory": 1
+      },
+      "dominant_entity_type": null,
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "paa_questions": [
+        "How to prove parental alienation in BC?",
+        "What is the best therapy for parental alienation?",
+        "What should I expect in reunification therapy?",
+        "Who qualifies for the family reunification program?"
+      ],
+      "autocomplete": [],
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Reunification Counselling Port Moody BC",
+          "source": "Bright Star Counselling",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "REACH Reunification Program",
+          "source": "Susan Gamache",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Vancouver Family Preservation & Reunification Services",
+          "source": "Westcoast Family Centres",
+          "entity_type": "nonprofit",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Individual & Family Counselling",
+          "source": "Success BC",
+          "entity_type": "nonprofit",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "REACH REUNIFICATION PROGRAM - Updated March 2026",
+          "source": "Yelp",
+          "entity_type": "directory",
+          "content_type": "other"
+        }
+      ]
+    },
+    "reunification therapy near me": {
+      "total_results": 15300,
+      "entity_distribution": {
+        "legal": 2,
+        "nonprofit": 2,
+        "counselling": 10,
+        "government": 4,
+        "professional_association": 1,
+        "directory": 2
+      },
+      "dominant_entity_type": null,
+      "has_ai_overview": true,
+      "has_local_pack": true,
+      "paa_questions": [
+        "How to get therapy covered in BC?",
+        "What is a family reunification therapist?",
+        "What is the most common goal of reunification family therapy?",
+        "What should I expect in reunification therapy?"
+      ],
+      "autocomplete": [],
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Parent and Child Reunification Program | We ... - Vancouver",
+          "source": "Reconnect Families",
+          "entity_type": "legal",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "Family Preservation and Reunification Counselling Services",
+          "source": "HelpStartsHere",
+          "entity_type": "government",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Vancouver Family Preservation & Reunification Services",
+          "source": "Westcoast Family Centres",
+          "entity_type": "nonprofit",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Family Preservation & Reunification",
+          "source": "Hollyburn Family Services",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Family & Couples Therapy | Langley, BC",
+          "source": "Dr. Ellie Bolgar",
+          "entity_type": "legal",
+          "content_type": "other"
+        }
+      ]
+    }
+  },
+  "tool_recommendations_verified": [
+    {
+      "pattern_name": "The Medical Model Trap",
+      "trigger_words_searched_for": [
+        "clinical",
+        "registered",
+        "diagnosis",
+        "disorder",
+        "mental health",
+        "patient",
+        "treatment"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {},
+        "in_organic_titles": {
+          "clinical": 1,
+          "registered": 1,
+          "mental health": 1
+        },
+        "in_organic_snippets": {
+          "clinical": 10,
+          "registered": 8,
+          "disorder": 1,
+          "mental health": 2,
+          "treatment": 3
+        },
+        "in_aio_text": {
+          "mental health": 3
+        },
+        "in_autocomplete": {},
+        "in_related_searches": {
+          "mental health": 2
+        }
+      },
+      "content_angle": "Why turning family estrangement into a diagnosis keeps you stuck.",
+      "status_quo_message": "You are sick/broken and need an expert to fix you (External Locus of Control).",
+      "reframe": "Shift from pathology to functioning. You don't need a diagnosis; you need a map of your emotional system.",
+      "verdict_inputs": {
+        "any_paa_evidence": false,
+        "any_autocomplete_evidence": false,
+        "total_trigger_occurrences": 32,
+        "primary_evidence_source": "in_organic_snippets"
+      }
+    },
+    {
+      "pattern_name": "The Fusion Trap",
+      "trigger_words_searched_for": [
+        "connection",
+        "bond",
+        "close",
+        "intimacy",
+        "communication",
+        "reconnect",
+        "reach out"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {
+          "reach out": 2
+        },
+        "in_organic_titles": {
+          "reconnect": 3
+        },
+        "in_organic_snippets": {
+          "connection": 4,
+          "communication": 6,
+          "reconnect": 1,
+          "reach out": 1
+        },
+        "in_aio_text": {
+          "connection": 1,
+          "communication": 2,
+          "reconnect": 5,
+          "reach out": 1
+        },
+        "in_autocomplete": {},
+        "in_related_searches": {
+          "reconnect": 1
+        }
+      },
+      "content_angle": "Why trying to force reconnection may deepen the cutoff.",
+      "status_quo_message": "The goal is to force closeness, agreement, or reconnection as quickly as possible.",
+      "reframe": "Sustainable contact requires differentiation. Anxiety-driven pursuit often increases reactivity and deepens cutoff.",
+      "verdict_inputs": {
+        "any_paa_evidence": true,
+        "any_autocomplete_evidence": false,
+        "total_trigger_occurrences": 27,
+        "primary_evidence_source": "in_organic_snippets"
+      }
+    },
+    {
+      "pattern_name": "The Resource Trap",
+      "trigger_words_searched_for": [
+        "free",
+        "low cost",
+        "sliding scale",
+        "cheap",
+        "affordable",
+        "covered",
+        "insurance"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {
+          "covered": 1
+        },
+        "in_organic_titles": {},
+        "in_organic_snippets": {
+          "free": 4,
+          "low cost": 1,
+          "affordable": 2
+        },
+        "in_aio_text": {
+          "free": 9,
+          "affordable": 1
+        },
+        "in_autocomplete": {
+          "free": 1
+        },
+        "in_related_searches": {
+          "free": 6
+        }
+      },
+      "content_angle": "When short-term relief becomes a substitute for working the family pattern.",
+      "status_quo_message": "High anxiety about resources/access. Seeking immediate symptom relief (venting).",
+      "reframe": "Address the anxiety driving the search. Cheap relief often delays real structural change.",
+      "verdict_inputs": {
+        "any_paa_evidence": true,
+        "any_autocomplete_evidence": true,
+        "total_trigger_occurrences": 25,
+        "primary_evidence_source": "in_aio_text"
+      }
+    },
+    {
+      "pattern_name": "The Blame/Reactivity Trap",
+      "trigger_words_searched_for": [
+        "narcissist",
+        "toxic",
+        "abusive",
+        "mean",
+        "angry",
+        "hate",
+        "deal with"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {},
+        "in_organic_titles": {},
+        "in_organic_snippets": {},
+        "in_aio_text": {},
+        "in_autocomplete": {},
+        "in_related_searches": {}
+      },
+      "content_angle": "Stop diagnosing the other person and start observing your own reactivity.",
+      "status_quo_message": "The problem is the other person (The Identified Patient).",
+      "reframe": "Focus on self-regulation. You cannot change them, only your response to them.",
+      "verdict_inputs": {
+        "any_paa_evidence": false,
+        "any_autocomplete_evidence": false,
+        "total_trigger_occurrences": 0,
+        "primary_evidence_source": "none"
+      }
+    }
+  ]
+}
+```
+
+
+## Failure Example
+
+This is a real rejected first-pass draft from the current pipeline. The validator blocked it because it invented a cross-cutting `toxic` opportunity.
+
+```markdown
+# Content Opportunity Report Validation Issues
+
+## Rejected Claims
+
+- Report claims a cross-cutting 'toxic' opportunity, but verified PAA/autocomplete evidence is absent.
+
+## Rejected Draft
+
+# SERP Market Intelligence Report: Living Systems Counselling
+**Family Estrangement & Reunification Services | North Vancouver, BC**
+
+## Section 1: Data Summary
+
+This analysis examined 6 queries across 6 root keywords geolocated to North Vancouver, BC, collected on March 11, 2026. The search covered estrangement-related terms including "estrangement," "estrangement from adult children," "estrangement grief," "family cutoff counselling Vancouver," "reunification counselling BC," and "reunification therapy near me." The dataset contains 168 total organic results with 129 entity-classified entries. AI Overviews appeared on all 6 queries, generating 88 total citations across 64 unique sources.
+
+No significant data quality issues were detected. The "reunification counselling BC" keyword returned only 91 total results, indicating a very narrow market that may not justify dedicated content investment.
+
+## Section 2: Keyword Cluster Analysis
+
+The keywords cluster into three distinct behavioral groups based on SERP composition and total results scale:
+
+**Legal-Dominant Cluster: General Estrangement (231,000 results)**
+The broad "estrangement" keyword triggers a SERP dominated by legal entities (12 of 24 classified results), with law firms like MacLean Family Law, Pathway Legal Family Lawyers, and Clark Wilson LLP securing top positions. The AI Overview cites primarily legal sources and discusses parental alienation from a court perspective. PAA questions focus on contact strategies and duration timelines. This represents the largest market but poses the highest competitive barrier for a counselling organization.
+
+**Counselling-Focused Cluster: Adult Child Estrangement (16,400 results) and Estrangement Grief (31,700 results)**
+These keywords show counselling entities dominating (6 of 20 and 7 of 17 classified results respectively). Sources like estrangedfamilytherapy.com and Restored Hope Counselling Services rank prominently. The "estrangement grief" SERP uniquely includes nonprofit and government resources like the British Columbia Bereavement Helpline and gov.bc.ca. Both SERPs include discussions_and_forums modules, indicating active user-generated content. These markets offer more realistic entry opportunities for Living Systems Counselling.
+
+**Service-Delivery Cluster: Reunification Services (15,300 and 91 results)**
+"Reunification therapy near me" generates local pack results with 23 businesses averaging 4.78 stars, dominated by family counsellors. The SERP focuses on service delivery rather than information. "Reunification counselling BC" returns only 91 results with specialized providers like Bright Star Counselling and Susan Gamache's REACH program. This micro-niche may be too small for dedicated content investment despite lower competition.
+
+Competitor ads appeared for none of these keywords, suggesting limited commercial competition in this geographic market.
+
+## Section 3: Client Position Assessment
+
+Living Systems Counselling appears organically for only 1 of 6 tracked keywords. The organization ranks #7 for "family cutoff counselling Vancouver" with the article "Can cutting off family be good therapy?" This position shows declining stability, dropping 3 positions from rank #4. This represents a critical vulnerability since 100% of the client's organic visibility depends on this single ranking.
+
+The client receives zero AI Overview citations across all queries and is not mentioned in any AI Overview body text. No local pack presence was detected, and no language pattern mentions of Bowen theory terminology appear in the competitive landscape.
+
+Google's current understanding of the client appears limited to this single content piece addressing family cutoff from a therapeutic perspective. The declining rank trend indicates this content is losing relevance or authority compared to competitors like Willow Tree Counselling, Blue Sky Wellness Clinic, and CounsellingBC, which consistently rank above the client.
+
+## Section 4: AI Overview / GEO Opportunity Analysis
+
+AI Overviews appear at position 2 across all queries, making them highly visible to searchers. Citation patterns reveal clear opportunities: Psychology Today leads with 7 citations, followed by MacLean Family Law and Reconnect Families (5 each). The client's absence from all 88 citations represents a significant missed opportunity for visibility.
+
+AI Overview language varies by cluster. Legal-focused queries emphasize "parental alienation" and court processes. Counselling-focused queries discuss "disenfranchised grief" and therapeutic approaches. The "family cutoff counselling Vancouver" AIO specifically mentions local resources but cites YouTube, Willow Tree Counselling, and Psychology Today instead of specialized family systems providers.
+
+The most accessible AIO citation opportunity appears in the counselling-focused cluster, where existing citations include therapeutic sources like estrangedfamilytherapy.com and Clearheart Counselling. The client's Bowen theory expertise could differentiate from the general counselling approaches currently cited.
+
+## Section 5: Content Gap Analysis
+
+Two significant gaps emerge from PAA and autocomplete analysis:
+
+**Cross-Cluster Question Gap**: "How do I reach out to an estranged adult child?" appears in both estrangement clusters (247,400 combined results). Current SERP results focus on communication tactics without addressing the underlying emotional system dynamics that Bowen theory explains. This represents the strongest cross-cutting opportunity.
+
+**Differentiation of Self Gap**: Despite "differentiation of self" being central to Bowen theory, it appears 0 times in market language analysis. Current content emphasizes "connection," "communication," and "reconnect" (27 total mentions) without addressing the anxiety-driven pursuit that often deepens cutoffs. This gap aligns perfectly with Living Systems' theoretical framework.
+
+**Grief Framework Gap**: "Estrangement grief" autocomplete shows high interest in support groups, stages of grief, and "disenfranchised grief," but current SERPs primarily list service directories rather than explaining grief through a family systems lens. The client could address how emotional cutoff creates ambiguous loss that traditional grief models don't adequately address.
+
+## Section 6: Evaluation of Tool-Generated Recommendations
+
+**The Medical Model Trap** - SUPPORTED: Data shows 32 trigger occurrences across organic results and AIO text, with "clinical" (10), "registered" (8), and "mental health" (5) heavily present. The content angle addressing diagnostic language as potentially unhelpful aligns with Bowen theory's systems perspective versus individual pathology.
+
+**The Fusion Trap** - STRONGLY SUPPORTED: Evidence includes 27 trigger occurrences with "reach out" appearing in 2 PAA questions and "reconnect" appearing 9 times across organic and AIO content. The cross-cluster PAA question "How do I reach out to an estranged adult child?" directly validates this content angle. This recommendation has the strongest data support.
+
+**The Resource Trap** - PARTIALLY SUPPORTED: While 25 trigger occurrences appear including "free" (15 total) and "covered" (1 PAA question), this pattern may reflect genuine affordability barriers in BC rather than anxiety-driven symptom relief seeking. The data shows legitimate interest in "How to get therapy covered in BC?" suggesting practical rather than avoidant intent.
+
+**The Blame/Reactivity Trap** - NOT SUPPORTED: Zero trigger occurrences found across all data sources. Terms like "narcissist," "toxic," and "abusive" do not appear in PAAs, autocomplete, or related searches. This recommendation lacks data foundation and should not be prioritized.
+
+## Section 7: Prioritized Content Recommendations
+
+**1. DEFEND: "Can cutting off family be good therapy?" (family cutoff counselling Vancouver)**
+**Priority: Immediate**
+Update existing content to prevent further rank decline from position #7. The 3-position drop threatens the client's only organic visibility. Add local optimization signals, update with recent case studies, and strengthen the Bowen theory framework explanation to differentiate from generic counselling approaches ranking above.
+
+**2. ENTER: "Understanding Estrangement Grief Through Family Systems" (estrangement grief)**
+**Priority: High**
+Target the 31,700-result market dominated by counselling entities. Address the gap around ambiguous loss and disenfranchised grief using Bowen's emotional system concepts. Current results focus on traditional grief stages; differentiate by explaining how cutoff creates ongoing systemic impact across generations.
+
+**3. ENTER: "When Adult Children Cut Contact: A Systems Perspective" (estrangement from adult children)**
+**Priority: High**
+Target the cross-cluster PAA question "How do I reach out to an estranged adult child?" (247,400 combined results). Address how anxiety-driven pursuit often deepens reactivity. Current results emphasize communication tactics; offer systems thinking about differentiation of self instead.
+
+**4. ENTER: "Family Reunification: Beyond Forced Connection" (reunification therapy near me)**
+**Priority: Medium**
+Target the 15,300-result market with local pack presence. Current content focuses on service logistics; differentiate by addressing what makes reunification sustainable versus forced. Target PAA questions about therapy expectations and goals using Bowen's concepts of emotional cutoff resolution.
+
+**5. ENTER CAUTIOUSLY: "Legal vs. Therapeutic Approaches to Estrangement" (estrangement)**
+**Priority: Low**
+The 231,000-result market is legal-entity dominated, requiring careful positioning. Create content that complements rather than competes with legal advice, focusing on the emotional system work that supports whatever legal outcomes occur. Avoid direct legal territory while addressing the therapeutic aspects legal sources don't cover.
+
+## Section 8: Keyword Expansion Recommendations
+
+Based on autocomplete and related searches analysis, investigate these additional keywords in future SERP analysis:
+
+**"estrangement meaning" and "estrangement synonym"** - High autocomplete relevance (1,250 and 602) suggests definitional searches where Bowen theory could provide unique perspective beyond dictionary definitions.
+
+**"parental alienation Vancouver"** - Appears in related searches for estrangement, indicating local legal-therapeutic intersection where systems perspective could add value without competing directly with legal services.
+
+**"grief support groups Vancouver"** - Related search for estrangement grief with 8 related terms, suggesting group intervention opportunities that align with Living Systems' existing programming.
+
+**"stages of grief family estrangement"** - Multiple autocomplete variations suggest interest in grief progression models that Bowen's multigenerational perspective could reframe.
+
+**"family scapegoat estrangement grief"** - Specific autocomplete term indicating interest in family role dynamics that directly align with Bowen theory concepts of family projection and sibling position.
+
+These expansions should be researched after defending existing visibility and establishing positions in the prioritized clusters above.
+```
+
+
+## Problems To Solve
+
+1. The prompt still allows weak trigger-language evidence to drive content-gap narratives.
+2. Aggregate market summaries can still be misapplied to broad keywords like `estrangement`.
+3. `tool_recommendations_verified` is still too easy for the model to treat as direct evidence instead of a hypothesis layer.
+4. The prompt needs stronger uncertainty behavior when legal and counselling signals are both strong.
+5. The prompt should produce a report that can pass validation without relying on the retry pass.
+
+## Instructions For The AI Tool
+
+1. Review the current system prompt against the representative extracted payload and the rejected draft.
+2. Rewrite the system prompt so every strategic claim must be anchored to verified evidence objects from the payload.
+3. Force per-keyword or per-cluster reasoning when discussing dominance, entry, or defensibility.
+4. Treat `tool_recommendations_verified` as optional hypothesis material, not primary evidence.
+5. Require explicit uncertainty language when signals are mixed or incomplete.
+6. Preserve the existing eight-section report structure unless a change is necessary to improve reliability.
+7. Do not invent new JSON keys. Work only with the fields already present in the extracted payload.
+
+## Required Output From The AI Tool
+
+Return:
+1. a revised `system.md` prompt only
+2. a short change log explaining why each major rewrite reduces failure risk
+3. a short list of likely remaining failure modes

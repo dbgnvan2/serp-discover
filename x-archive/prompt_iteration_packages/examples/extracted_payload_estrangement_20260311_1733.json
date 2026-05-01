@@ -1,0 +1,2859 @@
+{
+  "metadata": {
+    "run_id": "20260311_173328",
+    "created_at": "2026-03-11T17:33:32.081791",
+    "google_url_sample": "https://www.google.com/search?q=estrangement+Vancouver%2C+British+Columbia%2C+Canada&oq=estrangement+Vancouver%2C+British+Columbia%2C+Canada&uule=w+CAIQICIhVmFuY291dmVyLEJyaXRpc2ggQ29sdW1iaWEsQ2FuYWRh&hl=en&gl=ca&num=100&sourceid=chrome&ie=UTF-8"
+  },
+  "root_keywords": [
+    "estrangement",
+    "estrangement from adult children",
+    "estrangement grief",
+    "family cutoff counselling Vancouver",
+    "reunification counselling BC",
+    "reunification therapy near me"
+  ],
+  "queries": [
+    {
+      "source_keyword": "estrangement",
+      "query_label": "A",
+      "executed_query": "estrangement",
+      "total_results": 231000,
+      "serp_features": "Standard Organic",
+      "has_ai_overview": true,
+      "client_mentioned_in_aio_text": false,
+      "rank_1": {
+        "title": "Family Estrangement Therapy in Victoria, Vancouver & Kelowna",
+        "source": "estrangedfamilytherapy.com"
+      },
+      "rank_2": {
+        "title": "Family Estrangement Counselling for Parents & Children",
+        "source": "restoredhopecounsellingservices.ca"
+      },
+      "rank_3": {
+        "title": "Relationship Issues",
+        "source": "willowtreecounselling.ca"
+      }
+    },
+    {
+      "source_keyword": "estrangement from adult children",
+      "query_label": "A",
+      "executed_query": "estrangement from adult children",
+      "total_results": 16400,
+      "serp_features": "Standard Organic",
+      "has_ai_overview": true,
+      "client_mentioned_in_aio_text": false,
+      "rank_1": {
+        "title": "Family Estrangement Therapy in Victoria, Vancouver & Kelowna",
+        "source": "estrangedfamilytherapy.com"
+      },
+      "rank_2": {
+        "title": "Family Estrangement Counselling for Parents & Children",
+        "source": "restoredhopecounsellingservices.ca"
+      },
+      "rank_3": {
+        "title": "Relationship Issues",
+        "source": "willowtreecounselling.ca"
+      }
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "executed_query": "estrangement grief",
+      "total_results": 31700,
+      "serp_features": "Standard Organic",
+      "has_ai_overview": true,
+      "client_mentioned_in_aio_text": false,
+      "rank_1": {
+        "title": "British Columbia Bereavement Helpline - Homepage New",
+        "source": "bcbh.ca"
+      },
+      "rank_2": {
+        "title": "After a Death: Get Support When Someone Dies - Gov.bc.ca",
+        "source": "www2.gov.bc.ca"
+      },
+      "rank_3": {
+        "title": "Professional Grief Counselling - Vancouver - Pathways",
+        "source": "vancouver.pathwaysbc.ca"
+      }
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "executed_query": "family cutoff counselling Vancouver",
+      "total_results": 686000,
+      "serp_features": "Local Map Pack",
+      "has_ai_overview": true,
+      "client_mentioned_in_aio_text": false,
+      "rank_1": {
+        "title": "Reduced-Cost Counselling Options in Vancouver January ...",
+        "source": "willowtreecounselling.ca"
+      },
+      "rank_2": {
+        "title": "Family Counselling Vancouver",
+        "source": "blueskywellnessclinic.ca"
+      },
+      "rank_3": {
+        "title": "Find Family Conflict Counselling Psychologists, Therapists ...",
+        "source": "counsellingbc.com"
+      }
+    },
+    {
+      "source_keyword": "reunification therapy near me",
+      "query_label": "A",
+      "executed_query": "reunification therapy near me",
+      "total_results": 15300,
+      "serp_features": "Local Map Pack",
+      "has_ai_overview": true,
+      "client_mentioned_in_aio_text": false,
+      "rank_1": {
+        "title": "Parent and Child Reunification Program | We ... - Vancouver",
+        "source": "reconnectfamilies.com"
+      },
+      "rank_2": {
+        "title": "Vancouver Family Preservation & Reunification Services",
+        "source": "westcoastfamily.org"
+      },
+      "rank_3": {
+        "title": "FAMILY FORWARD Reunification Therapy and ...",
+        "source": "alysonjones.ca"
+      }
+    },
+    {
+      "source_keyword": "reunification counselling BC",
+      "query_label": "A",
+      "executed_query": "reunification counselling BC",
+      "total_results": 91,
+      "serp_features": "Knowledge Panel",
+      "has_ai_overview": true,
+      "client_mentioned_in_aio_text": false,
+      "rank_1": {
+        "title": "Reunification Counselling Port Moody BC",
+        "source": "brightstarcounselling.com"
+      },
+      "rank_2": {
+        "title": "Vancouver Family Preservation & Reunification Services",
+        "source": "westcoastfamily.org"
+      },
+      "rank_3": {
+        "title": "Parent and Child Reunification Program | We service ...",
+        "source": "reconnectfamilies.com"
+      }
+    }
+  ],
+  "organic_summary": {
+    "total_rows": 168,
+    "entity_classified_count": 129,
+    "entity_unclassified_count": 39
+  },
+  "source_frequency_top30": [
+    [
+      "Reconnect Families",
+      6
+    ],
+    [
+      "Family Services of Greater Vancouver",
+      6
+    ],
+    [
+      "Psychology Today",
+      6
+    ],
+    [
+      "Willow Tree Counselling",
+      5
+    ],
+    [
+      "HelpStartsHere",
+      5
+    ],
+    [
+      "MacLean Family Law",
+      4
+    ],
+    [
+      "Susan Gamache",
+      3
+    ],
+    [
+      "BC Association of Clinical Counsellors",
+      3
+    ],
+    [
+      "Haven Wellness Collective",
+      3
+    ],
+    [
+      "Onyx Law Group",
+      3
+    ],
+    [
+      "Pathways BC",
+      3
+    ],
+    [
+      "Westcoast Family Centres",
+      3
+    ],
+    [
+      "211 British Columbia",
+      3
+    ],
+    [
+      "estrangedfamilytherapy.com",
+      2
+    ],
+    [
+      "Restored Hope Counselling Services",
+      2
+    ],
+    [
+      "Fulton & Company LLP",
+      2
+    ],
+    [
+      "Theravive",
+      2
+    ],
+    [
+      "gov.bc.ca",
+      2
+    ],
+    [
+      "Reddit \u00b7 r/legaladvicecanada",
+      2
+    ],
+    [
+      "Facebook \u00b7 Dr. Joshua Coleman: Parent / Grandparent Estrangement + Alienation",
+      2
+    ],
+    [
+      "Tina Gilbertson, LPC",
+      2
+    ],
+    [
+      "British Columbia Bereavement Helpline",
+      2
+    ],
+    [
+      "CounsellingBC",
+      2
+    ],
+    [
+      "ARC: Anxiety Relief Centre",
+      2
+    ],
+    [
+      "wellspringcounselling.ca",
+      2
+    ],
+    [
+      "Blue Sky Wellness Clinic",
+      2
+    ],
+    [
+      "Head and Heart Counselling",
+      2
+    ],
+    [
+      "Success BC",
+      2
+    ],
+    [
+      "Lotus Therapy & Counselling Centre",
+      2
+    ],
+    [
+      "Jericho Counselling",
+      2
+    ]
+  ],
+  "content_type_distribution": [
+    [
+      "other",
+      51
+    ],
+    [
+      "guide",
+      12
+    ],
+    [
+      "news",
+      12
+    ],
+    [
+      "service",
+      4
+    ],
+    [
+      "pdf",
+      1
+    ],
+    [
+      "directory",
+      1
+    ]
+  ],
+  "rank_deltas_top20": [
+    {
+      "source_keyword": "reunification therapy near me",
+      "query_label": "A",
+      "rank": 2,
+      "delta": 8,
+      "source": "Hollyburn Family Services",
+      "title": "Family Preservation & Reunification"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 2,
+      "delta": 7,
+      "source": "gov.bc.ca",
+      "title": "After a Death: Get Support When Someone Dies - Gov.bc.ca"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 3,
+      "delta": 7,
+      "source": "Pathways BC",
+      "title": "Professional Grief Counselling - Vancouver - Pathways"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 10,
+      "delta": -7,
+      "source": "wellspringcounselling.ca",
+      "title": "Grief & Loss Counselling in Vancouver, BC | Wellspring"
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 1,
+      "delta": 7,
+      "source": "Willow Tree Counselling",
+      "title": "Reduced-Cost Counselling Options in Vancouver January ..."
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 10,
+      "delta": -7,
+      "source": "Head and Heart Counselling",
+      "title": "Family Counselling in Vancouver"
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 2,
+      "delta": 7,
+      "source": "Boomerang Counselling Centre",
+      "title": "North Vancouver Counselling - Boomerang Centre"
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 9,
+      "delta": -7,
+      "source": "Counsel Me Vancouver",
+      "title": "How Family Counselling in Vancouver Can Help Your ..."
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 1,
+      "delta": 6,
+      "source": "The Tyee",
+      "title": "Grieving in the Age of Estrangement and Division"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 8,
+      "delta": -6,
+      "source": "Blue Sky Wellness Clinic",
+      "title": "Loss & Grief Counselling Vancouver"
+    },
+    {
+      "source_keyword": "reunification therapy near me",
+      "query_label": "A",
+      "rank": 1,
+      "delta": 6,
+      "source": "HelpStartsHere",
+      "title": "Family Preservation and Reunification Counselling Services"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 8,
+      "delta": -5,
+      "source": "Living Through Loss Counselling Society",
+      "title": "Home - Living Through Loss Counselling Society"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 9,
+      "delta": -5,
+      "source": "Willow Tree Counselling",
+      "title": "Relationship Issues"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 3,
+      "delta": 5,
+      "source": "Theravive Counseling",
+      "title": "Grief and Loss Counselling in East Vancouver, BC."
+    },
+    {
+      "source_keyword": "estrangement",
+      "query_label": "A",
+      "rank": 9,
+      "delta": -4,
+      "source": "Clicklaw Wikibooks",
+      "title": "Children Who Resist Seeing a Parent"
+    },
+    {
+      "source_keyword": "estrangement",
+      "query_label": "A",
+      "rank": 10,
+      "delta": -4,
+      "source": "Onyx Law Group",
+      "title": "Estranged Daughter Left Out of Will: A Case Study"
+    },
+    {
+      "source_keyword": "estrangement grief",
+      "query_label": "A",
+      "rank": 9,
+      "delta": -4,
+      "source": "BC Hospice Palliative Care Association",
+      "title": "I am a Griever or Bereaved"
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 5,
+      "delta": 4,
+      "source": "vancouver counsellor services",
+      "title": "Family Counselling Vancouver"
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 8,
+      "delta": -4,
+      "source": "Success BC",
+      "title": "Individual & Family Counselling"
+    },
+    {
+      "source_keyword": "family cutoff counselling Vancouver",
+      "query_label": "A",
+      "rank": 2,
+      "delta": 4,
+      "source": "Family Services of Greater Vancouver",
+      "title": "Trauma Counselling"
+    }
+  ],
+  "paa_analysis": {
+    "cross_cluster": [
+      {
+        "question": "How do I reach out to an estranged adult child?",
+        "source_keywords": [
+          "estrangement",
+          "estrangement from adult children"
+        ],
+        "cluster_count": 2,
+        "combined_total_results": 247400,
+        "category": "General"
+      },
+      {
+        "question": "When should you stop reaching out to an estranged child?",
+        "source_keywords": [
+          "estrangement",
+          "estrangement from adult children"
+        ],
+        "cluster_count": 2,
+        "combined_total_results": 247400,
+        "category": "General"
+      },
+      {
+        "question": "What should I expect in reunification therapy?",
+        "source_keywords": [
+          "reunification counselling BC",
+          "reunification therapy near me"
+        ],
+        "cluster_count": 2,
+        "combined_total_results": 15391,
+        "category": "General"
+      }
+    ],
+    "single_cluster": [
+      {
+        "question": "How long does the average family estrangement last?",
+        "source_keywords": [
+          "estrangement"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 231000,
+        "category": "General"
+      },
+      {
+        "question": "When to go no-contact with a family member?",
+        "source_keywords": [
+          "estrangement"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 231000,
+        "category": "General"
+      },
+      {
+        "question": "How long does parent-child estrangement usually last?",
+        "source_keywords": [
+          "estrangement from adult children"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 16400,
+        "category": "General"
+      },
+      {
+        "question": "Should you leave inheritance to an estranged child?",
+        "source_keywords": [
+          "estrangement from adult children"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 16400,
+        "category": "Distress"
+      },
+      {
+        "question": "How to get therapy covered in BC?",
+        "source_keywords": [
+          "reunification therapy near me"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 15300,
+        "category": "General"
+      },
+      {
+        "question": "What is a family reunification therapist?",
+        "source_keywords": [
+          "reunification therapy near me"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 15300,
+        "category": "General"
+      },
+      {
+        "question": "What is the most common goal of reunification family therapy?",
+        "source_keywords": [
+          "reunification therapy near me"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 15300,
+        "category": "General"
+      },
+      {
+        "question": "How to prove parental alienation in BC?",
+        "source_keywords": [
+          "reunification counselling BC"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 91,
+        "category": "General"
+      },
+      {
+        "question": "What is the best therapy for parental alienation?",
+        "source_keywords": [
+          "reunification counselling BC"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 91,
+        "category": "General"
+      },
+      {
+        "question": "Who qualifies for the family reunification program?",
+        "source_keywords": [
+          "reunification counselling BC"
+        ],
+        "cluster_count": 1,
+        "combined_total_results": 91,
+        "category": "General"
+      }
+    ],
+    "summary": {
+      "total_unique_questions": 13,
+      "cross_cluster_count": 3,
+      "single_cluster_count": 10
+    }
+  },
+  "tool_recommendations_verified": [
+    {
+      "pattern_name": "The Medical Model Trap",
+      "trigger_words_searched_for": [
+        "clinical",
+        "registered",
+        "diagnosis",
+        "disorder",
+        "mental health",
+        "patient",
+        "treatment"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {},
+        "in_organic_titles": {
+          "clinical": 1,
+          "registered": 1,
+          "mental health": 1
+        },
+        "in_organic_snippets": {
+          "clinical": 10,
+          "registered": 8,
+          "disorder": 1,
+          "mental health": 2,
+          "treatment": 3
+        },
+        "in_aio_text": {
+          "mental health": 3
+        },
+        "in_autocomplete": {},
+        "in_related_searches": {
+          "mental health": 2
+        }
+      },
+      "content_angle": "Why turning family estrangement into a diagnosis keeps you stuck.",
+      "status_quo_message": "You are sick/broken and need an expert to fix you (External Locus of Control).",
+      "reframe": "Shift from pathology to functioning. You don't need a diagnosis; you need a map of your emotional system.",
+      "verdict_inputs": {
+        "any_paa_evidence": false,
+        "any_autocomplete_evidence": false,
+        "total_trigger_occurrences": 32,
+        "primary_evidence_source": "in_organic_snippets"
+      }
+    },
+    {
+      "pattern_name": "The Fusion Trap",
+      "trigger_words_searched_for": [
+        "connection",
+        "bond",
+        "close",
+        "intimacy",
+        "communication",
+        "reconnect",
+        "reach out"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {
+          "reach out": 2
+        },
+        "in_organic_titles": {
+          "reconnect": 3
+        },
+        "in_organic_snippets": {
+          "connection": 4,
+          "communication": 6,
+          "reconnect": 1,
+          "reach out": 1
+        },
+        "in_aio_text": {
+          "connection": 1,
+          "communication": 2,
+          "reconnect": 5,
+          "reach out": 1
+        },
+        "in_autocomplete": {},
+        "in_related_searches": {
+          "reconnect": 1
+        }
+      },
+      "content_angle": "Why trying to force reconnection may deepen the cutoff.",
+      "status_quo_message": "The goal is to force closeness, agreement, or reconnection as quickly as possible.",
+      "reframe": "Sustainable contact requires differentiation. Anxiety-driven pursuit often increases reactivity and deepens cutoff.",
+      "verdict_inputs": {
+        "any_paa_evidence": true,
+        "any_autocomplete_evidence": false,
+        "total_trigger_occurrences": 27,
+        "primary_evidence_source": "in_organic_snippets"
+      }
+    },
+    {
+      "pattern_name": "The Resource Trap",
+      "trigger_words_searched_for": [
+        "free",
+        "low cost",
+        "sliding scale",
+        "cheap",
+        "affordable",
+        "covered",
+        "insurance"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {
+          "covered": 1
+        },
+        "in_organic_titles": {},
+        "in_organic_snippets": {
+          "free": 4,
+          "low cost": 1,
+          "affordable": 2
+        },
+        "in_aio_text": {
+          "free": 9,
+          "affordable": 1
+        },
+        "in_autocomplete": {
+          "free": 1
+        },
+        "in_related_searches": {
+          "free": 6
+        }
+      },
+      "content_angle": "When short-term relief becomes a substitute for working the family pattern.",
+      "status_quo_message": "High anxiety about resources/access. Seeking immediate symptom relief (venting).",
+      "reframe": "Address the anxiety driving the search. Cheap relief often delays real structural change.",
+      "verdict_inputs": {
+        "any_paa_evidence": true,
+        "any_autocomplete_evidence": true,
+        "total_trigger_occurrences": 25,
+        "primary_evidence_source": "in_aio_text"
+      }
+    },
+    {
+      "pattern_name": "The Blame/Reactivity Trap",
+      "trigger_words_searched_for": [
+        "narcissist",
+        "toxic",
+        "abusive",
+        "mean",
+        "angry",
+        "hate",
+        "deal with"
+      ],
+      "triggers_found": {
+        "in_paa_questions": {},
+        "in_organic_titles": {},
+        "in_organic_snippets": {},
+        "in_aio_text": {},
+        "in_autocomplete": {},
+        "in_related_searches": {}
+      },
+      "content_angle": "Stop diagnosing the other person and start observing your own reactivity.",
+      "status_quo_message": "The problem is the other person (The Identified Patient).",
+      "reframe": "Focus on self-regulation. You cannot change them, only your response to them.",
+      "verdict_inputs": {
+        "any_paa_evidence": false,
+        "any_autocomplete_evidence": false,
+        "total_trigger_occurrences": 0,
+        "primary_evidence_source": "none"
+      }
+    }
+  ],
+  "client_position": {
+    "organic": [
+      {
+        "source_keyword": "family cutoff counselling Vancouver",
+        "query_label": "A",
+        "rank": 7,
+        "title": "Can cutting off family be good therapy?",
+        "link": "https://livingsystems.ca/can-cutting-off-family-be-good-therapy/",
+        "rank_delta": -3,
+        "stability": "declining",
+        "competitors_above": [
+          {
+            "rank": 1,
+            "source": "Willow Tree Counselling",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 2,
+            "source": "Blue Sky Wellness Clinic",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 3,
+            "source": "Counselling BC",
+            "entity_type": "directory"
+          },
+          {
+            "rank": 4,
+            "source": "Options Community Services",
+            "entity_type": "nonprofit"
+          },
+          {
+            "rank": 5,
+            "source": "vancouver counsellor services",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 6,
+            "source": "Allison Rice Therapy",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 2,
+            "source": "Family Services of Greater Vancouver",
+            "entity_type": "government"
+          },
+          {
+            "rank": 3,
+            "source": "lavendercounselling.com",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 4,
+            "source": "Lotus Therapy & Counselling Centre",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 5,
+            "source": "Nightingale Counselling and Research",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 6,
+            "source": "ARC: Anxiety Relief Centre",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 1,
+            "source": "wellspringcounselling.ca",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 2,
+            "source": "Boomerang Counselling Centre",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 3,
+            "source": "Vida Relationships",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 4,
+            "source": "Hollyburn Support Services",
+            "entity_type": "counselling"
+          },
+          {
+            "rank": 5,
+            "source": "Family Services of the North Shore",
+            "entity_type": "nonprofit"
+          },
+          {
+            "rank": 6,
+            "source": "Latitude Counselling",
+            "entity_type": "counselling"
+          }
+        ]
+      }
+    ],
+    "aio_citations": [],
+    "aio_text_mentions": [],
+    "local_pack": [],
+    "language_pattern_mentions": [],
+    "summary": {
+      "total_organic_appearances": 1,
+      "total_aio_citations": 0,
+      "total_aio_text_mentions": 0,
+      "total_local_pack": 0,
+      "keywords_with_any_visibility": [
+        "family cutoff counselling Vancouver"
+      ],
+      "keywords_with_zero_visibility": [
+        "estrangement",
+        "estrangement from adult children",
+        "estrangement grief",
+        "reunification counselling BC",
+        "reunification therapy near me"
+      ],
+      "has_declining_positions": true,
+      "worst_delta": -3
+    }
+  },
+  "keyword_profiles": {
+    "estrangement": {
+      "total_results": 231000,
+      "serp_modules": [
+        "ai_overview:2",
+        "related_questions:5",
+        "organic_results:6",
+        "related_searches:8",
+        "discussions_and_forums:14"
+      ],
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "has_discussions_forums": true,
+      "entity_distribution": {
+        "counselling": 5,
+        "legal": 12,
+        "nonprofit": 2,
+        "directory": 1,
+        "professional_association": 1,
+        "government": 2,
+        "media": 1
+      },
+      "entity_dominant_type": "legal",
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Family Estrangement Therapy in Victoria, Vancouver & Kelowna",
+          "source": "estrangedfamilytherapy.com",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "Laws on Parental Alienation in BC",
+          "source": "Pathway Legal Family Lawyers",
+          "entity_type": "legal",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Family Estrangement Counselling for Parents & Children",
+          "source": "Restored Hope Counselling Services",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "British Columbia \u2013 CCMF",
+          "source": "Men and Families",
+          "entity_type": "nonprofit",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Court allows disinheritance of estranged children",
+          "source": "Clark Wilson LLP",
+          "entity_type": "legal",
+          "content_type": "news"
+        }
+      ],
+      "aio_citation_count": 21,
+      "aio_top_sources": [
+        [
+          "MacLean Family Law",
+          2
+        ],
+        [
+          "Reconnect Families",
+          2
+        ],
+        [
+          "Richter Trial Lawyers",
+          2
+        ],
+        [
+          "Lindsay Kenney LLP",
+          1
+        ],
+        [
+          "Westside Family Law",
+          1
+        ]
+      ],
+      "paa_questions": [
+        "How do I reach out to an estranged adult child?",
+        "How long does the average family estrangement last?",
+        "When should you stop reaching out to an estranged child?",
+        "When to go no-contact with a family member?"
+      ],
+      "paa_count": 4,
+      "autocomplete_top10": [
+        "estrangement meaning",
+        "estrangement synonym",
+        "estrangement from parents",
+        "http://estrangement.com",
+        "estrangement from family",
+        "estrangement in french",
+        "estrangement from adult children",
+        "estrangement grief",
+        "estrangement pronunciation",
+        "estrangement.com login"
+      ],
+      "related_searches": [
+        "Parental alienation Vancouver",
+        "Reunification therapy near me",
+        "Reconnect families",
+        "Reunification counselling"
+      ],
+      "local_pack_count": 13,
+      "client_visible": false,
+      "client_rank": null,
+      "client_rank_delta": null,
+      "client_aio_cited": false
+    },
+    "estrangement from adult children": {
+      "total_results": 16400,
+      "serp_modules": [
+        "ai_overview:2",
+        "related_questions:5",
+        "organic_results:6",
+        "related_searches:8",
+        "discussions_and_forums:14"
+      ],
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "has_discussions_forums": true,
+      "entity_distribution": {
+        "counselling": 6,
+        "legal": 4,
+        "directory": 3,
+        "media": 6,
+        "education": 1
+      },
+      "entity_dominant_type": "counselling",
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Family Estrangement Therapy in Victoria, Vancouver & Kelowna",
+          "source": "estrangedfamilytherapy.com",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "Family estrangements rise in Canada due to social, cultural ...",
+          "source": "Canadian Affairs",
+          "entity_type": "media",
+          "content_type": "news"
+        },
+        {
+          "rank": 1,
+          "title": "Those of you who are estranged from your children, what ...",
+          "source": "Reddit \u00b7 r/AskOldPeople",
+          "entity_type": "media",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Family Estrangement Counselling for Parents & Children",
+          "source": "Restored Hope Counselling Services",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Tina Gilbertson, LPC",
+          "source": "LinkedIn \u00b7 Tina Gilbertson",
+          "entity_type": "N/A",
+          "content_type": "other"
+        }
+      ],
+      "aio_citation_count": 18,
+      "aio_top_sources": [
+        [
+          "Psychology Today",
+          5
+        ],
+        [
+          "MacLean Family Law",
+          3
+        ],
+        [
+          "estrangedfamilytherapy.com",
+          1
+        ],
+        [
+          "Where Parents Talk",
+          1
+        ],
+        [
+          "Institute for Family Studies",
+          1
+        ]
+      ],
+      "paa_questions": [
+        "How do I reach out to an estranged adult child?",
+        "How long does parent-child estrangement usually last?",
+        "Should you leave inheritance to an estranged child?",
+        "When should you stop reaching out to an estranged child?"
+      ],
+      "paa_count": 4,
+      "autocomplete_top10": [
+        "estrangement from adult children quotes",
+        "estrangement from adult children to parents",
+        "estrangement from adult children book",
+        "estrangement from adult children reddit",
+        "estranged from adult children and grandchildren",
+        "estranged from adult children after divorce",
+        "detachment from adult children",
+        "alienation from adult children",
+        "estrangement from adult child",
+        "estrangement from adult son"
+      ],
+      "related_searches": [],
+      "local_pack_count": 2,
+      "client_visible": false,
+      "client_rank": null,
+      "client_rank_delta": null,
+      "client_aio_cited": false
+    },
+    "estrangement grief": {
+      "total_results": 31700,
+      "serp_modules": [
+        "ai_overview:2",
+        "related_questions:5",
+        "organic_results:6",
+        "related_searches:8",
+        "discussions_and_forums:14"
+      ],
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "has_discussions_forums": true,
+      "entity_distribution": {
+        "nonprofit": 3,
+        "government": 2,
+        "directory": 4,
+        "counselling": 7,
+        "media": 1
+      },
+      "entity_dominant_type": "counselling",
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "British Columbia Bereavement Helpline - Homepage New",
+          "source": "British Columbia Bereavement Helpline",
+          "entity_type": "nonprofit",
+          "content_type": "news"
+        },
+        {
+          "rank": 1,
+          "title": "Grieving in the Age of Estrangement and Division",
+          "source": "The Tyee",
+          "entity_type": "N/A",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "After a Death: Get Support When Someone Dies - Gov.bc.ca",
+          "source": "gov.bc.ca",
+          "entity_type": "government",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Death of estranged parent : r/legaladvicecanada",
+          "source": "Reddit \u00b7 r/legaladvicecanada",
+          "entity_type": "media",
+          "content_type": "other"
+        },
+        {
+          "rank": 3,
+          "title": "Professional Grief Counselling - Vancouver - Pathways",
+          "source": "Pathways BC",
+          "entity_type": "government",
+          "content_type": "other"
+        }
+      ],
+      "aio_citation_count": 19,
+      "aio_top_sources": [
+        [
+          "The Tyee",
+          1
+        ],
+        [
+          "Apple Podcasts",
+          1
+        ],
+        [
+          "estrangedfamilytherapy.com",
+          1
+        ],
+        [
+          "lmgr.ca",
+          1
+        ],
+        [
+          "Clearheart Counselling",
+          1
+        ]
+      ],
+      "paa_questions": [],
+      "paa_count": 0,
+      "autocomplete_top10": [
+        "estrangement grief quotes",
+        "estrangement grief support group",
+        "estrangement grief reddit",
+        "sibling estrangement grief",
+        "parental estrangement grief",
+        "family scapegoat estrangement grief",
+        "complicated grief estrangement",
+        "disenfranchised grief estrangement",
+        "stages of grief family estrangement",
+        "stages of grief estrangement"
+      ],
+      "related_searches": [
+        "Family estrangement grief vancouver british columbia canada",
+        "Estrangement grief vancouver british columbia canada form",
+        "Grief support groups Vancouver",
+        "Grief and loss bc",
+        "Grief and loss programs",
+        "Grief counselling Vancouver free",
+        "Online grief support groups Canada",
+        "Free grief counselling"
+      ],
+      "local_pack_count": 14,
+      "client_visible": false,
+      "client_rank": null,
+      "client_rank_delta": null,
+      "client_aio_cited": false
+    },
+    "family cutoff counselling Vancouver": {
+      "total_results": 686000,
+      "serp_modules": [
+        "ai_overview:2",
+        "local_results:4",
+        "related_questions:5",
+        "organic_results:6",
+        "related_searches:8",
+        "discussions_and_forums:14",
+        "filters:15",
+        "local_map:16"
+      ],
+      "has_ai_overview": true,
+      "has_local_pack": true,
+      "has_discussions_forums": true,
+      "entity_distribution": {
+        "counselling": 17,
+        "directory": 3,
+        "nonprofit": 2,
+        "government": 2
+      },
+      "entity_dominant_type": "counselling",
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Reduced-Cost Counselling Options in Vancouver January ...",
+          "source": "Willow Tree Counselling",
+          "entity_type": "counselling",
+          "content_type": "pdf"
+        },
+        {
+          "rank": 1,
+          "title": "Family & Parent Counselling Therapy in Vancouver, BC",
+          "source": "wellspringcounselling.ca",
+          "entity_type": "counselling",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Family Counselling Vancouver",
+          "source": "Blue Sky Wellness Clinic",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Trauma Counselling",
+          "source": "Family Services of Greater Vancouver",
+          "entity_type": "government",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "North Vancouver Counselling - Boomerang Centre",
+          "source": "Boomerang Counselling Centre",
+          "entity_type": "counselling",
+          "content_type": "other"
+        }
+      ],
+      "aio_citation_count": 14,
+      "aio_top_sources": [
+        [
+          "YouTube",
+          2
+        ],
+        [
+          "Willow Tree Counselling",
+          1
+        ],
+        [
+          "Restored Hope Counselling Services",
+          1
+        ],
+        [
+          "Psychology Today",
+          1
+        ],
+        [
+          "Vida Relationships",
+          1
+        ]
+      ],
+      "paa_questions": [],
+      "paa_count": 0,
+      "autocomplete_top10": [
+        "family counselling vancouver",
+        "family counselling bc",
+        "family counselling north vancouver",
+        "family counselling burnaby"
+      ],
+      "related_searches": [
+        "Low-cost counselling Vancouver",
+        "Family counselling Vancouver",
+        "Free counselling Vancouver",
+        "Free couples counselling Vancouver",
+        "Low-cost couples counselling Vancouver",
+        "Free mental health counselling BC",
+        "Family counselling North Vancouver",
+        "Low-cost counselling BC",
+        "Family Counselling Vancouver",
+        "Family counselling Surrey"
+      ],
+      "local_pack_count": 23,
+      "client_visible": true,
+      "client_rank": 7,
+      "client_rank_delta": -3,
+      "client_aio_cited": false
+    },
+    "reunification counselling BC": {
+      "total_results": 91,
+      "serp_modules": [
+        "ai_overview:2",
+        "related_questions:5",
+        "organic_results:6",
+        "related_searches:8",
+        "knowledge_graph:9",
+        "discussions_and_forums:14"
+      ],
+      "has_ai_overview": true,
+      "has_local_pack": false,
+      "has_discussions_forums": true,
+      "entity_distribution": {
+        "counselling": 11,
+        "nonprofit": 3,
+        "legal": 1,
+        "government": 6,
+        "professional_association": 1,
+        "directory": 1
+      },
+      "entity_dominant_type": "counselling",
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Reunification Counselling Port Moody BC",
+          "source": "Bright Star Counselling",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "REACH Reunification Program",
+          "source": "Susan Gamache",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Vancouver Family Preservation & Reunification Services",
+          "source": "Westcoast Family Centres",
+          "entity_type": "nonprofit",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Individual & Family Counselling",
+          "source": "Success BC",
+          "entity_type": "nonprofit",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "REACH REUNIFICATION PROGRAM - Updated March 2026",
+          "source": "Yelp",
+          "entity_type": "directory",
+          "content_type": "other"
+        }
+      ],
+      "aio_citation_count": 16,
+      "aio_top_sources": [
+        [
+          "Reconnect Families",
+          2
+        ],
+        [
+          "211 British Columbia",
+          2
+        ],
+        [
+          "Bright Star Counselling",
+          1
+        ],
+        [
+          "Hollyburn Family Services",
+          1
+        ],
+        [
+          "HelpStartsHere",
+          1
+        ]
+      ],
+      "paa_questions": [
+        "How to prove parental alienation in BC?",
+        "What is the best therapy for parental alienation?",
+        "What should I expect in reunification therapy?",
+        "Who qualifies for the family reunification program?"
+      ],
+      "paa_count": 4,
+      "autocomplete_top10": [
+        "reunification therapy bc",
+        "what is a reunification counselor",
+        "reunification therapy near me",
+        "reunification therapy cost",
+        "family reunification therapy near me",
+        "child reunification process",
+        "reunification counselling",
+        "reunification counselling ottawa",
+        "reunification therapy canada",
+        "reunification therapy calgary"
+      ],
+      "related_searches": [
+        "Private reunification counselling bc vancouver british columbia canada",
+        "Family reunification counselling bc vancouver british columbia canada",
+        "Reunification therapy Vancouver",
+        "Reunification therapy near me",
+        "Reunification therapy bc",
+        "Reunification counselling victoria",
+        "When is reunification therapy not recommended",
+        "Vancouver family preservation and reunification services",
+        "4103 fraser street vancouver",
+        "REACH reunification program"
+      ],
+      "local_pack_count": 3,
+      "client_visible": false,
+      "client_rank": null,
+      "client_rank_delta": null,
+      "client_aio_cited": false
+    },
+    "reunification therapy near me": {
+      "total_results": 15300,
+      "serp_modules": [
+        "local_results:4",
+        "related_questions:5",
+        "organic_results:6",
+        "related_searches:8",
+        "discussions_and_forums:14",
+        "filters:15",
+        "local_map:16"
+      ],
+      "has_ai_overview": true,
+      "has_local_pack": true,
+      "has_discussions_forums": true,
+      "entity_distribution": {
+        "legal": 2,
+        "nonprofit": 2,
+        "counselling": 10,
+        "government": 4,
+        "professional_association": 1,
+        "directory": 2
+      },
+      "entity_dominant_type": "counselling",
+      "top5_organic": [
+        {
+          "rank": 1,
+          "title": "Parent and Child Reunification Program | We ... - Vancouver",
+          "source": "Reconnect Families",
+          "entity_type": "legal",
+          "content_type": "other"
+        },
+        {
+          "rank": 1,
+          "title": "Family Preservation and Reunification Counselling Services",
+          "source": "HelpStartsHere",
+          "entity_type": "government",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Vancouver Family Preservation & Reunification Services",
+          "source": "Westcoast Family Centres",
+          "entity_type": "nonprofit",
+          "content_type": "guide"
+        },
+        {
+          "rank": 2,
+          "title": "Family Preservation & Reunification",
+          "source": "Hollyburn Family Services",
+          "entity_type": "counselling",
+          "content_type": "other"
+        },
+        {
+          "rank": 2,
+          "title": "Family & Couples Therapy | Langley, BC",
+          "source": "Dr. Ellie Bolgar",
+          "entity_type": "legal",
+          "content_type": "other"
+        }
+      ],
+      "aio_citation_count": 0,
+      "aio_top_sources": [],
+      "paa_questions": [
+        "How to get therapy covered in BC?",
+        "What is a family reunification therapist?",
+        "What is the most common goal of reunification family therapy?",
+        "What should I expect in reunification therapy?"
+      ],
+      "paa_count": 4,
+      "autocomplete_top10": [
+        "reunification therapy near me within 5 mi",
+        "reunification therapists near me",
+        "reunification counseling near me",
+        "reintegration therapy near me",
+        "family reunification therapy near me",
+        "child reunification therapy near me",
+        "parent reunification therapy near me",
+        "free reunification therapy near me",
+        "best reunification therapy near me",
+        "reunification therapy training near me"
+      ],
+      "related_searches": [
+        "Reunification therapy Vancouver",
+        "Vancouver family preservation and reunification services",
+        "Reunification therapy bc",
+        "When is reunification therapy not recommended",
+        "Reunification counselling victoria",
+        "Family Services of Greater Vancouver",
+        "4103 fraser street vancouver",
+        "Therapists who specialize in parental alienation near me",
+        "REACH reunification program"
+      ],
+      "local_pack_count": 23,
+      "client_visible": false,
+      "client_rank": null,
+      "client_rank_delta": null,
+      "client_aio_cited": false
+    }
+  },
+  "competitive_landscape": {
+    "estrangement": {
+      "total_organic_results": 29,
+      "entity_breakdown": {
+        "counselling": 5,
+        "legal": 12,
+        "N/A": 5,
+        "nonprofit": 2,
+        "directory": 1,
+        "professional_association": 1,
+        "government": 2,
+        "media": 1
+      },
+      "top_sources": [
+        {
+          "source": "Reconnect Families",
+          "appearances": 2,
+          "entity_type": "legal",
+          "best_rank": 3
+        },
+        {
+          "source": "MacLean Family Law",
+          "appearances": 2,
+          "entity_type": "legal",
+          "best_rank": 4
+        },
+        {
+          "source": "Pathway Legal Family Lawyers",
+          "appearances": 1,
+          "entity_type": "legal",
+          "best_rank": 1
+        },
+        {
+          "source": "estrangedfamilytherapy.com",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 1
+        },
+        {
+          "source": "Clark Wilson LLP",
+          "appearances": 1,
+          "entity_type": "legal",
+          "best_rank": 2
+        }
+      ],
+      "content_type_breakdown": {
+        "other": 6,
+        "guide": 3,
+        "news": 4,
+        "service": 1
+      }
+    },
+    "estrangement from adult children": {
+      "total_organic_results": 29,
+      "entity_breakdown": {
+        "counselling": 6,
+        "N/A": 9,
+        "legal": 4,
+        "directory": 3,
+        "media": 6,
+        "education": 1
+      },
+      "top_sources": [
+        {
+          "source": "Psychology Today",
+          "appearances": 3,
+          "entity_type": "directory",
+          "best_rank": 3
+        },
+        {
+          "source": "Tina Gilbertson, LPC",
+          "appearances": 2,
+          "entity_type": "N/A",
+          "best_rank": 2
+        },
+        {
+          "source": "MacLean Family Law",
+          "appearances": 2,
+          "entity_type": "legal",
+          "best_rank": 5
+        },
+        {
+          "source": "Onyx Law Group",
+          "appearances": 2,
+          "entity_type": "legal",
+          "best_rank": 7
+        },
+        {
+          "source": "Canadian Affairs",
+          "appearances": 1,
+          "entity_type": "media",
+          "best_rank": 1
+        }
+      ],
+      "content_type_breakdown": {
+        "other": 7,
+        "guide": 3,
+        "news": 4
+      }
+    },
+    "estrangement grief": {
+      "total_organic_results": 25,
+      "entity_breakdown": {
+        "nonprofit": 3,
+        "government": 2,
+        "directory": 4,
+        "counselling": 7,
+        "N/A": 8,
+        "media": 1
+      },
+      "top_sources": [
+        {
+          "source": "British Columbia Bereavement Helpline",
+          "appearances": 2,
+          "entity_type": "nonprofit",
+          "best_rank": 1
+        },
+        {
+          "source": "The Tyee",
+          "appearances": 1,
+          "entity_type": "N/A",
+          "best_rank": 1
+        },
+        {
+          "source": "Reddit \u00b7 r/legaladvicecanada",
+          "appearances": 1,
+          "entity_type": "media",
+          "best_rank": 2
+        },
+        {
+          "source": "gov.bc.ca",
+          "appearances": 1,
+          "entity_type": "government",
+          "best_rank": 2
+        },
+        {
+          "source": "Pathways BC",
+          "appearances": 1,
+          "entity_type": "government",
+          "best_rank": 3
+        }
+      ],
+      "content_type_breakdown": {
+        "news": 2,
+        "guide": 1,
+        "other": 8
+      }
+    },
+    "family cutoff counselling Vancouver": {
+      "total_organic_results": 29,
+      "entity_breakdown": {
+        "counselling": 17,
+        "directory": 3,
+        "nonprofit": 2,
+        "government": 2,
+        "N/A": 5
+      },
+      "top_sources": [
+        {
+          "source": "Willow Tree Counselling",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 1
+        },
+        {
+          "source": "wellspringcounselling.ca",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 1
+        },
+        {
+          "source": "Blue Sky Wellness Clinic",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 2
+        },
+        {
+          "source": "Boomerang Counselling Centre",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 2
+        },
+        {
+          "source": "Family Services of Greater Vancouver",
+          "appearances": 1,
+          "entity_type": "government",
+          "best_rank": 2
+        }
+      ],
+      "content_type_breakdown": {
+        "pdf": 1,
+        "other": 8,
+        "news": 2,
+        "service": 1,
+        "guide": 1,
+        "directory": 1
+      }
+    },
+    "reunification counselling BC": {
+      "total_organic_results": 29,
+      "entity_breakdown": {
+        "counselling": 11,
+        "nonprofit": 3,
+        "legal": 1,
+        "government": 6,
+        "N/A": 6,
+        "professional_association": 1,
+        "directory": 1
+      },
+      "top_sources": [
+        {
+          "source": "HelpStartsHere",
+          "appearances": 3,
+          "entity_type": "government",
+          "best_rank": 3
+        },
+        {
+          "source": "211 British Columbia",
+          "appearances": 2,
+          "entity_type": "N/A",
+          "best_rank": 5
+        },
+        {
+          "source": "Family Services of Greater Vancouver",
+          "appearances": 2,
+          "entity_type": "government",
+          "best_rank": 6
+        },
+        {
+          "source": "Bright Star Counselling",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 1
+        },
+        {
+          "source": "Susan Gamache",
+          "appearances": 1,
+          "entity_type": "counselling",
+          "best_rank": 1
+        }
+      ],
+      "content_type_breakdown": {
+        "other": 11,
+        "guide": 2,
+        "service": 1
+      }
+    },
+    "reunification therapy near me": {
+      "total_organic_results": 27,
+      "entity_breakdown": {
+        "legal": 2,
+        "nonprofit": 2,
+        "counselling": 10,
+        "government": 4,
+        "N/A": 6,
+        "professional_association": 1,
+        "directory": 2
+      },
+      "top_sources": [
+        {
+          "source": "HelpStartsHere",
+          "appearances": 2,
+          "entity_type": "government",
+          "best_rank": 1
+        },
+        {
+          "source": "Reconnect Families",
+          "appearances": 2,
+          "entity_type": "legal",
+          "best_rank": 1
+        },
+        {
+          "source": "Westcoast Family Centres",
+          "appearances": 2,
+          "entity_type": "nonprofit",
+          "best_rank": 2
+        },
+        {
+          "source": "Family Services of Greater Vancouver",
+          "appearances": 2,
+          "entity_type": "government",
+          "best_rank": 5
+        },
+        {
+          "source": "Dr. Ellie Bolgar",
+          "appearances": 1,
+          "entity_type": "legal",
+          "best_rank": 2
+        }
+      ],
+      "content_type_breakdown": {
+        "other": 11,
+        "guide": 2,
+        "service": 1
+      }
+    }
+  },
+  "aio_analysis": {
+    "estrangement": {
+      "has_aio": true,
+      "aio_length_chars": 3288,
+      "sources_named_in_text": [
+        "MacLean Family Law",
+        "Reconnect Families",
+        "Richter Trial Lawyers",
+        "Westside Family Law",
+        "estrangedfamilytherapy.com",
+        "Men and Families"
+      ],
+      "client_mentioned": false,
+      "client_excerpt": null,
+      "key_phrases": [
+        "parental alienation",
+        "family estrangement",
+        "reconnect families",
+        "mental health",
+        "maclean law"
+      ],
+      "opening_excerpt": "Estrangement in Vancouver and British Columbia (BC) refers to the breakdown of family relationships, often resulting in \"no-contact\" scenarios between parents and children or among siblings. In BC, this is distinct from \"parental alienation,\" as estrangement often stems from a child\u2019s rational response to a parent\u2019s past behaviors\u2014such as abuse, neglect, or conflict\u2014rather than manipulation by ano"
+    },
+    "estrangement from adult children": {
+      "has_aio": true,
+      "aio_length_chars": 2931,
+      "sources_named_in_text": [
+        "Where Parents Talk"
+      ],
+      "client_mentioned": false,
+      "client_excerpt": null,
+      "key_phrases": [
+        "adult children",
+        "parental alienation",
+        "adult child",
+        "maclean law"
+      ],
+      "opening_excerpt": "Estrangement from adult children is a growing issue in Canada, often referred to as a \"silent epidemic,\" with approximately 1 in 8 older adults experiencing a severed relationship with at least one child. In British Columbia, particularly in high-conflict situations, this can manifest as legal disputes involving parental alienation or, more commonly, voluntary cutoff initiated by the adult child d"
+    },
+    "estrangement grief": {
+      "has_aio": true,
+      "aio_length_chars": 3063,
+      "sources_named_in_text": [
+        "The Tyee",
+        "Apple Podcasts",
+        "estrangedfamilytherapy.com",
+        "lmgr.ca",
+        "Clearheart Counselling",
+        "British Columbia Bereavement Helpline",
+        "Matthew Funeral Home And Cremation Services Inc",
+        "Wellspring Counselling"
+      ],
+      "client_mentioned": false,
+      "client_excerpt": null,
+      "key_phrases": [
+        "estrangement grief",
+        "family estrangement",
+        "grief estrangement"
+      ],
+      "opening_excerpt": "Estrangement, often referred to as \"disenfranchised grief\" because it is not socially acknowledged in the same way as death, is a profoundly isolating experience. In Vancouver, BC, there are specific resources for managing this type of loss, which involves complex emotions like shame, anger, and lingering hope. The Tyee +2 Here is a guide to resources for managing estrangement grief in Vancouver a"
+    },
+    "family cutoff counselling Vancouver": {
+      "has_aio": true,
+      "aio_length_chars": 2547,
+      "sources_named_in_text": [
+        "Willow Tree Counselling",
+        "Restored Hope Counselling Services",
+        "Psychology Today",
+        "Vida Relationships",
+        "Success BC",
+        "Vancouver Psychology Centre",
+        "Jericho Counselling",
+        "Reconnect Families"
+      ],
+      "client_mentioned": false,
+      "client_excerpt": null,
+      "key_phrases": [
+        "family estrangement",
+        "adult child",
+        "reconnect families"
+      ],
+      "opening_excerpt": "Family cutoff (estrangement) counselling in Vancouver is available through specialized private practices and community-based organizations that focus on rebuilding, managing, or processing the emotional impact of family disconnection. These services often address the shame, grief, and confusion associated with estrangement, with some specializing in adult child-parent conflicts. Restored Hope Coun"
+    },
+    "reunification counselling BC": {
+      "has_aio": true,
+      "aio_length_chars": 2728,
+      "sources_named_in_text": [
+        "Reconnect Families",
+        "Bright Star Counselling",
+        "Hollyburn Family Services",
+        "HelpStartsHere",
+        "Alyson Jones & Associates",
+        "Touchstone Family Association",
+        "VACFSS",
+        "Family Services of Greater Vancouver"
+      ],
+      "client_mentioned": false,
+      "client_excerpt": null,
+      "key_phrases": [
+        "high conflict",
+        "family reunification",
+        "family preservation",
+        "reconnect families",
+        "mental health",
+        "bright star"
+      ],
+      "opening_excerpt": "Reunification counselling services in Vancouver and the Lower Mainland, BC, are primarily designed to help families, children, and youth reconnect following separation, high-conflict divorce, estrangement, or involvement with child protection services. Services are available through both ministry-referred programs (often free) and private specialized practices. Government-Funded & Community Progra"
+    },
+    "reunification therapy near me": {
+      "has_aio": true,
+      "aio_length_chars": 3,
+      "sources_named_in_text": [],
+      "client_mentioned": false,
+      "client_excerpt": null,
+      "key_phrases": [],
+      "opening_excerpt": "N/A"
+    }
+  },
+  "aio_citations_top25": [
+    [
+      "Psychology Today",
+      7
+    ],
+    [
+      "MacLean Family Law",
+      5
+    ],
+    [
+      "Reconnect Families",
+      5
+    ],
+    [
+      "estrangedfamilytherapy.com",
+      3
+    ],
+    [
+      "Richter Trial Lawyers",
+      2
+    ],
+    [
+      "HelpStartsHere",
+      2
+    ],
+    [
+      "Onyx Law Group",
+      2
+    ],
+    [
+      "Restored Hope Counselling Services",
+      2
+    ],
+    [
+      "Pathways BC",
+      2
+    ],
+    [
+      "Alyson Jones & Associates",
+      2
+    ],
+    [
+      "YouTube",
+      2
+    ],
+    [
+      "211 British Columbia",
+      2
+    ],
+    [
+      "Lindsay Kenney LLP",
+      1
+    ],
+    [
+      "Westside Family Law",
+      1
+    ],
+    [
+      "Men and Families",
+      1
+    ],
+    [
+      "Theravive",
+      1
+    ],
+    [
+      "Cleveland Clinic Health Essentials",
+      1
+    ],
+    [
+      "DSG Family Law",
+      1
+    ],
+    [
+      "MoodRx LLC",
+      1
+    ],
+    [
+      "Northam Law Corporation",
+      1
+    ],
+    [
+      "Nanuq Law",
+      1
+    ],
+    [
+      "SiLaw Group",
+      1
+    ],
+    [
+      "ChoosingTherapy.com",
+      1
+    ],
+    [
+      "Where Parents Talk",
+      1
+    ],
+    [
+      "Institute for Family Studies",
+      1
+    ]
+  ],
+  "aio_total_citations": 88,
+  "aio_unique_sources": 64,
+  "autocomplete_by_keyword": {
+    "estrangement": [
+      {
+        "suggestion": "estrangement meaning",
+        "relevance": 1250
+      },
+      {
+        "suggestion": "estrangement synonym",
+        "relevance": 602
+      },
+      {
+        "suggestion": "estrangement from parents",
+        "relevance": 601
+      },
+      {
+        "suggestion": "http://estrangement.com",
+        "relevance": 600
+      },
+      {
+        "suggestion": "estrangement from family",
+        "relevance": 560
+      },
+      {
+        "suggestion": "estrangement in french",
+        "relevance": 559
+      },
+      {
+        "suggestion": "estrangement from adult children",
+        "relevance": 558
+      },
+      {
+        "suggestion": "estrangement grief",
+        "relevance": 557
+      },
+      {
+        "suggestion": "estrangement pronunciation",
+        "relevance": 556
+      },
+      {
+        "suggestion": "estrangement.com login",
+        "relevance": 555
+      },
+      {
+        "suggestion": "estrangement epidemic",
+        "relevance": 554
+      },
+      {
+        "suggestion": "estrangement reddit",
+        "relevance": 553
+      },
+      {
+        "suggestion": "estrangement books",
+        "relevance": 552
+      },
+      {
+        "suggestion": "estrangement at christmas",
+        "relevance": 551
+      },
+      {
+        "suggestion": "estrangement voidpet",
+        "relevance": 550
+      }
+    ],
+    "estrangement from adult children": [
+      {
+        "suggestion": "estrangement from adult children quotes",
+        "relevance": 601
+      },
+      {
+        "suggestion": "estrangement from adult children to parents",
+        "relevance": 600
+      },
+      {
+        "suggestion": "estrangement from adult children book",
+        "relevance": 562
+      },
+      {
+        "suggestion": "estrangement from adult children reddit",
+        "relevance": 561
+      },
+      {
+        "suggestion": "estranged from adult children and grandchildren",
+        "relevance": 560
+      },
+      {
+        "suggestion": "estranged from adult children after divorce",
+        "relevance": 559
+      },
+      {
+        "suggestion": "detachment from adult children",
+        "relevance": 558
+      },
+      {
+        "suggestion": "alienation from adult children",
+        "relevance": 557
+      },
+      {
+        "suggestion": "estrangement from adult child",
+        "relevance": 556
+      },
+      {
+        "suggestion": "estrangement from adult son",
+        "relevance": 555
+      },
+      {
+        "suggestion": "estrangement from adult daughter",
+        "relevance": 554
+      },
+      {
+        "suggestion": "estranged from adult child reddit",
+        "relevance": 553
+      },
+      {
+        "suggestion": "mothers estranged from adult children",
+        "relevance": 552
+      },
+      {
+        "suggestion": "father estranged from adult children",
+        "relevance": 551
+      },
+      {
+        "suggestion": "estranged from my adult children",
+        "relevance": 550
+      }
+    ],
+    "estrangement grief": [
+      {
+        "suggestion": "estrangement grief quotes",
+        "relevance": 601
+      },
+      {
+        "suggestion": "estrangement grief support group",
+        "relevance": 600
+      },
+      {
+        "suggestion": "estrangement grief reddit",
+        "relevance": 560
+      },
+      {
+        "suggestion": "sibling estrangement grief",
+        "relevance": 559
+      },
+      {
+        "suggestion": "parental estrangement grief",
+        "relevance": 558
+      },
+      {
+        "suggestion": "family scapegoat estrangement grief",
+        "relevance": 557
+      },
+      {
+        "suggestion": "complicated grief estrangement",
+        "relevance": 556
+      },
+      {
+        "suggestion": "disenfranchised grief estrangement",
+        "relevance": 555
+      },
+      {
+        "suggestion": "stages of grief family estrangement",
+        "relevance": 554
+      },
+      {
+        "suggestion": "stages of grief estrangement",
+        "relevance": 553
+      },
+      {
+        "suggestion": "how to grieve an estranged child",
+        "relevance": 552
+      },
+      {
+        "suggestion": "how to grieve an estranged parent",
+        "relevance": 551
+      },
+      {
+        "suggestion": "grief estranged family",
+        "relevance": 550
+      }
+    ],
+    "family cutoff counselling Vancouver": [
+      {
+        "suggestion": "family counselling vancouver",
+        "relevance": 601
+      },
+      {
+        "suggestion": "family counselling bc",
+        "relevance": 600
+      },
+      {
+        "suggestion": "family counselling north vancouver",
+        "relevance": 551
+      },
+      {
+        "suggestion": "family counselling burnaby",
+        "relevance": 550
+      }
+    ],
+    "reunification therapy near me": [
+      {
+        "suggestion": "reunification therapy near me within 5 mi",
+        "relevance": 601
+      },
+      {
+        "suggestion": "reunification therapists near me",
+        "relevance": 600
+      },
+      {
+        "suggestion": "reunification counseling near me",
+        "relevance": 562
+      },
+      {
+        "suggestion": "reintegration therapy near me",
+        "relevance": 561
+      },
+      {
+        "suggestion": "family reunification therapy near me",
+        "relevance": 560
+      },
+      {
+        "suggestion": "child reunification therapy near me",
+        "relevance": 559
+      },
+      {
+        "suggestion": "parent reunification therapy near me",
+        "relevance": 558
+      },
+      {
+        "suggestion": "free reunification therapy near me",
+        "relevance": 557
+      },
+      {
+        "suggestion": "best reunification therapy near me",
+        "relevance": 556
+      },
+      {
+        "suggestion": "reunification therapy training near me",
+        "relevance": 555
+      },
+      {
+        "suggestion": "family reunification therapists near me",
+        "relevance": 554
+      },
+      {
+        "suggestion": "court ordered reunification therapy near me",
+        "relevance": 553
+      },
+      {
+        "suggestion": "parent child reunification therapy near me",
+        "relevance": 552
+      },
+      {
+        "suggestion": "family reunification counseling near me",
+        "relevance": 551
+      },
+      {
+        "suggestion": "top rated reunification therapy near me",
+        "relevance": 550
+      }
+    ],
+    "reunification counselling BC": [
+      {
+        "suggestion": "reunification therapy bc",
+        "relevance": 601
+      },
+      {
+        "suggestion": "what is a reunification counselor",
+        "relevance": 600
+      },
+      {
+        "suggestion": "reunification therapy near me",
+        "relevance": 557
+      },
+      {
+        "suggestion": "reunification therapy cost",
+        "relevance": 556
+      },
+      {
+        "suggestion": "family reunification therapy near me",
+        "relevance": 555
+      },
+      {
+        "suggestion": "child reunification process",
+        "relevance": 554
+      },
+      {
+        "suggestion": "reunification counselling",
+        "relevance": 553
+      },
+      {
+        "suggestion": "reunification counselling ottawa",
+        "relevance": 552
+      },
+      {
+        "suggestion": "reunification therapy canada",
+        "relevance": 551
+      },
+      {
+        "suggestion": "reunification therapy calgary",
+        "relevance": 550
+      }
+    ]
+  },
+  "related_searches_by_keyword": {
+    "estrangement": [
+      "Parental alienation Vancouver",
+      "Reunification therapy near me",
+      "Reconnect families",
+      "Reunification counselling"
+    ],
+    "estrangement grief": [
+      "Family estrangement grief vancouver british columbia canada",
+      "Estrangement grief vancouver british columbia canada form",
+      "Grief support groups Vancouver",
+      "Grief and loss bc",
+      "Grief and loss programs",
+      "Grief counselling Vancouver free",
+      "Online grief support groups Canada",
+      "Free grief counselling"
+    ],
+    "family cutoff counselling Vancouver": [
+      "Low-cost counselling Vancouver",
+      "Family counselling Vancouver",
+      "Free counselling Vancouver",
+      "Free couples counselling Vancouver",
+      "Low-cost couples counselling Vancouver",
+      "Free mental health counselling BC",
+      "Family counselling North Vancouver",
+      "Low-cost counselling BC",
+      "Family Counselling Vancouver",
+      "Family counselling Surrey",
+      "Family Counselling Burnaby",
+      "Free counselling Surrey BC",
+      "Mental health Counselling Surrey"
+    ],
+    "reunification therapy near me": [
+      "Reunification therapy Vancouver",
+      "Vancouver family preservation and reunification services",
+      "Reunification therapy bc",
+      "When is reunification therapy not recommended",
+      "Reunification counselling victoria",
+      "Family Services of Greater Vancouver",
+      "4103 fraser street vancouver",
+      "Therapists who specialize in parental alienation near me",
+      "REACH reunification program"
+    ],
+    "reunification counselling BC": [
+      "Private reunification counselling bc vancouver british columbia canada",
+      "Family reunification counselling bc vancouver british columbia canada",
+      "Reunification therapy Vancouver",
+      "Reunification therapy near me",
+      "Reunification therapy bc",
+      "Reunification counselling victoria",
+      "When is reunification therapy not recommended",
+      "Vancouver family preservation and reunification services",
+      "4103 fraser street vancouver",
+      "REACH reunification program",
+      "Reunification Therapy Calgary",
+      "Family reunification services",
+      "Vancouver Family preservation and reunification services",
+      "Family Services of Greater Vancouver"
+    ]
+  },
+  "autocomplete_summary": {
+    "total_suggestions": 72,
+    "by_keyword": {
+      "estrangement": 15,
+      "estrangement from adult children": 15,
+      "estrangement grief": 13,
+      "family cutoff counselling Vancouver": 4,
+      "reunification therapy near me": 15,
+      "reunification counselling BC": 10
+    },
+    "trigger_word_hits": {
+      "abusive": [],
+      "affordable": [],
+      "angry": [],
+      "bond": [],
+      "cheap": [],
+      "clinical": [],
+      "close": [],
+      "communication": [],
+      "connection": [],
+      "covered": [],
+      "deal with": [],
+      "diagnosis": [],
+      "disorder": [],
+      "free": [
+        "free reunification therapy near me"
+      ],
+      "hate": [],
+      "insurance": [],
+      "intimacy": [],
+      "low cost": [],
+      "mean": [],
+      "mental health": [],
+      "narcissist": [],
+      "patient": [],
+      "reach out": [],
+      "reconnect": [],
+      "registered": [],
+      "sliding scale": [],
+      "toxic": [],
+      "treatment": []
+    }
+  },
+  "local_pack_summary": {
+    "estrangement": {
+      "total_businesses": 13,
+      "top_categories": [
+        [
+          "Counselor",
+          6
+        ],
+        [
+          "Family counselor",
+          1
+        ],
+        [
+          "Social services organization",
+          1
+        ],
+        [
+          "Non-profit organization",
+          1
+        ],
+        [
+          "Entertainment agency",
+          1
+        ]
+      ],
+      "avg_rating": 4.35,
+      "client_present": false,
+      "on_serp": false
+    },
+    "estrangement from adult children": {
+      "total_businesses": 2,
+      "top_categories": [
+        [
+          "Marriage or relationship counselor",
+          1
+        ],
+        [
+          "Social services organization",
+          1
+        ]
+      ],
+      "avg_rating": 5.0,
+      "client_present": false,
+      "on_serp": false
+    },
+    "estrangement grief": {
+      "total_businesses": 14,
+      "top_categories": [
+        [
+          "Non-profit organization",
+          4
+        ],
+        [
+          "Counselor",
+          3
+        ],
+        [
+          "Psychologist",
+          1
+        ],
+        [
+          "Family counselor",
+          1
+        ],
+        [
+          "Gay & lesbian organization",
+          1
+        ]
+      ],
+      "avg_rating": 4.21,
+      "client_present": false,
+      "on_serp": false
+    },
+    "family cutoff counselling Vancouver": {
+      "total_businesses": 23,
+      "top_categories": [
+        [
+          "Counselor",
+          19
+        ],
+        [
+          "Marriage or relationship counselor",
+          2
+        ],
+        [
+          "Psychotherapist",
+          1
+        ],
+        [
+          "Mental health clinic",
+          1
+        ]
+      ],
+      "avg_rating": 4.77,
+      "client_present": false,
+      "on_serp": true
+    },
+    "reunification counselling BC": {
+      "total_businesses": 3,
+      "top_categories": [
+        [
+          "Family counselor",
+          1
+        ],
+        [
+          "Non-profit organization",
+          1
+        ],
+        [
+          "Family service center",
+          1
+        ]
+      ],
+      "avg_rating": 4.33,
+      "client_present": false,
+      "on_serp": false
+    },
+    "reunification therapy near me": {
+      "total_businesses": 23,
+      "top_categories": [
+        [
+          "Family counselor",
+          16
+        ],
+        [
+          "Counselor",
+          5
+        ],
+        [
+          "Mental health clinic",
+          1
+        ],
+        [
+          "Psychotherapist",
+          1
+        ]
+      ],
+      "avg_rating": 4.78,
+      "client_present": false,
+      "on_serp": true
+    },
+    "serp_local_pack_confirmed": [
+      "family cutoff counselling Vancouver",
+      "reunification therapy near me"
+    ],
+    "serp_local_pack_absent": [
+      "estrangement",
+      "estrangement from adult children",
+      "estrangement grief",
+      "reunification counselling BC"
+    ]
+  },
+  "market_language": {
+    "top_20_bigrams": [
+      {
+        "phrase": "adult children",
+        "count": 15
+      },
+      {
+        "phrase": "reunification near",
+        "count": 15
+      },
+      {
+        "phrase": "estrangement grief",
+        "count": 12
+      },
+      {
+        "phrase": "estrangement adult",
+        "count": 10
+      },
+      {
+        "phrase": "high conflict",
+        "count": 9
+      },
+      {
+        "phrase": "parental alienation",
+        "count": 8
+      },
+      {
+        "phrase": "family estrangement",
+        "count": 8
+      },
+      {
+        "phrase": "family reunification",
+        "count": 8
+      },
+      {
+        "phrase": "low cost",
+        "count": 7
+      },
+      {
+        "phrase": "adult child",
+        "count": 7
+      },
+      {
+        "phrase": "estranged adult",
+        "count": 7
+      },
+      {
+        "phrase": "family preservation",
+        "count": 7
+      },
+      {
+        "phrase": "preservation reunification",
+        "count": 6
+      },
+      {
+        "phrase": "reconnect families",
+        "count": 5
+      },
+      {
+        "phrase": "mental health",
+        "count": 5
+      },
+      {
+        "phrase": "bright star",
+        "count": 5
+      },
+      {
+        "phrase": "maclean law",
+        "count": 4
+      },
+      {
+        "phrase": "trauma informed",
+        "count": 4
+      },
+      {
+        "phrase": "family greater",
+        "count": 4
+      },
+      {
+        "phrase": "grief estrangement",
+        "count": 4
+      }
+    ],
+    "top_10_trigrams": [
+      {
+        "phrase": "estrangement adult children",
+        "count": 7
+      },
+      {
+        "phrase": "family preservation reunification",
+        "count": 6
+      },
+      {
+        "phrase": "estranged adult children",
+        "count": 5
+      },
+      {
+        "phrase": "parental alienation estrangement",
+        "count": 3
+      },
+      {
+        "phrase": "family estrangement victoria",
+        "count": 3
+      },
+      {
+        "phrase": "estrangement victoria kelowna",
+        "count": 3
+      },
+      {
+        "phrase": "therapists counsellors divorce",
+        "count": 3
+      },
+      {
+        "phrase": "counsellors divorce coaches",
+        "count": 3
+      },
+      {
+        "phrase": "referral ministry children",
+        "count": 3
+      },
+      {
+        "phrase": "ministry children family",
+        "count": 3
+      }
+    ],
+    "client_mentions": [],
+    "bowen_theory_terms": [
+      {
+        "phrase": "family systems",
+        "count": 9
+      },
+      {
+        "phrase": "bowen",
+        "count": 5
+      },
+      {
+        "phrase": "differentiation",
+        "count": 0
+      },
+      {
+        "phrase": "emotional cutoff",
+        "count": 0
+      },
+      {
+        "phrase": "triangles",
+        "count": 0
+      },
+      {
+        "phrase": "multigenerational",
+        "count": 0
+      },
+      {
+        "phrase": "nuclear family emotional",
+        "count": 0
+      },
+      {
+        "phrase": "societal emotional",
+        "count": 0
+      }
+    ]
+  },
+  "competitor_ads": [],
+  "strategic_flags": {
+    "defensive_urgency": "high",
+    "defensive_detail": "Client's content 'Can cutting off family be good therapy?' dropped 3 positions to rank #7 for 'family cutoff counselling Vancouver'. This page provides 0 of the client's AIO citations. If organic rank continues declining, AIO citation loss is probable.",
+    "visibility_concentration": "critical",
+    "concentration_detail": "Client visible for 1 of 6 tracked keywords ('family cutoff counselling Vancouver'). 100% of organic and AIO visibility depends on a single keyword cluster.",
+    "opportunity_scale": {
+      "estrangement": {
+        "total_results": 231000,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter_cautiously",
+        "reason": "Legal entities dominate this SERP. Entry requires differentiated content that avoids competing on legal topics directly."
+      },
+      "estrangement from adult children": {
+        "total_results": 16400,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter",
+        "reason": "16,400 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      "estrangement grief": {
+        "total_results": 31700,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter",
+        "reason": "31,700 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      "family cutoff counselling Vancouver": {
+        "total_results": 686000,
+        "client_rank": 7,
+        "client_trend": "declining",
+        "action": "defend",
+        "reason": "Client ranks #7, declined 3 positions. Protect existing visibility before expanding elsewhere."
+      },
+      "reunification counselling BC": {
+        "total_results": 91,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "skip",
+        "reason": "Only 91 total results. Market too small to justify dedicated content investment."
+      },
+      "reunification therapy near me": {
+        "total_results": 15300,
+        "client_rank": null,
+        "client_trend": null,
+        "action": "enter",
+        "reason": "15,300 total results. Client has no current visibility. Dominant entity type: counselling."
+      }
+    },
+    "content_priorities": [
+      {
+        "action": "defend",
+        "keyword": "family cutoff counselling Vancouver",
+        "total_results": 686000,
+        "reason": "Client ranks #7, declined 3 positions. Protect existing visibility before expanding elsewhere."
+      },
+      {
+        "action": "enter",
+        "keyword": "estrangement grief",
+        "total_results": 31700,
+        "reason": "31,700 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      {
+        "action": "enter",
+        "keyword": "estrangement from adult children",
+        "total_results": 16400,
+        "reason": "16,400 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      {
+        "action": "enter",
+        "keyword": "reunification therapy near me",
+        "total_results": 15300,
+        "reason": "15,300 total results. Client has no current visibility. Dominant entity type: counselling."
+      },
+      {
+        "action": "enter_cautiously",
+        "keyword": "estrangement",
+        "total_results": 231000,
+        "reason": "Legal entities dominate this SERP. Entry requires differentiated content that avoids competing on legal topics directly."
+      },
+      {
+        "action": "skip",
+        "keyword": "reunification counselling BC",
+        "total_results": 91,
+        "reason": "Only 91 total results. Market too small to justify dedicated content investment."
+      }
+    ],
+    "top_cross_cluster_paa": {
+      "question": "How do I reach out to an estranged adult child?",
+      "cluster_count": 2,
+      "combined_total_results": 247400
+    }
+  }
+}

@@ -2,7 +2,7 @@
 Acceptance tests for Fix M1 — markdown rendering of pre-computed SERP intent fields.
 
 Spec: serp_tool1_completion_spec.md M1 acceptance criteria.
-Fixture: output/market_analysis_couples_therapy_20260501_0828.json
+Fixture: output/market_analysis_couples_therapy_20260501_1517.json
 
 Note: tests placed in repo root (not tests/) to match this project's test discovery
 convention (pytest test_*.py). All existing tests live in the root directory.
@@ -18,7 +18,7 @@ import generate_content_brief as gcb
 FIXTURE_PATH = os.path.join(
     os.path.dirname(__file__),
     "output",
-    "market_analysis_couples_therapy_20260501_0828.json",
+    "market_analysis_couples_therapy_20260501_1517.json",
 )
 
 
@@ -127,9 +127,9 @@ class TestInsightReportMixedIntentNote(unittest.TestCase):
                             "Mixed-Intent Note must appear before Section 5")
 
     def test_only_mixed_keywords_get_callout(self):
-        # "effective couples therapy?" is NOT mixed — should have no callout
+        # "success rate of couples therapy?" is pure informational — should have no callout
         self.assertNotIn(
-            "Mixed-Intent Strategic Note: effective couples therapy?", self.report
+            "Mixed-Intent Strategic Note: success rate of couples therapy?", self.report
         )
 
 
@@ -145,7 +145,7 @@ class TestBriefSerpIntentContext(unittest.TestCase):
         cls.briefs = [gcb.generate_brief(data, rec_index=i) for i in range(len(cls.recs))]
 
     def test_four_briefs_exist(self):
-        self.assertEqual(len(self.briefs), 4)
+        self.assertEqual(len(self.briefs), 3)
 
     def test_all_briefs_have_1a_section(self):
         for i, brief in enumerate(self.briefs):
@@ -172,11 +172,11 @@ class TestBriefSerpIntentContext(unittest.TestCase):
                              f"Brief {i + 1}: 1a must not render literal 'null'")
 
     def test_1a_section_count_in_combined_report(self):
-        # Simulate what serp_audit.py produces — count 1a across all 4 briefs combined
+        # Count 1a across all briefs combined — one per recommendation
         combined = "\n".join(self.briefs)
         count = len(re.findall(r"1a\. SERP Intent Context", combined))
-        self.assertEqual(count, 4,
-                         f"Expected 4 occurrences of '1a. SERP Intent Context', got {count}")
+        self.assertEqual(count, 3,
+                         f"Expected 3 occurrences of '1a. SERP Intent Context', got {count}")
 
 
 @unittest.skipUnless(os.path.exists(FIXTURE_PATH), "fixture JSON not present")
@@ -206,7 +206,6 @@ class TestCleanupC2PatternIntentContext(unittest.TestCase):
         "The Medical Model Trap",
         "The Fusion Trap",
         "The Resource Trap",
-        "The Blame/Reactivity Trap",
     ]
 
     @classmethod
@@ -222,7 +221,7 @@ class TestCleanupC2PatternIntentContext(unittest.TestCase):
         next_header = re.search(r"\n(##|###) ", rest)
         return rest[:next_header.start()] if next_header else rest[:800]
 
-    def test_c21_all_four_patterns_have_intent_context(self):
+    def test_c21_all_active_patterns_have_intent_context(self):
         for name in self.PATTERN_NAMES:
             block = self._get_pattern_block(name)
             matches = re.findall(r"\*SERP intent context", block)
