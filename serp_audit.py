@@ -1164,11 +1164,49 @@ def _dataset_topic_profile(keywords):
 _STRATEGIC_PATTERNS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "strategic_patterns.yml")
 
 
+_PATTERN_REQUIRED_FIELDS = {"Pattern_Name", "Triggers", "Status_Quo_Message", "Bowen_Bridge_Reframe", "Content_Angle"}
+
+
+def _validate_strategic_patterns(patterns, source="strategic_patterns.yml"):
+    """Raise ValueError if any pattern entry is malformed.
+
+    Checked at load time so bad config fails loudly rather than silently
+    producing wrong output or missing patterns at runtime.
+    """
+    if not isinstance(patterns, list) or not patterns:
+        raise ValueError(f"{source}: must be a non-empty list of pattern entries")
+    seen_names = set()
+    for i, p in enumerate(patterns):
+        label = f"{source} entry {i + 1}"
+        missing = _PATTERN_REQUIRED_FIELDS - set(p.keys())
+        if missing:
+            raise ValueError(f"{label}: missing required fields: {sorted(missing)}")
+        name = (p.get("Pattern_Name") or "").strip()
+        if not name:
+            raise ValueError(f"{label}: Pattern_Name must not be empty")
+        if name in seen_names:
+            raise ValueError(f"{source}: duplicate Pattern_Name '{name}'")
+        seen_names.add(name)
+        triggers = p.get("Triggers")
+        if not isinstance(triggers, list) or not triggers:
+            raise ValueError(f"{label} ({name!r}): Triggers must be a non-empty list")
+        for t in triggers:
+            if not isinstance(t, str) or not t.strip():
+                raise ValueError(f"{label} ({name!r}): each trigger must be a non-empty string")
+            if len(t.strip()) < 4:
+                raise ValueError(
+                    f"{label} ({name!r}): trigger {t!r} is too short (minimum 4 characters); "
+                    "short triggers match too broadly even with word boundaries"
+                )
+
+
 def _load_strategic_patterns(path=None):
-    """Load Bowen pattern definitions from strategic_patterns.yml."""
+    """Load and validate Bowen pattern definitions from strategic_patterns.yml."""
     fpath = path or _STRATEGIC_PATTERNS_PATH
     with open(fpath, encoding="utf-8") as f:
-        return yaml.safe_load(f) or []
+        patterns = yaml.safe_load(f) or []
+    _validate_strategic_patterns(patterns, source=os.path.basename(fpath))
+    return patterns
 
 
 def analyze_strategic_opportunities(ngram_results, keywords=None, patterns_path=None):

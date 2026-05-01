@@ -605,6 +605,41 @@ class TestSerpAudit(unittest.TestCase):
             import os as _os
             _os.unlink(tmp_path)
 
+    def test_validate_rejects_missing_required_field(self):
+        bad = [{"Pattern_Name": "Incomplete", "Triggers": ["hopeless"],
+                "Status_Quo_Message": "x", "Bowen_Bridge_Reframe": "y"}]
+        # Content_Angle missing
+        with self.assertRaises(ValueError, msg="Missing Content_Angle should raise"):
+            serp_audit._validate_strategic_patterns(bad)
+
+    def test_validate_rejects_empty_trigger_list(self):
+        bad = [{"Pattern_Name": "Empty Triggers", "Triggers": [],
+                "Status_Quo_Message": "x", "Bowen_Bridge_Reframe": "y",
+                "Content_Angle": "z"}]
+        with self.assertRaises(ValueError, msg="Empty Triggers list should raise"):
+            serp_audit._validate_strategic_patterns(bad)
+
+    def test_validate_rejects_duplicate_pattern_name(self):
+        entry = {"Pattern_Name": "Duplicate", "Triggers": ["hopeless"],
+                 "Status_Quo_Message": "x", "Bowen_Bridge_Reframe": "y",
+                 "Content_Angle": "z"}
+        with self.assertRaises(ValueError, msg="Duplicate Pattern_Name should raise"):
+            serp_audit._validate_strategic_patterns([entry, entry.copy()])
+
+    def test_validate_rejects_trigger_shorter_than_4_chars(self):
+        bad = [{"Pattern_Name": "Short Trigger", "Triggers": ["me"],
+                "Status_Quo_Message": "x", "Bowen_Bridge_Reframe": "y",
+                "Content_Angle": "z"}]
+        with self.assertRaises(ValueError, msg="Trigger shorter than 4 chars should raise"):
+            serp_audit._validate_strategic_patterns(bad)
+
+    def test_validate_accepts_well_formed_patterns(self):
+        good = [{"Pattern_Name": "Valid Pattern", "Triggers": ["hopeless", "stuck"],
+                 "Status_Quo_Message": "x", "Bowen_Bridge_Reframe": "y",
+                 "Content_Angle": "z"}]
+        # Should not raise
+        serp_audit._validate_strategic_patterns(good)
+
     def test_apply_no_cache_toggle(self):
         """no_cache should only be added when enabled."""
         with patch.object(serp_audit, "NO_CACHE_ENABLED", True):

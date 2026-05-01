@@ -2,11 +2,29 @@
 #
 # Bowen theory strategic pattern definitions for SERP analysis.
 #
-# A pattern fires when ANY of its trigger words appears as a whole word
-# in the SERP ngram corpus for a run (word-boundary match, case-insensitive).
+# HOW TRIGGERS WORK
+# -----------------
+# A pattern fires when ANY trigger appears as a whole word (word-boundary
+# match, case-insensitive) in the SERP ngram corpus for a run. This means:
+#   - "mean"  matches "being mean to you"  ✓
+#   - "mean"  does NOT match "shared meaning" or "meaningful" ✓
+# Matching is substring-safe; word boundaries are enforced in code.
 #
-# To add a new pattern: append an entry below. No Python changes required.
-# Field names must match exactly (they are written directly into the JSON output).
+# WHAT MAKES A GOOD TRIGGER
+# --------------------------
+# Triggers should be vocabulary that signals a searcher is operating INSIDE
+# the trap — language that reveals the framing you want to reframe.
+# Good triggers: specific to the trap's worldview, unlikely to appear in
+#   neutral therapeutic language ("narcissist", "sliding scale", "diagnosis").
+# Bad triggers: common words that appear everywhere in the topic domain
+#   ("help", "work", "good", "feel") — they will fire on almost every run.
+# Minimum length: 4 characters. Shorter triggers match too broadly even
+#   with word boundaries ("is", "in", "me" appear in every corpus).
+#
+# ADDING A NEW PATTERN
+# --------------------
+# Append an entry with all five required fields. No Python changes needed.
+# Field names must match exactly — they are written directly into the JSON output.
 
 - Pattern_Name: The Medical Model Trap
   Triggers:

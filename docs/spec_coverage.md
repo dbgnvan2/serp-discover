@@ -8,6 +8,9 @@
 - `completion` — `serp_tool1_completion_spec.md`
 - `cleanup` — `serp_tool1_cleanup_spec.md`
 
+**Post-spec changes (not tracked as spec criteria):**
+- 2026-05-01: Bowen strategic pattern definitions extracted from hardcoded Python in `serp_audit.py` to `strategic_patterns.yml`. Trigger matching changed from substring to word-boundary (`re.search r'\b...\b'`). Load-time validation added in `_validate_strategic_patterns`. Tests: `test_serp_audit.py::test_strategic_patterns_loaded_from_yaml`, `::test_custom_pattern_in_yaml_fires`, `::test_trigger_matching_uses_word_boundaries`, `::test_validate_rejects_*`.
+
 ---
 
 ## Coverage Table
