@@ -177,10 +177,14 @@ def generate_report(data):
         if _desc:
             report.append(_desc)
 
+    _organic_results = data.get("organic_results", [])
     recs = data.get("strategic_recommendations", [])
     if recs:
         for rec in recs:
             report.append(f"\n### 🌉 {rec.get('Pattern_Name', 'Opportunity')}")
+            report.append("")
+            report.append(_render_pattern_intent_context(rec, _organic_results, _kw_profiles))
+            report.append("")
             report.append(f"- **Status Quo:** {rec.get('Status_Quo_Message')}")
             report.append(
                 f"- **The Reframe:** {rec.get('Bowen_Bridge_Reframe')}")
@@ -317,6 +321,74 @@ def generate_report(data):
                 report.append("\n")
 
     return "\n".join(report)
+
+
+def _get_most_relevant_keyword(rec: dict, organic_results: list, keyword_profiles: dict) -> str | None:
+    """Return the keyword whose organic results contain the most pattern trigger matches.
+
+    Purpose: Select the keyword most associated with a strategic recommendation pattern.
+    Spec:    serp_tool1_cleanup_spec.md#C.2
+    Tests:   test_markdown_rendering.py::test_c21_all_four_patterns_have_intent_context
+
+    Trigger words from rec['Detected_Triggers'] are matched (substring, case-insensitive)
+    against Title+Snippet text of organic results grouped by Root_Keyword. Keyword with
+    highest total match count wins; alphabetical order breaks ties. Returns None when all
+    keywords score 0 or when organic_results is empty.
+    """
+    triggers_raw = rec.get("Detected_Triggers") or ""
+    triggers = [t.strip().lower() for t in triggers_raw.split(",") if t.strip()]
+    if not triggers or not organic_results:
+        return None
+
+    kw_scores: dict[str, int] = {}
+    for row in organic_results:
+        kw = row.get("Root_Keyword", "")
+        if not kw or kw not in keyword_profiles:
+            continue
+        text = ((row.get("Title") or "") + " " + (row.get("Snippet") or "")).lower()
+        kw_scores[kw] = kw_scores.get(kw, 0) + sum(1 for t in triggers if t in text)
+
+    if not kw_scores or max(kw_scores.values()) == 0:
+        return None
+    return max(kw_scores, key=lambda k: (kw_scores[k], [-ord(c) for c in k]))
+
+
+def _render_pattern_intent_context(rec: dict, organic_results: list, keyword_profiles: dict) -> str:
+    """Return the SERP intent context italic line for a Section 4 pattern block.
+
+    Purpose: Anchor each Bowen pattern recommendation to a per-keyword SERP intent verdict.
+    Spec:    serp_tool1_cleanup_spec.md#C.2
+    Tests:   test_markdown_rendering.py::test_c21_all_four_patterns_have_intent_context
+
+    Format: *SERP intent context (most relevant keyword: <kw>): <intent>, confidence <conf>[, mixed: c1 + c2].*
+    Null primary_intent: *SERP intent context (most relevant keyword: <kw>): primary intent insufficient data.*
+    No keyword found: *SERP intent context: no keyword in this run has triggers for this pattern.*
+    """
+    most_relevant_kw = _get_most_relevant_keyword(rec, organic_results, keyword_profiles)
+    if not most_relevant_kw:
+        return "*SERP intent context: no keyword in this run has triggers for this pattern.*"
+
+    kp = keyword_profiles.get(most_relevant_kw, {})
+    si = kp.get("serp_intent") or {}
+    primary = si.get("primary_intent")
+    confidence = si.get("confidence", "low")
+    is_mixed = si.get("is_mixed", False)
+    mixed_comps = si.get("mixed_components") or []
+
+    if primary is None:
+        return (
+            f"*SERP intent context (most relevant keyword: {most_relevant_kw}): "
+            f"primary intent insufficient data.*"
+        )
+
+    mixed_segment = ""
+    if is_mixed and mixed_comps:
+        mixed_segment = f", mixed: {' + '.join(mixed_comps)}"
+
+    return (
+        f"*SERP intent context (most relevant keyword: {most_relevant_kw}): "
+        f"{primary}, confidence {confidence}{mixed_segment}.*"
+    )
 
 
 def _render_serp_intent_section(keyword_profiles: dict) -> list:

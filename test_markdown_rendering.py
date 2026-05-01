@@ -179,5 +179,80 @@ class TestBriefSerpIntentContext(unittest.TestCase):
                          f"Expected 4 occurrences of '1a. SERP Intent Context', got {count}")
 
 
+@unittest.skipUnless(os.path.exists(FIXTURE_PATH), "fixture JSON not present")
+class TestCleanupC1SectionPrefix(unittest.TestCase):
+    """C.1 — Section 5b must have the '5b.' prefix."""
+
+    @classmethod
+    def setUpClass(cls):
+        data = _load_fixture()
+        cls.report = generate_insight_report.generate_report(data)
+
+    def test_c11_section_5b_prefix_present(self):
+        count = len(re.findall(r"## 5b\. Per-Keyword SERP Intent", self.report))
+        self.assertEqual(count, 1,
+                         "## 5b. Per-Keyword SERP Intent must appear exactly once")
+
+    def test_c12_no_unprefixed_section_5b(self):
+        self.assertNotIn("## Per-Keyword SERP Intent", self.report,
+                         "Header without '5b.' prefix must not appear")
+
+
+@unittest.skipUnless(os.path.exists(FIXTURE_PATH), "fixture JSON not present")
+class TestCleanupC2PatternIntentContext(unittest.TestCase):
+    """C.2 — SERP Intent Context line in each Section 4 pattern block."""
+
+    PATTERN_NAMES = [
+        "The Medical Model Trap",
+        "The Fusion Trap",
+        "The Resource Trap",
+        "The Blame/Reactivity Trap",
+    ]
+
+    @classmethod
+    def setUpClass(cls):
+        data = _load_fixture()
+        cls.report = generate_insight_report.generate_report(data)
+
+    def _get_pattern_block(self, pattern_name: str) -> str:
+        idx = self.report.find(f"### 🌉 {pattern_name}")
+        if idx == -1:
+            return ""
+        rest = self.report[idx + len(pattern_name):]
+        next_header = re.search(r"\n(##|###) ", rest)
+        return rest[:next_header.start()] if next_header else rest[:800]
+
+    def test_c21_all_four_patterns_have_intent_context(self):
+        for name in self.PATTERN_NAMES:
+            block = self._get_pattern_block(name)
+            matches = re.findall(r"\*SERP intent context", block)
+            self.assertEqual(len(matches), 1,
+                             f"Pattern '{name}' must have exactly one *SERP intent context line")
+
+    def test_c22_medical_model_intent_context_has_real_keyword(self):
+        block = self._get_pattern_block("The Medical Model Trap")
+        match = re.search(r"\*SERP intent context \(most relevant keyword: ([^)]+)\)", block)
+        self.assertIsNotNone(match, "Medical Model Trap must name a specific keyword")
+        kw = match.group(1)
+        self.assertNotIn("<keyword>", kw)
+        self.assertGreater(len(kw), 3)
+
+    def test_c23_mixed_intent_segment_when_applicable(self):
+        # "couples counselling" is mixed: informational + local
+        # whichever pattern selects it must include the mixed segment
+        for name in self.PATTERN_NAMES:
+            block = self._get_pattern_block(name)
+            if "most relevant keyword: couples counselling" in block:
+                self.assertIn("mixed: informational + local", block,
+                              f"Pattern '{name}' selects couples counselling — must show mixed components")
+
+    def test_c24_no_template_placeholders_leak(self):
+        for name in self.PATTERN_NAMES:
+            block = self._get_pattern_block(name)
+            for placeholder in ("None", "null", "<keyword>", "<primary_intent>"):
+                self.assertNotIn(placeholder, block,
+                                 f"Pattern '{name}' must not render literal '{placeholder}'")
+
+
 if __name__ == "__main__":
     unittest.main()
