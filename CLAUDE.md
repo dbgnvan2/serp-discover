@@ -10,7 +10,7 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py -q`
-  (expects 369 passing, 5 skipped, 0 errors).
+  (expects 377 passing, 5 skipped, 0 errors).
 - **Never `git add .`** — the repo accumulates output and draft files that
   must stay local. Only commit files intentionally changed for the current
   chunk.

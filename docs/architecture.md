@@ -43,6 +43,7 @@ market_analysis_*.json
 | `serp-me.py` | Tkinter GUI launcher |
 | `run_pipeline.py` | Pipeline orchestration |
 | `handoff_schema.json` | Spec v2 Gap 3 — draft-07 JSON Schema for `competitor_handoff_*.json`; `additionalProperties: false` enforces contract |
+| `strategic_patterns.yml` | Bowen strategic pattern definitions (Pattern_Name, Triggers, Status_Quo_Message, Bowen_Bridge_Reframe, Content_Angle). Add patterns here; no Python required. Loaded and validated at runtime by `serp_audit._load_strategic_patterns`. |
 | `test_validation_consistency.py` | Spec v2 Gap 5 — canary test scanning prompts for `keyword_profiles.<field>` references and asserting each has a validator rule |
 
 ## Prompt Templates
