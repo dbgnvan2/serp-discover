@@ -1,0 +1,136 @@
+# intent_mapping.yml
+#
+# Maps (content_type, entity_type, local_pack_present, domain_role) → SERP intent
+# bucket, used by src/intent_verdict.py to compute keyword_profiles[<kw>].serp_intent.
+#
+# DOMAIN JUDGMENT LIVES HERE. Edit this file when intent assignments feel wrong;
+# do not push exceptions into Python code.
+#
+# ─── Schema ──────────────────────────────────────────────────────────────────
+#
+# rules: ordered list. First matching rule wins.
+#   match.content_type:  pdf | directory | news | service | guide | other | unknown | any
+#   match.entity_type:   counselling | legal | directory | nonprofit | government |
+#                        media | professional_association | education | any
+#   match.local_pack:    "yes" | "no" | "any"   (does the SERP have a local 3-pack?)
+#   match.domain_role:   client | known_competitor | other | any
+#                          client = matches client.client_name_patterns
+#                          known_competitor = listed in known_brands or domain_overrides
+#   intent:  informational | commercial_investigation | transactional |
+#            navigational | local | uncategorised
+#            (uncategorised = excluded from intent_distribution; counts only toward
+#             total_url_count, lowering classified_url_count → confidence)
+#
+# Priority order (top of file = highest):
+#   1. domain_role rules (client/known competitor → always navigational)
+#   2. unknown / other content → uncategorised
+#   3. service rules (locality + entity matter)
+#   4. content-type-specific rules
+#   5. catch-all default
+#
+# ─── Edge cases addressed (per spec §Gap 1) ──────────────────────────────────
+#
+# 1. Service page on a directory domain (Psychology Today therapist profile,
+#    classified as content_type=service, entity_type=directory):
+#    → commercial_investigation. The page is service-shaped but the discovery
+#      surface is investigative — the searcher landed on a directory because
+#      they're still comparing. Calling it transactional would falsely signal
+#      the keyword is winnable by improving Living Systems' service pages; it
+#      isn't, because the user's decision happens inside the directory.
+#
+# 2. Guide URL on a counselling provider's domain when the SERP has a local
+#    pack:
+#    → informational (locality does NOT override). A guide is a guide. The
+#      local pack contributes its own `local` count from map-pack URLs.
+#      Reclassifying every provider-hosted guide as "local" because the SERP
+#      also has a 3-pack would conflate authoring intent with SERP mix.
+#
+# 3. AI Overview presence: NO effect on intent. AI Overviews appear across
+#    all intent types and are not a reliable signal. Recorded in
+#    evidence.serp_features_present, never used in mapping.
+#
+# 4. Nonprofit / government providing services → transactional. Free vs paid
+#    is irrelevant to intent.
+#
+# 5. Reddit/YouTube/CBC threads classified as content_type=other →
+#    uncategorised. Better to drop than force-fit. (If classified as `guide`,
+#    they resolve to informational via the guide rule.)
+
+version: 1
+
+rules:
+
+  # ── 1. Domain role overrides ──────────────────────────────────────────────
+  - match: { domain_role: client, content_type: any, entity_type: any, local_pack: "any" }
+    intent: navigational
+    rationale: client's own domain — searcher is going there on purpose
+
+  - match: { domain_role: known_competitor, content_type: any, entity_type: any, local_pack: "any" }
+    intent: navigational
+    rationale: named competitor brand — searcher knows the brand
+
+  # ── 2. Drop unclassified content ──────────────────────────────────────────
+  - match: { content_type: unknown, entity_type: any, local_pack: "any", domain_role: any }
+    intent: uncategorised
+    rationale: classifier could not read the page; do not guess
+
+  - match: { content_type: other, entity_type: any, local_pack: "any", domain_role: any }
+    intent: uncategorised
+    rationale: content didn't match any pattern; counting it would be noise
+
+  # ── 3. Service pages — locality and entity matter ─────────────────────────
+  - match: { content_type: service, entity_type: directory, local_pack: "any", domain_role: other }
+    intent: commercial_investigation
+    rationale: service-shaped profile on directory — searcher is comparing, not buying
+
+  - match: { content_type: service, entity_type: counselling, local_pack: "yes", domain_role: other }
+    intent: local
+    rationale: counselling service + local 3-pack — searcher wants someone nearby
+
+  - match: { content_type: service, entity_type: legal, local_pack: "yes", domain_role: other }
+    intent: local
+    rationale: legal service + local 3-pack — searcher wants local representation
+
+  - match: { content_type: service, entity_type: counselling, local_pack: "no", domain_role: other }
+    intent: transactional
+    rationale: counselling service, no local pack — searcher wants to engage a provider
+
+  - match: { content_type: service, entity_type: legal, local_pack: "no", domain_role: other }
+    intent: transactional
+    rationale: legal service, no local pack — searcher wants to engage a firm
+
+  - match: { content_type: service, entity_type: nonprofit, local_pack: "any", domain_role: other }
+    intent: transactional
+    rationale: nonprofit service — free vs paid is irrelevant to intent
+
+  - match: { content_type: service, entity_type: government, local_pack: "any", domain_role: other }
+    intent: transactional
+    rationale: government service page (e.g., HealthLink) — searcher wants to use it
+
+  - match: { content_type: service, entity_type: any, local_pack: "any", domain_role: other }
+    intent: transactional
+    rationale: catch-all for service pages — purchase/engage intent
+
+  # ── 4. Directory content ──────────────────────────────────────────────────
+  - match: { content_type: directory, entity_type: any, local_pack: "any", domain_role: other }
+    intent: commercial_investigation
+    rationale: listicles and directories exist to support comparison
+
+  # ── 5. Guides — informational regardless of host or local pack ────────────
+  - match: { content_type: guide, entity_type: any, local_pack: "any", domain_role: other }
+    intent: informational
+    rationale: guides answer what/why/how; locality does not override
+
+  # ── 6. News, PDFs ─────────────────────────────────────────────────────────
+  - match: { content_type: news, entity_type: any, local_pack: "any", domain_role: other }
+    intent: informational
+    rationale: news reporting answers questions; rarely transactional
+
+  - match: { content_type: pdf, entity_type: any, local_pack: "any", domain_role: other }
+    intent: informational
+    rationale: PDFs in SERPs are almost always reference documents
+
+  # ── 7. Final safety net ───────────────────────────────────────────────────
+  - match: { content_type: any, entity_type: any, local_pack: "any", domain_role: any }
+    intent: uncategorised
+    rationale: nothing matched — drop rather than guess

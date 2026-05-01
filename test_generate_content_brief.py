@@ -433,6 +433,277 @@ If you don't act now, you'll lose your rank #3 position entirely.
         self.assertEqual(brief.count("What are the signs of a toxic adult child?"), 1)
         self.assertIn("When to go no-contact with a family member?", brief)
 
+    # ─── Spec v2: serp_intent + title_patterns validation ───────────────────
+
+    def _intent_extracted(self, primary_intent, is_mixed=False, confidence="high",
+                          dominant_pattern=None):
+        """Minimal extracted dict for testing validate_llm_report against
+        the new serp_intent / title_patterns fields."""
+        return {
+            "queries": [],
+            "autocomplete_summary": {"trigger_word_hits": {}},
+            "tool_recommendations_verified": [],
+            "paa_analysis": {"cross_cluster": []},
+            "keyword_profiles": {
+                "couples therapy vancouver": {
+                    "entity_distribution": {},
+                    "entity_label": "unclassified",
+                    "serp_intent": {
+                        "primary_intent": primary_intent,
+                        "is_mixed": is_mixed,
+                        "confidence": confidence,
+                        "intent_distribution": {},
+                        "evidence": {
+                            "total_url_count": 10,
+                            "classified_url_count": 9,
+                            "uncategorised_count": 1,
+                            "intent_counts": {},
+                        },
+                    },
+                    "title_patterns": (
+                        {"pattern_counts": {}, "dominant_pattern": dominant_pattern,
+                         "examples": {}, "total_titles": 10}
+                        if dominant_pattern is not None
+                        else {"pattern_counts": {}, "dominant_pattern": None,
+                              "examples": {}, "total_titles": 10}
+                    ),
+                }
+            },
+        }
+
+    def test_validate_llm_report_flags_intent_contradiction_hard(self):
+        # primary_intent is local but report claims transactional — HARD-FAIL
+        extracted = self._intent_extracted(primary_intent="local")
+        report = (
+            "**couples therapy vancouver (50,000 total results)**\n"
+            "This is a transactional-intent SERP dominated by service pages.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        intent_issues = [i for i in issues if "transactional intent" in i.lower()]
+        self.assertGreaterEqual(len(intent_issues), 1)
+        # Hard-fail check: the issue string must trigger has_hard_validation_failures
+        self.assertTrue(gcb.has_hard_validation_failures(intent_issues))
+
+    def test_validate_llm_report_flags_is_mixed_contradiction(self):
+        # is_mixed=True but report claims single-intent — HARD-FAIL
+        extracted = self._intent_extracted(
+            primary_intent="informational", is_mixed=True, confidence="medium"
+        )
+        report = (
+            "**couples therapy vancouver (50,000 total results)**\n"
+            "This is a cleanly informational SERP with uniform intent.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        mixed_issues = [i for i in issues if "mixed" in i.lower() and "single-intent" in i.lower()]
+        self.assertGreaterEqual(len(mixed_issues), 1)
+
+    def test_validate_llm_report_does_not_flag_low_confidence_intent(self):
+        # Low confidence verdicts should NOT trigger hard-fail validation
+        extracted = self._intent_extracted(primary_intent="local", confidence="low")
+        report = (
+            "**couples therapy vancouver (50,000 total results)**\n"
+            "This is a transactional-intent SERP — low confidence verdict.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        intent_issues = [i for i in issues if "transactional intent" in i.lower()
+                         and "couples therapy vancouver" in i]
+        self.assertEqual(len(intent_issues), 0)
+
+    def test_validate_llm_report_passes_correct_intent_verdict(self):
+        extracted = self._intent_extracted(primary_intent="informational")
+        report = (
+            "**couples therapy vancouver (50,000 total results)**\n"
+            "This is primarily informational — guides dominate the top results.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        intent_issues = [i for i in issues if "intent" in i.lower()
+                         and "couples therapy vancouver" in i]
+        self.assertEqual(len(intent_issues), 0)
+
+    def test_validate_llm_report_flags_dominant_pattern_contradiction_soft(self):
+        # dominant_pattern=how_to but report claims listicles dominate — SOFT-FAIL
+        extracted = self._intent_extracted(
+            primary_intent="informational", dominant_pattern="how_to"
+        )
+        report = (
+            "**couples therapy vancouver (50,000 total results)**\n"
+            "Listicles dominate the top 10 titles.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        pattern_issues = [i for i in issues if "title_patterns" in i.lower()
+                          and "couples therapy vancouver" in i]
+        self.assertGreaterEqual(len(pattern_issues), 1)
+        # Soft-fail: should NOT trigger has_hard_validation_failures
+        self.assertFalse(gcb.has_hard_validation_failures(pattern_issues))
+        # Should partition to notes, not blocking
+        blocking, notes = gcb.partition_validation_issues(pattern_issues)
+        self.assertEqual(len(blocking), 0)
+        self.assertGreaterEqual(len(notes), 1)
+
+    def test_mixed_intent_strategy_compete_on_dominant(self):
+        """A mixed SERP whose dominant intent matches an intent the client
+        already ranks for → compete_on_dominant."""
+        keyword_profiles = {
+            # Already-ranked client keyword (informational)
+            "what is bowen theory": {
+                "client_visible": True,
+                "client_rank": 5,
+                "client_rank_delta": 0,
+                "serp_intent": {
+                    "primary_intent": "informational",
+                    "is_mixed": False,
+                    "confidence": "high",
+                    "intent_distribution": {"informational": 1.0},
+                },
+                "total_results": 5000,
+                "entity_dominant_type": "media",
+                "entity_label": "media_plurality",
+            },
+            # Mixed-intent target keyword
+            "bowen theory courses": {
+                "client_visible": False,
+                "client_rank": None,
+                "client_rank_delta": None,
+                "serp_intent": {
+                    "primary_intent": "informational",
+                    "is_mixed": True,
+                    "confidence": "medium",
+                    "intent_distribution": {
+                        "informational": 0.5,
+                        "transactional": 0.5,
+                    },
+                },
+                "total_results": 3000,
+                "entity_dominant_type": "education",
+                "entity_label": "mixed_education_media",
+            },
+        }
+        flags = gcb._compute_strategic_flags(
+            root_keywords=list(keyword_profiles.keys()),
+            keyword_profiles=keyword_profiles,
+            client_position={"organic": [], "summary": {"keywords_with_any_visibility": ["what is bowen theory"]}},
+            total_results_by_kw={},
+            paa_analysis={},
+            preferred_intents=[],
+        )
+        target = flags["opportunity_scale"]["bowen theory courses"]
+        self.assertEqual(target["mixed_intent_strategy"], "compete_on_dominant")
+        # Persisted onto the keyword profile too
+        self.assertEqual(
+            keyword_profiles["bowen theory courses"]["mixed_intent_strategy"],
+            "compete_on_dominant",
+        )
+
+    def test_mixed_intent_strategy_backdoor(self):
+        """Dominant intent is uncompetable, but a non-dominant intent is in
+        preferred_intents → backdoor."""
+        keyword_profiles = {
+            "couples therapy": {
+                "client_visible": False,
+                "client_rank": None,
+                "client_rank_delta": None,
+                "serp_intent": {
+                    "primary_intent": "transactional",
+                    "is_mixed": True,
+                    "confidence": "medium",
+                    "intent_distribution": {
+                        "transactional": 0.5,
+                        "informational": 0.5,
+                    },
+                },
+                "total_results": 10000,
+                "entity_dominant_type": "counselling",
+                "entity_label": "counselling_plurality",
+            },
+        }
+        flags = gcb._compute_strategic_flags(
+            root_keywords=["couples therapy"],
+            keyword_profiles=keyword_profiles,
+            client_position={"organic": [], "summary": {"keywords_with_any_visibility": []}},
+            total_results_by_kw={},
+            paa_analysis={},
+            preferred_intents=["informational"],  # client can do informational
+        )
+        target = flags["opportunity_scale"]["couples therapy"]
+        self.assertEqual(target["mixed_intent_strategy"], "backdoor")
+
+    def test_mixed_intent_strategy_avoid(self):
+        """Dominant intent uncompetable AND no non-dominant intents in
+        preferred_intents → avoid."""
+        keyword_profiles = {
+            "buy therapy app": {
+                "client_visible": False,
+                "client_rank": None,
+                "client_rank_delta": None,
+                "serp_intent": {
+                    "primary_intent": "commercial_investigation",
+                    "is_mixed": True,
+                    "confidence": "medium",
+                    "intent_distribution": {
+                        "commercial_investigation": 0.5,
+                        "navigational": 0.5,
+                    },
+                },
+                "total_results": 50000,
+                "entity_dominant_type": "directory",
+                "entity_label": "directory_plurality",
+            },
+        }
+        flags = gcb._compute_strategic_flags(
+            root_keywords=["buy therapy app"],
+            keyword_profiles=keyword_profiles,
+            client_position={"organic": [], "summary": {"keywords_with_any_visibility": []}},
+            total_results_by_kw={},
+            paa_analysis={},
+            preferred_intents=["informational"],  # not in distribution
+        )
+        target = flags["opportunity_scale"]["buy therapy app"]
+        self.assertEqual(target["mixed_intent_strategy"], "avoid")
+
+    def test_mixed_intent_strategy_null_for_non_mixed(self):
+        """Non-mixed keywords get None / null."""
+        keyword_profiles = {
+            "what is therapy": {
+                "client_visible": False,
+                "client_rank": None,
+                "client_rank_delta": None,
+                "serp_intent": {
+                    "primary_intent": "informational",
+                    "is_mixed": False,
+                    "confidence": "high",
+                    "intent_distribution": {"informational": 1.0},
+                },
+                "total_results": 1000,
+                "entity_dominant_type": "media",
+                "entity_label": "media_plurality",
+            },
+        }
+        flags = gcb._compute_strategic_flags(
+            root_keywords=["what is therapy"],
+            keyword_profiles=keyword_profiles,
+            client_position={"organic": [], "summary": {"keywords_with_any_visibility": []}},
+            total_results_by_kw={},
+            paa_analysis={},
+            preferred_intents=["informational"],
+        )
+        target = flags["opportunity_scale"]["what is therapy"]
+        self.assertIsNone(target["mixed_intent_strategy"])
+        self.assertIsNone(keyword_profiles["what is therapy"]["mixed_intent_strategy"])
+
+    def test_validate_llm_report_flags_invented_dominant_pattern(self):
+        # dominant_pattern=null but report claims a pattern dominates
+        extracted = self._intent_extracted(
+            primary_intent="informational", dominant_pattern=None
+        )
+        report = (
+            "**couples therapy vancouver (50,000 total results)**\n"
+            "How-to guides dominate the top 10 titles.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        invented = [i for i in issues
+                    if "no pattern reached the dominance threshold" in i.lower()]
+        self.assertGreaterEqual(len(invented), 1)
+
 
 if __name__ == "__main__":
     unittest.main()

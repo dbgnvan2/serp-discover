@@ -4,6 +4,16 @@
 
 A Market Intelligence Tool designed to support the "Bridge Strategy" for a non-profit counselling agency. It maps "Problem-Aware" queries to "Solution-Aware" content using SERP data.
 
+## Spec v2 Pre-Computed Fields (per keyword)
+
+Each keyword profile in the JSON output now includes deterministic, rule-driven fields the LLM consumes directly (instead of inferring):
+
+- `serp_intent` — `{primary_intent, is_mixed, confidence, intent_distribution, evidence}`. Driven by `intent_mapping.yml` (rule table mapping content_type + entity_type + local_pack + domain_role → intent). Confidence reflects what fraction of URLs were classifiable.
+- `title_patterns` — shape pattern of top-10 titles (`how_to`, `what_is`, `listicle_numeric`, `vs_comparison`, `best_of`, `brand_only`, `question`, `other`). `dominant_pattern` is set only when one pattern reaches ≥4 of 10.
+- `mixed_intent_strategy` — `compete_on_dominant` / `backdoor` / `avoid` / `null`. Only set on mixed-intent SERPs. Driven by `client.preferred_intents` in `config.yml`.
+
+The LLM validator hard-fails if the report contradicts `serp_intent.primary_intent` or `is_mixed`, and soft-fails (1 retry) on `title_patterns.dominant_pattern` or `mixed_intent_strategy` contradictions. See CLAUDE.md for full details.
+
 ## Installation
 
 **Prerequisites:**

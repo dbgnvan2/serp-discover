@@ -37,6 +37,36 @@ app:
   - enter_cautiously
 moz:
   cache_ttl_days: 30
+# SERP intent verdict (spec v2 Gap 1). All keys are optional — defaults from
+# intent_verdict.DEFAULT_THRESHOLDS apply if omitted. Domain judgment lives in
+# intent_mapping.yml, not here.
+serp_intent:
+  thresholds:
+    primary_share: 0.60          # ≥60% share → that intent is primary
+    fallback_share: 0.40         # else, ≥40% with runner-up ≤ 20% → primary
+    fallback_runner_up_max: 0.20
+    confidence_high: 0.80        # classified ratio ≥ 0.80 → high confidence
+    confidence_medium: 0.50      # ≥ 0.50 → medium; else low
+# Optional list of known competitor brand names/domains. Drives:
+#   - domain_role=known_competitor in intent_verdict (URLs from these brands
+#     are tagged navigational regardless of content type)
+#   - brand_only detection in title_patterns (along with client_name_patterns)
+# Leave empty if you don't actively track named rivals.
+known_brands: []
+# Spec v2 Gap 4: client capability hints for mixed-intent strategy.
+client:
+  # Intents the client can produce content for. Used by _compute_strategic_flags
+  # to decide mixed_intent_strategy on mixed-intent SERPs:
+  #   - if dominant intent is one the client already ranks for → compete_on_dominant
+  #   - elif a non-dominant intent on the SERP is in this list → backdoor
+  #   - else → avoid
+  # Living Systems: educational guides (informational), counselling services
+  # (transactional + local). Add 'commercial_investigation' if you create
+  # comparison/listicle content; leave it out if you don't.
+  preferred_intents:
+    - informational
+    - transactional
+    - local
 feasibility:
   enabled: true
   client_da: 35

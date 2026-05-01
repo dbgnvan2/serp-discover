@@ -26,6 +26,9 @@ except ImportError:
     anthropic = None
     ANTHROPIC_AVAILABLE = False
 
+from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
+from title_patterns import compute_title_patterns
+
 
 DEFAULT_CLIENT_CONTEXT = {
     "client_name": "Living Systems Counselling",
@@ -289,7 +292,39 @@ def _count_terms_in_texts(terms, texts):
     return counts
 
 
-def _compute_strategic_flags(root_keywords, keyword_profiles, client_position, total_results_by_kw, paa_analysis):
+def _compute_strategic_flags(
+    root_keywords,
+    keyword_profiles,
+    client_position,
+    total_results_by_kw,
+    paa_analysis,
+    preferred_intents=None,
+):
+    """Compute strategic priority flags per keyword.
+
+    Spec v2 Gap 4: when a SERP has mixed intent (serp_intent.is_mixed = True),
+    set keyword_profiles[kw]['mixed_intent_strategy'] to one of:
+      - "compete_on_dominant": dominant intent matches the client's existing
+        intent presence (the client already ranks for this intent elsewhere).
+      - "backdoor": dominant intent is uncompetable, but a non-dominant intent
+        on this SERP appears in client.preferred_intents — there's a way in via
+        a different content type.
+      - "avoid": neither path applies.
+    Non-mixed keywords get null.
+    """
+    preferred_intents = set(preferred_intents or [])
+
+    # Client's existing intent presence: intents of keywords where the client
+    # is currently visible. This is the client's "content-asset history" in
+    # intent terms — what they've already proven they can rank for.
+    client_intent_presence = set()
+    for kw, profile in keyword_profiles.items():
+        if profile.get("client_visible"):
+            si = profile.get("serp_intent") or {}
+            primary = si.get("primary_intent")
+            if primary and primary not in ("uncategorised",):
+                client_intent_presence.add(primary)
+
     flags = {}
 
     client_organic = client_position.get("organic", [])
@@ -388,6 +423,29 @@ def _compute_strategic_flags(root_keywords, keyword_profiles, client_position, t
                 f"{_entity_label_reason_text(entity_label, entity_dominant)}"
             )
 
+        # Spec v2 Gap 4: mixed-intent strategy.
+        # Computed only for keywords whose serp_intent.is_mixed == True.
+        mixed_intent_strategy = None
+        si = profile.get("serp_intent") or {}
+        if si.get("is_mixed"):
+            dominant = si.get("primary_intent")
+            distribution = si.get("intent_distribution") or {}
+            non_dominant_intents = {
+                intent for intent, share in distribution.items()
+                if share > 0 and intent != dominant
+            }
+            if dominant in client_intent_presence:
+                mixed_intent_strategy = "compete_on_dominant"
+            elif preferred_intents & non_dominant_intents:
+                mixed_intent_strategy = "backdoor"
+            else:
+                mixed_intent_strategy = "avoid"
+            # Persist back onto the keyword profile so downstream consumers
+            # (LLM payload, validators, advisory briefing) can reference it.
+            profile["mixed_intent_strategy"] = mixed_intent_strategy
+        else:
+            profile["mixed_intent_strategy"] = None
+
         opportunity_scale[kw] = {
             "total_results": total_results,
             "client_rank": client_rank,
@@ -400,6 +458,7 @@ def _compute_strategic_flags(root_keywords, keyword_profiles, client_position, t
             ),
             "action": action,
             "reason": reason,
+            "mixed_intent_strategy": mixed_intent_strategy,
         }
 
     flags["opportunity_scale"] = opportunity_scale
@@ -500,12 +559,44 @@ def _build_feasibility_summary(feasibility_rows):
     }
 
 
-def extract_analysis_data_from_json(data, client_domain, client_name_patterns=None, framework_terms=None):
-    """Build a compact, pre-verified analysis object from market_analysis_v2.json."""
+def extract_analysis_data_from_json(
+    data,
+    client_domain,
+    client_name_patterns=None,
+    framework_terms=None,
+    known_brands=None,
+    serp_intent_thresholds=None,
+    intent_mapping=None,
+    preferred_intents=None,
+):
+    """Build a compact, pre-verified analysis object from market_analysis_v2.json.
+
+    New (spec v2):
+        known_brands: list of competitor brand domain/name strings — drives
+            domain_role classification in serp_intent and brand_only detection
+            in title_patterns. If None, [].
+        serp_intent_thresholds: dict overriding intent_verdict.DEFAULT_THRESHOLDS.
+            If None, defaults from intent_verdict are used.
+        intent_mapping: pre-loaded mapping dict (from load_intent_mapping()).
+            If None, loaded once from intent_mapping.yml at the project root.
+    """
     client_domain_lower = (client_domain or "").lower()
     client_name_patterns = client_name_patterns or []
     framework_terms = framework_terms or DEFAULT_CLIENT_CONTEXT["framework_terms"]
     client_phrase_patterns = _client_match_patterns(client_name_patterns)
+    known_brands = list(known_brands or [])
+    preferred_intents = list(preferred_intents or [])
+
+    # Load intent mapping once. Cached at the call site if the caller supplies
+    # one; otherwise loaded fresh here. Failure to load is a HARD error — the
+    # rest of the pipeline assumes serp_intent is computable.
+    if intent_mapping is None:
+        intent_mapping = load_intent_mapping()
+
+    # For title_patterns brand_only detection, combine the client's own brand
+    # patterns with the operator-supplied known_brands so client URLs that
+    # surface as bare-brand titles are classified correctly.
+    title_brand_aliases = list(client_name_patterns) + known_brands
 
     overview = data.get("overview", [])
     organic = data.get("organic_results", [])
@@ -932,11 +1023,31 @@ def extract_analysis_data_from_json(data, client_domain, client_name_patterns=No
             for item in sorted(modules_by_kw.get(kw, []), key=lambda x: x["order"])
         ]
         dominant_type, entity_label = _classify_entity_distribution(entity_by_kw.get(kw, {}))
+
+        # SERP intent verdict (deterministic, rule-driven via intent_mapping.yml).
+        # Note: row_profile carries 'source' (domain) but not the full link;
+        # compute_serp_intent's domain-role helper does substring matching on
+        # whichever is present, so client_domain="livingsystems.ca" still
+        # matches a 'source' of "livingsystems.ca".
+        kw_has_local_pack = kw in serp_has_local
+        serp_intent = compute_serp_intent(
+            organic_rows=kw_rows,
+            has_local_pack=kw_has_local_pack,
+            client_domain=client_domain_lower,
+            known_brand_domains=known_brands,
+            mapping=intent_mapping,
+            thresholds=serp_intent_thresholds,
+        )
+
+        # Title pattern extraction (top 10 organic titles in rank order).
+        kw_titles = [r.get("title", "") for r in kw_rows[:10]]
+        title_patterns = compute_title_patterns(kw_titles, brand_aliases=title_brand_aliases)
+
         keyword_profiles[kw] = {
             "total_results": total_results_by_kw.get(kw, 0),
             "serp_modules": modules_list,
             "has_ai_overview": aio_analysis.get(kw, {}).get("has_aio", False),
-            "has_local_pack": kw in serp_has_local,
+            "has_local_pack": kw_has_local_pack,
             "has_discussions_forums": any("discussions" in item["module"] or "forums" in item["module"] for item in modules_by_kw.get(kw, [])),
             "entity_distribution": dict(entity_by_kw.get(kw, {})),
             "entity_dominant_type": dominant_type,
@@ -953,6 +1064,8 @@ def extract_analysis_data_from_json(data, client_domain, client_name_patterns=No
             "client_rank": kw_client_org[0]["rank"] if kw_client_org else None,
             "client_rank_delta": kw_client_org[0]["rank_delta"] if kw_client_org else None,
             "client_aio_cited": bool(kw_client_aio),
+            "serp_intent": serp_intent,
+            "title_patterns": title_patterns,
         }
 
     client_aio_text_mentions = []
@@ -1017,6 +1130,7 @@ def extract_analysis_data_from_json(data, client_domain, client_name_patterns=No
         client_position=client_position,
         total_results_by_kw=total_results_by_kw,
         paa_analysis=paa_analysis,
+        preferred_intents=preferred_intents,
     )
 
     ads_out = []
@@ -1285,6 +1399,14 @@ def partition_validation_issues(validation_issues):
     for issue in validation_issues:
         normalized = _normalize_text(issue)
         if "contradicts keyword_profiles.entity_label" in normalized:
+            notes.append(issue)
+        elif "contradicts keyword_profiles.title_patterns" in normalized:
+            # Spec v2 Gap 2 soft-fail: dominant_pattern mismatch is a
+            # 1-retry note, not a hard abort.
+            notes.append(issue)
+        elif "contradicts keyword_profiles.mixed_intent_strategy" in normalized:
+            # Spec v2 Gap 4 soft-fail: mixed_intent_strategy mismatch is a
+            # 1-retry note, not a hard abort.
             notes.append(issue)
         else:
             blocking.append(issue)
@@ -1566,6 +1688,148 @@ def validate_llm_report(report_text, extracted_data):
             issues.append(
                 f"Report contradicts keyword_profiles.entity_label for '{keyword}': {entity_label} should be described as a plurality, not dominant."
             )
+
+    # ── Spec v2 Gap 1: SERP intent verdict contradiction (HARD-FAIL) ─────────
+    # ── Spec v2 Gap 2: title_patterns.dominant_pattern contradiction (SOFT) ──
+    # Strong-claim phrases per intent. We only flag when the report makes an
+    # explicit "this SERP is primarily X" type of claim — not casual mentions.
+    INTENT_CLAIM_PHRASES = {
+        "informational": [
+            r"primarily informational",
+            r"informational[- ]intent serp",
+            r"informational intent dominates",
+            r"primary intent[: ]\s*informational",
+        ],
+        "transactional": [
+            r"primarily transactional",
+            r"transactional[- ]intent serp",
+            r"transactional intent dominates",
+            r"primary intent[: ]\s*transactional",
+            r"purchase[- ]intent serp",
+        ],
+        "commercial_investigation": [
+            r"primarily commercial[- ]investigation",
+            r"commercial investigation intent dominates",
+            r"primary intent[: ]\s*commercial",
+            r"investigative[- ]intent serp",
+        ],
+        "navigational": [
+            r"primarily navigational",
+            r"navigational[- ]intent serp",
+            r"primary intent[: ]\s*navigational",
+            r"branded serp",
+        ],
+        "local": [
+            r"primarily local[- ]intent",
+            r"local[- ]intent serp",
+            r"primary intent[: ]\s*local",
+        ],
+    }
+    PATTERN_CLAIM_PHRASES = {
+        "how_to": [r"how[- ]to (?:guides? )?dominat", r"dominated by how[- ]to"],
+        "what_is": [r"what[- ]is (?:guides? )?dominat", r"dominated by what[- ]is"],
+        "best_of": [r"best[- ]of dominat", r"dominated by best[- ]of"],
+        "vs_comparison": [r"vs\.? comparison.{0,20}dominat", r"dominated by vs"],
+        "listicle_numeric": [r"listicles? dominat", r"dominated by listicles?", r"listicle[- ]dominated"],
+        "brand_only": [r"brand[- ]only.{0,20}dominat", r"dominated by brand"],
+        "question": [r"questions? dominat", r"dominated by questions?"],
+    }
+
+    for keyword, profile in keyword_profiles.items():
+        section_match = re.search(
+            rf"\*\*{re.escape(keyword)} \([^\n]+\)\*\*(.*?)(?:\n\n\*\*|\n### |\Z)",
+            report_text,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if not section_match:
+            continue
+        section_l = _normalize_text(section_match.group(1))
+
+        # ── serp_intent contradictions ──
+        si = profile.get("serp_intent") or {}
+        primary = si.get("primary_intent")
+        is_mixed = si.get("is_mixed", False)
+        confidence = si.get("confidence", "low")
+        # Only enforce on confident, single-intent verdicts. Low confidence and
+        # mixed verdicts permit the LLM more interpretive latitude.
+        if primary and primary not in ("uncategorised",) and confidence != "low" and not is_mixed:
+            for claimed_intent, phrases in INTENT_CLAIM_PHRASES.items():
+                if claimed_intent == primary:
+                    continue
+                for phrase in phrases:
+                    if re.search(phrase, section_l):
+                        issues.append(
+                            f"Report claims '{keyword}' is {claimed_intent} intent, "
+                            f"but keyword_profiles shows serp_intent.primary_intent='{primary}' "
+                            f"(confidence={confidence}, is_mixed=False)."
+                        )
+                        break
+
+        # is_mixed contradiction (separate hard-fail)
+        if confidence != "low":
+            if is_mixed and re.search(r"single[- ]intent serp|uniform intent|cleanly (?:informational|transactional|navigational)", section_l):
+                issues.append(
+                    f"Report describes '{keyword}' as single-intent, "
+                    f"but keyword_profiles shows serp_intent.is_mixed=True."
+                )
+            if not is_mixed and re.search(r"mixed[- ]intent serp|mixed intent", section_l):
+                issues.append(
+                    f"Report describes '{keyword}' as mixed-intent, "
+                    f"but keyword_profiles shows serp_intent.is_mixed=False (primary={primary})."
+                )
+
+        # ── Spec v2 Gap 4: mixed_intent_strategy contradictions ──
+        mixed_strategy = profile.get("mixed_intent_strategy")
+        si_is_mixed = (profile.get("serp_intent") or {}).get("is_mixed", False)
+        # HARD-FAIL: invoking mixed-intent framing on a non-mixed keyword.
+        if not si_is_mixed:
+            if re.search(r"backdoor (?:strategy|opportunity|approach|angle|content)|compete on (?:the )?dominant intent", section_l):
+                issues.append(
+                    f"Report invokes mixed-intent strategy language for '{keyword}', "
+                    f"but keyword_profiles shows serp_intent.is_mixed=False "
+                    f"(no mixed_intent_strategy applies)."
+                )
+        else:
+            # SOFT-FAIL: contradicts the computed strategy.
+            STRATEGY_PHRASES = {
+                "compete_on_dominant": [r"backdoor", r"avoid this keyword|skip this keyword"],
+                "backdoor": [r"compete on (?:the )?dominant", r"avoid this keyword|skip this keyword"],
+                "avoid": [r"backdoor", r"compete on (?:the )?dominant"],
+            }
+            if mixed_strategy and mixed_strategy in STRATEGY_PHRASES:
+                for contradicting in STRATEGY_PHRASES[mixed_strategy]:
+                    if re.search(contradicting, section_l):
+                        issues.append(
+                            f"Report contradicts keyword_profiles.mixed_intent_strategy "
+                            f"for '{keyword}': computed='{mixed_strategy}', report uses "
+                            f"different framing."
+                        )
+                        break
+
+        # ── title_patterns.dominant_pattern contradictions (SOFT-FAIL) ──
+        tp = profile.get("title_patterns") or {}
+        dominant = tp.get("dominant_pattern")
+        if dominant:
+            for claimed_pattern, phrases in PATTERN_CLAIM_PHRASES.items():
+                if claimed_pattern == dominant:
+                    continue
+                for phrase in phrases:
+                    if re.search(phrase, section_l):
+                        issues.append(
+                            f"Report contradicts keyword_profiles.title_patterns for '{keyword}': "
+                            f"claims {claimed_pattern} dominance, but dominant_pattern='{dominant}'."
+                        )
+                        break
+        else:
+            # If dominant_pattern is null, the LLM should not assert one.
+            for claimed_pattern, phrases in PATTERN_CLAIM_PHRASES.items():
+                for phrase in phrases:
+                    if re.search(phrase, section_l):
+                        issues.append(
+                            f"Report contradicts keyword_profiles.title_patterns for '{keyword}': "
+                            f"claims {claimed_pattern} dominance, but no pattern reached the dominance threshold."
+                        )
+                        break
 
     return issues
 
@@ -1901,11 +2165,21 @@ def list_recommendations(data, args):
     context = load_client_context_from_config(config)
 
     progress("[4/7] Extracting report data from market_analysis JSON...")
+    # Spec v2: read optional known_brands and serp_intent.thresholds with .get()
+    # defaults so existing config files without these blocks keep working.
+    known_brands = config.get("known_brands", []) if isinstance(config, dict) else []
+    serp_intent_cfg = config.get("serp_intent", {}) if isinstance(config, dict) else {}
+    intent_thresholds = serp_intent_cfg.get("thresholds")
+    client_cfg = config.get("client", {}) if isinstance(config, dict) else {}
+    preferred_intents = client_cfg.get("preferred_intents", [])
     extracted = extract_analysis_data_from_json(
         data,
         client_domain=context["client_domain"],
         client_name_patterns=context["client_name_patterns"],
         framework_terms=context.get("framework_terms"),
+        known_brands=known_brands,
+        serp_intent_thresholds=intent_thresholds,
+        preferred_intents=preferred_intents,
     )
     warnings = validate_extraction(extracted)
     progress(

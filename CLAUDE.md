@@ -74,6 +74,8 @@ market_analysis_*.json
 | `run_feasibility.py` | Standalone DA feasibility analysis and pivot report |
 | `classifiers.py` | Rule-based content & entity type classifiers |
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |
+| `intent_verdict.py` | Spec v2 — computes per-keyword SERP intent verdict from intent_mapping.yml rules (primary_intent, is_mixed, confidence, distribution) |
+| `title_patterns.py` | Spec v2 — extracts shape patterns (how_to, what_is, listicle_numeric, vs_comparison, best_of, brand_only, question, other) from top-10 titles with dominance threshold |
 | `feasibility.py` | DA gap scoring (`compute_feasibility`) + pivot suggestions (`generate_hyper_local_pivot`) |
 | `dataforseo_client.py` | DataForSEO bulk_ranks API client with 30-day SQLite cache |
 | `moz_client.py` | Moz Links API v2 client with 30-day SQLite cache (fallback) |
@@ -104,6 +106,18 @@ prompts/
 - `analysis_report.*` — client context injected into LLM prompts
 
 **`domain_overrides.yml`** — manual entity type overrides (e.g., `psychologytoday.com: directory`).
+
+**`intent_mapping.yml`** (spec v2) — rule table mapping `(content_type, entity_type, local_pack, domain_role)` → SERP intent (informational / commercial_investigation / transactional / navigational / local / uncategorised). First-match-wins, top of file = highest priority. Edit this file to refine intent assignments — don't push exceptions into Python.
+
+## Spec v2 Pre-Computed Fields (per keyword_profile)
+
+`generate_content_brief.py::extract_analysis_data_from_json()` populates these on every keyword profile so the LLM consumes deterministic verdicts instead of re-inferring them:
+
+- **`serp_intent`**: `{primary_intent, is_mixed, confidence (high/medium/low), intent_distribution, evidence}` — driven by `intent_mapping.yml`. Confidence falls when classifiers tag many URLs as N/A.
+- **`title_patterns`**: `{pattern_counts, dominant_pattern, examples, total_titles}` — `dominant_pattern` is set only when one pattern reaches ≥4 of 10 (and is never `"other"`).
+- **`mixed_intent_strategy`**: `compete_on_dominant` / `backdoor` / `avoid` / `null`. Computed only when `serp_intent.is_mixed = True`. Driven by `client.preferred_intents` in `config.yml` and the client's existing intent presence (intents the client already ranks for).
+
+`validate_llm_report` enforces these as HARD-FAIL (intent + is_mixed contradictions) or SOFT-FAIL with 1 retry (dominant_pattern + mixed_intent_strategy contradictions).
 
 ## Feasibility Scoring
 
@@ -182,6 +196,10 @@ All schema changes use `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE … ADD COLU
 1. Hard-fail (abort): AI Overview count mismatch vs. extracted data
 2. Soft-fail (1 retry): Wording issues → sends correction prompt
 3. Failed validations written to `*.validation.md` for inspection
+
+## Workflow Convention
+
+**Push after each set of work.** When a logical chunk lands (new feature module + tests passing, validation rules + tests, doc updates), commit and push to GitHub before moving to the next chunk. This keeps the working tree close to `origin/main`, makes review-by-diff possible, and prevents large swept-together changes from sitting in the working copy. Only commit the files you intentionally changed for the current chunk — never `git add .` because the repo accumulates many untracked output/draft files that should stay local.
 
 ## Development Notes
 

@@ -39,6 +39,34 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
   "[type]_plurality" (highest count but below 60%),
   "mixed_[type1]_[type2]..." (top types tied or within 2 results),
   or "unclassified". Use this as the starting point for Section 2.
+- serp_intent: pre-computed SERP intent verdict (deterministic, rule-driven
+  from intent_mapping.yml). Contains:
+  - primary_intent: one of informational, commercial_investigation,
+    transactional, navigational, local, uncategorised
+  - is_mixed: true when no intent crosses the share/margin thresholds —
+    primary_intent is then the highest-count intent but the SERP is mixed
+  - confidence: high / medium / low, based on what fraction of URLs were
+    classifiable. Low confidence means the underlying classifiers (Content
+    Type, Entity Type) tagged few URLs — state confidence honestly.
+  - intent_distribution: share per intent among classified URLs
+  - evidence: total_url_count, classified_url_count, uncategorised_count,
+    intent_counts. uncategorised URLs are excluded from the distribution.
+- mixed_intent_strategy: pre-computed strategy hint, set ONLY when
+  serp_intent.is_mixed = True. One of:
+  - "compete_on_dominant": dominant intent matches an intent the client
+    already ranks for elsewhere. Treat as a regular opportunity.
+  - "backdoor": dominant intent is uncompetable, but a non-dominant
+    intent on this SERP matches the client's preferred_intents — there's
+    a way in via a different content angle. Frame the recommendation
+    around the non-dominant intent.
+  - "avoid": neither path applies. Recommend skipping or treating with
+    caution.
+  - null: keyword is not mixed; do not invoke mixed-intent framing.
+- title_patterns: pre-computed shape analysis of the top-10 organic titles.
+  Contains pattern_counts (how_to, what_is, best_of, vs_comparison,
+  listicle_numeric, brand_only, question, other), dominant_pattern (set
+  only when one pattern reaches ≥4 of 10 — never "other"), and examples.
+  May be null if no titles were available.
 
 COMPETITIVE LANDSCAPE:
 - competitive_landscape: per-keyword summaries with entity breakdown
@@ -218,6 +246,22 @@ Example: if has_local_pack=True but local_pack_count=2, say
 "Local pack is present with 2 businesses listed." Do NOT say
 "no meaningful local pack presence."
 
+RULE 12A: DO NOT CONTRADICT SERP INTENT VERDICT.
+keyword_profiles.serp_intent is a deterministic rule-based classification.
+You may quote it, paraphrase the labels, or note when confidence is low,
+but you must not state a different primary_intent than the field reports
+or call a SERP "mixed" / "single-intent" against the is_mixed flag.
+Example: if serp_intent.primary_intent = "local" and is_mixed = false, do
+NOT describe the SERP as "informational" or "mixed-intent." If
+confidence = "low", say so: "Intent verdict has low confidence — only X
+of N URLs were classifiable."
+
+RULE 12B: DO NOT CONTRADICT TITLE PATTERN DOMINANCE.
+If title_patterns.dominant_pattern is non-null, you may not state a
+different dominant pattern in prose. If it is null (no pattern reached
+the threshold), do not invent one. The pattern_counts and examples are
+authoritative.
+
 RULE 12: DISTINGUISH EVIDENCE FROM CLIENT-ANGLE INFERENCE.
 If a recommendation comes directly from observed SERP behavior,
 label it as a SERP-evidenced demand gap. If it comes from the
@@ -243,11 +287,17 @@ For EACH root keyword, produce a subsection:
 **[keyword] ([total_results] total results)**
 State the entity_distribution counts and describe the entity mix
 using entity_label. Name the top 3 organic sources with entity
-types. State AIO status exactly from has_ai_overview and
-aio_citation_count, even if the values look unusual. State whether
-the client is visible, at what rank, and with what stability. List
-SERP modules present. List PAA questions for this keyword (or state
-none were captured). Note if total_results < 500.
+types. State the SERP intent verdict from serp_intent: name the
+primary_intent, note is_mixed, and report confidence (when low,
+say which fraction of URLs was classified). If
+title_patterns.dominant_pattern is non-null, name it and give one
+example title from title_patterns.examples; if null, state "no
+single title pattern dominates." State AIO status exactly from
+has_ai_overview and aio_citation_count, even if the values look
+unusual. State whether the client is visible, at what rank, and
+with what stability. List SERP modules present. List PAA questions
+for this keyword (or state none were captured). Note if
+total_results < 500.
 
 After all 6 subsections, write one synthesis paragraph grouping
 keywords that share entity mixes and intent patterns. This
