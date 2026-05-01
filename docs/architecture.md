@@ -27,7 +27,7 @@ market_analysis_*.json
 | Module | Role |
 |--------|------|
 | `serp_audit.py` | Main SERP engine — fetches, parses, enriches, tags PAA intent |
-| `generate_insight_report.py` | Renders `market_analysis_*.md` — Sections 1–6 including `## 5b. Per-Keyword SERP Intent` and Mixed-Intent Strategic Notes |
+| `generate_insight_report.py` | Renders `market_analysis_*.md` — Sections 1–6 including `## 5b. Per-Keyword SERP Intent`, Mixed-Intent Strategic Notes (Section 4), and per-pattern SERP intent context lines (C.2) |
 | `generate_content_brief.py` | LLM report generator using Anthropic API; also renders per-recommendation briefs with `## 1a. SERP Intent Context` |
 | `run_feasibility.py` | Standalone DA feasibility analysis and pivot report |
 | `classifiers.py` | Rule-based content & entity type classifiers |

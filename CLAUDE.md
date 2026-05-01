@@ -10,7 +10,7 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py -q`
-  (expects 358 passing, 5 skipped, 0 errors).
+  (expects 369 passing, 5 skipped, 0 errors).
 - **Never `git add .`** — the repo accumulates output and draft files that
   must stay local. Only commit files intentionally changed for the current
   chunk.
@@ -86,7 +86,7 @@ pre-computed field to a keyword profile to catch missed validators early.
 This project uses spec IDs throughout. When working from a spec:
 
 - The `serp_tools_upgrade_spec_v2.md` and follow-up fix specs live in
-  `docs/specs/`.
+  the repo root (not `docs/specs/`).
 - Code that implements a spec criterion includes a `Spec:` reference in
   its docstring per the user-level workflow rules.
 - After any spec-driven change, regenerate `docs/spec_coverage.md` to

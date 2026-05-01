@@ -283,7 +283,7 @@ python3 refresh_analysis_outputs.py \
 ```bash
 source venv/bin/activate
 python3 -m pytest test_*.py -q
-# Expected: 358 passed, 5 skipped (tkinter tests skipped in headless environments)
+# Expected: 369 passed, 5 skipped (tkinter tests skipped in headless environments)
 ```
 
 All tests run without API keys — external calls are mocked.
