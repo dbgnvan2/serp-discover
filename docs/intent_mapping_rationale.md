@@ -90,7 +90,7 @@ Rationale: A guide is a guide. The local pack is a separate intent signal — it
 
 **Decision: NO effect on intent classification.**
 
-**Fixture example:** keyword "How much is couples therapy in Vancouver?" (run `20260501_0828`) has 11 AIO citations (`ai_overview_citations` table). `serp_intent.primary_intent` = `"informational"`. The AIO's presence did not affect the classification — the verdict is driven entirely by the organic URL classifications in the top-10 organic results.
+**Fixture example:** keyword "How much is couples therapy in Vancouver?" (run `20260501_0828`) has 11 citations in the AI Overview (`aio_citation_count` = 11, stored in the `ai_overview_citations` table). `serp_intent.primary_intent` = `"informational"`. The AIO's presence did not affect the classification — the verdict is driven entirely by the organic URL classifications in the top-10 organic results.
 
 AI Overviews now appear on informational, commercial, and local SERPs alike. Their presence does not reliably indicate any particular intent type. They are recorded in `evidence.local_pack_present` style metadata but do not shift any mapping rule.
 
