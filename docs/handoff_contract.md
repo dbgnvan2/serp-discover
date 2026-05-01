@@ -76,6 +76,28 @@ If the same URL ranks for multiple keywords, it appears in `targets` multiple ti
 
 ---
 
+## `source_keyword` vs `primary_keyword_for_url`
+
+These two fields are semantically different and will often diverge.
+
+- **`source_keyword`**: the keyword for which this particular target entry was selected. A URL that ranks for 3 keywords appears 3 times in `targets`, each with a different `source_keyword`.
+- **`primary_keyword_for_url`**: the keyword for which this URL had its **best** (lowest numeric) rank across all keywords in the run. This is the same for all entries with the same URL, regardless of which `source_keyword` generated them.
+
+**When they diverge:** A URL included because it ranks #8 for keyword A may have its best rank (#2) for keyword B. Its `source_keyword` is A, but `primary_keyword_for_url` is B.
+
+**Fixture evidence** (run `20260501_0832`, 46 targets total — 4 cases where the fields differ):
+
+| URL (truncated) | `source_keyword` | `primary_keyword_for_url` |
+|-----------------|-----------------|--------------------------|
+| `https://counselling-vancouver.com/` | "How much is couples therapy in Vancouver?" | "success rate of couples therapy?" |
+| `https://www.psychologytoday.com/ca/therapists/bc/v…` | "How much is couples therapy in Vancouver?" | "What type of therapist is best for couples therapy?" |
+| `https://www.nofearcounselling.com/why-consider-cou…` | "success rate of couples therapy?" | "how does couples counselling work" |
+| `https://wellbeingscounselling.ca/psychotherapy/ser…` | "success rate of couples therapy?" | "how does couples counselling work" |
+
+**Tool 2 guidance:** Use `source_keyword` to understand *why this entry is in the audit queue* (i.e., this URL was competitive for this keyword). Use `primary_keyword_for_url` to understand *where this page is most authoritative* and to avoid auditing the same URL twice with different context (de-duplicate by URL, keeping the entry with the lowest `rank` or the `primary_keyword_for_url` entry).
+
+---
+
 ## How Tool 2 consumes this file
 
 Tool 2's `get_latest_market_data()` reads this file to populate its audit queue. It uses:

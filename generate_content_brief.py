@@ -2142,6 +2142,7 @@ def generate_serp_intent_section(keyword_profiles: dict) -> str:
         ev = si.get("evidence") or {}
         classified_n = ev.get("classified_organic_url_count", 0)
         organic_n = ev.get("organic_url_count", 0)
+        local_pack = ev.get("local_pack_present", False)
         mixed_comps = si.get("mixed_components") or []
         dominant_pattern = tp.get("dominant_pattern")
 
@@ -2151,7 +2152,7 @@ def generate_serp_intent_section(keyword_profiles: dict) -> str:
         if primary is None:
             lines.append(
                 f"- **Primary intent:** insufficient data "
-                f"(only {classified_n} of {organic_n} URLs classified)"
+                f"— only {classified_n} of {organic_n} URLs could be classified"
             )
         else:
             lines.append(f"- **Primary intent:** {primary}  *(confidence: {confidence})*")
@@ -2165,8 +2166,10 @@ def generate_serp_intent_section(keyword_profiles: dict) -> str:
         if dist_parts:
             lines.append(
                 f"- **Distribution:** {', '.join(dist_parts)} "
-                f"(over {classified_n} classified organic URLs)"
+                f"over {classified_n} of {organic_n} classified URLs"
             )
+        else:
+            lines.append("- **Distribution:** no URLs classified")
 
         if is_mixed and mixed_comps:
             lines.append(f"- **Mixed-intent components:** {', '.join(mixed_comps)}")
@@ -2178,7 +2181,10 @@ def generate_serp_intent_section(keyword_profiles: dict) -> str:
         if dominant_pattern:
             lines.append(f"- **Title patterns:** {dominant_pattern} dominant")
         else:
-            lines.append("- **Title patterns:** No dominant pattern detected")
+            lines.append("- **Title patterns:** no dominant pattern detected")
+
+        if local_pack:
+            lines.append("- **Local pack present:** yes")
 
         lines.append("")
 
@@ -2501,6 +2507,16 @@ def list_recommendations(data, args):
             print(f"- {w}")
 
 
+_BRIEF_INTENT_SLOTS = {
+    "informational": "informational/educational",
+    "commercial_investigation": "research/comparison",
+    "transactional": "service/booking",
+    "navigational": "brand-search",
+    "local": "local-service",
+    "mixed": "mixed (see Section 5b for components)",
+}
+
+
 def generate_brief(data, rec_index=0):
     # Legacy brief generator retained for direct --out usage.
     recs = data.get("strategic_recommendations", [])
@@ -2521,10 +2537,40 @@ def generate_brief(data, rec_index=0):
     top_competitors = get_relevant_competitors(
         organic, rec.get("Pattern_Name"), max_results=3
     )
+
+    # M1.C — SERP Intent Context: find most relevant keyword from PAA source keywords
+    src_keywords = [r.get("Source_Keyword", "") for r in relevant_paa_records if r.get("Source_Keyword")]
+    most_relevant_kw = Counter(src_keywords).most_common(1)[0][0] if src_keywords else ""
+    kw_profiles = data.get("keyword_profiles", {})
+    kp = kw_profiles.get(most_relevant_kw, {}) if most_relevant_kw else {}
+    si = kp.get("serp_intent") or {}
+    tp = kp.get("title_patterns") or {}
+    _primary = si.get("primary_intent")
+    _confidence = si.get("confidence", "low")
+    _is_mixed = si.get("is_mixed", False)
+    _dp = tp.get("dominant_pattern")
+    _slot = _BRIEF_INTENT_SLOTS.get(_primary, "undetermined") if _primary else "undetermined"
+
     lines = []
     lines.append(f"# Content Brief: {rec.get('Content_Angle')}")
     lines.append(f"**Strategy:** {rec.get('Pattern_Name')}")
     lines.append(f"**Date:** {datetime.now().strftime('%Y-%m-%d')}\n")
+
+    # 1a. SERP Intent Context (M1.C)
+    lines.append("## 1a. SERP Intent Context")
+    lines.append("")
+    if most_relevant_kw:
+        lines.append(f"For the most relevant keyword (*{most_relevant_kw}*):")
+        _primary_display = _primary if _primary is not None else "insufficient data"
+        lines.append(f"- Intent: {_primary_display} *(confidence: {_confidence})*")
+        lines.append(f"- Title pattern: {_dp if _dp else 'no dominant pattern'}")
+        lines.append(f"- Mixed: {'yes' if _is_mixed else 'no'}")
+        lines.append("")
+        lines.append(f"This brief targets the **{_slot}** intent slot.")
+    else:
+        lines.append("No directly mapped keyword for this brief.")
+    lines.append("")
+
     lines.append("## 1. The Core Conflict (The Hook)")
     lines.append(f"**The Status Quo (Bad Advice):** \"{rec.get('Status_Quo_Message')}\"")
     lines.append(f"**The Bowen Reframe (The Solution):** \"{rec.get('Bowen_Bridge_Reframe')}\"")

@@ -70,9 +70,9 @@ Rules fire top-to-bottom; first match wins. The priority order is:
 
 ### Edge Case 1: Service page on a directory domain
 
-**Example:** A Psychology Today therapist profile page — `content_type=service`, `entity_type=directory`.
-
 **Decision: `commercial_investigation`.**
+
+**Fixture example:** `https://www.psychologytoday.com/ca/therapists/bc/vancouver?category=couples` — `entity_type=directory`, keyword "How much is couples therapy in Vancouver?" (run `20260501_0828`). This is a Psychology Today therapist-listing page: service-shaped (browsable therapist profiles with bios, specialties, and contact forms) on a directory domain.
 
 Rationale: A therapist profile on Psychology Today is service-shaped (it has a bio, specialties, contact form), but the domain is a directory. The user landed on this page because they were browsing a comparison surface, not because they typed the URL directly. The discovery context is investigative. Calling it `transactional` would falsely imply that Living Systems can win by improving its own service pages — it cannot, because the user's decision happens *inside the Psychology Today directory*. The `commercial_investigation` label correctly signals that the keyword is dominated by a directory intermediary.
 
@@ -80,15 +80,17 @@ Implementation: the `service` + `directory` rule fires before the generic `servi
 
 ### Edge Case 2: Guide URL on a counselling provider's domain when the SERP has a local pack
 
-**Example:** `https://counsellingclinic.ca/how-couples-therapy-works` (content_type=guide, entity_type=counselling) on a keyword where the SERP shows a local 3-pack.
-
 **Decision: `informational` (locality does NOT override).**
+
+**Fixture example:** `https://openspacecounselling.ca/` — `entity_type=counselling`, `content_type=guide` (URL pattern rule for bare root on counselling domain), keyword "What type of therapist is best for couples therapy?" (run `20260501_0828`). That SERP has `local_pack_present: True` with 23 businesses. Despite local pack presence, this URL maps to `informational`.
 
 Rationale: A guide is a guide. The local pack is a separate intent signal — its presence shifts *service-page* URLs toward `local`, but it does not retroactively reclassify guide-format content. Reclassifying every provider-hosted guide as `local` because the SERP also has a 3-pack would conflate authoring intent with SERP mix. The result would be: a SERP with 7 informational guides + 1 local pack gets called `local`, which misrepresents the actual competitive landscape. The guide rule fires unconditionally regardless of local_pack value.
 
 ### Edge Case 3: AI Overview presence
 
 **Decision: NO effect on intent classification.**
+
+**Fixture example:** keyword "How much is couples therapy in Vancouver?" (run `20260501_0828`) has 11 AIO citations (`ai_overview_citations` table). `serp_intent.primary_intent` = `"informational"`. The AIO's presence did not affect the classification — the verdict is driven entirely by the organic URL classifications in the top-10 organic results.
 
 AI Overviews now appear on informational, commercial, and local SERPs alike. Their presence does not reliably indicate any particular intent type. They are recorded in `evidence.local_pack_present` style metadata but do not shift any mapping rule.
 

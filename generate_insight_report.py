@@ -11,7 +11,8 @@ Sections
 3. The 'Status Quo' (Competitor Language)
 4. Strategic Recommendations (The Bridge)
 5. SERP Composition (Entity + Content Dominance)
-5b. Keyword Feasibility & Pivot Recommendations  ← NEW
+5b. Per-Keyword SERP Intent  ← NEW (M1.A)
+5c. Keyword Feasibility & Pivot Recommendations
 6. Market Volatility
 
 Usage
@@ -143,6 +144,39 @@ def generate_report(data):
     report.append("## 4. Strategic Recommendations (The Bridge)")
     report.append("How to differentiate using Bowen Theory.")
 
+    # M1.B — Mixed-Intent Strategic Note callouts above Bowen pattern blocks
+    _kw_profiles = data.get("keyword_profiles", {})
+    _STRATEGY_DESCRIPTIONS = {
+        "compete_on_dominant": (
+            "Match the dominant intent format directly. The client's existing "
+            "content posture aligns with the most-represented intent in this SERP."
+        ),
+        "backdoor": (
+            "Produce content matching a non-dominant but client-aligned intent. "
+            "Likely to outrank head-on competitors via differentiation."
+        ),
+        "avoid": "No good fit for the client's content capabilities. Skip this keyword.",
+    }
+    _mixed_kws = [
+        (kw, p)
+        for kw, p in _kw_profiles.items()
+        if p.get("mixed_intent_strategy") is not None
+    ]
+    for _kw, _p in _mixed_kws:
+        _strategy = _p["mixed_intent_strategy"]
+        _comps = (_p.get("serp_intent") or {}).get("mixed_components") or []
+        _comp_str = " + ".join(_comps) if _comps else "multiple intents"
+        _desc = _STRATEGY_DESCRIPTIONS.get(_strategy, "")
+        report.append(f"\n### ⚖️ Mixed-Intent Strategic Note: {_kw}")
+        report.append("")
+        report.append(
+            f"This keyword shows mixed search intent ({_comp_str}). "
+            f"Recommended approach: **{_strategy}**."
+        )
+        report.append("")
+        if _desc:
+            report.append(_desc)
+
     recs = data.get("strategic_recommendations", [])
     if recs:
         for rec in recs:
@@ -181,10 +215,14 @@ def generate_report(data):
                         report.append(f"- **{k}:** {v}%")
                 report.append("\n")
 
-    # 5b. Keyword Feasibility & Pivot Recommendations
+    # 5b. Per-Keyword SERP Intent (M1.A — always rendered when keyword_profiles present)
+    _kw_profiles_for_5b = data.get("keyword_profiles", {})
+    report.extend(_render_serp_intent_section(_kw_profiles_for_5b))
+
+    # 5c. Keyword Feasibility & Pivot Recommendations
     feasibility_rows = data.get("keyword_feasibility", [])
     if feasibility_rows:
-        report.append("## 5b. Keyword Feasibility & Pivot Recommendations")
+        report.append("## 5c. Keyword Feasibility & Pivot Recommendations")
         report.append(
             "Domain Authority gap analysis for each keyword. "
             "Low Feasibility keywords include a hyper-local pivot suggestion "
@@ -279,6 +317,71 @@ def generate_report(data):
                 report.append("\n")
 
     return "\n".join(report)
+
+
+def _render_serp_intent_section(keyword_profiles: dict) -> list:
+    """Return lines for ## 5b. Per-Keyword SERP Intent (M1.A of completion spec)."""
+    if not keyword_profiles:
+        return []
+
+    lines = ["\n## 5b. Per-Keyword SERP Intent", ""]
+
+    for kw, profile in keyword_profiles.items():
+        si = profile.get("serp_intent") or {}
+        tp = profile.get("title_patterns") or {}
+        mis = profile.get("mixed_intent_strategy")
+        primary = si.get("primary_intent")
+        confidence = si.get("confidence", "low")
+        is_mixed = si.get("is_mixed", False)
+        dist = si.get("intent_distribution") or {}
+        ev = si.get("evidence") or {}
+        classified_n = ev.get("classified_organic_url_count", 0)
+        organic_n = ev.get("organic_url_count", 0)
+        mixed_comps = si.get("mixed_components") or []
+        dominant_pattern = tp.get("dominant_pattern")
+        local_pack = ev.get("local_pack_present", False)
+
+        lines.append(f"### {kw}")
+        lines.append("")
+
+        if primary is None:
+            lines.append(
+                f"- **Primary intent:** insufficient data "
+                f"— only {classified_n} of {organic_n} URLs could be classified"
+            )
+        else:
+            lines.append(f"- **Primary intent:** {primary}  *(confidence: {confidence})*")
+
+        dist_parts = [
+            f"{intent}: {count}"
+            for intent, count in sorted(dist.items(), key=lambda x: -x[1])
+            if count > 0
+        ]
+        if dist_parts:
+            lines.append(
+                f"- **Distribution:** {', '.join(dist_parts)} "
+                f"over {classified_n} of {organic_n} classified URLs"
+            )
+        else:
+            lines.append("- **Distribution:** no URLs classified")
+
+        if is_mixed and mixed_comps:
+            lines.append(f"- **Mixed-intent components:** {', '.join(mixed_comps)}")
+
+        if mis is not None:
+            lines.append(f"- **Strategy:** {mis}")
+
+        if dominant_pattern:
+            lines.append(f"- **Title patterns:** {dominant_pattern} dominant")
+        else:
+            lines.append("- **Title patterns:** no dominant pattern detected")
+
+        if local_pack:
+            lines.append("- **Local pack present:** yes")
+
+        lines.append("")
+
+    return lines
 
 
 def main():
