@@ -513,6 +513,7 @@ class ClassificationRulesTab(BaseConfigTab):
         desc_frame.pack(fill="both", expand=True)
 
         ttk.Label(desc_frame, text="Descriptions for each entity type:", foreground="gray").pack(anchor="w", pady=(0, 5))
+        ttk.Label(desc_frame, text="(Double-click a row to edit, or select and click 'Edit' button)", foreground="blue", font=("Helvetica", 9)).pack(anchor="w", pady=(0, 5))
 
         tree_frame2 = ttk.Frame(desc_frame)
         tree_frame2.pack(fill="both", expand=True, pady=(0, 10))
@@ -530,6 +531,9 @@ class ClassificationRulesTab(BaseConfigTab):
 
         # Load descriptions
         self._load_descriptions()
+
+        # Add double-click to edit functionality
+        self.descriptions_tree.bind("<Double-1>", lambda e: self._edit_description())
 
         # Description buttons
         desc_btn_frame = ttk.Frame(desc_frame)
