@@ -1,6 +1,6 @@
 # Content Brief: Why trying to force reconnection may deepen the cutoff.
 **Strategy:** The Fusion Trap
-**Date:** 2026-05-01
+**Date:** 2026-05-02
 
 ## 1a. SERP Intent Context
 

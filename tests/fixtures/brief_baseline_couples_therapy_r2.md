@@ -1,6 +1,6 @@
 # Content Brief: When short-term relief becomes a substitute for working the family pattern.
 **Strategy:** The Resource Trap
-**Date:** 2026-05-01
+**Date:** 2026-05-02
 
 ## 1a. SERP Intent Context
 

@@ -1,6 +1,6 @@
 # Content Brief: Why turning family estrangement into a diagnosis keeps you stuck.
 **Strategy:** The Medical Model Trap
-**Date:** 2026-05-01
+**Date:** 2026-05-02
 
 ## 1a. SERP Intent Context
 
