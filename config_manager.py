@@ -1576,7 +1576,7 @@ class ConfigSettingsTab(BaseConfigTab):
                 self._render_field(section_frame, section_name, key, value)
         else:
             # Non-dict value in top level (rare, but handle gracefully)
-            ttk.Label(section_frame, text=f"Value: {value}").pack()
+            ttk.Label(section_frame, text=f"Value: {section_data}").pack()
 
     def _render_field(self, parent, section_name, field_name, value):
         """Render a single field with type-aware widget."""

@@ -561,6 +561,22 @@ class TestIntentClassifierTriggersTabPhase4:
 class TestConfigSettingsTabPhase5:
     """Test ConfigSettingsTab (config.yml editing)."""
 
+    @pytest.mark.skipif(not TKINTER_AVAILABLE, reason="tkinter not available")
+    def test_config_settings_tab_renders_without_error(self):
+        """ConfigSettingsTab should render all sections without NameError or AttributeError."""
+        root = tk.Tk()
+        try:
+            # This will instantiate the tab and call render_ui(), which should not raise errors
+            tab = ConfigSettingsTab(root)
+            assert tab is not None
+            assert hasattr(tab, 'section_widgets')
+            # Verify at least some widgets were created
+            assert len(tab.section_widgets) > 0, "No sections were rendered"
+            root.destroy()
+        except (NameError, AttributeError) as e:
+            root.destroy()
+            pytest.fail(f"ConfigSettingsTab.render_ui() failed: {e}")
+
     def test_config_settings_loads_current_data(self):
         """ConfigSettingsTab should load config.yml data."""
         import yaml
