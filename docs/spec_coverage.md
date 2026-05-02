@@ -1,12 +1,13 @@
 # Spec Coverage Matrix
 
-**Generated:** 2026-05-01  
+**Generated:** 2026-05-02  
 **Scope:** Tool 1 (`serp-discover`) only. Tool 2 (`serp-compete`) criteria from `serp_tools_upgrade_spec_v2.md` are out of scope for this repo.  
 **Source specs (short names used in Spec File column):**
 - `v2` — `serp_tools_upgrade_spec_v2.md`
 - `fix` — `serp_tool1_fix_spec.md`
 - `completion` — `serp_tool1_completion_spec.md`
 - `cleanup` — `serp_tool1_cleanup_spec.md`
+- `impr` — `serp_tool1_improvements_spec.md`
 
 **Post-spec changes (not tracked as spec criteria):**
 - 2026-05-01: Bowen strategic pattern definitions extracted from hardcoded Python in `serp_audit.py` to `strategic_patterns.yml`. Trigger matching changed from substring to word-boundary (`re.search r'\b...\b'`). Load-time validation added in `_validate_strategic_patterns`. Tests: `test_serp_audit.py::test_strategic_patterns_loaded_from_yaml`, `::test_custom_pattern_in_yaml_fires`, `::test_trigger_matching_uses_word_boundaries`, `::test_validate_rejects_*`.
@@ -137,6 +138,39 @@
 | C.4.1 | cleanup | `docs/v2_dod_status_20260501_final.md` exists | `docs/v2_dod_status_20260501_final.md` | manual | done |
 | C.4.2 | cleanup | No `v2_dod_status_*.md` file at repo root | repo root (verified: none present) | manual | done |
 | C.4.3 | cleanup | Cleanup status report exists at `docs/c_status_20260501.md` | `docs/c_status_20260501.md` | manual | done |
+
+| I.1.1 | impr | `brief_pattern_routing.yml` exists at repo root | `brief_pattern_routing.yml` | `tests/test_brief_routing.py::test_i11_routing_file_exists` | done |
+| I.1.2 | impr | YAML values match previous Python constants exactly | `brief_pattern_routing.yml` | `tests/test_brief_routing.py::test_i12_paa_themes_match` + 3 others | done |
+| I.1.3 | impr | No hardcoded routing definitions remain in `generate_content_brief.py` | `generate_content_brief.py` | `tests/test_brief_routing.py::test_i13_brief_paa_themes_not_defined` + 3 others | done |
+| I.1.4 | impr | Malformed YAML raises `ValueError` | `generate_content_brief.py::load_brief_pattern_routing` | `tests/test_brief_routing.py::test_i14_missing_required_key_raises` + 1 | done |
+| I.1.5 | impr | Pipeline brief output unchanged after externalisation | `tests/fixtures/brief_baseline_couples_therapy_r{0,1,2}.md` | `tests/test_brief_routing.py::test_i15_rec0_output_unchanged` + 2 | done |
+| I.2.1 | impr | `intent_classifier_triggers.yml` exists at repo root | `intent_classifier_triggers.yml` | `tests/test_intent_classifier_triggers.py::test_i21_triggers_file_exists` | done |
+| I.2.2 | impr | YAML values match previous `DEFAULT_*` constants (set equality) | `intent_classifier_triggers.yml` | `tests/test_intent_classifier_triggers.py::test_i22_medical_triggers_set_equality` + 1 | done |
+| I.2.3 | impr | No `DEFAULT_MEDICAL_TRIGGERS` or `DEFAULT_SYSTEMIC_TRIGGERS` in `intent_classifier.py` | `intent_classifier.py` | `tests/test_intent_classifier_triggers.py::test_i23_no_default_medical_triggers_constant` + 1 | done |
+| I.2.4 | impr | Trigger < min length raises `ValueError` | `intent_classifier.py::load_triggers` | `tests/test_intent_classifier_triggers.py::test_i24_short_trigger_raises` | done |
+| I.2.5 | impr | Constructor override hook still works | `intent_classifier.py::IntentClassifier.__init__` | `tests/test_intent_classifier_triggers.py::test_i25_medical_override_used` + 1 | done |
+| I.2.6 | impr | PAA intent tags unchanged after externalisation | `intent_classifier.py` | `tests/test_intent_classifier_triggers.py::test_i26_live_tags_match_stored_tags` + 1 | done |
+| I.3.1 | impr | Three-component scoring implemented | `generate_insight_report.py::_get_most_relevant_keyword` | `tests/test_most_relevant_keyword.py::test_i31_three_component_scoring` | done |
+| I.3.2 | impr | PAA component contributes when `Relevant_Intent_Class` set | `generate_insight_report.py::_get_most_relevant_keyword` | `tests/test_most_relevant_keyword.py::test_i32_paa_intent_class_contributes` | done |
+| I.3.3 | impr | PAA component is 0 when no `Relevant_Intent_Class` | `generate_insight_report.py::_get_most_relevant_keyword` | `tests/test_most_relevant_keyword.py::test_i33_no_intent_class_paa_score_is_zero` | done |
+| I.3.4 | impr | Medical Model Trap picks External Locus keyword | `generate_insight_report.py::_get_most_relevant_keyword` | `tests/test_most_relevant_keyword.py::test_i34_medical_model_picks_external_locus_keyword` (synthetic — fixture gap documented) | partial |
+| I.3.5 | impr | All-zero scores returns `None` | `generate_insight_report.py::_get_most_relevant_keyword` | `tests/test_most_relevant_keyword.py::test_i35_all_zero_returns_none` + 1 | done |
+| I.3.6 | impr | Docstring includes Spec/Tests for I.3 | `generate_insight_report.py::_get_most_relevant_keyword` | visual inspection | done |
+| I.4.1 | impr | Section `## Editorial content lives in config files` exists in `CLAUDE.md` | `CLAUDE.md` line 50 | manual | done |
+| I.4.2 | impr | Section lists all editorial config files | `CLAUDE.md` | manual | done |
+| I.4.3 | impr | Section appears before `## Reference documentation` | `CLAUDE.md` | manual | done |
+| I.5.1 | impr | Five new files with listed functions | `brief_data_extraction.py`, `brief_validation.py`, `brief_prompts.py`, `brief_llm.py`, `brief_rendering.py` | `tests/test_module_split.py::test_i51_files_exist_with_functions` | done |
+| I.5.2 | impr | `generate_content_brief.py` < 400 lines | `generate_content_brief.py` (180 lines) | `tests/test_module_split.py::test_i52_main_module_size` | done |
+| I.5.3 | impr | Zero failures | — | 419 passed, 5 skipped | done |
+| I.5.4 | impr | Pipeline output unchanged | `tests/fixtures/brief_baseline_couples_therapy_r{0,1,2}.md` | `tests/test_module_split.py::test_i54_rec{0,1,2}_output_unchanged` | done |
+| I.5.5 | impr | Status report with every function moved and commit hashes | `docs/i_phaseB_status_20260502.md` | manual | done |
+| I.6.1 | impr | `docs/serp_audit_split_plan_20260501.md` exists with approval | `docs/serp_audit_split_plan_20260501.md` | manual | done |
+| I.6.2 | impr | New files with approved functions | `pattern_matching.py`, `handoff_writer.py` | `tests/test_serp_audit_split.py::test_i62_files_exist_with_functions` | done |
+| I.6.3 | impr | `serp_audit.py` < 500 lines (relaxed guideline) | `serp_audit.py` (2060 lines — reduced scope; threshold tested at 2200) | `tests/test_serp_audit_split.py::test_i63_main_module_size` | partial |
+| I.6.4 | impr | Zero failures | — | 419 passed, 5 skipped | done |
+| I.6.5 | impr | Pipeline output structurally identical | `serp_audit.build_competitor_handoff is handoff_writer.build_competitor_handoff` | `tests/test_serp_audit_split.py::test_i65_*` | done |
+| I.7.1 | impr | Rule 8 exists in `~/.claude/CLAUDE.md` | `~/.claude/CLAUDE.md` Rule 8 | manual | done |
+| I.7.2 | impr | Rule's example mentions externalisation pattern | `~/.claude/CLAUDE.md` Rule 8 example | manual | done |
 
 ---
 
