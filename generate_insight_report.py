@@ -23,8 +23,46 @@ Usage
 """
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
+
+import yaml
+
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+_PATTERN_INTENT_CLASS_CACHE: dict | None = None
+_KEYWORD_HINTS_CACHE: dict | None = None
+
+
+def _load_pattern_intent_classes() -> dict:
+    """Return mapping of pattern_name → Relevant_Intent_Class (or None)."""
+    global _PATTERN_INTENT_CLASS_CACHE
+    if _PATTERN_INTENT_CLASS_CACHE is not None:
+        return _PATTERN_INTENT_CLASS_CACHE
+    path = os.path.join(_REPO_ROOT, "strategic_patterns.yml")
+    with open(path, encoding="utf-8") as f:
+        patterns = yaml.safe_load(f) or []
+    _PATTERN_INTENT_CLASS_CACHE = {
+        p["Pattern_Name"]: p.get("Relevant_Intent_Class")
+        for p in patterns if isinstance(p, dict) and "Pattern_Name" in p
+    }
+    return _PATTERN_INTENT_CLASS_CACHE
+
+
+def _load_keyword_hints() -> dict:
+    """Return mapping of pattern_name → keyword_hints list from brief_pattern_routing.yml."""
+    global _KEYWORD_HINTS_CACHE
+    if _KEYWORD_HINTS_CACHE is not None:
+        return _KEYWORD_HINTS_CACHE
+    path = os.path.join(_REPO_ROOT, "brief_pattern_routing.yml")
+    with open(path, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    _KEYWORD_HINTS_CACHE = {
+        entry["pattern_name"]: list(entry.get("keyword_hints") or [])
+        for entry in raw.get("patterns", [])
+        if isinstance(entry, dict) and "pattern_name" in entry
+    }
+    return _KEYWORD_HINTS_CACHE
 
 try:
     import metrics
@@ -178,12 +216,13 @@ def generate_report(data):
             report.append(_desc)
 
     _organic_results = data.get("organic_results", [])
+    _paa_questions = data.get("paa_questions", [])
     recs = data.get("strategic_recommendations", [])
     if recs:
         for rec in recs:
             report.append(f"\n### 🌉 {rec.get('Pattern_Name', 'Opportunity')}")
             report.append("")
-            report.append(_render_pattern_intent_context(rec, _organic_results, _kw_profiles))
+            report.append(_render_pattern_intent_context(rec, _organic_results, _kw_profiles, _paa_questions))
             report.append("")
             report.append(f"- **Status Quo:** {rec.get('Status_Quo_Message')}")
             report.append(
@@ -323,48 +362,87 @@ def generate_report(data):
     return "\n".join(report)
 
 
-def _get_most_relevant_keyword(rec: dict, organic_results: list, keyword_profiles: dict) -> str | None:
-    """Return the keyword whose organic results contain the most pattern trigger matches.
+def _get_most_relevant_keyword(
+    rec: dict,
+    organic_results: list,
+    keyword_profiles: dict,
+    paa_questions: list,
+) -> str | None:
+    """Three-component keyword relevance scoring for Section 4 pattern blocks.
 
     Purpose: Select the keyword most associated with a strategic recommendation pattern.
-    Spec:    serp_tool1_cleanup_spec.md#C.2
-    Tests:   test_markdown_rendering.py::test_c21_all_four_patterns_have_intent_context
+    Spec:    serp_tool1_improvements_spec.md#I.3
+    Tests:   tests/test_most_relevant_keyword.py::test_i31_three_component_scoring
 
-    Trigger words from rec['Detected_Triggers'] are matched (substring, case-insensitive)
-    against Title+Snippet text of organic results grouped by Root_Keyword. Keyword with
-    highest total match count wins; alphabetical order breaks ties. Returns None when all
-    keywords score 0 or when organic_results is empty.
+    score(keyword, pattern) =
+        (PAA questions for kw tagged with pattern's Relevant_Intent_Class) * 3
+      + (pattern's keyword_hints matching kw source text) * 2
+      + (pattern's trigger words in Title+Snippet of kw's organic results) * 1
+
+    The PAA component is 0 when no Relevant_Intent_Class is set for the pattern.
+    Alphabetical tiebreaker when scores are equal.
+    Returns None when all keywords score 0 or inputs are empty.
     """
+    pattern_name = rec.get("Pattern_Name", "")
     triggers_raw = rec.get("Detected_Triggers") or ""
     triggers = [t.strip().lower() for t in triggers_raw.split(",") if t.strip()]
-    if not triggers or not organic_results:
+
+    relevant_intent_class = _load_pattern_intent_classes().get(pattern_name)
+    keyword_hints = _load_keyword_hints().get(pattern_name, [])
+
+    candidate_kws = {
+        row.get("Root_Keyword", "")
+        for row in organic_results
+        if row.get("Root_Keyword") and row.get("Root_Keyword") in keyword_profiles
+    }
+    if not candidate_kws:
         return None
 
     kw_scores: dict[str, int] = {}
-    for row in organic_results:
-        kw = row.get("Root_Keyword", "")
-        if not kw or kw not in keyword_profiles:
-            continue
-        text = ((row.get("Title") or "") + " " + (row.get("Snippet") or "")).lower()
-        kw_scores[kw] = kw_scores.get(kw, 0) + sum(1 for t in triggers if t in text)
+    for kw in candidate_kws:
+        kw_lower = kw.lower()
+
+        # Component 1: PAA intent class match (weight 3)
+        paa_score = 0
+        if relevant_intent_class:
+            paa_score = sum(
+                1 for q in paa_questions
+                if q.get("Source_Keyword") == kw
+                and q.get("Intent_Tag") == relevant_intent_class
+            ) * 3
+
+        # Component 2: keyword_hints match (weight 2)
+        hint_score = sum(1 for h in keyword_hints if h in kw_lower) * 2
+
+        # Component 3: trigger text in organic Title+Snippet (weight 1)
+        trigger_score = 0
+        for row in organic_results:
+            if row.get("Root_Keyword") != kw:
+                continue
+            text = ((row.get("Title") or "") + " " + (row.get("Snippet") or "")).lower()
+            trigger_score += sum(1 for t in triggers if t in text)
+
+        kw_scores[kw] = paa_score + hint_score + trigger_score
 
     if not kw_scores or max(kw_scores.values()) == 0:
         return None
     return max(kw_scores, key=lambda k: (kw_scores[k], [-ord(c) for c in k]))
 
 
-def _render_pattern_intent_context(rec: dict, organic_results: list, keyword_profiles: dict) -> str:
+def _render_pattern_intent_context(
+    rec: dict, organic_results: list, keyword_profiles: dict, paa_questions: list
+) -> str:
     """Return the SERP intent context italic line for a Section 4 pattern block.
 
     Purpose: Anchor each Bowen pattern recommendation to a per-keyword SERP intent verdict.
-    Spec:    serp_tool1_cleanup_spec.md#C.2
-    Tests:   test_markdown_rendering.py::test_c21_all_four_patterns_have_intent_context
+    Spec:    serp_tool1_improvements_spec.md#I.3 (supersedes cleanup_spec.md#C.2)
+    Tests:   tests/test_most_relevant_keyword.py::test_i31_three_component_scoring
 
     Format: *SERP intent context (most relevant keyword: <kw>): <intent>, confidence <conf>[, mixed: c1 + c2].*
     Null primary_intent: *SERP intent context (most relevant keyword: <kw>): primary intent insufficient data.*
     No keyword found: *SERP intent context: no keyword in this run has triggers for this pattern.*
     """
-    most_relevant_kw = _get_most_relevant_keyword(rec, organic_results, keyword_profiles)
+    most_relevant_kw = _get_most_relevant_keyword(rec, organic_results, keyword_profiles, paa_questions)
     if not most_relevant_kw:
         return "*SERP intent context: no keyword in this run has triggers for this pattern.*"
 

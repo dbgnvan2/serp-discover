@@ -27,6 +27,7 @@
 # Field names must match exactly — they are written directly into the JSON output.
 
 - Pattern_Name: The Medical Model Trap
+  Relevant_Intent_Class: External Locus
   Triggers:
     - clinical
     - registered
@@ -78,6 +79,7 @@
     When short-term relief becomes a substitute for working the family pattern.
 
 - Pattern_Name: The Blame/Reactivity Trap
+  Relevant_Intent_Class: External Locus
   Triggers:
     - narcissist
     - toxic
