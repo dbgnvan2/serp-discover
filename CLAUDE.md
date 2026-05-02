@@ -10,7 +10,8 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py tests/ -q`
-  (expects 407 passing, 5 skipped, 0 errors).
+  (currently 476 passing, 27 skipped). Note: skipped tests are GUI tests requiring
+  tkinter (not available in venv, but run when tkinter is available).
 - **Never `git add .`** — the repo accumulates output and draft files that
   must stay local. Only commit files intentionally changed for the current
   chunk.
@@ -21,6 +22,12 @@ keyword feasibility via Domain Authority gap analysis.
   actually need widget interaction. This prevents hidden bugs from going untested.
   Example: Don't skip "test that validates loaded data" just because treeview
   rendering isn't available — that test has nothing to do with the UI.
+  
+  **GUI Initialization Testing**: When adding new Tkinter tabs to ConfigManager,
+  use source code inspection tests (no tkinter required) to catch initialization
+  order bugs (e.g., initializing attributes AFTER super().__init__() call).
+  See `tests/test_config_manager.py::TestTabInitializationOrder::test_tab_classes_have_instance_variables`.
+  This catches patterns that would otherwise silently pass in venv but fail at runtime.
 
 ## Required env vars (in `.env`)
 
