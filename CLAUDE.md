@@ -20,6 +20,11 @@ keyword feasibility via Domain Authority gap analysis.
   `intent_mapping.yml`, entity overrides in `domain_overrides.yml`, client
   context in `config.yml`. Do not push exceptions or hardcoded values into
   `.py` files.
+- **Externalise old content when adding new editorial knobs.** When adding a
+  new trigger list, classification rule, or mapping table, scan for similar
+  hardcoded content already in Python and externalise it in the same change.
+  Do not leave old hardcoded content in `.py` files while new content moves to
+  YAML — that produces a codebase where similar things live in different places.
 
 ## Required env vars (in `.env`)
 
@@ -81,6 +86,12 @@ For details, read these as needed (do not preload):
 for `keyword_profiles.<field>` references and asserts each has a
 corresponding rule in `validate_llm_report`. Run it after adding any new
 pre-computed field to a keyword profile to catch missed validators early.
+
+## Methodology doc is a contract
+
+When modifying any file referenced in `docs/methodology.md`, update that doc
+in the same change. The methodology doc is part of the contract, not a side
+artifact — it must stay in sync with the code it describes.
 
 ## Spec traceability for this project
 
