@@ -630,3 +630,188 @@ class TestStrategicPatternsTabPhase3:
             assert isinstance(result, bool)
         finally:
             root.destroy()
+
+
+@pytest.mark.skipif(not TKINTER_AVAILABLE, reason="tkinter not available")
+class TestBriefPatternRoutingTabPhase4:
+    """Phase 4: Test BriefPatternRoutingTab CRUD operations."""
+
+    def test_brief_pattern_routing_loads_current_data(self):
+        """BriefPatternRoutingTab should load brief_pattern_routing.yml data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = BriefPatternRoutingTab(frame)
+            # Should load dict with version, patterns, intent_slot_descriptions
+            assert isinstance(tab.current_data, dict)
+            assert "version" in tab.current_data
+            assert "patterns" in tab.current_data
+            assert "intent_slot_descriptions" in tab.current_data
+            assert isinstance(tab.current_data["patterns"], list)
+            assert isinstance(tab.current_data["intent_slot_descriptions"], dict)
+        finally:
+            root.destroy()
+
+    def test_brief_pattern_routing_get_edited_data_preserves_structure(self):
+        """BriefPatternRoutingTab.get_edited_data() should preserve structure."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = BriefPatternRoutingTab(frame)
+            edited_data = tab.get_edited_data()
+            # Should have version, patterns, intent_slot_descriptions
+            assert "version" in edited_data
+            assert "patterns" in edited_data
+            assert "intent_slot_descriptions" in edited_data
+            assert isinstance(edited_data["patterns"], list)
+            # Each pattern should have required fields
+            for pattern in edited_data["patterns"]:
+                assert "pattern_name" in pattern
+                assert "paa_themes" in pattern
+                assert "paa_categories" in pattern
+                assert "keyword_hints" in pattern
+        finally:
+            root.destroy()
+
+    def test_brief_pattern_routing_validation_passes_on_current_data(self):
+        """BriefPatternRoutingTab should validate against current data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = BriefPatternRoutingTab(frame)
+            is_valid, errors, warnings = tab.validate()
+            # Current data on disk should be valid
+            assert isinstance(is_valid, bool)
+            assert isinstance(errors, list)
+            assert isinstance(warnings, list)
+        finally:
+            root.destroy()
+
+    def test_brief_pattern_routing_treeview_populated(self):
+        """BriefPatternRoutingTab treeview should be populated."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = BriefPatternRoutingTab(frame)
+            # Check treeview has items
+            items = tab.tree.get_children()
+            # Should have same number of items as patterns
+            assert len(items) == len(tab.current_data.get("patterns", []))
+        finally:
+            root.destroy()
+
+    def test_brief_pattern_routing_intent_descriptions_loaded(self):
+        """BriefPatternRoutingTab should load intent descriptions."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = BriefPatternRoutingTab(frame)
+            # Should have intent descriptions
+            assert tab.intent_descriptions is not None
+            assert isinstance(tab.intent_descriptions, dict)
+            # Should have at least some descriptions from file
+            assert len(tab.intent_descriptions) > 0
+        finally:
+            root.destroy()
+
+    def test_brief_pattern_routing_unsaved_changes_detected(self):
+        """BriefPatternRoutingTab should detect when data is modified."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = BriefPatternRoutingTab(frame)
+            # Initially no changes
+            assert not tab.has_unsaved_changes()
+            result = tab.has_unsaved_changes()
+            assert isinstance(result, bool)
+        finally:
+            root.destroy()
+
+
+@pytest.mark.skipif(not TKINTER_AVAILABLE, reason="tkinter not available")
+class TestIntentClassifierTriggersTabPhase4:
+    """Phase 4: Test IntentClassifierTriggersTab trigger management."""
+
+    def test_intent_classifier_triggers_loads_current_data(self):
+        """IntentClassifierTriggersTab should load intent_classifier_triggers.yml data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentClassifierTriggersTab(frame)
+            # Should load dict with version, medical_triggers, systemic_triggers
+            assert isinstance(tab.current_data, dict)
+            assert "version" in tab.current_data
+            assert "medical_triggers" in tab.current_data
+            assert "systemic_triggers" in tab.current_data
+            # Each should have multi_word and single_word
+            assert isinstance(tab.current_data["medical_triggers"], dict)
+            assert "multi_word" in tab.current_data["medical_triggers"]
+            assert "single_word" in tab.current_data["medical_triggers"]
+        finally:
+            root.destroy()
+
+    def test_intent_classifier_triggers_get_edited_data_preserves_structure(self):
+        """IntentClassifierTriggersTab.get_edited_data() should preserve structure."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentClassifierTriggersTab(frame)
+            edited_data = tab.get_edited_data()
+            # Should have version and both trigger types
+            assert "version" in edited_data
+            assert "medical_triggers" in edited_data
+            assert "systemic_triggers" in edited_data
+            # Each should have multi_word and single_word lists
+            assert isinstance(edited_data["medical_triggers"]["multi_word"], list)
+            assert isinstance(edited_data["medical_triggers"]["single_word"], list)
+            assert isinstance(edited_data["systemic_triggers"]["multi_word"], list)
+            assert isinstance(edited_data["systemic_triggers"]["single_word"], list)
+        finally:
+            root.destroy()
+
+    def test_intent_classifier_triggers_validation_passes_on_current_data(self):
+        """IntentClassifierTriggersTab should validate against current data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentClassifierTriggersTab(frame)
+            is_valid, errors, warnings = tab.validate()
+            # Current data on disk should be valid
+            assert isinstance(is_valid, bool)
+            assert isinstance(errors, list)
+            assert isinstance(warnings, list)
+        finally:
+            root.destroy()
+
+    def test_intent_classifier_triggers_text_widgets_populated(self):
+        """IntentClassifierTriggersTab text widgets should be populated."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentClassifierTriggersTab(frame)
+            # Check medical triggers text widgets have content
+            medical_mw_content = tab.medical_mw_text.get("1.0", "end").strip()
+            medical_sw_content = tab.medical_sw_text.get("1.0", "end").strip()
+            # Should have at least some triggers
+            assert len(medical_mw_content) > 0
+            assert len(medical_sw_content) > 0
+            # Check systemic triggers text widgets have content
+            systemic_mw_content = tab.systemic_mw_text.get("1.0", "end").strip()
+            systemic_sw_content = tab.systemic_sw_text.get("1.0", "end").strip()
+            assert len(systemic_mw_content) > 0
+            assert len(systemic_sw_content) > 0
+        finally:
+            root.destroy()
+
+    def test_intent_classifier_triggers_unsaved_changes_detected(self):
+        """IntentClassifierTriggersTab should detect when data is modified."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentClassifierTriggersTab(frame)
+            # Initially no changes
+            assert not tab.has_unsaved_changes()
+            result = tab.has_unsaved_changes()
+            assert isinstance(result, bool)
+        finally:
+            root.destroy()

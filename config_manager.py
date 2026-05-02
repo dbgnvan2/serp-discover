@@ -1097,49 +1097,368 @@ class StrategicPatternsTab(BaseConfigTab):
 
 
 class BriefPatternRoutingTab(BaseConfigTab):
-    """Tab for brief_pattern_routing.yml."""
+    """Tab for brief_pattern_routing.yml with pattern routing management."""
 
     def __init__(self, parent):
         super().__init__(parent, "brief_pattern_routing.yml", "yaml")
+        self.tree = None
+        self.intent_descriptions = {}
 
     def render_ui(self):
-        """Placeholder UI for Phase 1."""
-        frame = ttk.Frame(self)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Render brief pattern routing editor with patterns and intent descriptions."""
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # Header
         ttk.Label(
-            frame,
+            main_frame,
             text="Brief Pattern Routing Configuration",
             font=("Helvetica", 12, "bold")
-        ).pack(anchor="w")
+        ).pack(anchor="w", pady=(0, 5))
 
         help_text = HELP_BY_FILE.get("brief_pattern_routing.yml", "")
-        ttk.Label(frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(5, 15))
+        ttk.Label(main_frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(0, 10))
 
-        ttk.Label(frame, text="Phase 1: Placeholder", foreground="gray").pack(anchor="w")
+        # Intent Slot Descriptions section
+        desc_frame = ttk.LabelFrame(main_frame, text="Intent Slot Descriptions", padding=10)
+        desc_frame.pack(fill="x", pady=(0, 15))
+
+        ttk.Label(desc_frame, text="How intent buckets appear in the brief:", foreground="gray").pack(anchor="w", pady=(0, 5))
+
+        # Load intent descriptions
+        self.intent_descriptions = self.current_data.get("intent_slot_descriptions", {}) if isinstance(self.current_data, dict) else {}
+
+        desc_text_frame = ttk.Frame(desc_frame)
+        desc_text_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        ttk.Label(desc_text_frame, text="Intent → Description (one per line, format: intent: description):", foreground="gray").pack(anchor="w")
+        self.desc_text = Text(desc_text_frame, width=60, height=6)
+        self._load_intent_descriptions()
+        self.desc_text.pack(fill="both", expand=True)
+
+        # Pattern routing section
+        pattern_frame = ttk.LabelFrame(main_frame, text="Pattern Routing", padding=10)
+        pattern_frame.pack(fill="both", expand=True)
+
+        ttk.Label(pattern_frame, text="Pattern-to-PAA routing rules:", foreground="gray").pack(anchor="w", pady=(0, 5))
+
+        # Treeview with columns
+        tree_frame = ttk.Frame(pattern_frame)
+        tree_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        columns = ("pattern_name", "themes_count", "categories_count", "keywords_count")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=10)
+        self.tree.heading("pattern_name", text="Pattern Name")
+        self.tree.heading("themes_count", text="Themes")
+        self.tree.heading("categories_count", text="Categories")
+        self.tree.heading("keywords_count", text="Keywords")
+        self.tree.column("pattern_name", width=200)
+        self.tree.column("themes_count", width=80)
+        self.tree.column("categories_count", width=100)
+        self.tree.column("keywords_count", width=100)
+
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Bind double-click for editing
+        self.tree.bind("<Double-1>", lambda e: self._edit_pattern())
+
+        # Load data into treeview
+        self._load_treeview_data()
+
+        # Buttons
+        button_frame = ttk.Frame(pattern_frame)
+        button_frame.pack(fill="x")
+
+        ttk.Button(button_frame, text="+ Add Pattern", command=self._add_pattern).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Edit", command=self._edit_pattern).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Delete", command=self._delete_pattern).pack(side="left")
+
+    def _load_intent_descriptions(self):
+        """Load intent descriptions into text widget."""
+        self.desc_text.delete("1.0", "end")
+        for intent in sorted(self.intent_descriptions.keys()):
+            self.desc_text.insert("end", f"{intent}: {self.intent_descriptions[intent]}\n")
+
+    def _load_treeview_data(self):
+        """Populate treeview with patterns from brief_pattern_routing.yml."""
+        # Clear existing
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Load from current_data
+        if isinstance(self.current_data, dict) and "patterns" in self.current_data:
+            for pattern in self.current_data["patterns"]:
+                if isinstance(pattern, dict):
+                    pattern_name = pattern.get("pattern_name", "")
+                    themes = len(pattern.get("paa_themes", []))
+                    categories = len(pattern.get("paa_categories", []))
+                    keywords = len(pattern.get("keyword_hints", []))
+
+                    self.tree.insert("", "end", values=(pattern_name, themes, categories, keywords))
+
+    def _add_pattern(self):
+        """Add a new pattern."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        self._edit_pattern(is_new=True)
+
+    def _edit_pattern(self, is_new=False):
+        """Edit or create a pattern routing rule."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        if not is_new:
+            selected = self.tree.selection()
+            if not selected:
+                messagebox.showwarning("No Selection", "Please select a pattern to edit")
+                return
+            item = selected[0]
+            pattern_name = self.tree.item(item)["values"][0]
+
+            # Find the original pattern data
+            pattern_data = None
+            for p in self.current_data.get("patterns", []):
+                if p.get("pattern_name") == pattern_name:
+                    pattern_data = p.copy()
+                    break
+            if not pattern_data:
+                messagebox.showerror("Error", "Pattern not found")
+                return
+        else:
+            pattern_data = {
+                "pattern_name": "",
+                "paa_themes": [],
+                "paa_categories": [],
+                "keyword_hints": []
+            }
+            item = None
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Edit Pattern" if not is_new else "Add Pattern")
+        dialog.geometry("600x500")
+        dialog.transient(self.master)
+
+        # Pattern Name
+        ttk.Label(dialog, text="Pattern Name:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        name_entry = ttk.Entry(dialog, width=40)
+        name_entry.insert(0, pattern_data.get("pattern_name", ""))
+        name_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # PAA Themes
+        ttk.Label(dialog, text="PAA Themes (one per line):", justify="left").grid(row=1, column=0, padx=10, pady=10, sticky="nw")
+        themes_text = Text(dialog, width=40, height=4)
+        themes = pattern_data.get("paa_themes", [])
+        if isinstance(themes, list):
+            themes_text.insert("1.0", "\n".join(themes))
+        themes_text.grid(row=1, column=1, padx=10, pady=10)
+
+        # PAA Categories
+        ttk.Label(dialog, text="PAA Categories (one per line):", justify="left").grid(row=2, column=0, padx=10, pady=10, sticky="nw")
+        categories_text = Text(dialog, width=40, height=3)
+        categories = pattern_data.get("paa_categories", [])
+        if isinstance(categories, list):
+            categories_text.insert("1.0", "\n".join(categories))
+        categories_text.grid(row=2, column=1, padx=10, pady=10)
+
+        # Keyword Hints
+        ttk.Label(dialog, text="Keyword Hints (one per line):", justify="left").grid(row=3, column=0, padx=10, pady=10, sticky="nw")
+        keywords_text = Text(dialog, width=40, height=3)
+        keywords = pattern_data.get("keyword_hints", [])
+        if isinstance(keywords, list):
+            keywords_text.insert("1.0", "\n".join(keywords))
+        keywords_text.grid(row=3, column=1, padx=10, pady=10)
+
+        def save():
+            pattern_name = name_entry.get().strip()
+            themes_str = themes_text.get("1.0", "end").strip()
+            themes_list = [t.strip() for t in themes_str.split("\n") if t.strip()]
+            categories_str = categories_text.get("1.0", "end").strip()
+            categories_list = [c.strip() for c in categories_str.split("\n") if c.strip()]
+            keywords_str = keywords_text.get("1.0", "end").strip()
+            keywords_list = [k.strip() for k in keywords_str.split("\n") if k.strip()]
+
+            # Validation
+            if not all([pattern_name, themes_list, categories_list, keywords_list]):
+                messagebox.showwarning("Incomplete", "All fields required (themes, categories, keywords)")
+                return
+
+            # Update or insert
+            if item:
+                self.tree.item(item, values=(pattern_name, len(themes_list), len(categories_list), len(keywords_list)))
+            else:
+                self.tree.insert("", "end", values=(pattern_name, len(themes_list), len(categories_list), len(keywords_list)))
+
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=4, column=1, padx=10, pady=10, sticky="e")
+
+    def _delete_pattern(self):
+        """Delete selected pattern."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a pattern to delete")
+            return
+
+        for item in selected:
+            self.tree.delete(item)
+
+    def get_edited_data(self):
+        """Extract treeview data back into brief_pattern_routing.yml format."""
+        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+
+        # Parse intent descriptions from text widget
+        intent_descriptions = {}
+        desc_lines = self.desc_text.get("1.0", "end").strip().split("\n")
+        for line in desc_lines:
+            if ":" in line:
+                intent, desc = line.split(":", 1)
+                intent_descriptions[intent.strip()] = desc.strip()
+
+        data["intent_slot_descriptions"] = intent_descriptions
+
+        # Reconstruct patterns from treeview
+        patterns = []
+        for item in self.tree.get_children():
+            pattern_name, themes_count, categories_count, keywords_count = self.tree.item(item)["values"]
+
+            # Try to find original pattern to preserve full data
+            original_pattern = None
+            if isinstance(self.current_data, dict):
+                for p in self.current_data.get("patterns", []):
+                    if p.get("pattern_name") == pattern_name:
+                        original_pattern = p.copy()
+                        break
+
+            if original_pattern:
+                patterns.append(original_pattern)
+            else:
+                # Create minimal pattern (should not happen in normal flow)
+                pattern = {
+                    "pattern_name": pattern_name,
+                    "paa_themes": [],
+                    "paa_categories": [],
+                    "keyword_hints": []
+                }
+                patterns.append(pattern)
+
+        data["patterns"] = patterns
+        return data
 
 
 class IntentClassifierTriggersTab(BaseConfigTab):
-    """Tab for intent_classifier_triggers.yml."""
+    """Tab for intent_classifier_triggers.yml with medical and systemic trigger management."""
 
     def __init__(self, parent):
         super().__init__(parent, "intent_classifier_triggers.yml", "yaml")
+        self.medical_mw_text = None
+        self.medical_sw_text = None
+        self.systemic_mw_text = None
+        self.systemic_sw_text = None
 
     def render_ui(self):
-        """Placeholder UI for Phase 1."""
-        frame = ttk.Frame(self)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Render intent classifier triggers editor with two sections: medical and systemic."""
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # Header
         ttk.Label(
-            frame,
+            main_frame,
             text="Intent Classifier Triggers Configuration",
             font=("Helvetica", 12, "bold")
-        ).pack(anchor="w")
+        ).pack(anchor="w", pady=(0, 5))
 
         help_text = HELP_BY_FILE.get("intent_classifier_triggers.yml", "")
-        ttk.Label(frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(5, 15))
+        ttk.Label(main_frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(0, 10))
 
-        ttk.Label(frame, text="Phase 1: Placeholder", foreground="gray").pack(anchor="w")
+        # Medical Triggers Section
+        medical_frame = ttk.LabelFrame(main_frame, text="Medical Triggers", padding=10)
+        medical_frame.pack(fill="both", expand=True, pady=(0, 15))
+
+        # Medical Multi-word
+        ttk.Label(medical_frame, text="Multi-word triggers (one per line):", foreground="gray").pack(anchor="w", pady=(0, 5))
+        self.medical_mw_text = Text(medical_frame, width=60, height=5)
+        self.medical_mw_text.pack(fill="both", expand=True, pady=(0, 10))
+
+        # Medical Single-word
+        ttk.Label(medical_frame, text="Single-word triggers (one per line, min 3 chars):", foreground="gray").pack(anchor="w", pady=(0, 5))
+        self.medical_sw_text = Text(medical_frame, width=60, height=6)
+        self.medical_sw_text.pack(fill="both")
+
+        # Systemic Triggers Section
+        systemic_frame = ttk.LabelFrame(main_frame, text="Systemic Triggers", padding=10)
+        systemic_frame.pack(fill="both", expand=True)
+
+        # Systemic Multi-word
+        ttk.Label(systemic_frame, text="Multi-word triggers (one per line):", foreground="gray").pack(anchor="w", pady=(0, 5))
+        self.systemic_mw_text = Text(systemic_frame, width=60, height=5)
+        self.systemic_mw_text.pack(fill="both", expand=True, pady=(0, 10))
+
+        # Systemic Single-word
+        ttk.Label(systemic_frame, text="Single-word triggers (one per line, min 3 chars):", foreground="gray").pack(anchor="w", pady=(0, 5))
+        self.systemic_sw_text = Text(systemic_frame, width=60, height=6)
+        self.systemic_sw_text.pack(fill="both")
+
+        # Load data
+        self._load_data()
+
+    def _load_data(self):
+        """Load triggers from intent_classifier_triggers.yml into text widgets."""
+        if isinstance(self.current_data, dict):
+            # Medical triggers
+            medical = self.current_data.get("medical_triggers", {})
+            if isinstance(medical, dict):
+                mw = medical.get("multi_word", [])
+                if isinstance(mw, list):
+                    self.medical_mw_text.insert("1.0", "\n".join(mw))
+
+                sw = medical.get("single_word", [])
+                if isinstance(sw, list):
+                    self.medical_sw_text.insert("1.0", "\n".join(sw))
+
+            # Systemic triggers
+            systemic = self.current_data.get("systemic_triggers", {})
+            if isinstance(systemic, dict):
+                mw = systemic.get("multi_word", [])
+                if isinstance(mw, list):
+                    self.systemic_mw_text.insert("1.0", "\n".join(mw))
+
+                sw = systemic.get("single_word", [])
+                if isinstance(sw, list):
+                    self.systemic_sw_text.insert("1.0", "\n".join(sw))
+
+    def get_edited_data(self):
+        """Extract text widget data back into intent_classifier_triggers.yml format."""
+        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+
+        # Parse medical triggers
+        medical_mw_str = self.medical_mw_text.get("1.0", "end").strip()
+        medical_mw = [t.strip() for t in medical_mw_str.split("\n") if t.strip()]
+
+        medical_sw_str = self.medical_sw_text.get("1.0", "end").strip()
+        medical_sw = [t.strip() for t in medical_sw_str.split("\n") if t.strip()]
+
+        data["medical_triggers"] = {
+            "multi_word": medical_mw,
+            "single_word": medical_sw
+        }
+
+        # Parse systemic triggers
+        systemic_mw_str = self.systemic_mw_text.get("1.0", "end").strip()
+        systemic_mw = [t.strip() for t in systemic_mw_str.split("\n") if t.strip()]
+
+        systemic_sw_str = self.systemic_sw_text.get("1.0", "end").strip()
+        systemic_sw = [t.strip() for t in systemic_sw_str.split("\n") if t.strip()]
+
+        data["systemic_triggers"] = {
+            "multi_word": systemic_mw,
+            "single_word": systemic_sw
+        }
+
+        return data
 
 
 class ConfigSettingsTab(BaseConfigTab):
