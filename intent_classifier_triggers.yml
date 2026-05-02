@@ -1,0 +1,96 @@
+# intent_classifier_triggers.yml
+#
+# Trigger vocabularies used by intent_classifier.py to tag PAA questions and
+# keyword phrases as "External Locus" (medical model framing) or "Systemic"
+# (Bowen Family Systems Theory framing). General = neither.
+#
+# Multi-word phrases are matched first (longest-first) to avoid partial-word
+# false positives. Single-word triggers use word-boundary matching in the
+# classifier.
+#
+# Editing this file changes which questions get tagged for the Bowen Reframe
+# FAQ section of the content brief. Do not push trigger changes into Python.
+#
+# Minimum trigger length: 3 characters. The 4-character minimum documented in
+# strategic_patterns.yml applies to corpus-level ngram matching. PAA intent
+# classification is a different context; "fix" (3 chars) is a legitimate
+# clinical term. Triggers of 1-2 characters are still rejected as too broad.
+
+version: 1
+
+medical_triggers:
+  multi_word:
+    - mental illness
+    - mental health condition
+    - evidence-based treatment
+    - evidence based treatment
+    - cognitive behavioral
+    - cognitive behavioural
+  single_word:
+    - diagnosis
+    - diagnose
+    - treatment
+    - patient
+    - symptoms
+    - symptom
+    - disorder
+    - medication
+    - medicate
+    - medicated
+    - prescription
+    - fix
+    - heal
+    - cure
+    - condition
+    - clinical
+    - clinician
+    - psychiatrist
+    - psychiatry
+    - pathology
+    - pathological
+    - dysfunction
+    - dysfunctional
+    - illness
+    - disease
+    - recovery
+    - rehabilitation
+    - intervention
+    - borderline
+    - narcissist
+    - narcissistic
+    - toxic
+
+systemic_triggers:
+  multi_word:
+    - family system
+    - family systems
+    - emotional system
+    - emotional process
+    - emotional cutoff
+    - differentiation of self
+    - level of differentiation
+    - multigenerational transmission
+    - nuclear family
+    - sibling position
+    - societal emotional process
+  single_word:
+    - differentiation
+    - differentiated
+    - triangulation
+    - triangle
+    - triangles
+    - reactivity
+    - reactive
+    - cutoff
+    - functioning
+    - multigenerational
+    - intergenerational
+    - bowen
+    - togetherness
+    - individuality
+    - chronic anxiety
+    - anxiety
+    - fusion
+    - fused
+    - projection
+    - undifferentiated

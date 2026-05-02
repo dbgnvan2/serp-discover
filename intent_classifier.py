@@ -24,94 +24,67 @@ Design notes
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Literal
 
+import yaml
+
 # ---------------------------------------------------------------------------
-# Default trigger vocabularies
+# Trigger vocabulary loader
 # ---------------------------------------------------------------------------
 
-#: Phrases/words associated with the medical model ("External Locus").
-#: Multi-word entries are checked before single-word entries.
-DEFAULT_MEDICAL_TRIGGERS: frozenset[str] = frozenset([
-    # Multi-word phrases (checked first)
-    "mental illness",
-    "mental health condition",
-    "evidence-based treatment",
-    "evidence based treatment",
-    "cognitive behavioral",
-    "cognitive behavioural",
-    # Single-word triggers
-    "diagnosis",
-    "diagnose",
-    "treatment",
-    "patient",
-    "symptoms",
-    "symptom",
-    "disorder",
-    "medication",
-    "medicate",
-    "medicated",
-    "prescription",
-    "fix",
-    "heal",
-    "cure",
-    "condition",
-    "clinical",
-    "clinician",
-    "psychiatrist",
-    "psychiatry",
-    "pathology",
-    "pathological",
-    "dysfunction",
-    "dysfunctional",
-    "illness",
-    "disease",
-    "recovery",
-    "rehabilitation",
-    "intervention",
-    "borderline",
-    "narcissist",
-    "narcissistic",
-    "toxic",
-])
+_TRIGGERS_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "intent_classifier_triggers.yml"
+)
+_TRIGGERS_CACHE: tuple[frozenset, frozenset] | None = None
 
-#: Phrases/words associated with Bowen Family Systems Theory ("Systemic").
-DEFAULT_SYSTEMIC_TRIGGERS: frozenset[str] = frozenset([
-    # Multi-word phrases (checked first)
-    "family system",
-    "family systems",
-    "emotional system",
-    "emotional process",
-    "emotional cutoff",
-    "differentiation of self",
-    "level of differentiation",
-    "multigenerational transmission",
-    "nuclear family",
-    "sibling position",
-    "societal emotional process",
-    # Single-word triggers
-    "differentiation",
-    "differentiated",
-    "triangulation",
-    "triangle",
-    "triangles",
-    "reactivity",
-    "reactive",
-    "cutoff",
-    "functioning",
-    "multigenerational",
-    "intergenerational",
-    "bowen",
-    "togetherness",
-    "individuality",
-    "chronic anxiety",
-    "anxiety",
-    "fusion",
-    "fused",
-    "projection",
-    "undifferentiated",
-])
+
+def load_triggers(path: str | None = None) -> tuple[frozenset, frozenset]:
+    """Load medical and systemic trigger vocabularies from YAML.
+
+    Purpose: Externalise editorial trigger lists from Python source.
+    Spec:    serp_tool1_improvements_spec.md#I.2
+    Tests:   tests/test_intent_classifier_triggers.py::test_i22_yaml_matches_previous_constants
+
+    Returns (medical_triggers, systemic_triggers) as frozensets.
+    Minimum trigger length is 3 characters; 1-2 char triggers raise ValueError.
+    """
+    global _TRIGGERS_CACHE
+    if _TRIGGERS_CACHE is not None and path is None:
+        return _TRIGGERS_CACHE
+
+    fpath = path or _TRIGGERS_PATH
+    with open(fpath, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    for block in ("medical_triggers", "systemic_triggers"):
+        if block not in raw or not isinstance(raw[block], dict):
+            raise ValueError(f"{fpath}: '{block}' block must be present and a dict")
+        for subkey in ("multi_word", "single_word"):
+            if subkey not in raw[block] or not isinstance(raw[block][subkey], list):
+                raise ValueError(f"{fpath}: '{block}.{subkey}' must be a list")
+
+    medical: list[str] = []
+    systemic: list[str] = []
+
+    for block_key, out in (("medical_triggers", medical), ("systemic_triggers", systemic)):
+        for subkey in ("multi_word", "single_word"):
+            for t in raw[block_key][subkey]:
+                if not isinstance(t, str) or not t.strip():
+                    raise ValueError(f"{fpath}: {block_key}.{subkey}: each entry must be a non-empty string")
+                if len(t.strip()) < 3:
+                    raise ValueError(
+                        f"{fpath}: {block_key}.{subkey}: trigger {t!r} is too short "
+                        "(minimum 3 characters)"
+                    )
+                out.append(t.strip())
+
+    result = (frozenset(medical), frozenset(systemic))
+    if path is None:
+        _TRIGGERS_CACHE = result
+    return result
+
 
 IntentLabel = Literal["External Locus", "Systemic", "General"]
 
@@ -144,8 +117,12 @@ class IntentClassifier:
         medical_triggers: frozenset[str] | None = None,
         systemic_triggers: frozenset[str] | None = None,
     ) -> None:
-        self._medical = medical_triggers if medical_triggers is not None else DEFAULT_MEDICAL_TRIGGERS
-        self._systemic = systemic_triggers if systemic_triggers is not None else DEFAULT_SYSTEMIC_TRIGGERS
+        if medical_triggers is None and systemic_triggers is None:
+            self._medical, self._systemic = load_triggers()
+        else:
+            _defaults = load_triggers()
+            self._medical = medical_triggers if medical_triggers is not None else _defaults[0]
+            self._systemic = systemic_triggers if systemic_triggers is not None else _defaults[1]
 
         # Pre-sort triggers: longest first so multi-word phrases are matched
         # before their constituent words.
