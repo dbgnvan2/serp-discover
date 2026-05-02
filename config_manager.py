@@ -52,8 +52,18 @@ VALIDATORS_BY_FILE = {
 # Help text registry
 HELP_BY_FILE = {
     "intent_mapping.yml": (
-        "Maps SERP characteristics to intent verdicts. Rules are evaluated top-to-bottom "
-        "(first-match-wins); order matters. Edit rules here to refine intent classification."
+        "INTENT MAPPING: Core decision engine for SERP search result classification.\n\n"
+        "PURPOSE: Determines what the searcher actually wants (their 'intent') based on what they found in the SERP.\n\n"
+        "WHY IT MATTERS: Search intent directly affects content strategy. A 'comparison shopping' user needs different content "
+        "than someone seeking service booking. Wrong intent = wrong strategy.\n\n"
+        "HOW IT WORKS: Rules evaluated top-to-bottom (first match wins). Each rule matches on 4 factors:\n"
+        "  • Content Type: What kind of page is it? (service, guide, directory, news, etc.)\n"
+        "  • Entity Type: Who runs it? (counselling provider, directory, nonprofit, legal firm, etc.)\n"
+        "  • Local Pack: Is there a Google Local 3-pack in this SERP?\n"
+        "  • Domain Role: Whose domain is it? (client, known competitor, or other)\n\n"
+        "EXAMPLE: A guide page on a counselling provider's site + local pack present = 'informational' "
+        "(the user is researching, not shopping). If no local pack = 'transactional' (the user is ready to book).\n\n"
+        "EDIT THIS WHEN: A brief feels wrong because the searcher intent was misread."
     ),
     "strategic_patterns.yml": (
         "Bowen Family Systems patterns used for content brief generation. Each pattern includes "
@@ -72,12 +82,24 @@ HELP_BY_FILE = {
         "Edit these to customize tool behavior (API keys, output folders, etc.)."
     ),
     "domain_overrides.yml": (
-        "Manual entity-type overrides for specific domains. When a domain is not auto-classified "
-        "correctly, add it here to force a specific entity type."
+        "DOMAIN OVERRIDES: Manual corrections for misclassified domains.\n\n"
+        "PURPOSE: When the tool auto-classifies a domain incorrectly, override it here without changing code.\n\n"
+        "HOW IT WORKS:\n"
+        "  Domain: example.com\n"
+        "  Entity Type: What this domain actually is (e.g., 'counselling', 'directory', 'nonprofit')\n\n"
+        "EXAMPLE:\n"
+        "  psychologytoday.com → directory (even though individual pages may look like 'service' pages)\n"
+        "  livewell.com → nonprofit (if classifier thought it was 'counselling')\n\n"
+        "WHAT IS ENTITY TYPE?\n"
+        "A category describing who runs the domain. Options: counselling, legal, directory, nonprofit, "
+        "government, media, professional_association, education.\n\n"
+        "USE THIS WHEN: The tool classifies a domain wrong and you see it affecting multiple keywords."
     ),
     "classification_rules.json": (
-        "Content types and entity types with their pattern definitions. Entity types used here "
-        "must match those referenced in intent_mapping.yml and domain_overrides.yml."
+        "CLASSIFICATION RULES: Vocabulary and patterns for identifying content types and entity types.\n\n"
+        "Entity Types: Valid categories (counselling, legal, directory, nonprofit, government, media, "
+        "professional_association, education). Must match those used in intent_mapping.yml and domain_overrides.yml.\n\n"
+        "Entity Type Descriptions: Human-readable labels (e.g., 'counselling' = 'Direct counselling or therapy service providers')."
     ),
     "url_pattern_rules.yml": (
         "URL pattern fallbacks for content classification. Used when other classification "
@@ -668,8 +690,12 @@ class IntentMappingTab(BaseConfigTab):
         ttk.Button(button_frame, text="+ Add", command=self._add_rule).pack(side="left", padx=(0, 5))
         ttk.Button(button_frame, text="Edit", command=self._edit_rule).pack(side="left", padx=(0, 5))
         ttk.Button(button_frame, text="Delete", command=self._delete_rule).pack(side="left", padx=(0, 5))
-        ttk.Button(button_frame, text="↑ Up", command=self._move_up).pack(side="left", padx=(0, 5))
-        ttk.Button(button_frame, text="↓ Down", command=self._move_down).pack(side="left")
+        ttk.Button(button_frame, text="↑ Up (Higher Priority)", command=self._move_up).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="↓ Down (Lower Priority)", command=self._move_down).pack(side="left", padx=(0, 5))
+
+        # Info text
+        ttk.Label(main_frame, text="Note: Rules at the TOP are evaluated FIRST (highest priority). When a rule matches, no further rules are checked.",
+                  foreground="blue", justify="left").pack(anchor="w", pady=(10, 0))
 
     def _load_treeview_data(self):
         """Populate treeview with rules from intent_mapping.yml."""
@@ -695,34 +721,39 @@ class IntentMappingTab(BaseConfigTab):
 
         dialog = tk.Toplevel(self)
         dialog.title("Add Intent Mapping Rule")
-        dialog.geometry("500x300")
+        dialog.geometry("550x380")
         dialog.transient(self.master)
 
         # Content Type
-        ttk.Label(dialog, text="Content Type:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        ct_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES) + ["any"], width=25)
-        ct_combo.grid(row=0, column=1, padx=10, pady=10)
+        ttk.Label(dialog, text="Content Type:", font=("Helvetica", 10, "bold")).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(What kind of page? guide, service, directory, news, pdf, etc.)", foreground="gray", font=("Helvetica", 9)).grid(row=0, column=1, padx=10, pady=(10, 0), sticky="w")
+        ct_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES) + ["any"], width=30)
+        ct_combo.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Entity Type
-        ttk.Label(dialog, text="Entity Type:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
-        et_combo = ttk.Combobox(dialog, values=sorted(VALID_ENTITY_TYPES) + ["any"], width=25)
-        et_combo.grid(row=1, column=1, padx=10, pady=10)
+        ttk.Label(dialog, text="Entity Type:", font=("Helvetica", 10, "bold")).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(Who runs it? counselling, directory, nonprofit, etc.)", foreground="gray", font=("Helvetica", 9)).grid(row=2, column=1, padx=10, pady=(10, 0), sticky="w")
+        et_combo = ttk.Combobox(dialog, values=sorted(VALID_ENTITY_TYPES) + ["any"], width=30)
+        et_combo.grid(row=3, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Local Pack
-        ttk.Label(dialog, text="Local Pack:").grid(row=2, column=0, padx=10, pady=10, sticky="w")
-        lp_combo = ttk.Combobox(dialog, values=["yes", "no", "any"], width=25)
-        lp_combo.grid(row=2, column=1, padx=10, pady=10)
+        ttk.Label(dialog, text="Local Pack:", font=("Helvetica", 10, "bold")).grid(row=4, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(Is Google Local 3-pack in SERP?)", foreground="gray", font=("Helvetica", 9)).grid(row=4, column=1, padx=10, pady=(10, 0), sticky="w")
+        lp_combo = ttk.Combobox(dialog, values=["yes", "no", "any"], width=30)
+        lp_combo.grid(row=5, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Intent
-        ttk.Label(dialog, text="Intent:").grid(row=3, column=0, padx=10, pady=10, sticky="w")
-        intent_combo = ttk.Combobox(dialog, values=sorted(VALID_INTENTS), width=25)
-        intent_combo.grid(row=3, column=1, padx=10, pady=10)
+        ttk.Label(dialog, text="Intent:", font=("Helvetica", 10, "bold")).grid(row=6, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(What does the searcher want?)", foreground="gray", font=("Helvetica", 9)).grid(row=6, column=1, padx=10, pady=(10, 0), sticky="w")
+        intent_combo = ttk.Combobox(dialog, values=sorted(VALID_INTENTS), width=30)
+        intent_combo.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Domain Role (optional)
-        ttk.Label(dialog, text="Domain Role:").grid(row=4, column=0, padx=10, pady=10, sticky="w")
-        dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=25)
+        ttk.Label(dialog, text="Domain Role:", font=("Helvetica", 10, "bold")).grid(row=8, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(client, known_competitor, other, any)", foreground="gray", font=("Helvetica", 9)).grid(row=8, column=1, padx=10, pady=(10, 0), sticky="w")
+        dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=30)
         dr_combo.set("other")
-        dr_combo.grid(row=4, column=1, padx=10, pady=10)
+        dr_combo.grid(row=9, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         def save():
             if not all([ct_combo.get(), et_combo.get(), lp_combo.get(), intent_combo.get(), dr_combo.get()]):
@@ -737,7 +768,7 @@ class IntentMappingTab(BaseConfigTab):
             ))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=1, padx=10, pady=10, sticky="e")
+        ttk.Button(dialog, text="Save", command=save).grid(row=10, column=1, padx=10, pady=10, sticky="e")
 
     def _edit_rule(self):
         """Edit selected rule."""
@@ -754,38 +785,43 @@ class IntentMappingTab(BaseConfigTab):
 
         dialog = tk.Toplevel(self)
         dialog.title(f"Edit Rule: {intent}")
-        dialog.geometry("500x300")
+        dialog.geometry("550x380")
         dialog.transient(self.master)
 
         # Content Type
-        ttk.Label(dialog, text="Content Type:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
-        ct_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES) + ["any"], width=25)
+        ttk.Label(dialog, text="Content Type:", font=("Helvetica", 10, "bold")).grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(What kind of page? guide, service, directory, news, pdf, etc.)", foreground="gray", font=("Helvetica", 9)).grid(row=0, column=1, padx=10, pady=(10, 0), sticky="w")
+        ct_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES) + ["any"], width=30)
         ct_combo.set(content_type)
-        ct_combo.grid(row=0, column=1, padx=10, pady=10)
+        ct_combo.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Entity Type
-        ttk.Label(dialog, text="Entity Type:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
-        et_combo = ttk.Combobox(dialog, values=sorted(VALID_ENTITY_TYPES) + ["any"], width=25)
+        ttk.Label(dialog, text="Entity Type:", font=("Helvetica", 10, "bold")).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(Who runs it? counselling, directory, nonprofit, etc.)", foreground="gray", font=("Helvetica", 9)).grid(row=2, column=1, padx=10, pady=(10, 0), sticky="w")
+        et_combo = ttk.Combobox(dialog, values=sorted(VALID_ENTITY_TYPES) + ["any"], width=30)
         et_combo.set(entity_type)
-        et_combo.grid(row=1, column=1, padx=10, pady=10)
+        et_combo.grid(row=3, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Local Pack
-        ttk.Label(dialog, text="Local Pack:").grid(row=2, column=0, padx=10, pady=10, sticky="w")
-        lp_combo = ttk.Combobox(dialog, values=["yes", "no", "any"], width=25)
+        ttk.Label(dialog, text="Local Pack:", font=("Helvetica", 10, "bold")).grid(row=4, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(Is Google Local 3-pack in SERP?)", foreground="gray", font=("Helvetica", 9)).grid(row=4, column=1, padx=10, pady=(10, 0), sticky="w")
+        lp_combo = ttk.Combobox(dialog, values=["yes", "no", "any"], width=30)
         lp_combo.set(local_pack)
-        lp_combo.grid(row=2, column=1, padx=10, pady=10)
+        lp_combo.grid(row=5, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Intent
-        ttk.Label(dialog, text="Intent:").grid(row=3, column=0, padx=10, pady=10, sticky="w")
-        intent_combo = ttk.Combobox(dialog, values=sorted(VALID_INTENTS), width=25)
+        ttk.Label(dialog, text="Intent:", font=("Helvetica", 10, "bold")).grid(row=6, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(What does the searcher want?)", foreground="gray", font=("Helvetica", 9)).grid(row=6, column=1, padx=10, pady=(10, 0), sticky="w")
+        intent_combo = ttk.Combobox(dialog, values=sorted(VALID_INTENTS), width=30)
         intent_combo.set(intent)
-        intent_combo.grid(row=3, column=1, padx=10, pady=10)
+        intent_combo.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         # Domain Role
-        ttk.Label(dialog, text="Domain Role:").grid(row=4, column=0, padx=10, pady=10, sticky="w")
-        dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=25)
+        ttk.Label(dialog, text="Domain Role:", font=("Helvetica", 10, "bold")).grid(row=8, column=0, padx=10, pady=10, sticky="w")
+        ttk.Label(dialog, text="(client, known_competitor, other, any)", foreground="gray", font=("Helvetica", 9)).grid(row=8, column=1, padx=10, pady=(10, 0), sticky="w")
+        dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=30)
         dr_combo.set("other")
-        dr_combo.grid(row=4, column=1, padx=10, pady=10)
+        dr_combo.grid(row=9, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         def save():
             if not all([ct_combo.get(), et_combo.get(), lp_combo.get(), intent_combo.get(), dr_combo.get()]):
@@ -800,7 +836,7 @@ class IntentMappingTab(BaseConfigTab):
             ))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=1, padx=10, pady=10, sticky="e")
+        ttk.Button(dialog, text="Save", command=save).grid(row=10, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_rule(self):
         """Delete selected rule."""
@@ -813,7 +849,7 @@ class IntentMappingTab(BaseConfigTab):
             self.tree.delete(item)
 
     def _move_up(self):
-        """Move selected rule up in priority (earlier in list)."""
+        """Move selected rule up in priority (earlier in list, evaluated sooner)."""
         selected = self.tree.selection()
         if not selected or len(selected) != 1:
             messagebox.showwarning("Single Selection", "Select exactly one rule to move")
@@ -823,15 +859,18 @@ class IntentMappingTab(BaseConfigTab):
         index = self.tree.index(item)
 
         if index == 0:
-            messagebox.showinfo("Already at Top", "This rule is already at the top priority")
+            messagebox.showinfo("Already at Top", "This rule is already at the top priority (evaluated first)")
             return
 
         values = self.tree.item(item)["values"]
         self.tree.delete(item)
-        self.tree.insert("", index - 1, values=values)
+        # Insert at the new position and keep the selection
+        new_item = self.tree.insert("", index - 1, values=values)
+        self.tree.selection_set(new_item)
+        messagebox.showinfo("Moved", f"Rule moved up to position {index} (rules are evaluated top-to-bottom)")
 
     def _move_down(self):
-        """Move selected rule down in priority (later in list)."""
+        """Move selected rule down in priority (later in list, evaluated later)."""
         selected = self.tree.selection()
         if not selected or len(selected) != 1:
             messagebox.showwarning("Single Selection", "Select exactly one rule to move")
@@ -842,12 +881,15 @@ class IntentMappingTab(BaseConfigTab):
         items = self.tree.get_children()
 
         if index >= len(items) - 1:
-            messagebox.showinfo("Already at Bottom", "This rule is already at the lowest priority")
+            messagebox.showinfo("Already at Bottom", "This rule is already at the lowest priority (evaluated last)")
             return
 
         values = self.tree.item(item)["values"]
         self.tree.delete(item)
-        self.tree.insert("", index + 1, values=values)
+        # Insert at the new position and keep the selection
+        new_item = self.tree.insert("", index + 1, values=values)
+        self.tree.selection_set(new_item)
+        messagebox.showinfo("Moved", f"Rule moved down to position {index + 2} (rules are evaluated top-to-bottom)")
 
     def get_edited_data(self):
         """Extract treeview data back into intent_mapping.yml format."""
