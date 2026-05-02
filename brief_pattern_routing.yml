@@ -1,0 +1,113 @@
+# brief_pattern_routing.yml
+#
+# Editorial routing rules: how each Bowen pattern selects relevant PAA
+# questions, categories, and source keywords for its content brief. Edit
+# this file when a brief pulls in irrelevant questions or misses ones it
+# should include — do not push exceptions into Python.
+#
+# Schema per pattern:
+#   pattern_name:   must match a Pattern_Name in strategic_patterns.yml
+#   paa_themes:     phrases (whole or partial) matched against PAA question text
+#   paa_categories: category tags from intent classifier output
+#   keyword_hints:  substrings matched against the source keyword string
+#
+# Scoring in get_relevant_paa (weights defined in generate_content_brief.py):
+#   theme_score    weight 3  (matches in question text)
+#   category_score weight 2  (matches in PAA category)
+#   keyword_score  weight 1  (matches in source keyword)
+#
+# The intent_slot_descriptions block maps SERP intent bucket names to
+# human-readable text used in the brief "1a. SERP Intent Context" subsection.
+
+version: 1
+
+patterns:
+  - pattern_name: The Medical Model Trap
+    paa_themes:
+      - therapy
+      - therapist
+      - counselling
+      - counselor
+      - session
+      - diagnosis
+      - mental health
+      - treatment
+      - professional
+      - psychologist
+    paa_categories:
+      - General
+      - Commercial
+    keyword_hints:
+      - therapy
+      - counselling
+      - counseling
+      - mental health
+
+  - pattern_name: The Fusion Trap
+    paa_themes:
+      - reach out
+      - reconnect
+      - contact
+      - close
+      - relationship
+      - communicate
+      - talking
+      - stop reaching
+      - go no contact
+    paa_categories:
+      - General
+      - Distress
+    keyword_hints:
+      - estrangement
+      - adult child
+      - reach out
+      - contact
+
+  - pattern_name: The Resource Trap
+    paa_themes:
+      - cost
+      - free
+      - afford
+      - pay
+      - price
+      - insurance
+      - covered
+      - sliding scale
+      - low cost
+      - how much
+    paa_categories:
+      - Commercial
+      - Distress
+    keyword_hints:
+      - grief
+      - counselling
+      - therapy
+      - bc
+
+  - pattern_name: The Blame/Reactivity Trap
+    paa_themes:
+      - toxic
+      - narcissist
+      - abusive
+      - signs
+      - fault
+      - blame
+      - anger
+      - deal with
+      - mean
+    paa_categories:
+      - Reactivity
+      - Distress
+    keyword_hints:
+      - estrangement
+      - toxic
+      - no-contact
+      - family member
+
+intent_slot_descriptions:
+  informational: informational/educational
+  commercial_investigation: research/comparison
+  transactional: service/booking
+  navigational: brand-search
+  local: local-service
+  mixed: mixed (see Section 5b for components)

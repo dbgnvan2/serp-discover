@@ -30,6 +30,68 @@ from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapp
 from title_patterns import compute_title_patterns
 from classifiers import classify_url_from_patterns
 
+_BRIEF_ROUTING_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "brief_pattern_routing.yml")
+_BRIEF_ROUTING_CACHE: dict | None = None
+
+_ROUTING_PATTERN_KEYS = {"paa_themes", "paa_categories", "keyword_hints"}
+
+
+def load_brief_pattern_routing(path: str | None = None) -> dict:
+    """Load and validate brief_pattern_routing.yml.
+
+    Purpose: Provide editorial PAA/keyword/intent-slot routing to content brief generators.
+    Spec:    serp_tool1_improvements_spec.md#I.1
+    Tests:   tests/test_brief_routing.py::test_i12_yaml_matches_previous_constants
+    """
+    global _BRIEF_ROUTING_CACHE
+    if _BRIEF_ROUTING_CACHE is not None and path is None:
+        return _BRIEF_ROUTING_CACHE
+
+    fpath = path or _BRIEF_ROUTING_PATH
+    with open(fpath, encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+
+    if "patterns" not in raw or not isinstance(raw["patterns"], list):
+        raise ValueError(f"{fpath}: 'patterns' must be a non-empty list")
+    if "intent_slot_descriptions" not in raw or not isinstance(raw["intent_slot_descriptions"], dict):
+        raise ValueError(f"{fpath}: 'intent_slot_descriptions' must be a dict")
+
+    # Load strategic pattern names for cross-validation
+    _sp_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "strategic_patterns.yml")
+    with open(_sp_path, encoding="utf-8") as f:
+        sp = yaml.safe_load(f) or []
+    valid_pattern_names = {p["Pattern_Name"] for p in sp if isinstance(p, dict)}
+
+    paa_themes: dict = {}
+    paa_categories: dict = {}
+    keyword_hints: dict = {}
+
+    for entry in raw["patterns"]:
+        name = entry.get("pattern_name", "").strip()
+        if not name:
+            raise ValueError(f"{fpath}: each pattern entry must have a non-empty 'pattern_name'")
+        if name not in valid_pattern_names:
+            raise ValueError(
+                f"{fpath}: pattern_name {name!r} not found in strategic_patterns.yml. "
+                f"Valid names: {sorted(valid_pattern_names)}"
+            )
+        missing = _ROUTING_PATTERN_KEYS - set(entry.keys())
+        if missing:
+            raise ValueError(f"{fpath} entry {name!r}: missing required keys: {sorted(missing)}")
+        paa_themes[name] = list(entry["paa_themes"] or [])
+        paa_categories[name] = set(entry["paa_categories"] or [])
+        keyword_hints[name] = list(entry["keyword_hints"] or [])
+
+    result = {
+        "paa_themes": paa_themes,
+        "paa_categories": paa_categories,
+        "keyword_hints": keyword_hints,
+        "intent_slot_descriptions": dict(raw["intent_slot_descriptions"]),
+    }
+    if path is None:
+        _BRIEF_ROUTING_CACHE = result
+    return result
+
 
 DEFAULT_CLIENT_CONTEXT = {
     "client_name": "Living Systems Counselling",
@@ -70,41 +132,6 @@ MAIN_REPORT_PROMPT_DEFAULT = os.path.join("prompts", "main_report")
 ADVISORY_PROMPT_DEFAULT = os.path.join("prompts", "advisory")
 CORRECTION_PROMPT_DEFAULT = os.path.join("prompts", "correction", "user_template.md")
 
-
-BRIEF_PAA_THEMES = {
-    "The Medical Model Trap": [
-        "therapy", "therapist", "counselling", "counselor",
-        "session", "diagnosis", "mental health", "treatment",
-        "professional", "psychologist",
-    ],
-    "The Fusion Trap": [
-        "reach out", "reconnect", "contact", "close",
-        "relationship", "communicate", "talking",
-        "stop reaching", "go no contact",
-    ],
-    "The Resource Trap": [
-        "cost", "free", "afford", "pay", "price", "insurance",
-        "covered", "sliding scale", "low cost", "how much",
-    ],
-    "The Blame/Reactivity Trap": [
-        "toxic", "narcissist", "abusive", "signs", "fault",
-        "blame", "anger", "deal with", "mean",
-    ],
-}
-
-BRIEF_PAA_CATEGORIES = {
-    "The Medical Model Trap": {"General", "Commercial"},
-    "The Fusion Trap": {"General", "Distress"},
-    "The Resource Trap": {"Commercial", "Distress"},
-    "The Blame/Reactivity Trap": {"Reactivity", "Distress"},
-}
-
-BRIEF_KEYWORD_HINTS = {
-    "The Medical Model Trap": ["therapy", "counselling", "counseling", "mental health"],
-    "The Fusion Trap": ["estrangement", "adult child", "reach out", "contact"],
-    "The Resource Trap": ["grief", "counselling", "therapy", "bc"],
-    "The Blame/Reactivity Trap": ["estrangement", "toxic", "no-contact", "family member"],
-}
 
 def progress(message):
     print(message, flush=True)
@@ -2225,9 +2252,10 @@ def score_paa_for_brief(question_text, theme_words):
 
 
 def get_relevant_paa(paa_questions, pattern_name, max_results=5):
-    theme_words = BRIEF_PAA_THEMES.get(pattern_name, [])
-    category_hints = BRIEF_PAA_CATEGORIES.get(pattern_name, set())
-    keyword_hints = BRIEF_KEYWORD_HINTS.get(pattern_name, [])
+    _routing = load_brief_pattern_routing()
+    theme_words = _routing["paa_themes"].get(pattern_name, [])
+    category_hints = _routing["paa_categories"].get(pattern_name, set())
+    keyword_hints = _routing["keyword_hints"].get(pattern_name, [])
     if not theme_words and not category_hints and not keyword_hints:
         return _dedupe_question_records(paa_questions)[:max_results]
 
@@ -2266,7 +2294,7 @@ def get_relevant_paa(paa_questions, pattern_name, max_results=5):
 
 
 def get_relevant_competitors(organic_results, pattern_name, max_results=3):
-    theme_words = BRIEF_PAA_THEMES.get(pattern_name, [])
+    theme_words = load_brief_pattern_routing()["paa_themes"].get(pattern_name, [])
     seen_titles = set()
     scored = []
     for idx, row in enumerate(organic_results):
@@ -2507,14 +2535,6 @@ def list_recommendations(data, args):
             print(f"- {w}")
 
 
-_BRIEF_INTENT_SLOTS = {
-    "informational": "informational/educational",
-    "commercial_investigation": "research/comparison",
-    "transactional": "service/booking",
-    "navigational": "brand-search",
-    "local": "local-service",
-    "mixed": "mixed (see Section 5b for components)",
-}
 
 
 def generate_brief(data, rec_index=0):
@@ -2549,7 +2569,8 @@ def generate_brief(data, rec_index=0):
     _confidence = si.get("confidence", "low")
     _is_mixed = si.get("is_mixed", False)
     _dp = tp.get("dominant_pattern")
-    _slot = _BRIEF_INTENT_SLOTS.get(_primary, "undetermined") if _primary else "undetermined"
+    _slots = load_brief_pattern_routing()["intent_slot_descriptions"]
+    _slot = _slots.get(_primary, "undetermined") if _primary else "undetermined"
 
     lines = []
     lines.append(f"# Content Brief: {rec.get('Content_Angle')}")
