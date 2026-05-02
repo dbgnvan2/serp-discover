@@ -536,15 +536,24 @@ def validate_url_pattern_rules(data: Any) -> tuple[bool, list[str], list[str]]:
     errors = []
     warnings = []
 
-    if not isinstance(data, list):
+    # Handle both file structure (dict with version + url_pattern_rules) and list-only
+    if isinstance(data, dict):
+        if "url_pattern_rules" not in data:
+            errors.append("url_pattern_rules file must contain 'url_pattern_rules' key")
+            return (False, errors, warnings)
+        rules = data["url_pattern_rules"]
+    else:
+        rules = data
+
+    if not isinstance(rules, list):
         errors.append("url_pattern_rules must be a list of dicts")
         return (False, errors, warnings)
 
-    if not data:
+    if not rules:
         errors.append("url_pattern_rules must be non-empty")
         return (False, errors, warnings)
 
-    for i, rule in enumerate(data):
+    for i, rule in enumerate(rules):
         if not isinstance(rule, dict):
             errors.append(f"rules[{i}] must be a dict")
             continue

@@ -1504,39 +1504,219 @@ class IntentClassifierTriggersTab(BaseConfigTab):
 
 
 class ConfigSettingsTab(BaseConfigTab):
-    """Tab for config.yml."""
+    """Tab for config.yml with nested section editing."""
 
     def __init__(self, parent):
         super().__init__(parent, "config.yml", "yaml")
+        self.section_widgets = {}  # Maps section_name -> dict of field_name -> widget
+        self.section_frames = {}  # Maps section_name -> LabelFrame for collapsing
 
     def render_ui(self):
-        """Placeholder UI for Phase 1."""
-        frame = ttk.Frame(self)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Render config.yml editor with collapsible sections and type-aware widgets."""
+        if not TKINTER_AVAILABLE:
+            return
 
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Header
         ttk.Label(
-            frame,
+            main_frame,
             text="Configuration Settings",
             font=("Helvetica", 12, "bold")
         ).pack(anchor="w")
 
         help_text = HELP_BY_FILE.get("config.yml", "")
-        ttk.Label(frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(5, 15))
+        ttk.Label(
+            main_frame,
+            text=help_text,
+            wraplength=700,
+            justify="left",
+            foreground="gray"
+        ).pack(anchor="w", pady=(5, 15))
 
-        ttk.Label(frame, text="Phase 1: Placeholder", foreground="gray").pack(anchor="w")
+        # Create scrolled canvas for sections
+        canvas_frame = ttk.Frame(main_frame)
+        canvas_frame.pack(fill="both", expand=True)
+
+        canvas = tk.Canvas(canvas_frame)
+        scrollbar = ttk.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Render sections
+        if isinstance(self.current_data, dict):
+            for section_name, section_data in self.current_data.items():
+                self._render_section(scrollable_frame, section_name, section_data)
+
+    def _render_section(self, parent, section_name, section_data):
+        """Render a top-level section with type-aware widgets."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        # Create collapsible section
+        section_frame = ttk.LabelFrame(parent, text=section_name, padding=10)
+        section_frame.pack(fill="x", padx=5, pady=5)
+
+        self.section_widgets[section_name] = {}
+        self.section_frames[section_name] = section_frame
+
+        if isinstance(section_data, dict):
+            for key, value in section_data.items():
+                self._render_field(section_frame, section_name, key, value)
+        else:
+            # Non-dict value in top level (rare, but handle gracefully)
+            ttk.Label(section_frame, text=f"Value: {value}").pack()
+
+    def _render_field(self, parent, section_name, field_name, value):
+        """Render a single field with type-aware widget."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        field_frame = ttk.Frame(parent)
+        field_frame.pack(fill="x", pady=5)
+
+        # Label
+        ttk.Label(
+            field_frame,
+            text=f"{field_name}:",
+            width=25,
+            anchor="w"
+        ).pack(side="left", padx=(0, 10))
+
+        # Widget based on type
+        widget = None
+        if isinstance(value, bool):
+            var = tk.BooleanVar(value=value)
+            widget = ttk.Checkbutton(field_frame, variable=var)
+            widget.pack(side="left")
+            self.section_widgets[section_name][field_name] = (var, "bool")
+
+        elif isinstance(value, int):
+            var = tk.IntVar(value=value)
+            widget = ttk.Spinbox(
+                field_frame,
+                from_=0,
+                to=10000,
+                textvariable=var,
+                width=20
+            )
+            widget.pack(side="left", fill="x", expand=True)
+            self.section_widgets[section_name][field_name] = (var, "int")
+
+        elif isinstance(value, float):
+            var = tk.DoubleVar(value=value)
+            widget = ttk.Spinbox(
+                field_frame,
+                from_=0.0,
+                to=10000.0,
+                increment=0.1,
+                textvariable=var,
+                width=20
+            )
+            widget.pack(side="left", fill="x", expand=True)
+            self.section_widgets[section_name][field_name] = (var, "float")
+
+        elif isinstance(value, str):
+            # Check if it looks like a file path
+            if "path" in field_name.lower() or "file" in field_name.lower() or "folder" in field_name.lower():
+                entry = ttk.Entry(field_frame, width=40)
+                entry.insert(0, value)
+                entry.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+                def browse():
+                    file_path = filedialog.askopenfilename(initialdir=os.path.dirname(value) or ".")
+                    if file_path:
+                        entry.delete(0, tk.END)
+                        entry.insert(0, file_path)
+
+                ttk.Button(field_frame, text="Browse", width=10, command=browse).pack(side="left")
+                self.section_widgets[section_name][field_name] = (entry, "str")
+            else:
+                entry = ttk.Entry(field_frame, width=40)
+                entry.insert(0, value)
+                entry.pack(side="left", fill="x", expand=True)
+                self.section_widgets[section_name][field_name] = (entry, "str")
+
+        elif isinstance(value, list):
+            # Use Text widget for lists (formatted as YAML)
+            text = tk.Text(field_frame, height=3, width=40)
+            text.insert("1.0", yaml.safe_dump(value, default_flow_style=False).rstrip())
+            text.pack(side="left", fill="both", expand=True)
+            self.section_widgets[section_name][field_name] = (text, "list")
+
+        elif isinstance(value, dict) and value:
+            # Use Text widget for dicts
+            text = tk.Text(field_frame, height=3, width=40)
+            text.insert("1.0", yaml.safe_dump(value, default_flow_style=False).rstrip())
+            text.pack(side="left", fill="both", expand=True)
+            self.section_widgets[section_name][field_name] = (text, "dict")
+
+    def get_edited_data(self):
+        """Extract form values back into config.yml format."""
+        if not TKINTER_AVAILABLE:
+            return self.current_data
+
+        data = {}
+        for section_name, fields in self.section_widgets.items():
+            section_data = {}
+            for field_name, (widget, field_type) in fields.items():
+                if field_type == "bool":
+                    section_data[field_name] = widget.get()
+                elif field_type == "int":
+                    try:
+                        section_data[field_name] = int(widget.get())
+                    except:
+                        section_data[field_name] = 0
+                elif field_type == "float":
+                    try:
+                        section_data[field_name] = float(widget.get())
+                    except:
+                        section_data[field_name] = 0.0
+                elif field_type == "str":
+                    section_data[field_name] = widget.get()
+                elif field_type == "list":
+                    try:
+                        section_data[field_name] = yaml.safe_load(widget.get("1.0", tk.END))
+                    except:
+                        section_data[field_name] = []
+                elif field_type == "dict":
+                    try:
+                        section_data[field_name] = yaml.safe_load(widget.get("1.0", tk.END))
+                    except:
+                        section_data[field_name] = {}
+
+            data[section_name] = section_data
+
+        return data
 
 
 class UrlPatternRulesTab(BaseConfigTab):
-    """Tab for url_pattern_rules.yml."""
+    """Tab for url_pattern_rules.yml with regex pattern editor."""
 
     def __init__(self, parent):
         super().__init__(parent, "url_pattern_rules.yml", "yaml")
+        self.tree = None
 
     def render_ui(self):
-        """Placeholder UI for Phase 1."""
+        """Render URL pattern rules editor with treeview and buttons."""
+        if not TKINTER_AVAILABLE:
+            return
+
         frame = ttk.Frame(self)
         frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # Header
         ttk.Label(
             frame,
             text="URL Pattern Rules Configuration",
@@ -1544,9 +1724,313 @@ class UrlPatternRulesTab(BaseConfigTab):
         ).pack(anchor="w")
 
         help_text = HELP_BY_FILE.get("url_pattern_rules.yml", "")
-        ttk.Label(frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(5, 15))
+        ttk.Label(
+            frame,
+            text=help_text,
+            wraplength=700,
+            justify="left",
+            foreground="gray"
+        ).pack(anchor="w", pady=(5, 15))
 
-        ttk.Label(frame, text="Phase 1: Placeholder", foreground="gray").pack(anchor="w")
+        # Info text
+        info_text = (
+            "Note: Patterns are evaluated top-to-bottom (first match wins). Each pattern is a Python regex "
+            "matched against the full URL (lowercased)."
+        )
+        ttk.Label(
+            frame,
+            text=info_text,
+            wraplength=700,
+            justify="left",
+            foreground="blue",
+            font=("Helvetica", 9, "italic")
+        ).pack(anchor="w", pady=(0, 10))
+
+        # Treeview for rules
+        columns = ("Pattern", "Entity Types", "Content Type", "Rationale")
+        self.tree = ttk.Treeview(frame, columns=columns, height=12, show="tree headings")
+
+        self.tree.column("#0", width=0, stretch=False)
+        self.tree.column("Pattern", width=250, stretch=True)
+        self.tree.column("Entity Types", width=150, stretch=True)
+        self.tree.column("Content Type", width=100, stretch=True)
+        self.tree.column("Rationale", width=200, stretch=True)
+
+        self.tree.heading("Pattern", text="Pattern (Regex)")
+        self.tree.heading("Entity Types", text="Entity Types")
+        self.tree.heading("Content Type", text="Content Type")
+        self.tree.heading("Rationale", text="Rationale")
+
+        self.tree.pack(fill="both", expand=True, pady=(0, 10))
+
+        # Buttons
+        button_frame = ttk.Frame(frame)
+        button_frame.pack(fill="x")
+
+        ttk.Button(button_frame, text="+ Add Pattern", command=self._add_rule).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Edit", command=self._edit_rule).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Delete", command=self._delete_rule).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="↑ Up (Higher Priority)", command=self._move_up).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="↓ Down (Lower Priority)", command=self._move_down).pack(side="left")
+
+        # Load data
+        self._load_treeview_data()
+
+    def _load_treeview_data(self):
+        """Populate treeview with rules from url_pattern_rules.yml."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Load from current_data
+        if isinstance(self.current_data, dict) and "url_pattern_rules" in self.current_data:
+            for rule in self.current_data["url_pattern_rules"]:
+                if isinstance(rule, dict):
+                    pattern = rule.get("pattern", "")
+                    entity_types = ", ".join(rule.get("entity_types", []))
+                    content_type = rule.get("content_type", "")
+                    rationale = rule.get("rationale", "")
+                    self.tree.insert("", "end", values=(pattern, entity_types, content_type, rationale))
+
+    def _add_rule(self):
+        """Add a new URL pattern rule."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Add URL Pattern Rule")
+        dialog.geometry("700x400")
+        dialog.transient(self.master)
+
+        # Pattern
+        ttk.Label(dialog, text="Pattern (Regex):", font=("Helvetica", 10, "bold")).grid(
+            row=0, column=0, padx=10, pady=10, sticky="w"
+        )
+        ttk.Label(
+            dialog,
+            text="Python regex matched against the full URL (lowercased). Examples: /blog/, .*\\.com$, /(?:service|therapy)/",
+            foreground="gray",
+            font=("Helvetica", 9)
+        ).grid(row=0, column=1, padx=10, pady=(10, 0), sticky="w")
+        pattern_entry = ttk.Entry(dialog, width=50)
+        pattern_entry.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        # Entity Types
+        ttk.Label(dialog, text="Entity Types:", font=("Helvetica", 10, "bold")).grid(
+            row=2, column=0, padx=10, pady=10, sticky="w"
+        )
+        ttk.Label(
+            dialog,
+            text="Comma-separated (e.g., counselling, nonprofit, any)",
+            foreground="gray",
+            font=("Helvetica", 9)
+        ).grid(row=2, column=1, padx=10, pady=(10, 0), sticky="w")
+        entity_types_entry = ttk.Entry(dialog, width=50)
+        entity_types_entry.insert(0, "any")
+        entity_types_entry.grid(row=3, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        # Content Type
+        ttk.Label(dialog, text="Content Type:", font=("Helvetica", 10, "bold")).grid(
+            row=4, column=0, padx=10, pady=10, sticky="w"
+        )
+        ttk.Label(
+            dialog,
+            text="e.g., service, guide, directory, article",
+            foreground="gray",
+            font=("Helvetica", 9)
+        ).grid(row=4, column=1, padx=10, pady=(10, 0), sticky="w")
+        content_type_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES), width=47)
+        content_type_combo.grid(row=5, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        # Rationale
+        ttk.Label(dialog, text="Rationale (Optional):", font=("Helvetica", 10, "bold")).grid(
+            row=6, column=0, padx=10, pady=10, sticky="nw"
+        )
+        ttk.Label(
+            dialog,
+            text="Why this pattern matches this content type",
+            foreground="gray",
+            font=("Helvetica", 9)
+        ).grid(row=6, column=1, padx=10, pady=(10, 0), sticky="w")
+        rationale_text = tk.Text(dialog, height=4, width=50)
+        rationale_text.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        def save():
+            pattern = pattern_entry.get().strip()
+            entity_types_str = entity_types_entry.get().strip()
+            content_type = content_type_combo.get().strip()
+            rationale = rationale_text.get("1.0", tk.END).strip()
+
+            if not pattern:
+                messagebox.showwarning("Incomplete", "Pattern is required")
+                return
+            if not content_type:
+                messagebox.showwarning("Incomplete", "Content Type is required")
+                return
+
+            # Validate regex
+            try:
+                import re
+                re.compile(pattern)
+            except Exception as e:
+                messagebox.showerror("Invalid Regex", f"Pattern is not valid regex: {e}")
+                return
+
+            # Parse entity types
+            entity_types_list = [et.strip() for et in entity_types_str.split(",")]
+
+            self.tree.insert("", "end", values=(pattern, ", ".join(entity_types_list), content_type, rationale))
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=8, column=1, padx=10, pady=10, sticky="e")
+
+    def _edit_rule(self):
+        """Edit selected rule."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a rule to edit")
+            return
+
+        item = selected[0]
+        pattern, entity_types, content_type, rationale = self.tree.item(item)["values"]
+
+        dialog = tk.Toplevel(self)
+        dialog.title(f"Edit Pattern: {pattern[:50]}")
+        dialog.geometry("700x400")
+        dialog.transient(self.master)
+
+        # Pattern
+        ttk.Label(dialog, text="Pattern (Regex):", font=("Helvetica", 10, "bold")).grid(
+            row=0, column=0, padx=10, pady=10, sticky="w"
+        )
+        pattern_entry = ttk.Entry(dialog, width=50)
+        pattern_entry.insert(0, pattern)
+        pattern_entry.grid(row=1, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        # Entity Types
+        ttk.Label(dialog, text="Entity Types:", font=("Helvetica", 10, "bold")).grid(
+            row=2, column=0, padx=10, pady=10, sticky="w"
+        )
+        entity_types_entry = ttk.Entry(dialog, width=50)
+        entity_types_entry.insert(0, entity_types)
+        entity_types_entry.grid(row=3, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        # Content Type
+        ttk.Label(dialog, text="Content Type:", font=("Helvetica", 10, "bold")).grid(
+            row=4, column=0, padx=10, pady=10, sticky="w"
+        )
+        content_type_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES), width=47)
+        content_type_combo.set(content_type)
+        content_type_combo.grid(row=5, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        # Rationale
+        ttk.Label(dialog, text="Rationale (Optional):", font=("Helvetica", 10, "bold")).grid(
+            row=6, column=0, padx=10, pady=10, sticky="nw"
+        )
+        rationale_text = tk.Text(dialog, height=4, width=50)
+        rationale_text.insert("1.0", rationale)
+        rationale_text.grid(row=7, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
+
+        def save():
+            pattern = pattern_entry.get().strip()
+            entity_types = entity_types_entry.get().strip()
+            content_type = content_type_combo.get().strip()
+            rationale = rationale_text.get("1.0", tk.END).strip()
+
+            if not pattern or not content_type:
+                messagebox.showwarning("Incomplete", "Pattern and Content Type are required")
+                return
+
+            # Validate regex
+            try:
+                import re
+                re.compile(pattern)
+            except Exception as e:
+                messagebox.showerror("Invalid Regex", f"Pattern is not valid regex: {e}")
+                return
+
+            self.tree.item(item, values=(pattern, entity_types, content_type, rationale))
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=8, column=1, padx=10, pady=10, sticky="e")
+
+    def _delete_rule(self):
+        """Delete selected rule."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a rule to delete")
+            return
+
+        for item in selected:
+            self.tree.delete(item)
+
+    def _move_up(self):
+        """Move selected rule up in priority."""
+        selected = self.tree.selection()
+        if not selected or len(selected) != 1:
+            messagebox.showwarning("Single Selection", "Select exactly one rule to move")
+            return
+
+        item = selected[0]
+        index = self.tree.index(item)
+
+        if index == 0:
+            messagebox.showinfo("Already at Top", "This rule is already at the top priority (evaluated first)")
+            return
+
+        values = self.tree.item(item)["values"]
+        self.tree.delete(item)
+        new_item = self.tree.insert("", index - 1, values=values)
+        self.tree.selection_set(new_item)
+        messagebox.showinfo("Moved", f"Rule moved up to position {index} (rules are evaluated top-to-bottom)")
+
+    def _move_down(self):
+        """Move selected rule down in priority."""
+        selected = self.tree.selection()
+        if not selected or len(selected) != 1:
+            messagebox.showwarning("Single Selection", "Select exactly one rule to move")
+            return
+
+        item = selected[0]
+        index = self.tree.index(item)
+        items = self.tree.get_children()
+
+        if index >= len(items) - 1:
+            messagebox.showinfo("Already at Bottom", "This rule is already at the lowest priority (evaluated last)")
+            return
+
+        values = self.tree.item(item)["values"]
+        self.tree.delete(item)
+        new_item = self.tree.insert("", index + 1, values=values)
+        self.tree.selection_set(new_item)
+        messagebox.showinfo("Moved", f"Rule moved down to position {index + 2} (rules are evaluated top-to-bottom)")
+
+    def get_edited_data(self):
+        """Extract treeview data back into url_pattern_rules.yml format."""
+        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+
+        rules = []
+        for item in self.tree.get_children():
+            pattern, entity_types, content_type, rationale = self.tree.item(item)["values"]
+            entity_types_list = [et.strip() for et in entity_types.split(",")]
+
+            rule = {
+                "pattern": pattern,
+                "entity_types": entity_types_list,
+                "content_type": content_type,
+            }
+            if rationale:
+                rule["rationale"] = rationale
+
+            rules.append(rule)
+
+        data["url_pattern_rules"] = rules
+        return data
 
 
 class ConfigManagerWindow:

@@ -556,3 +556,102 @@ class TestIntentClassifierTriggersTabPhase4:
         assert len(medical.get("single_word", [])) > 0
         assert len(systemic.get("multi_word", [])) > 0
         assert len(systemic.get("single_word", [])) > 0
+
+
+class TestConfigSettingsTabPhase5:
+    """Test ConfigSettingsTab (config.yml editing)."""
+
+    def test_config_settings_loads_current_data(self):
+        """ConfigSettingsTab should load config.yml data."""
+        import yaml
+        with open("config.yml", "r") as f:
+            current_data = yaml.safe_load(f)
+
+        # Verify structure
+        assert isinstance(current_data, dict)
+        assert "serpapi" in current_data
+        assert "files" in current_data
+        assert "enrichment" in current_data
+
+    def test_config_settings_validation_passes(self):
+        """ConfigSettingsTab should validate config.yml without errors."""
+        from config_validators import validate_config_yml
+        import yaml
+
+        with open("config.yml", "r") as f:
+            data = yaml.safe_load(f)
+
+        is_valid, errors, warnings = validate_config_yml(data)
+        assert is_valid is True, f"Validation failed: {errors}"
+        assert len(errors) == 0
+
+    def test_config_settings_preserves_sections(self):
+        """ConfigSettingsTab should preserve all top-level sections."""
+        import yaml
+
+        with open("config.yml", "r") as f:
+            data = yaml.safe_load(f)
+
+        # All major sections should exist
+        expected_sections = ["serpapi", "files", "enrichment", "app"]
+        for section in expected_sections:
+            assert section in data, f"Missing section: {section}"
+
+
+class TestUrlPatternRulesTabPhase5:
+    """Test UrlPatternRulesTab (url_pattern_rules.yml editing)."""
+
+    def test_url_pattern_rules_loads_current_data(self):
+        """UrlPatternRulesTab should load url_pattern_rules.yml data."""
+        import yaml
+
+        with open("url_pattern_rules.yml", "r") as f:
+            current_data = yaml.safe_load(f)
+
+        # Verify structure
+        assert isinstance(current_data, dict)
+        assert "version" in current_data
+        assert "url_pattern_rules" in current_data
+        assert isinstance(current_data["url_pattern_rules"], list)
+
+    def test_url_pattern_rules_validation_passes(self):
+        """UrlPatternRulesTab should validate url_pattern_rules.yml without errors."""
+        from config_validators import validate_url_pattern_rules
+        import yaml
+
+        with open("url_pattern_rules.yml", "r") as f:
+            data = yaml.safe_load(f)
+
+        is_valid, errors, warnings = validate_url_pattern_rules(data)
+        assert is_valid is True, f"Validation failed: {errors}"
+        assert len(errors) == 0
+
+    def test_url_pattern_rules_structure_correct(self):
+        """UrlPatternRulesTab should verify all rules have required fields."""
+        import yaml
+
+        with open("url_pattern_rules.yml", "r") as f:
+            data = yaml.safe_load(f)
+
+        for rule in data.get("url_pattern_rules", []):
+            assert "pattern" in rule, "Rule missing 'pattern' field"
+            assert "entity_types" in rule, "Rule missing 'entity_types' field"
+            assert "content_type" in rule, "Rule missing 'content_type' field"
+            assert isinstance(rule["pattern"], str), "pattern must be string"
+            assert isinstance(rule["entity_types"], list), "entity_types must be list"
+            assert isinstance(rule["content_type"], str), "content_type must be string"
+
+    def test_url_pattern_rules_regex_validity(self):
+        """UrlPatternRulesTab should validate regex patterns can compile."""
+        import yaml
+        import re
+
+        with open("url_pattern_rules.yml", "r") as f:
+            data = yaml.safe_load(f)
+
+        for rule in data.get("url_pattern_rules", []):
+            pattern = rule["pattern"]
+            try:
+                re.compile(pattern)
+            except re.error as e:
+                assert False, f"Invalid regex pattern '{pattern}': {e}"
