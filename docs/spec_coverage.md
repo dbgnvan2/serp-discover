@@ -48,7 +48,7 @@
 | v2.G5.1 | v2 | Test scans prompt files for field references and confirms each has validator rule | `test_validation_consistency.py` | `test_validation_consistency.py::test_all_prompt_fields_covered_by_validator` | done |
 | v2.G5.2 | v2 | Test fails when new pre-computed field added without validator rule | `test_validation_consistency.py` | `test_validation_consistency.py::test_all_prompt_fields_covered_by_validator` | done |
 | v2.G5.3 | v2 | Test passes after Gaps 1, 2, 4 add their validator rules | `test_validation_consistency.py` | `test_validation_consistency.py::test_all_prompt_fields_covered_by_validator` | done |
-| v2.CC.1 | v2 | End-to-end integration test runs pipeline against fixture and asserts new fields exist with correct types | — | — | not done |
+| v2.CC.1 | v2 | End-to-end integration test runs pipeline against fixture and asserts new fields exist with correct types | `tests/test_e2e_integration.py::assert_v2_keyword_profile` | `tests/test_e2e_integration.py::TestV2CC1AllNewFieldsPresent::test_v2_cc1_all_new_fields_present_in_couples_therapy_fixture` | done |
 | v2.CC.2 | v2 | README updated with new fields, handoff file, and backwards-compatibility note | `README.md` | manual | done |
 | F1.1 | fix | Confidence denominator is top-10 organic only; test with 10 organic + 5 local + 8 forum → denominator=10 | `intent_verdict.py::compute_serp_intent` | `test_intent_verdict.py::test_denominator_is_organic_rows_only` | done |
 | F1.2 | fix | Schema field names renamed: `organic_url_count`, `classified_organic_url_count`, `uncategorised_organic_url_count` | `intent_verdict.py::compute_serp_intent` | `test_intent_verdict.py::test_evidence_new_field_names` | done |
@@ -173,12 +173,6 @@
 | I.7.2 | impr | Rule's example mentions externalisation pattern | `~/.claude/CLAUDE.md` Rule 8 example | manual | done |
 
 ---
-
-## Not-done items
-
-| Spec ID | Description | Reason |
-|---------|-------------|--------|
-| v2.CC.1 | End-to-end integration test running full pipeline against fixture | No pipeline-level integration test exists. `test_markdown_rendering.py` tests rendered output from pre-computed fixture data but does not run `serp_audit.py` → `generate_insight_report.py` in a single pipeline invocation. Creating this test would require a fixture with mocked SerpAPI calls — deferred. |
 
 ---
 
