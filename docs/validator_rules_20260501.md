@@ -1,7 +1,7 @@
 # Validator Rules — v2 Pre-Computed Fields
 
 **Date:** 2026-05-01  
-**File:** `generate_content_brief.py` — `validate_llm_report()` and helpers  
+**File:** `brief_validation.py` — `validate_llm_report()` and helpers  
 **Spec:** `serp_tool1_fix_spec.md` Fix 7, `serp_tool1_completion_spec.md` M2.C
 
 This document lists every validator rule in effect for the five pre-computed fields added in v2 of the SERP intelligence tool. Each rule has a severity, a description, and a pointer to the test that asserts it catches a contradicting LLM output.
@@ -20,7 +20,7 @@ The issue string contains `"but keyword_profiles shows serp_intent.primary_inten
 
 Low-confidence verdicts (`confidence == "low"`) are deliberately not enforced — the LLM is permitted interpretive latitude when the classifier had insufficient data.
 
-**Detection location:** `validate_llm_report()` — `INTENT_CLAIM_PHRASES` loop (`generate_content_brief.py:1704`)
+**Detection location:** `brief_validation.py::validate_llm_report()` — `INTENT_CLAIM_PHRASES` loop
 
 **Test:** `test_validate_llm_report_flags_intent_contradiction_hard` (`test_generate_content_brief.py:474`)
 
@@ -36,7 +36,7 @@ Low-confidence verdicts (`confidence == "low"`) are deliberately not enforced �
 
 Both issue strings contain `"but keyword_profiles shows serp_intent.is_mixed="`, triggering hard-fail.
 
-**Detection location:** `validate_llm_report()` — is_mixed block (`generate_content_brief.py:1776`)
+**Detection location:** `brief_validation.py::validate_llm_report()` — is_mixed block
 
 **Test:** `test_validate_llm_report_flags_is_mixed_contradiction` (`test_generate_content_brief.py:487`)
 
@@ -50,7 +50,7 @@ Both issue strings contain `"but keyword_profiles shows serp_intent.is_mixed="`,
 
 The issue string contains `"keyword_profiles.serp_intent.confidence="`, which `partition_validation_issues()` routes to `notes` (not `blocking`), and `has_hard_validation_failures()` does NOT trigger.
 
-**Detection location:** `validate_llm_report()` — confidence upgrade block (`generate_content_brief.py` — HIGH/MEDIUM_CONFIDENCE_PHRASES check)
+**Detection location:** `brief_validation.py::validate_llm_report()` — confidence upgrade block (HIGH/MEDIUM_CONFIDENCE_PHRASES check)
 
 **Test:** `test_validate_llm_report_flags_confidence_upgrade_soft` (`test_generate_content_brief.py`)
 
@@ -68,7 +68,7 @@ Both issue strings contain `"contradicts keyword_profiles.title_patterns"`, whic
 
 **Upgrade from prior spec:** This field was SOFT in earlier code. Fix 7 of `serp_tool1_fix_spec.md` promoted it to HARD.
 
-**Detection location:** `validate_llm_report()` — `PATTERN_CLAIM_PHRASES` loop (`generate_content_brief.py:1817`)
+**Detection location:** `brief_validation.py::validate_llm_report()` — `PATTERN_CLAIM_PHRASES` loop
 
 **Tests:**
 - `test_validate_llm_report_flags_dominant_pattern_contradiction_hard` (non-null case, `test_generate_content_brief.py:523`)
@@ -84,7 +84,7 @@ Both issue strings contain `"contradicts keyword_profiles.title_patterns"`, whic
 
 **Rule (hard sub-case):** If the keyword is NOT mixed-intent (`is_mixed == False`) but the report uses backdoor strategy language ("backdoor strategy," "compete on the dominant intent"), this is a HARD-FAIL — invoking mixed-intent framing on a single-intent keyword. The issue string contains `"but keyword_profiles shows serp_intent.is_mixed=False"`, caught by `has_hard_validation_failures()`.
 
-**Detection location:** `validate_llm_report()` — mixed_intent_strategy block (`generate_content_brief.py:1789`)
+**Detection location:** `brief_validation.py::validate_llm_report()` — mixed_intent_strategy block
 
 **Test:** `test_validate_llm_report_flags_mixed_keyword_dominance` (`test_generate_content_brief.py:276`) — asserts the non-mixed keyword hard-fail sub-case.
 
