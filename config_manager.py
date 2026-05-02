@@ -66,8 +66,21 @@ HELP_BY_FILE = {
         "EDIT THIS WHEN: A brief feels wrong because the searcher intent was misread."
     ),
     "strategic_patterns.yml": (
-        "Bowen Family Systems patterns used for content brief generation. Each pattern includes "
-        "triggers, status quo message, and reframe. Pattern names must match brief_pattern_routing.yml."
+        "STRATEGIC PATTERNS: Bowen Family Systems therapeutic reframing patterns.\n\n"
+        "PURPOSE: Each pattern maps a trigger (emotional or behavioral cue) to a therapeutic reframe.\n"
+        "When content briefs detect these patterns in user search behavior, they can apply the reframe.\n\n"
+        "STRUCTURE:\n"
+        "  • Pattern_Name: Unique identifier (must match brief_pattern_routing.yml pattern_name)\n"
+        "  • Triggers: 4+ keywords that signal this pattern is present\n"
+        "  • Status_Quo_Message: Current unhelpful belief or behavior\n"
+        "  • Bowen_Bridge_Reframe: Systems-focused reinterpretation\n"
+        "  • Content_Angle: How content should address this pattern\n\n"
+        "EXAMPLE:\n"
+        "  Pattern: 'pursuer_distancer'\n"
+        "  Triggers: ['pursue', 'withdraw', 'distance', 'avoid', 'chase']\n"
+        "  Status_Quo: 'If I pursue more, they will eventually understand'\n"
+        "  Reframe: 'Pursuit triggers protective distance; differentiation creates connection'\n"
+        "  Angle: 'Content on creating space vs. pursuing; individual regulation'"
     ),
     "brief_pattern_routing.yml": (
         "Routes content briefs to specific patterns and keyword themes. Pattern names must exist "
@@ -322,7 +335,11 @@ class DomainOverridesTab(BaseConfigTab):
             self.tree.insert("", "end", values=(domain, entity_type))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=2, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_row(self):
         """Delete selected row."""
@@ -375,7 +392,11 @@ class DomainOverridesTab(BaseConfigTab):
             self.tree.item(item, values=(new_domain, new_entity_type))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=2, column=1, padx=10, pady=10, sticky="e")
 
     def get_edited_data(self):
         """Extract treeview data back into dict format."""
@@ -516,7 +537,11 @@ class ClassificationRulesTab(BaseConfigTab):
             self.entity_types_tree.insert("", "end", values=(entity_type,))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=1, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=1, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_entity_type(self):
         """Delete selected entity type."""
@@ -561,7 +586,11 @@ class ClassificationRulesTab(BaseConfigTab):
             self.descriptions_tree.insert("", "end", values=(entity_type, description))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=2, column=1, padx=10, pady=10, sticky="e")
 
     def _edit_description(self):
         """Edit selected description."""
@@ -606,7 +635,11 @@ class ClassificationRulesTab(BaseConfigTab):
             self.descriptions_tree.item(item, values=(new_entity_type, new_description))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=2, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_description(self):
         """Delete selected description."""
@@ -664,16 +697,18 @@ class IntentMappingTab(BaseConfigTab):
         tree_frame = ttk.Frame(main_frame)
         tree_frame.pack(fill="both", expand=True, pady=(0, 10))
 
-        columns = ("content_type", "entity_type", "local_pack", "intent")
+        columns = ("content_type", "entity_type", "local_pack", "domain_role", "intent")
         self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12)
         self.tree.heading("content_type", text="Content Type")
         self.tree.heading("entity_type", text="Entity Type")
         self.tree.heading("local_pack", text="Local Pack")
+        self.tree.heading("domain_role", text="Domain Role")
         self.tree.heading("intent", text="Intent")
-        self.tree.column("content_type", width=120)
-        self.tree.column("entity_type", width=120)
-        self.tree.column("local_pack", width=100)
-        self.tree.column("intent", width=150)
+        self.tree.column("content_type", width=100)
+        self.tree.column("entity_type", width=100)
+        self.tree.column("local_pack", width=90)
+        self.tree.column("domain_role", width=120)
+        self.tree.column("intent", width=120)
 
         scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
         self.tree.configure(yscroll=scrollbar.set)
@@ -711,8 +746,9 @@ class IntentMappingTab(BaseConfigTab):
                     content_type = match.get("content_type", "")
                     entity_type = match.get("entity_type", "")
                     local_pack = match.get("local_pack", "")
+                    domain_role = match.get("domain_role", "")
                     intent = rule.get("intent", "")
-                    self.tree.insert("", "end", values=(content_type, entity_type, local_pack, intent))
+                    self.tree.insert("", "end", values=(content_type, entity_type, local_pack, domain_role, intent))
 
     def _add_rule(self):
         """Add a new intent mapping rule."""
@@ -764,11 +800,16 @@ class IntentMappingTab(BaseConfigTab):
                 ct_combo.get(),
                 et_combo.get(),
                 lp_combo.get(),
+                dr_combo.get(),
                 intent_combo.get()
             ))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=10, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=10, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=10, column=1, padx=10, pady=10, sticky="e")
 
     def _edit_rule(self):
         """Edit selected rule."""
@@ -781,7 +822,7 @@ class IntentMappingTab(BaseConfigTab):
             return
 
         item = selected[0]
-        content_type, entity_type, local_pack, intent = self.tree.item(item)["values"]
+        content_type, entity_type, local_pack, domain_role, intent = self.tree.item(item)["values"]
 
         dialog = tk.Toplevel(self)
         dialog.title(f"Edit Rule: {intent}")
@@ -820,7 +861,7 @@ class IntentMappingTab(BaseConfigTab):
         ttk.Label(dialog, text="Domain Role:", font=("Helvetica", 10, "bold")).grid(row=8, column=0, padx=10, pady=10, sticky="w")
         ttk.Label(dialog, text="(client, known_competitor, other, any)", foreground="gray", font=("Helvetica", 9)).grid(row=8, column=1, padx=10, pady=(10, 0), sticky="w")
         dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=30)
-        dr_combo.set("other")
+        dr_combo.set(domain_role)
         dr_combo.grid(row=9, column=0, columnspan=2, padx=10, pady=(0, 10), sticky="ew")
 
         def save():
@@ -832,11 +873,16 @@ class IntentMappingTab(BaseConfigTab):
                 ct_combo.get(),
                 et_combo.get(),
                 lp_combo.get(),
+                dr_combo.get(),
                 intent_combo.get()
             ))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=10, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=10, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=10, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_rule(self):
         """Delete selected rule."""
@@ -897,13 +943,13 @@ class IntentMappingTab(BaseConfigTab):
 
         rules = []
         for item in self.tree.get_children():
-            content_type, entity_type, local_pack, intent = self.tree.item(item)["values"]
+            content_type, entity_type, local_pack, domain_role, intent = self.tree.item(item)["values"]
             rule = {
                 "match": {
                     "content_type": content_type,
                     "entity_type": entity_type,
                     "local_pack": local_pack,
-                    "domain_role": "other"  # Default domain_role
+                    "domain_role": domain_role
                 },
                 "intent": intent
             }
@@ -1093,7 +1139,11 @@ class StrategicPatternsTab(BaseConfigTab):
 
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=5, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_pattern(self):
         """Delete selected pattern."""
@@ -1336,7 +1386,11 @@ class BriefPatternRoutingTab(BaseConfigTab):
 
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=4, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=4, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=4, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_pattern(self):
         """Delete selected pattern."""
@@ -1884,7 +1938,11 @@ class UrlPatternRulesTab(BaseConfigTab):
             self.tree.insert("", "end", values=(pattern, ", ".join(entity_types_list), content_type, rationale))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=8, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=8, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=8, column=1, padx=10, pady=10, sticky="e")
 
     def _edit_rule(self):
         """Edit selected rule."""
@@ -1957,7 +2015,11 @@ class UrlPatternRulesTab(BaseConfigTab):
             self.tree.item(item, values=(pattern, entity_types, content_type, rationale))
             dialog.destroy()
 
-        ttk.Button(dialog, text="Save", command=save).grid(row=8, column=1, padx=10, pady=10, sticky="e")
+        def cancel():
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=8, column=0, padx=10, pady=10, sticky="w")
+        ttk.Button(dialog, text="Cancel", command=cancel).grid(row=8, column=1, padx=10, pady=10, sticky="e")
 
     def _delete_rule(self):
         """Delete selected rule."""
