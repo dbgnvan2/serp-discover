@@ -617,49 +617,483 @@ class ClassificationRulesTab(BaseConfigTab):
 
 
 class IntentMappingTab(BaseConfigTab):
-    """Tab for intent_mapping.yml."""
+    """Tab for intent_mapping.yml with CRUD and reordering support."""
 
     def __init__(self, parent):
         super().__init__(parent, "intent_mapping.yml", "yaml")
+        self.tree = None
 
     def render_ui(self):
-        """Placeholder UI for Phase 1."""
-        frame = ttk.Frame(self)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Render intent mapping editor with treeview and CRUD buttons."""
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # Header
         ttk.Label(
-            frame,
-            text="Intent Mapping Configuration",
+            main_frame,
+            text="Intent Mapping Configuration (Rules are evaluated top-to-bottom)",
             font=("Helvetica", 12, "bold")
-        ).pack(anchor="w")
+        ).pack(anchor="w", pady=(0, 5))
 
         help_text = HELP_BY_FILE.get("intent_mapping.yml", "")
-        ttk.Label(frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(5, 15))
+        ttk.Label(main_frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(0, 10))
 
-        ttk.Label(frame, text="Phase 1: Placeholder", foreground="gray").pack(anchor="w")
+        # Treeview with columns
+        tree_frame = ttk.Frame(main_frame)
+        tree_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        columns = ("content_type", "entity_type", "local_pack", "intent")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12)
+        self.tree.heading("content_type", text="Content Type")
+        self.tree.heading("entity_type", text="Entity Type")
+        self.tree.heading("local_pack", text="Local Pack")
+        self.tree.heading("intent", text="Intent")
+        self.tree.column("content_type", width=120)
+        self.tree.column("entity_type", width=120)
+        self.tree.column("local_pack", width=100)
+        self.tree.column("intent", width=150)
+
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Load data into treeview
+        self._load_treeview_data()
+
+        # Buttons frame
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill="x", pady=(0, 10))
+
+        ttk.Button(button_frame, text="+ Add", command=self._add_rule).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Edit", command=self._edit_rule).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Delete", command=self._delete_rule).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="↑ Up", command=self._move_up).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="↓ Down", command=self._move_down).pack(side="left")
+
+    def _load_treeview_data(self):
+        """Populate treeview with rules from intent_mapping.yml."""
+        # Clear existing
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Load from current_data
+        if isinstance(self.current_data, dict) and "rules" in self.current_data:
+            for rule in self.current_data["rules"]:
+                if isinstance(rule, dict) and "match" in rule:
+                    match = rule["match"]
+                    content_type = match.get("content_type", "")
+                    entity_type = match.get("entity_type", "")
+                    local_pack = match.get("local_pack", "")
+                    intent = rule.get("intent", "")
+                    self.tree.insert("", "end", values=(content_type, entity_type, local_pack, intent))
+
+    def _add_rule(self):
+        """Add a new intent mapping rule."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Add Intent Mapping Rule")
+        dialog.geometry("500x300")
+        dialog.transient(self.master)
+
+        # Content Type
+        ttk.Label(dialog, text="Content Type:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ct_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES) + ["any"], width=25)
+        ct_combo.grid(row=0, column=1, padx=10, pady=10)
+
+        # Entity Type
+        ttk.Label(dialog, text="Entity Type:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        et_combo = ttk.Combobox(dialog, values=sorted(VALID_ENTITY_TYPES) + ["any"], width=25)
+        et_combo.grid(row=1, column=1, padx=10, pady=10)
+
+        # Local Pack
+        ttk.Label(dialog, text="Local Pack:").grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        lp_combo = ttk.Combobox(dialog, values=["yes", "no", "any"], width=25)
+        lp_combo.grid(row=2, column=1, padx=10, pady=10)
+
+        # Intent
+        ttk.Label(dialog, text="Intent:").grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        intent_combo = ttk.Combobox(dialog, values=sorted(VALID_INTENTS), width=25)
+        intent_combo.grid(row=3, column=1, padx=10, pady=10)
+
+        # Domain Role (optional)
+        ttk.Label(dialog, text="Domain Role:").grid(row=4, column=0, padx=10, pady=10, sticky="w")
+        dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=25)
+        dr_combo.set("other")
+        dr_combo.grid(row=4, column=1, padx=10, pady=10)
+
+        def save():
+            if not all([ct_combo.get(), et_combo.get(), lp_combo.get(), intent_combo.get(), dr_combo.get()]):
+                messagebox.showwarning("Incomplete", "All fields required")
+                return
+
+            self.tree.insert("", "end", values=(
+                ct_combo.get(),
+                et_combo.get(),
+                lp_combo.get(),
+                intent_combo.get()
+            ))
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=1, padx=10, pady=10, sticky="e")
+
+    def _edit_rule(self):
+        """Edit selected rule."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a rule to edit")
+            return
+
+        item = selected[0]
+        content_type, entity_type, local_pack, intent = self.tree.item(item)["values"]
+
+        dialog = tk.Toplevel(self)
+        dialog.title(f"Edit Rule: {intent}")
+        dialog.geometry("500x300")
+        dialog.transient(self.master)
+
+        # Content Type
+        ttk.Label(dialog, text="Content Type:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        ct_combo = ttk.Combobox(dialog, values=sorted(VALID_CONTENT_TYPES) + ["any"], width=25)
+        ct_combo.set(content_type)
+        ct_combo.grid(row=0, column=1, padx=10, pady=10)
+
+        # Entity Type
+        ttk.Label(dialog, text="Entity Type:").grid(row=1, column=0, padx=10, pady=10, sticky="w")
+        et_combo = ttk.Combobox(dialog, values=sorted(VALID_ENTITY_TYPES) + ["any"], width=25)
+        et_combo.set(entity_type)
+        et_combo.grid(row=1, column=1, padx=10, pady=10)
+
+        # Local Pack
+        ttk.Label(dialog, text="Local Pack:").grid(row=2, column=0, padx=10, pady=10, sticky="w")
+        lp_combo = ttk.Combobox(dialog, values=["yes", "no", "any"], width=25)
+        lp_combo.set(local_pack)
+        lp_combo.grid(row=2, column=1, padx=10, pady=10)
+
+        # Intent
+        ttk.Label(dialog, text="Intent:").grid(row=3, column=0, padx=10, pady=10, sticky="w")
+        intent_combo = ttk.Combobox(dialog, values=sorted(VALID_INTENTS), width=25)
+        intent_combo.set(intent)
+        intent_combo.grid(row=3, column=1, padx=10, pady=10)
+
+        # Domain Role
+        ttk.Label(dialog, text="Domain Role:").grid(row=4, column=0, padx=10, pady=10, sticky="w")
+        dr_combo = ttk.Combobox(dialog, values=["client", "known_competitor", "other", "any"], width=25)
+        dr_combo.set("other")
+        dr_combo.grid(row=4, column=1, padx=10, pady=10)
+
+        def save():
+            if not all([ct_combo.get(), et_combo.get(), lp_combo.get(), intent_combo.get(), dr_combo.get()]):
+                messagebox.showwarning("Incomplete", "All fields required")
+                return
+
+            self.tree.item(item, values=(
+                ct_combo.get(),
+                et_combo.get(),
+                lp_combo.get(),
+                intent_combo.get()
+            ))
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=1, padx=10, pady=10, sticky="e")
+
+    def _delete_rule(self):
+        """Delete selected rule."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a rule to delete")
+            return
+
+        for item in selected:
+            self.tree.delete(item)
+
+    def _move_up(self):
+        """Move selected rule up in priority (earlier in list)."""
+        selected = self.tree.selection()
+        if not selected or len(selected) != 1:
+            messagebox.showwarning("Single Selection", "Select exactly one rule to move")
+            return
+
+        item = selected[0]
+        index = self.tree.index(item)
+
+        if index == 0:
+            messagebox.showinfo("Already at Top", "This rule is already at the top priority")
+            return
+
+        values = self.tree.item(item)["values"]
+        self.tree.delete(item)
+        self.tree.insert("", index - 1, values=values)
+
+    def _move_down(self):
+        """Move selected rule down in priority (later in list)."""
+        selected = self.tree.selection()
+        if not selected or len(selected) != 1:
+            messagebox.showwarning("Single Selection", "Select exactly one rule to move")
+            return
+
+        item = selected[0]
+        index = self.tree.index(item)
+        items = self.tree.get_children()
+
+        if index >= len(items) - 1:
+            messagebox.showinfo("Already at Bottom", "This rule is already at the lowest priority")
+            return
+
+        values = self.tree.item(item)["values"]
+        self.tree.delete(item)
+        self.tree.insert("", index + 1, values=values)
+
+    def get_edited_data(self):
+        """Extract treeview data back into intent_mapping.yml format."""
+        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+
+        rules = []
+        for item in self.tree.get_children():
+            content_type, entity_type, local_pack, intent = self.tree.item(item)["values"]
+            rule = {
+                "match": {
+                    "content_type": content_type,
+                    "entity_type": entity_type,
+                    "local_pack": local_pack,
+                    "domain_role": "other"  # Default domain_role
+                },
+                "intent": intent
+            }
+            rules.append(rule)
+
+        data["rules"] = rules
+        return data
 
 
 class StrategicPatternsTab(BaseConfigTab):
-    """Tab for strategic_patterns.yml."""
+    """Tab for strategic_patterns.yml with pattern editing support."""
 
     def __init__(self, parent):
         super().__init__(parent, "strategic_patterns.yml", "yaml")
+        self.tree = None
 
     def render_ui(self):
-        """Placeholder UI for Phase 1."""
-        frame = ttk.Frame(self)
-        frame.pack(fill="both", expand=True, padx=10, pady=10)
+        """Render strategic patterns editor with treeview and CRUD buttons."""
+        main_frame = ttk.Frame(self)
+        main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
+        # Header
         ttk.Label(
-            frame,
+            main_frame,
             text="Strategic Patterns Configuration",
             font=("Helvetica", 12, "bold")
-        ).pack(anchor="w")
+        ).pack(anchor="w", pady=(0, 5))
 
         help_text = HELP_BY_FILE.get("strategic_patterns.yml", "")
-        ttk.Label(frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(5, 15))
+        ttk.Label(main_frame, text=help_text, wraplength=600, justify="left").pack(anchor="w", pady=(0, 10))
 
-        ttk.Label(frame, text="Phase 1: Placeholder", foreground="gray").pack(anchor="w")
+        # Treeview with columns
+        tree_frame = ttk.Frame(main_frame)
+        tree_frame.pack(fill="both", expand=True, pady=(0, 10))
+
+        columns = ("pattern_name", "triggers_count", "status")
+        self.tree = ttk.Treeview(tree_frame, columns=columns, show="headings", height=12)
+        self.tree.heading("pattern_name", text="Pattern Name")
+        self.tree.heading("triggers_count", text="Triggers")
+        self.tree.heading("status", text="Status")
+        self.tree.column("pattern_name", width=200)
+        self.tree.column("triggers_count", width=100)
+        self.tree.column("status", width=200)
+
+        scrollbar = ttk.Scrollbar(tree_frame, orient="vertical", command=self.tree.yview)
+        self.tree.configure(yscroll=scrollbar.set)
+        self.tree.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+        # Bind double-click for editing
+        self.tree.bind("<Double-1>", lambda e: self._edit_pattern())
+
+        # Load data into treeview
+        self._load_treeview_data()
+
+        # Buttons
+        button_frame = ttk.Frame(main_frame)
+        button_frame.pack(fill="x")
+
+        ttk.Button(button_frame, text="+ Add Pattern", command=self._add_pattern).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Edit", command=self._edit_pattern).pack(side="left", padx=(0, 5))
+        ttk.Button(button_frame, text="Delete", command=self._delete_pattern).pack(side="left")
+
+    def _load_treeview_data(self):
+        """Populate treeview with patterns from strategic_patterns.yml."""
+        # Clear existing
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+
+        # Load from current_data
+        if isinstance(self.current_data, list):
+            for pattern in self.current_data:
+                if isinstance(pattern, dict):
+                    pattern_name = pattern.get("Pattern_Name", "")
+                    triggers = pattern.get("Triggers", [])
+                    triggers_count = len(triggers) if isinstance(triggers, list) else 0
+
+                    # Status: check if required fields are present
+                    required_fields = ["Status_Quo_Message", "Bowen_Bridge_Reframe", "Content_Angle"]
+                    missing = [f for f in required_fields if f not in pattern or not pattern[f]]
+                    status = "✓ Complete" if not missing else f"✗ Missing: {', '.join(missing)}"
+
+                    self.tree.insert("", "end", values=(pattern_name, triggers_count, status))
+
+    def _add_pattern(self):
+        """Add a new strategic pattern."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        self._edit_pattern(is_new=True)
+
+    def _edit_pattern(self, is_new=False):
+        """Edit or create a strategic pattern."""
+        if not TKINTER_AVAILABLE:
+            return
+
+        if not is_new:
+            selected = self.tree.selection()
+            if not selected:
+                messagebox.showwarning("No Selection", "Please select a pattern to edit")
+                return
+            item = selected[0]
+            pattern_name = self.tree.item(item)["values"][0]
+
+            # Find the original pattern data
+            pattern_data = None
+            for p in self.current_data:
+                if p.get("Pattern_Name") == pattern_name:
+                    pattern_data = p.copy()
+                    break
+            if not pattern_data:
+                messagebox.showerror("Error", "Pattern not found")
+                return
+        else:
+            pattern_data = {
+                "Pattern_Name": "",
+                "Triggers": [],
+                "Status_Quo_Message": "",
+                "Bowen_Bridge_Reframe": "",
+                "Content_Angle": ""
+            }
+            item = None
+
+        dialog = tk.Toplevel(self)
+        dialog.title("Edit Pattern" if not is_new else "Add Pattern")
+        dialog.geometry("600x500")
+        dialog.transient(self.master)
+
+        # Pattern Name
+        ttk.Label(dialog, text="Pattern Name:").grid(row=0, column=0, padx=10, pady=10, sticky="w")
+        name_entry = ttk.Entry(dialog, width=40)
+        name_entry.insert(0, pattern_data.get("Pattern_Name", ""))
+        name_entry.grid(row=0, column=1, padx=10, pady=10)
+
+        # Triggers (multiline)
+        ttk.Label(dialog, text="Triggers (one per line):", justify="left").grid(row=1, column=0, padx=10, pady=10, sticky="nw")
+        triggers_text = Text(dialog, width=40, height=4)
+        triggers_list = pattern_data.get("Triggers", [])
+        if isinstance(triggers_list, list):
+            triggers_text.insert("1.0", "\n".join(triggers_list))
+        triggers_text.grid(row=1, column=1, padx=10, pady=10)
+
+        # Status Quo Message
+        ttk.Label(dialog, text="Status Quo Message:", justify="left").grid(row=2, column=0, padx=10, pady=10, sticky="nw")
+        sqm_text = Text(dialog, width=40, height=3)
+        sqm_text.insert("1.0", pattern_data.get("Status_Quo_Message", ""))
+        sqm_text.grid(row=2, column=1, padx=10, pady=10)
+
+        # Bowen Bridge Reframe
+        ttk.Label(dialog, text="Bowen Bridge Reframe:", justify="left").grid(row=3, column=0, padx=10, pady=10, sticky="nw")
+        bbr_text = Text(dialog, width=40, height=3)
+        bbr_text.insert("1.0", pattern_data.get("Bowen_Bridge_Reframe", ""))
+        bbr_text.grid(row=3, column=1, padx=10, pady=10)
+
+        # Content Angle
+        ttk.Label(dialog, text="Content Angle:", justify="left").grid(row=4, column=0, padx=10, pady=10, sticky="nw")
+        ca_text = Text(dialog, width=40, height=3)
+        ca_text.insert("1.0", pattern_data.get("Content_Angle", ""))
+        ca_text.grid(row=4, column=1, padx=10, pady=10)
+
+        def save():
+            pattern_name = name_entry.get().strip()
+            triggers_str = triggers_text.get("1.0", "end").strip()
+            triggers = [t.strip() for t in triggers_str.split("\n") if t.strip()]
+            status_quo = sqm_text.get("1.0", "end").strip()
+            reframe = bbr_text.get("1.0", "end").strip()
+            content_angle = ca_text.get("1.0", "end").strip()
+
+            # Validation
+            if not all([pattern_name, triggers, status_quo, reframe, content_angle]):
+                messagebox.showwarning("Incomplete", "All fields required")
+                return
+
+            # Check trigger min length
+            bad_triggers = [t for t in triggers if len(t) < 4]
+            if bad_triggers:
+                messagebox.showwarning("Validation", f"Triggers must be 4+ chars: {', '.join(bad_triggers)}")
+                return
+
+            triggers_count = len(triggers)
+
+            # Update or insert
+            if item:
+                self.tree.item(item, values=(pattern_name, triggers_count, "✓ Complete"))
+            else:
+                self.tree.insert("", "end", values=(pattern_name, triggers_count, "✓ Complete"))
+
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Save", command=save).grid(row=5, column=1, padx=10, pady=10, sticky="e")
+
+    def _delete_pattern(self):
+        """Delete selected pattern."""
+        selected = self.tree.selection()
+        if not selected:
+            messagebox.showwarning("No Selection", "Please select a pattern to delete")
+            return
+
+        for item in selected:
+            self.tree.delete(item)
+
+    def get_edited_data(self):
+        """Extract treeview data back into strategic_patterns.yml format."""
+        patterns = []
+
+        # Reconstruct from treeview
+        for item in self.tree.get_children():
+            pattern_name, triggers_count, status = self.tree.item(item)["values"]
+
+            # Try to find original pattern to preserve full data
+            original_pattern = None
+            if isinstance(self.current_data, list):
+                for p in self.current_data:
+                    if p.get("Pattern_Name") == pattern_name:
+                        original_pattern = p.copy()
+                        break
+
+            if original_pattern:
+                # Preserve all fields from original
+                patterns.append(original_pattern)
+            else:
+                # Create minimal pattern (should not happen in normal flow)
+                pattern = {
+                    "Pattern_Name": pattern_name,
+                    "Triggers": [],
+                    "Status_Quo_Message": "",
+                    "Bowen_Bridge_Reframe": "",
+                    "Content_Angle": ""
+                }
+                patterns.append(pattern)
+
+        return patterns
 
 
 class BriefPatternRoutingTab(BaseConfigTab):

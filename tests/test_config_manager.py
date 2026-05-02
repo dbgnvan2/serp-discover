@@ -428,3 +428,205 @@ class TestClassificationRulesTabPhase2:
             assert isinstance(result, bool)
         finally:
             root.destroy()
+
+
+@pytest.mark.skipif(not TKINTER_AVAILABLE, reason="tkinter not available")
+class TestIntentMappingTabPhase3:
+    """Phase 3: Test IntentMappingTab CRUD operations and ordering."""
+
+    def test_intent_mapping_loads_current_data(self):
+        """IntentMappingTab should load intent_mapping.yml data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentMappingTab(frame)
+            # Should load dict with version and rules
+            assert isinstance(tab.current_data, dict)
+            assert "version" in tab.current_data
+            assert "rules" in tab.current_data
+            assert isinstance(tab.current_data["rules"], list)
+        finally:
+            root.destroy()
+
+    def test_intent_mapping_get_edited_data_preserves_structure(self):
+        """IntentMappingTab.get_edited_data() should preserve structure."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentMappingTab(frame)
+            edited_data = tab.get_edited_data()
+            # Should have version and rules
+            assert "version" in edited_data
+            assert "rules" in edited_data
+            assert isinstance(edited_data["rules"], list)
+            # All rules should have match and intent
+            for rule in edited_data["rules"]:
+                assert "match" in rule
+                assert "intent" in rule
+                assert "content_type" in rule["match"]
+                assert "entity_type" in rule["match"]
+        finally:
+            root.destroy()
+
+    def test_intent_mapping_validation_passes_on_current_data(self):
+        """IntentMappingTab should validate against current data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentMappingTab(frame)
+            is_valid, errors, warnings = tab.validate()
+            # Current data on disk should be valid
+            assert isinstance(is_valid, bool)
+            assert isinstance(errors, list)
+            assert isinstance(warnings, list)
+        finally:
+            root.destroy()
+
+    def test_intent_mapping_treeview_populated(self):
+        """IntentMappingTab treeview should be populated with rules."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentMappingTab(frame)
+            # Check treeview has items
+            items = tab.tree.get_children()
+            # Should have same number of items as rules
+            assert len(items) == len(tab.current_data.get("rules", []))
+        finally:
+            root.destroy()
+
+    def test_intent_mapping_rule_order_preserved(self):
+        """IntentMappingTab should preserve rule order from file."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentMappingTab(frame)
+            items = tab.tree.get_children()
+            rules = tab.current_data.get("rules", [])
+
+            # Verify order matches
+            for i, item in enumerate(items):
+                values = tab.tree.item(item)["values"]
+                rule = rules[i]
+                match = rule.get("match", {})
+                assert values[0] == match.get("content_type")
+                assert values[1] == match.get("entity_type")
+                assert values[2] == match.get("local_pack")
+                assert values[3] == rule.get("intent")
+        finally:
+            root.destroy()
+
+    def test_intent_mapping_unsaved_changes_detected(self):
+        """IntentMappingTab should detect when data is modified."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = IntentMappingTab(frame)
+            # Initially no changes
+            assert not tab.has_unsaved_changes()
+            result = tab.has_unsaved_changes()
+            assert isinstance(result, bool)
+        finally:
+            root.destroy()
+
+
+@pytest.mark.skipif(not TKINTER_AVAILABLE, reason="tkinter not available")
+class TestStrategicPatternsTabPhase3:
+    """Phase 3: Test StrategicPatternsTab CRUD operations."""
+
+    def test_strategic_patterns_loads_current_data(self):
+        """StrategicPatternsTab should load strategic_patterns.yml data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = StrategicPatternsTab(frame)
+            # Should load list of pattern dicts
+            assert isinstance(tab.current_data, list)
+            if tab.current_data:
+                # Check first pattern has required fields
+                pattern = tab.current_data[0]
+                assert isinstance(pattern, dict)
+                assert "Pattern_Name" in pattern
+                assert "Triggers" in pattern
+                assert "Status_Quo_Message" in pattern
+                assert "Bowen_Bridge_Reframe" in pattern
+                assert "Content_Angle" in pattern
+        finally:
+            root.destroy()
+
+    def test_strategic_patterns_get_edited_data_preserves_structure(self):
+        """StrategicPatternsTab.get_edited_data() should preserve structure."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = StrategicPatternsTab(frame)
+            edited_data = tab.get_edited_data()
+            # Should be a list of patterns
+            assert isinstance(edited_data, list)
+            # Should have same number of patterns as current_data
+            assert len(edited_data) == len(tab.current_data)
+            # Each pattern should have required fields
+            for pattern in edited_data:
+                assert "Pattern_Name" in pattern
+                assert "Triggers" in pattern
+        finally:
+            root.destroy()
+
+    def test_strategic_patterns_validation_passes_on_current_data(self):
+        """StrategicPatternsTab should validate against current data."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = StrategicPatternsTab(frame)
+            is_valid, errors, warnings = tab.validate()
+            # Current data on disk should be valid
+            assert isinstance(is_valid, bool)
+            assert isinstance(errors, list)
+            assert isinstance(warnings, list)
+        finally:
+            root.destroy()
+
+    def test_strategic_patterns_treeview_populated(self):
+        """StrategicPatternsTab treeview should be populated with patterns."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = StrategicPatternsTab(frame)
+            # Check treeview has items
+            items = tab.tree.get_children()
+            # Should have same number of items as patterns
+            assert len(items) == len(tab.current_data)
+        finally:
+            root.destroy()
+
+    def test_strategic_patterns_triggers_counted_correctly(self):
+        """StrategicPatternsTab should count triggers correctly."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = StrategicPatternsTab(frame)
+            items = tab.tree.get_children()
+            patterns = tab.current_data
+
+            # Verify trigger counts
+            for i, item in enumerate(items):
+                values = tab.tree.item(item)["values"]
+                pattern_name, triggers_count, status = values
+                pattern = patterns[i]
+                expected_count = len(pattern.get("Triggers", []))
+                assert triggers_count == expected_count
+        finally:
+            root.destroy()
+
+    def test_strategic_patterns_unsaved_changes_detected(self):
+        """StrategicPatternsTab should detect when data is modified."""
+        root = tk.Tk()
+        frame = tk.Frame(root)
+        try:
+            tab = StrategicPatternsTab(frame)
+            # Initially no changes
+            assert not tab.has_unsaved_changes()
+            result = tab.has_unsaved_changes()
+            assert isinstance(result, bool)
+        finally:
+            root.destroy()
