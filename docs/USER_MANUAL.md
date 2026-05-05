@@ -342,6 +342,54 @@ Classification of who owns the page:
 | **Commercial** | Insurance, pharma, medical device company |
 | **Social** | Reddit, Facebook, Twitter |
 
+### Keyword Prioritization: Feasibility > Intent > Confidence
+
+When Serp-Discover recommends which keywords to target first, it ranks them using three factors in priority order. Understanding this hierarchy helps you make strategic decisions.
+
+#### The Three Ranking Factors
+
+**1. Feasibility (Domain Authority Gap)** — *Can we realistically rank?*
+- **Why it matters:** You could identify the perfect keyword with ideal intent, but if competitors are overwhelmingly more authoritative, ranking is impossible without massive link-building investment.
+- **How it works:** Compares Living Systems' Domain Authority (DA) to competitors' DA. Gap ≤ 5 is high-feasibility (rankable); gap > 15 is low-feasibility (too hard).
+- **Priority:** **Always rank by feasibility first.** A moderate-feasibility keyword matching your preferred intent is a better investment than a high-intent keyword with low feasibility.
+
+**2. SERP Intent Alignment** — *Is this something we should even target?*
+- **Why it matters:** Even if a keyword is feasible, Living Systems can only create informational, transactional, and local content. A high-feasibility commercial-investigation keyword (e.g., "best couples therapy prices") isn't worth pursuing — Living Systems shouldn't be competing on pricing comparisons.
+- **How it works:** Serp-Discover classifies each keyword's intent (informational, transactional, local, commercial, navigational) and checks it against `client.preferred_intents` in config.yml. If the intent matches, you should pursue the keyword. If it doesn't match, skip it no matter what the feasibility score is.
+- **Priority:** **Intent matching is mandatory.** If the intent doesn't fit, the keyword is off-limits.
+
+**3. Confidence** — *How sure are we about the intent?*
+- **Why it matters:** Some keywords have clear intent (e.g., "book couples therapy" is obviously transactional). Others are ambiguous (e.g., "couples counselling" might be both local and informational). Low-confidence verdicts mean you need to validate the intent manually before investing in content.
+- **How it works:** Confidence is based on how many of the top-10 results clearly indicate intent. 8+ results = high confidence. 5–7 = medium. <5 = low (mixed intent).
+- **Priority:** **Within the same feasibility and intent level, prioritize high-confidence keywords.** They're easier to target and less likely to surprise you mid-way through writing.
+
+#### Ranking Logic in Practice
+
+**Example 1: Two high-feasibility keywords**
+- Keyword A: Feasibility = High, Intent = informational (matches), Confidence = high
+- Keyword B: Feasibility = High, Intent = local (matches), Confidence = medium
+
+→ **Pursue A first**, then B. Same feasibility; A has higher confidence.
+
+**Example 2: Mixed feasibility**
+- Keyword A: Feasibility = Moderate, Intent = informational (matches), Confidence = high
+- Keyword B: Feasibility = Low, Intent = informational (matches), Confidence = high
+
+→ **Pursue A first**, then B. A is more feasible.
+
+**Example 3: Feasibility vs. intent match**
+- Keyword A: Feasibility = High, Intent = commercial (does NOT match preferred intents), Confidence = high
+- Keyword B: Feasibility = Moderate, Intent = informational (matches), Confidence = high
+
+→ **Pursue B only.** A is off-limits because the intent doesn't match, regardless of feasibility.
+
+#### What If Feasibility Data Is Missing?
+
+Domain Authority data comes from external APIs (DataForSEO or Moz). If those APIs fail or credentials aren't set up, feasibility data may be unavailable. In that case:
+- Intent match becomes the primary ranking factor (still required to pursue)
+- Confidence becomes the secondary ranking factor
+- You can still prioritize, but you should re-run with DA data as soon as possible to refine your priorities
+
 ### API Usage Modes
 
 Serp-Discover can run in different modes, trading cost for depth:

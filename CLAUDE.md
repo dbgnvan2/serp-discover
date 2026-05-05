@@ -17,6 +17,13 @@ keyword feasibility via Domain Authority gap analysis.
   chunk.
 - **Push after each logical chunk** of work (feature module + tests,
   validation rule + tests, doc update). Don't accumulate sweeping diffs.
+- **Document new functionality in `docs/USER_MANUAL.md`**: When adding new
+  features or modifying user-facing behavior, update the manual to explain
+  WHAT the feature does and WHY it matters. Use clear examples. Example: when
+  implementing report ranking (feasibility > intent > confidence), explain
+  each metric (Domain Authority gap, SERP intent classification), why each
+  factor matters for keyword prioritization, and how they interact. Users
+  should understand not just the feature, but the reasoning behind it.
 - **Separate business logic tests from UI tests**: Business logic (data loading,
   validation, structure) should NOT require GUI frameworks. Only skip tests that
   actually need widget interaction. This prevents hidden bugs from going untested.
