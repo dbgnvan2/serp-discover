@@ -79,6 +79,8 @@ class SerpLauncherApp:
         self.last_completed_script = None
         self.keyword_file_options = {}
         self.current_run_context = None
+        self.feasibility_completed = False  # Track if feasibility has been run
+        self.domain_overrides_changed = False  # Track if overrides were modified
 
         # Styles
         style = ttk.Style()
@@ -125,93 +127,114 @@ class SerpLauncherApp:
                                  width=35, bg="#f9f9f9", state="disabled", font=("Helvetica", 11))
         self.desc_text.pack(fill="both", expand=True, padx=10, pady=10)
 
-        # Actions Configuration
+        # Actions Configuration — Reorganized by workflow phase
         self.scripts = [
+            # === A) GENERATE & VALIDATE DATA ===
             {
-                "label": "1. Run Full Pipeline (Daily)",
+                "section": "A) Generate & Validate Data",
+                "label": "1. Run Full Pipeline",
                 "file": "run_pipeline.py",
                 "args": [],
                 "desc": (
                     "WHEN: Run this once per day or weekly.\n\n"
-                    "WHY: This is the 'Daily Driver'. It performs the full audit:\n"
+                    "WHY: The foundation of all downstream analysis. Performs the full audit:\n"
                     "  - Fetches SERP data (Google, Maps, AI)\n"
-                    "  - Optional: runs AI-likely query alternatives A.1 and A.2\n"
                     "  - Enriches data (HTML parsing, Entity Classification)\n"
-                    "  - Stores history in SQLite\n"
-                    "  - Generates Excel/Markdown reports\n"
-                    "  - Validates data integrity"
+                    "  - Generates Market Analysis reports\n"
+                    "  - Stores history in SQLite"
                 )
             },
+
+            # === B) REVIEW CLASSIFICATIONS (OPTIONAL) ===
             {
-                "label": "2. List Content Opportunities",
-                "file": "generate_content_brief.py",
-                "args": [],
-                "desc": (
-                    "WHEN: Run when you are ready to write content.\n\n"
-                    "WHY: The 'Strategist'. Generates a prompt-informed content opportunity report from the latest pipeline data.\n\n"
-                    "OUTPUT: Writes topic-matched content opportunities and advisory briefing files and prints a concise summary in the log.\n\n"
-                    "NOTE: Requires Anthropic API access (ANTHROPIC_API_KEY). If unavailable, this step fails."
-                )
-            },
-            {
-                "label": "3. List Volatility Keywords",
-                "file": "visualize_volatility.py",
-                "args": ["--list"],
-                "desc": (
-                    "WHEN: Run after accumulating a few days of data.\n\n"
-                    "WHY: The 'Analyst'. Lists keywords available for historical tracking.\n\n"
-                    "NOTE: To generate a chart, run from command line: python visualize_volatility.py --keyword 'Your Keyword'"
-                )
-            },
-            {
-                "label": "4. Export History to CSV",
-                "file": "export_history.py",
-                "args": [],
-                "desc": (
-                    "WHEN: Run monthly or when external analysis is needed.\n\n"
-                    "WHY: Dumps the entire SQLite database (runs, serp_results, features) into CSV files in the 'exports/' folder."
-                )
-            },
-            {
-                "label": "5. Verify Database",
-                "file": "verify_enrichment.py",
-                "args": [],
-                "desc": (
-                    "WHEN: Run if you suspect data issues.\n\n"
-                    "WHY: Checks the SQLite database to confirm that enrichment data (URL features, Domain features) is being correctly populated."
-                )
-            },
-            {
-                "label": "6. Review Domain Override Candidates",
+                "section": "B) Review Classifications (Optional)",
+                "label": "2. Review Domain Overrides",
                 "file": None,
                 "args": [],
                 "action": "review_domain_overrides",
                 "desc": (
-                    "WHEN: Run after a pipeline run when you want to improve entity classification.\n\n"
-                    "WHY: Opens an in-app checklist of recurring domains not yet in domain_overrides.yml.\n\n"
-                    "OUTPUT: Lets you approve checked items directly into domain_overrides.yml."
+                    "WHEN: After a pipeline run, if you want to improve entity classification.\n\n"
+                    "WHY: Opens a checklist of domains to override (counselling, directory, etc).\n\n"
+                    "NOTE: After approving overrides, the system will auto-run Market Analysis regeneration.\n"
+                    "You do NOT need to manually run a 'Refresh' step."
                 )
             },
+
+            # === C) SCORE & GENERATE REPORTS (IN ORDER!) ===
             {
-                "label": "7. Run Feasibility Analysis (Moz DA)",
+                "section": "C) Score & Generate Reports",
+                "label": "3. Run Feasibility Analysis (Moz DA)",
                 "file": "run_feasibility.py",
                 "args": [],
                 "desc": (
-                    "WHEN: Run after a pipeline run, or any time you want to check DA competitiveness.\n\n"
-                    "WHY: Uses the Moz API to score each keyword by Domain Authority gap. "
-                    "Generates a standalone feasibility report with:\n"
+                    "WHEN: After Full Pipeline (or after domain overrides).\n\n"
+                    "WHY: Scores keywords by Domain Authority gap:\n"
                     "  - High / Moderate / Low Feasibility per keyword\n"
-                    "  - Hyper-local pivot suggestions for Low Feasibility keywords\n"
-                    "  - Local 3-pack check for pivot variants (optional)\n\n"
-                    "NOTE: Requires MOZ_TOKEN in .env (free Moz tier: 50 rows/month). "
-                    "Results are cached for 30 days so repeat runs don't burn quota.\n\n"
-                    "OUTPUT: Writes feasibility_{topic}_{timestamp}.md"
+                    "  - Hyper-local pivot suggestions\n"
+                    "  - Auto-regenerates Market Analysis with feasibility ranking\n\n"
+                    "NOTE: Must run BEFORE Content Opportunities (Step 4).\n"
+                    "Requires MOZ_TOKEN in .env (free tier: 50 rows/month)."
+                )
+            },
+            {
+                "section": "C) Score & Generate Reports",
+                "label": "4. List Content Opportunities",
+                "file": "generate_content_brief.py",
+                "args": [],
+                "prereq": "feasibility",
+                "desc": (
+                    "WHEN: When ready to write content (AFTER Feasibility Analysis).\n\n"
+                    "WHY: Generates content briefs ranked by feasibility score:\n"
+                    "  - Keywords ordered by High → Moderate → Low feasibility\n"
+                    "  - Strategic content angles per keyword\n"
+                    "  - PAA questions and competitor analysis\n\n"
+                    "NOTE: Requires Anthropic API (ANTHROPIC_API_KEY)."
+                )
+            },
+
+            # === D) ADVANCED ===
+            {
+                "section": "D) Advanced",
+                "label": "5. List Volatility Keywords",
+                "file": "visualize_volatility.py",
+                "args": ["--list"],
+                "desc": (
+                    "WHEN: After accumulating several days of data.\n\n"
+                    "WHY: Lists keywords tracked for rank volatility.\n\n"
+                    "CLI: python visualize_volatility.py --keyword 'Your Keyword' for chart"
+                )
+            },
+            {
+                "section": "D) Advanced",
+                "label": "6. Export History to CSV",
+                "file": "export_history.py",
+                "args": [],
+                "desc": (
+                    "WHEN: Monthly or for external analysis.\n\n"
+                    "WHY: Dumps SQLite data to CSV files in 'exports/' folder."
+                )
+            },
+            {
+                "section": "D) Advanced",
+                "label": "7. Verify Database",
+                "file": "verify_enrichment.py",
+                "args": [],
+                "desc": (
+                    "WHEN: If you suspect data integrity issues.\n\n"
+                    "WHY: Validates SQLite enrichment tables are correctly populated."
                 )
             },
         ]
 
+        # Group scripts by section and display
+        current_section = None
         for s in self.scripts:
-            self.script_listbox.insert(tk.END, s["label"])
+            section = s.get("section", "")
+            if section and section != current_section:
+                self.script_listbox.insert(tk.END, "")
+                self.script_listbox.insert(tk.END, f"  {section}")
+                current_section = section
+            self.script_listbox.insert(tk.END, f"    {s['label']}")
 
         # Control Buttons
         btn_frame = ttk.Frame(root)
@@ -637,12 +660,23 @@ class SerpLauncherApp:
                 messagebox.showerror("Keyword Setup", str(exc))
                 return
             output_names = run_context["output_names"]
-            if script_info["file"] == "generate_content_brief.py" and not run_context.get("input_json"):
-                messagebox.showerror(
-                    "Content Opportunities",
-                    "No existing market analysis JSON was found for this topic. Run Full Pipeline first."
-                )
-                return
+            if script_info["file"] == "generate_content_brief.py":
+                if not run_context.get("input_json"):
+                    messagebox.showerror(
+                        "Content Opportunities",
+                        "No existing market analysis JSON was found for this topic. Run Full Pipeline first."
+                    )
+                    return
+                # Check if feasibility has been run on the JSON
+                if not self.feasibility_completed:
+                    resp = messagebox.askyesno(
+                        "Prerequisite: Feasibility Analysis",
+                        "Content Opportunities should be run AFTER Feasibility Analysis to ensure correct brief ordering.\n\n"
+                        "Have you run 'Run Feasibility Analysis' for this dataset?",
+                        icon=messagebox.WARNING
+                    )
+                    if not resp:
+                        return
             if script_info["file"] == "run_feasibility.py" and not run_context.get("input_json"):
                 messagebox.showerror(
                     "Feasibility Analysis",
@@ -768,8 +802,12 @@ class SerpLauncherApp:
                 f"\n[{finished_at}] Process finished with status {status_label} "
                 f"(elapsed: {elapsed_s:.1f}s)\n" + "=" * 68 + "\n"
             )
-            if process.returncode == 0 and completed_script == "run_pipeline.py":
-                self.root.after(0, self.open_domain_override_review_after_pipeline)
+            if process.returncode == 0:
+                if completed_script == "run_pipeline.py":
+                    self.root.after(0, self.open_domain_override_review_after_pipeline)
+                elif completed_script == "run_feasibility.py":
+                    self.feasibility_completed = True
+                    self.root.after(0, self.auto_regenerate_market_analysis_after_feasibility)
 
         except Exception as e:
             elapsed_s = time.perf_counter() - started_at
@@ -878,6 +916,33 @@ class SerpLauncherApp:
             )
         except Exception as exc:
             self.log(f"Unable to auto-open domain review after pipeline: {exc}\n")
+
+    def auto_regenerate_market_analysis_after_feasibility(self):
+        """Auto-regenerate Market Analysis report with feasibility data after feasibility run."""
+        if not self.current_run_context:
+            return
+
+        try:
+            json_path = self.current_run_context.get("input_json")
+            if not json_path or not os.path.exists(json_path):
+                return
+
+            self.log("\n[Auto] Regenerating Market Analysis report with feasibility data...\n")
+
+            cmd = [
+                sys.executable,
+                "generate_insight_report.py",
+                "--json", json_path,
+                "--out", self.current_run_context.get("output_names", {}).get("report_out", "")
+            ]
+
+            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
+            if result.returncode == 0:
+                self.log("✓ Market Analysis report regenerated with feasibility ranking.\n")
+            else:
+                self.log(f"⚠ Could not auto-regenerate report: {result.stderr}\n")
+        except Exception as e:
+            self.log(f"⚠ Auto-regeneration error: {e}\n")
 
     def show_domain_override_review_window(self, candidates, high_confidence, overrides_path):
         if self.domain_review_window and self.domain_review_window.winfo_exists():
@@ -1263,36 +1328,56 @@ class SerpLauncherApp:
         merged_overrides, added, skipped = merge_overrides(existing_overrides, selected_candidates)
         write_overrides(overrides_path, merged_overrides)
 
-        paths = load_config_paths()
-        refresh_result = refresh_analysis_outputs(
-            json_path=os.path.join(os.getcwd(), paths["json"]),
-            xlsx_path=os.path.join(os.getcwd(), paths["xlsx"]),
-            overrides_path=overrides_path,
-            candidates_report_path=os.path.join(os.getcwd(), paths["candidates_report"]),
-        )
-
         self.log(f"Approved {len(selected_candidates)} checked candidates.\n")
         self.log(f"Added {len(added)} overrides to {overrides_path}.\n")
         for domain, entity_type in added:
             self.log(f"  + {domain}: {entity_type}\n")
         for domain, entity_type, reason in skipped:
             self.log(f"  = {domain}: {entity_type} ({reason})\n")
-        self.log(
-            "Refreshed local analysis outputs after override approval: "
-            f"JSON changed {refresh_result['json_changed']} rows, "
-            f"XLSX changed {refresh_result['xlsx_changed']} rows, "
-            f"remaining candidates {refresh_result['candidate_count']}.\n"
-        )
-        self.log("You can run List Content Opportunities against the refreshed analysis now.\n")
 
-        messagebox.showinfo(
-            "Domain Override Review",
-            "Updated overrides and refreshed analysis files.\n\n"
-            f"Added: {len(added)}\n"
-            f"Skipped existing: {len(skipped)}\n"
-            f"JSON rows changed: {refresh_result['json_changed']}\n"
-            f"XLSX rows changed: {refresh_result['xlsx_changed']}",
-        )
+        # Ask if user wants to regenerate reports with the new overrides
+        if added:
+            resp = messagebox.askyesno(
+                "Regenerate Reports?",
+                f"Added {len(added)} domain override(s).\n\n"
+                f"Regenerate Market Analysis report with these overrides?\n\n"
+                "Click YES to refresh (recommend if these are important domains)\n"
+                "Click NO to keep existing report (if these are unimportant)",
+                icon=messagebox.QUESTION
+            )
+        else:
+            resp = False
+
+        refresh_result = None
+        if resp:
+            paths = load_config_paths()
+            refresh_result = refresh_analysis_outputs(
+                json_path=os.path.join(os.getcwd(), paths["json"]),
+                xlsx_path=os.path.join(os.getcwd(), paths["xlsx"]),
+                overrides_path=overrides_path,
+                candidates_report_path=os.path.join(os.getcwd(), paths["candidates_report"]),
+            )
+            self.log(
+                "Refreshed local analysis outputs after override approval: "
+                f"JSON changed {refresh_result['json_changed']} rows, "
+                f"XLSX changed {refresh_result['xlsx_changed']} rows, "
+                f"remaining candidates {refresh_result['candidate_count']}.\n"
+            )
+            messagebox.showinfo(
+                "Reports Refreshed",
+                f"Overrides applied and reports regenerated.\n\n"
+                f"JSON rows changed: {refresh_result['json_changed']}\n"
+                f"XLSX rows changed: {refresh_result['xlsx_changed']}",
+            )
+        else:
+            messagebox.showinfo(
+                "Overrides Saved",
+                f"Domain overrides saved to {overrides_path}.\n\n"
+                f"Added: {len(added)}\n"
+                f"Skipped existing: {len(skipped)}\n\n"
+                "Reports were not regenerated. You can regenerate manually "
+                "by running Feasibility Analysis or Refresh Analysis if needed.",
+            )
         if self.domain_review_window and self.domain_review_window.winfo_exists():
             self.domain_review_window.destroy()
 
