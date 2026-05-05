@@ -279,6 +279,39 @@ Runs produced before the v2 upgrade (pre-2026-05-01) do not contain the `serp_in
 
 ---
 
+## Report Clarity & Decisiveness (RC Spec)
+
+The market analysis markdown report now includes a comprehensive Executive Summary (Section 0) that ranks keywords by feasibility, intent alignment, and confidence. Key improvements:
+
+**Section 0 — Executive Summary**
+- **Best Opportunity Keyword** — Ranked by: (1) Domain Authority gap (High > Moderate > Low), (2) SERP intent alignment with client capabilities, (3) Confidence score
+- **Keyword Action Table** — Every keyword receives one of 5 actions: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked, 🔴 Pivot or skip, ⛔ Mismatched intent
+- **Content Brief Priority** — Identifies which content brief to write first based on best opportunity keyword
+
+**Section 2 — PAA (Questions)**
+- Questions now ordered by frequency across keywords (most common first)
+- Removed editorializing language ("frantically searching for")
+
+**Section 4 — Strategic Patterns**
+- Evidence blocks show competitor titles that contain pattern trigger words (up to 3 examples per pattern)
+- Template labels distinguish editorial content from data-driven insights
+
+**Section 5c — Feasibility**
+- Always rendered; explains DA gaps or (when unavailable) provides credential instructions
+
+**Section 5 — Entity Dominance**
+- Interpretive sentence explains SERP entity type dominance based on configurable thresholds
+
+**Section 6 — Volatility**
+- Suppresses misleading "nan" values; explains when keyword set mismatch prevents comparison
+
+**Content Brief Sequencing**
+- Briefs are recommended in order of best opportunity keyword + ranking score (feasibility > intent > confidence)
+
+See `docs/IMPLEMENTATION_STATUS_RC_20260505.md` and `docs/spec_coverage.md` for full implementation details.
+
+---
+
 ## Domain override review
 
 After a pipeline run the GUI auto-opens a domain override checklist if candidates exist. You can also run it manually:
@@ -304,11 +337,16 @@ python3 refresh_analysis_outputs.py \
 
 ```bash
 source venv/bin/activate
-python3 -m pytest test_*.py -q
-# Expected: 377 passed, 5 skipped (tkinter tests skipped in headless environments)
+python3 -m pytest test_*.py tests/ -q
+# Expected: 518 passed, 28 skipped (tkinter GUI tests skipped in headless environments)
 ```
 
 All tests run without API keys — external calls are mocked.
+
+**Test Coverage:**
+- 476 integration & unit tests for core pipeline functionality
+- 48 Report Clarity (RC) spec tests covering keyword ranking, labeling, PAA ordering, evidence blocks, feasibility handling, entity dominance interpretation, volatility handling, and brief sequencing
+- Full test suite validates all 8 RC specification items
 
 ---
 
