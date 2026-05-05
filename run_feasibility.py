@@ -537,6 +537,11 @@ def main() -> None:
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(report)
 
+    # Write feasibility data back to JSON so report generation can access it
+    data["keyword_feasibility"] = feasibility_rows
+    with open(args.json, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
     primary = [r for r in feasibility_rows if r.get("Query_Label") != "P"]
     low_count = sum(1 for r in primary if r.get("feasibility_status") == "Low Feasibility")
     mod_count = sum(1 for r in primary if r.get("feasibility_status") == "Moderate Feasibility")
