@@ -227,14 +227,21 @@ class SerpLauncherApp:
         ]
 
         # Group scripts by section and display
+        # Build mapping from listbox index to script index
+        self.listbox_to_script_index = {}
+        listbox_idx = 0
         current_section = None
-        for s in self.scripts:
+        for script_idx, s in enumerate(self.scripts):
             section = s.get("section", "")
             if section and section != current_section:
                 self.script_listbox.insert(tk.END, "")
+                listbox_idx += 1
                 self.script_listbox.insert(tk.END, f"  {section}")
+                listbox_idx += 1
                 current_section = section
             self.script_listbox.insert(tk.END, f"    {s['label']}")
+            self.listbox_to_script_index[listbox_idx] = script_idx
+            listbox_idx += 1
 
         # Control Buttons
         btn_frame = ttk.Frame(root)
@@ -346,10 +353,16 @@ class SerpLauncherApp:
     def on_select(self, event):
         selection = self.script_listbox.curselection()
         if selection:
-            index = selection[0]
-            desc = self.scripts[index]["desc"]
-            self.update_desc(desc)
-            self.run_btn.config(state="normal")
+            listbox_idx = selection[0]
+            script_idx = self.listbox_to_script_index.get(listbox_idx)
+            if script_idx is not None:
+                desc = self.scripts[script_idx]["desc"]
+                self.update_desc(desc)
+                self.run_btn.config(state="normal")
+            else:
+                # Selected a section header or empty line
+                self.update_desc("")
+                self.run_btn.config(state="disabled")
         else:
             self.update_desc("")
             self.run_btn.config(state="disabled")
@@ -646,7 +659,13 @@ class SerpLauncherApp:
         if not selection:
             return
 
-        script_info = self.scripts[selection[0]]
+        listbox_idx = selection[0]
+        script_idx = self.listbox_to_script_index.get(listbox_idx)
+        if script_idx is None:
+            # Selected a section header or empty line
+            return
+
+        script_info = self.scripts[script_idx]
         if script_info.get("action") == "review_domain_overrides":
             self.open_domain_override_review()
             return
