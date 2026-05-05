@@ -246,15 +246,25 @@ def run_feasibility_analysis(
     results: list[dict] = []
     pivot_jobs: list[dict] = []
 
+    # Build a domain-to-DA map for lookup since Moz returns domain paths,
+    # not full URLs. Maps domain to first matching cached entry.
+    domain_to_da: dict[str, dict] = {}
+    for cached_url, metrics in da_metrics.items():
+        # cached_url format: domain.com or domain.com/path
+        # Extract just the domain part
+        domain_part = cached_url.split('/')[0].lower().lstrip('www.')
+        if domain_part not in domain_to_da:
+            domain_to_da[domain_part] = metrics
+
     keywords = sorted(urls_by_kw.keys())
     logger.info("Scoring feasibility for %d keywords...", len(keywords))
 
     for kw in keywords:
         urls = urls_by_kw[kw]
         competitor_das = [
-            da_metrics[url]["da"]
+            domain_to_da[_extract_domain(url)]["da"]
             for url in urls
-            if url in da_metrics and _extract_domain(url) != client_domain
+            if _extract_domain(url) in domain_to_da and _extract_domain(url) != client_domain
         ]
 
         if not da_data_available:
