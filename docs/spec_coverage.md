@@ -13,6 +13,7 @@
 **Post-spec changes (not tracked as spec criteria):**
 - 2026-05-01: Bowen strategic pattern definitions extracted from hardcoded Python in `serp_audit.py` to `strategic_patterns.yml`. Trigger matching changed from substring to word-boundary (`re.search r'\b...\b'`). Load-time validation added in `_validate_strategic_patterns`. Tests: `test_serp_audit.py::test_strategic_patterns_loaded_from_yaml`, `::test_custom_pattern_in_yaml_fires`, `::test_trigger_matching_uses_word_boundaries`, `::test_validate_rejects_*`.
 - 2026-05-02: Configuration Manager Phase 5 completed. All 8 tabs functional with comprehensive help text, CRUD operations, validation, and error recovery. Critical bugs fixed: initialization order, Entity Type Descriptions editability, domain_role column visibility, missing Cancel buttons. See `docs/config_manager_phase5_completion_20260502.md` for status report.
+- 2026-05-05: Report Clarity & Decisiveness (RC) specification implemented. 8 spec items (RC.1-RC.8) addressing keyword ranking, misleading labels, PAA ordering, evidence blocks, feasibility section, entity dominance interpretation, volatility handling, and brief sequencing. See RC spec items below.
 
 ---
 
@@ -20,6 +21,22 @@
 
 | Spec ID | Spec File | Description | Implementation | Test | Status |
 |---------|-----------|-------------|----------------|------|--------|
+| RC.1.1 | rc | Best opportunity statement (feasibility > intent > confidence ranking) | `generate_insight_report.py::_get_best_opportunity_keyword()`, `_render_executive_summary()` | `test_report_clarity.py::TestRC1ExecutiveSummary::test_rc1_best_opportunity_statement_present` + 4 | done |
+| RC.1.2 | rc | Content brief priority ("Write first" targets best opportunity keyword) | `generate_insight_report.py::_render_executive_summary()` | `test_report_clarity.py::TestRC1ExecutiveSummary::test_rc1_write_first_priority` | done |
+| RC.1.3 | rc | Keyword action table (5 actions: Pursue, Pursue with effort, Unranked, Pivot/skip, Mismatched) | `generate_insight_report.py::_get_keyword_action()` | `test_report_clarity.py::TestRC1ExecutiveSummary::test_rc1_action_table_structure` + 6 | done |
+| RC.1 | rc | Executive Summary (Section 0) rendered before Section 1 | `generate_insight_report.py::generate_report()` | `test_report_clarity.py::TestRC1ExecutiveSummary::test_rc1_executive_summary_section_placement` | done |
+| RC.2 | rc | Remove misleading "Total Search Volume (Proxy)" label from Section 1 | `generate_insight_report.py::_render_section1()` | `test_report_clarity.py::TestRC2MisleadingLabel::test_rc2_no_misleading_volume_label` | done |
+| RC.3.1 | rc | PAA opening line: "These are the questions your audience is already asking..." | `generate_insight_report.py::_render_section2()` | `test_report_clarity.py::TestRC3PAA::test_rc3_paa_opening_line` | done |
+| RC.3.2 | rc | Categorized PAA (distress, reactivity, commercial) unchanged when present | `generate_insight_report.py::_render_section2()` | `test_report_clarity.py::TestRC3PAA::test_rc3_paa_categorized_unchanged` | done |
+| RC.3.3 | rc | Uncategorized PAA frequency ordering (by distinct keyword count) | `generate_insight_report.py::_render_section2()` | `test_report_clarity.py::TestRC3PAA::test_rc3_paa_uncategorized_intro` | done |
+| RC.3.4 | rc | "Most common question" block showing keywords each question appears under | `generate_insight_report.py::_render_section2()` | `test_report_clarity.py::TestRC3PAA::test_rc3_paa_most_common_block` | done |
+| RC.3 | rc | Remove emotional editorializing ("frantically searching for") | `generate_insight_report.py::_render_section2()` | `test_report_clarity.py::TestRC3PAA::test_rc3_no_emotional_editorializing` | done |
+| RC.4.1 | rc | Evidence block: trigger words + up to 3 competitor titles with domains | `generate_insight_report.py::_render_section4()` | `test_report_clarity.py::TestRC4PatternEvidence::test_rc4_evidence_block_present` + 4 | done |
+| RC.4.2 | rc | Template labels on editorial content (Status Quo, Bowen Reframe, Content Angle) | `generate_insight_report.py::_render_section4()` | `test_report_clarity.py::TestRC4PatternEvidence::test_rc4_template_labels_present` | done |
+| RC.5 | rc | Section 5c always rendered (with data: table; without: credential instructions) | `generate_insight_report.py::_render_section5c()` | `test_report_clarity.py::TestRC5Feasibility::test_rc5_section_always_rendered` + 2 | done |
+| RC.6 | rc | Entity dominance interpretation (4 interpretations based on config thresholds) | `generate_insight_report.py::_get_entity_dominance_interpretation()` | `test_report_clarity.py::TestRC6EntityDominance::test_rc6_config_thresholds_present` + 5 | done |
+| RC.7 | rc | Suppress "nan" volatility scores; show "Not applicable" + keyword diff | `generate_insight_report.py::_render_section6()` | `test_report_clarity.py::TestRC7Volatility::test_rc7_nan_suppressed` + 2 | done |
+| RC.8 | rc | Brief sequencing block: "Recommended writing order" with briefs ordered by ranking | `generate_insight_report.py::_order_briefs_by_opportunity()`, `serp_audit.py` | `test_report_clarity.py::TestRC8BriefSequencing::test_rc8_sequencing_block_header` + 6 | done |
 | v2.G1.1 | v2 | `intent_mapping.yml` draft submitted with rationale; user-approved before code merges | `intent_mapping.yml`, `docs/intent_mapping_rationale.md` | manual | done |
 | v2.G1.2 | v2 | `keyword_profiles[kw]["serp_intent"]` populated for every keyword | `intent_verdict.py::compute_serp_intent`, `serp_audit.py` | `test_intent_verdict.py::test_pure_informational_high_confidence` | done |
 | v2.G1.3 | v2 | `intent_mapping.yml` loaded at startup; no hard-coded mapping in `.py` files | `intent_verdict.py::load_mapping` | `test_intent_verdict.py::test_loads_real_yaml` | done |
