@@ -11,6 +11,7 @@
 - `audit_targets.omit_from_audit` — domains excluded from the handoff (never sent to Tool 2)
 - `client.preferred_intents` — intents the client can produce content for; drives `mixed_intent_strategy`
 - `analysis_report.*` — client context injected into LLM prompts
+- `report_thresholds.entity_dominance.*` — thresholds for interpreting SERP entity type dominance in reports (see RC.6)
 
 **`domain_overrides.yml`** — manual entity type overrides (e.g., `psychologytoday.com: directory`).
 

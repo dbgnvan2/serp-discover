@@ -16,10 +16,10 @@ serpapi:
   related_questions_ai_followup: true
   related_questions_ai_max_calls: 5
 files:
-  input_csv: keywords_couples_therapy.csv
-  output_xlsx: output/market_analysis_couples_therapy_20260501_1517.xlsx
-  output_json: output/market_analysis_couples_therapy_20260501_1517.json
-  output_md: output/market_analysis_couples_therapy_20260501_1517.md
+  input_csv: keywords_leila.csv
+  output_xlsx: output/market_analysis_leila_20260504_2020.xlsx
+  output_json: output/market_analysis_leila_20260504_2020.json
+  output_md: output/market_analysis_leila_20260504_2020.md
   domain_overrides: domain_overrides.yml
 enrichment:
   enabled: true
@@ -78,3 +78,8 @@ analysis_report:
   additional_context: Budget is limited. Prioritize practical recommendations that
     fit a small nonprofit and avoid mismatched audiences such as court-mandated reunification
     services.
+report_thresholds:
+  entity_dominance:
+    counselling_directory_combined: 0.4
+    education: 0.15
+    government: 0.2
