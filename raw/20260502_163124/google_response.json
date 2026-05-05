@@ -1,0 +1,1006 @@
+{
+  "search_metadata": {
+    "id": "69f689eaccb1e9291e5a145e",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/WYaS_xBY9b5KGnsaDDYp4g/69f689eaccb1e9291e5a145e.json",
+    "pixel_position_endpoint": "https://serpapi.com/searches/WYaS_xBY9b5KGnsaDDYp4g/69f689eaccb1e9291e5a145e.json_with_pixel_position",
+    "created_at": "2026-05-02 23:34:02 UTC",
+    "processed_at": "2026-05-02 23:34:02 UTC",
+    "google_url": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&oq=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&uule=w+CAIQICIhVmFuY291dmVyLEJyaXRpc2ggQ29sdW1iaWEsQ2FuYWRh&hl=en&gl=ca&sourceid=chrome&ie=UTF-8",
+    "raw_html_file": "https://serpapi.com/searches/WYaS_xBY9b5KGnsaDDYp4g/69f689eaccb1e9291e5a145e.html",
+    "total_time_taken": 0.83
+  },
+  "search_parameters": {
+    "engine": "google",
+    "q": "how does couples counselling work Vancouver, British Columbia, Canada",
+    "location_requested": "Vancouver, British Columbia, Canada",
+    "location_used": "Vancouver,British Columbia,Canada",
+    "google_domain": "google.com",
+    "hl": "en",
+    "gl": "ca",
+    "device": "desktop"
+  },
+  "search_information": {
+    "query_displayed": "how does couples counselling work Vancouver, British Columbia, Canada",
+    "total_results": 2230000,
+    "time_taken_displayed": 0.41,
+    "organic_results_state": "Results for exact spelling"
+  },
+  "related_questions": [
+    {
+      "question": "What is the 5 5 5 rule in couples therapy?",
+      "type": "featured_snippet",
+      "snippet": "The 5-5-5 Rule: Each partner gets five minutes to speak without interruption, five minutes to listen, and five minutes to discuss solutions together. Compromise Lists: Write down possible solutions separately, then compare and find common ground.",
+      "title": "Effective Couples Therapy Techniques | Brian Stalcup MED",
+      "link": "https://www.brianstalcup.com/couples-therapy-techniques-you-can-practice-at-home#:~:text=The%205%2D5%2D5%20Rule,compare%20and%20find%20common%20ground.",
+      "displayed_link": "https://www.brianstalcup.com \u203a couples-therapy-techniq...",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiV2hhdCBpcyB0aGUgNSA1IDUgcnVsZSBpbiBjb3VwbGVzIHRoZXJhcHk/IiwibGsiOiJjNU9TTWxVQXdhTFNuRlNGNVB6U2dwelVZb1dTak5TaXhJSktBQSIsImJzIjoiYzVXT3Z3ckNNQkRHY2Mza1dJTERqVnJ3WDhRNXE0dXJnbHVvWnhOcGs1QzBLWDBKOFIxOE01X0V0cUNVRGtLNTRZNzdmdDkzUjQ0a1BrdFJnUEpRU0lSOVY2N01FSlNHeEpRMncwNXh3dFk4ZWxBMm83UUhEUWh5SVl1RHFTQXZFOWxHRHVRMjh5UjBzdzNvZVBUY3Naak81WDgtZkhseUphdnVWU21zUmUxYlVmd2NUZGNlczB6cEZEeDZyNHptMGN1eU5WMVdZMHprVHJiZEZZc3VRVjJJRk1IY0lCZk9xV2IyNEVzWFZNQy1sMGZ2bWpHNnFVYjZwcE1QIiwiaWQiOiJmY182NG4yYWRQSURwbWJ3YmtQZ3NqajRBWV8xIn0=",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiV2hhdCBpcyB0aGUgNSA1IDUgcnVsZSBpbiBjb3VwbGVzIHRoZXJhcHk%2FIiwibGsiOiJjNU9TTWxVQXdhTFNuRlNGNVB6U2dwelVZb1dTak5TaXhJSktBQSIsImJzIjoiYzVXT3Z3ckNNQkRHY2Mza1dJTERqVnJ3WDhRNXE0dXJnbHVvWnhOcGs1QzBLWDBKOFIxOE01X0V0cUNVRGtLNTRZNzdmdDkzUjQ0a1BrdFJnUEpRU0lSOVY2N01FSlNHeEpRMncwNXh3dFk4ZWxBMm83UUhEUWh5SVl1RHFTQXZFOWxHRHVRMjh5UjBzdzNvZVBUY3Naak81WDgtZkhseUphdnVWU21zUmUxYlVmd2NUZGNlczB6cEZEeDZyNHptMGN1eU5WMVdZMHprVHJiZEZZc3VRVjJJRk1IY0lCZk9xV2IyNEVzWFZNQy1sMGZ2bWpHNnFVYjZwcE1QIiwiaWQiOiJmY182NG4yYWRQSURwbWJ3YmtQZ3NqajRBWV8xIn0%3D"
+    },
+    {
+      "question": "How much is couples therapy in Vancouver?",
+      "type": "featured_snippet",
+      "snippet": "Fees to see a Registered Clinical Counsellor are $140-$220 for an individual counselling 50 minute session and $175-$225 for a 50 minute couple or family session.",
+      "title": "Standard Fees - Lavender Counselling",
+      "link": "https://www.lavendercounselling.com/standard-fees/#:~:text=Fees%20to%20see%20a%20Registered,minute%20couple%20or%20family%20session.",
+      "displayed_link": "https://www.lavendercounselling.com \u203a standard-fees",
+      "source_logo": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/saahxzBP4HvgxlZ-FFX0sJyoWtwM5ct0jaFWAH0oxKw.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiSG93IG11Y2ggaXMgY291cGxlcyB0aGVyYXB5IGluIFZhbmNvdXZlcj8iLCJsayI6IkdpaG9iM2NnYlhWamFDQnBjeUJqYjNWd2JHVnpJSFJvWlhKaGNIa2dhVzRnZG1GdVkyOTFkbVZ5IiwiYnMiOiJjNVdPdndyQ01CREdjYzNrV0lMRGpWcndYOFE1cTR1cmdsdW9aeE5wazVDMEtYMEo4UjE4TTVfRXRxQ1VEa0s1NFk3N2Z0OTNSNDRrUGt0UmdQSlFTSVI5VjY3TUVKU0d4SlEydzA1eHd0WThlbEEybzdRSERRaHlJWXVEcVNBdkU5bEdEdVEyOHlSMHN3M29lUFRjc1pqTzVYOC1mSGx5SmF2dVZTbXNSZTFiVWZ3Y1RkY2VzMHpwRkR4NnI0em0wY3V5TlYxV1kwemtUcmJkRllzdVFWMklGTUhjSUJmT3FXYjI0RXNYVk1DLWwwZnZtakc2cVViNnBwTVAiLCJpZCI6ImZjXzY0bjJhZFBJRHBtYndia1Bnc2pqNEFZXzEifQ==",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiSG93IG11Y2ggaXMgY291cGxlcyB0aGVyYXB5IGluIFZhbmNvdXZlcj8iLCJsayI6IkdpaG9iM2NnYlhWamFDQnBjeUJqYjNWd2JHVnpJSFJvWlhKaGNIa2dhVzRnZG1GdVkyOTFkbVZ5IiwiYnMiOiJjNVdPdndyQ01CREdjYzNrV0lMRGpWcndYOFE1cTR1cmdsdW9aeE5wazVDMEtYMEo4UjE4TTVfRXRxQ1VEa0s1NFk3N2Z0OTNSNDRrUGt0UmdQSlFTSVI5VjY3TUVKU0d4SlEydzA1eHd0WThlbEEybzdRSERRaHlJWXVEcVNBdkU5bEdEdVEyOHlSMHN3M29lUFRjc1pqTzVYOC1mSGx5SmF2dVZTbXNSZTFiVWZ3Y1RkY2VzMHpwRkR4NnI0em0wY3V5TlYxV1kwemtUcmJkRllzdVFWMklGTUhjSUJmT3FXYjI0RXNYVk1DLWwwZnZtakc2cVViNnBwTVAiLCJpZCI6ImZjXzY0bjJhZFBJRHBtYndia1Bnc2pqNEFZXzEifQ%3D%3D"
+    },
+    {
+      "question": "What happens in a couples counselling session?",
+      "type": "featured_snippet",
+      "snippet": "During relationship/couples therapy, the therapist will try to change the way in which both partners interact with each other. The therapist will also aim to ensure couples are not behaving in a way which may cause any type of harm to the relationship (e.g. psychological, physical or economic harm).",
+      "title": "How does relationship/couples counselling work?",
+      "link": "https://www.aberdeenpsychology.co.uk/relationship-couples-counselling-works#:~:text=During%20relationship%2Fcouples%20therapy%2C%20the,%2C%20physical%20or%20economic%20harm).",
+      "displayed_link": "https://www.aberdeenpsychology.co.uk \u203a relationship-co...",
+      "source_logo": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/saahxzBP4HvgxlZ-FFX0sIgJUhSEAuH0ODNey16WcG0.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiV2hhdCBoYXBwZW5zIGluIGEgY291cGxlcyBjb3Vuc2VsbGluZyBzZXNzaW9uPyIsImxrIjoiYzVQU0xjOUlMRkhJU0N3b1NNMHJWc2pNVTBoVVNNNHZMY2hKTFFiUmVjV3BPVG1aZWVrS3hhbkZ4Wm41ZVFBIiwiYnMiOiJjNVdPdndyQ01CREdjYzNrV0lMRGpWcndYOFE1cTR1cmdsdW9aeE5wazVDMEtYMEo4UjE4TTVfRXRxQ1VEa0s1NFk3N2Z0OTNSNDRrUGt0UmdQSlFTSVI5VjY3TUVKU0d4SlEydzA1eHd0WThlbEEybzdRSERRaHlJWXVEcVNBdkU5bEdEdVEyOHlSMHN3M29lUFRjc1pqTzVYOC1mSGx5SmF2dVZTbXNSZTFiVWZ3Y1RkY2VzMHpwRkR4NnI0em0wY3V5TlYxV1kwemtUcmJkRllzdVFWMklGTUhjSUJmT3FXYjI0RXNYVk1DLWwwZnZtakc2cVViNnBwTVAiLCJpZCI6ImZjXzY0bjJhZFBJRHBtYndia1Bnc2pqNEFZXzEifQ==",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiV2hhdCBoYXBwZW5zIGluIGEgY291cGxlcyBjb3Vuc2VsbGluZyBzZXNzaW9uPyIsImxrIjoiYzVQU0xjOUlMRkhJU0N3b1NNMHJWc2pNVTBoVVNNNHZMY2hKTFFiUmVjV3BPVG1aZWVrS3hhbkZ4Wm41ZVFBIiwiYnMiOiJjNVdPdndyQ01CREdjYzNrV0lMRGpWcndYOFE1cTR1cmdsdW9aeE5wazVDMEtYMEo4UjE4TTVfRXRxQ1VEa0s1NFk3N2Z0OTNSNDRrUGt0UmdQSlFTSVI5VjY3TUVKU0d4SlEydzA1eHd0WThlbEEybzdRSERRaHlJWXVEcVNBdkU5bEdEdVEyOHlSMHN3M29lUFRjc1pqTzVYOC1mSGx5SmF2dVZTbXNSZTFiVWZ3Y1RkY2VzMHpwRkR4NnI0em0wY3V5TlYxV1kwemtUcmJkRllzdVFWMklGTUhjSUJmT3FXYjI0RXNYVk1DLWwwZnZtakc2cVViNnBwTVAiLCJpZCI6ImZjXzY0bjJhZFBJRHBtYndia1Bnc2pqNEFZXzEifQ%3D%3D"
+    },
+    {
+      "question": "What percentage of marriages survive counselling?",
+      "type": "featured_snippet",
+      "snippet": "According to multiple studies, including data from the American Association for Marriage and Family Therapy (AAMFT): 70-75% of couples report improvement in their relationship after working with a couples therapist. About 60% stay together long-term following therapy.",
+      "title": "What Percentage of Couples Survive Couples Therapy, And Why Some ...",
+      "link": "https://www.relationshipsandmore.com/blog/what-percentage-of-couples-survive-couples-therapy-and-why-some-thrive-while-others-dont/#:~:text=According%20to%20multiple%20studies%2C%20including,together%20long%2Dterm%20following%20therapy.",
+      "displayed_link": "https://www.relationshipsandmore.com \u203a blog \u203a what-per...",
+      "source_logo": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/saahxzBP4HvgxlZ-FFX0sO3OR4MRI8ACPmZO_Qvjk0c.jpeg",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiV2hhdCBwZXJjZW50YWdlIG9mIG1hcnJpYWdlcyBzdXJ2aXZlIGNvdW5zZWxsaW5nPyIsImxrIjoiR2pCM2FHRjBJSEJsY21ObGJuUmhaMlVnYjJZZ2JXRnljbWxoWjJWeklITjFjblpwZG1VZ1kyOTFibk5sYkd4cGJtYyIsImJzIjoiYzVXT3Z3ckNNQkRHY2Mza1dJTERqVnJ3WDhRNXE0dXJnbHVvWnhOcGs1QzBLWDBKOFIxOE01X0V0cUNVRGtLNTRZNzdmdDkzUjQ0a1BrdFJnUEpRU0lSOVY2N01FSlNHeEpRMncwNXh3dFk4ZWxBMm83UUhEUWh5SVl1RHFTQXZFOWxHRHVRMjh5UjBzdzNvZVBUY3Naak81WDgtZkhseUphdnVWU21zUmUxYlVmd2NUZGNlczB6cEZEeDZyNHptMGN1eU5WMVdZMHprVHJiZEZZc3VRVjJJRk1IY0lCZk9xV2IyNEVzWFZNQy1sMGZ2bWpHNnFVYjZwcE1QIiwiaWQiOiJmY182NG4yYWRQSURwbWJ3YmtQZ3NqajRBWV8xIn0=",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVE5HSkpNSEJsY2xrMFUzQk5VbGRqYTBoeVozZDNNRmsxVTNodGNrWm5MVWR3YTNReU5qRjRlbkJuYmtwcGRGZHNWa1ozY0ZSM1RUYzBjMEpGTW1obE9WRXdPR1pLU1RWZmVsaE5UMVpuWkdsVmR6WkdZbXBoYVdsRVFSSVhOalJ1TW1Ga1VFbEVjRzFpZDJKclVHZHphbW8wUVZrYUlrRktTMHhHYlV3MlZUbDRkVTlLZG5sT1NGUTRkRVJYTFc4d1kxZE5SVnBIVUdjIiwiZmN2IjoiMyIsImVpIjoiNjRuMmFkUElEcG1id2JrUGdzamo0QVkiLCJxYyI6ImMtTnl6c2d2VjBqSlR5MVdTTTR2TGNpQjBIbkZxVGs1bVhucEN1WDVSZGtLWllsNVFMR3kxQ0tGcEtMTWtzemlES0NTbk5MY3BNeEVoZVRFdk1TVVJBR0cyZ3YzMU8wQiIsInF1ZXN0aW9uIjoiV2hhdCBwZXJjZW50YWdlIG9mIG1hcnJpYWdlcyBzdXJ2aXZlIGNvdW5zZWxsaW5nPyIsImxrIjoiR2pCM2FHRjBJSEJsY21ObGJuUmhaMlVnYjJZZ2JXRnljbWxoWjJWeklITjFjblpwZG1VZ1kyOTFibk5sYkd4cGJtYyIsImJzIjoiYzVXT3Z3ckNNQkRHY2Mza1dJTERqVnJ3WDhRNXE0dXJnbHVvWnhOcGs1QzBLWDBKOFIxOE01X0V0cUNVRGtLNTRZNzdmdDkzUjQ0a1BrdFJnUEpRU0lSOVY2N01FSlNHeEpRMncwNXh3dFk4ZWxBMm83UUhEUWh5SVl1RHFTQXZFOWxHRHVRMjh5UjBzdzNvZVBUY3Naak81WDgtZkhseUphdnVWU21zUmUxYlVmd2NUZGNlczB6cEZEeDZyNHptMGN1eU5WMVdZMHprVHJiZEZZc3VRVjJJRk1IY0lCZk9xV2IyNEVzWFZNQy1sMGZ2bWpHNnFVYjZwcE1QIiwiaWQiOiJmY182NG4yYWRQSURwbWJ3YmtQZ3NqajRBWV8xIn0%3D"
+    }
+  ],
+  "ai_overview": {
+    "page_token": "Cf36DnicxZbdcro4FMDv9z2WG1sRSqt0htkJERVtVdSK9sZBwIDyoQRL6d2-y77MvsI-zYYPFVbsf_47s7O5IMnJycn5-HnG3_9wbG_31y9_WmG4x880HUVRHfk-csy67ru0hmNPpze-gwPd-g05gq5Rx6NjClENAlmRoWzN3c5xyfKM4c7jF6kfa4vJXmcRUlgeGypja6qEFZboqBOLshzB9Kj4Q3igdCw0KNMWnjiP1Yyx3N6762i9GyO83XJgSaVPC6u1hs0t8exzi-kVTT67Xx_aZFPHddOrh8O4hwwezDxcZxsMXx_RmksUwH80JDBJZ6gABcDrcwSkSvn5vph8ZaKnXIRKbvoyonQnikQzPexUGpPldNpJyYttjl2hrvYD__vlrZo-D9Fr6hSQRaniTpXsHOOgHMSVi1VCBJNEpUOMLtJKA8mwzkd-YpIDOoAXw9zpKTFfqAC1iTty7mcvGr2KI2lS7WCmA6AL9Gnv8WYcuaIiu1EeMYyGCkC0gQhtDXodkImhbd3S00WAEwjhjG_4HfQ4s5WH8VQNnWlntdmHXy3zsT1-b7gKra-JnuNrhmmsrFXjLsVdx2fecZH36Xwj2zNt6XRQ_aUuMgXYYZ7Wy5DIrqqccpaZQpjiOfWnDEqXZbrKlJcSkIps-wwpBAHgpGoSbhW5VMbsqAL28jKHXTz5jbKbJe_lM0tnF_RyZGdzuQtdMJTPJxC-lq0VQwS2kijJ3dO-oJu4AyFKIx8kl7JnegVbhZyg1K6CRLEoyT9n2NNqATGZ5BZKuBoQGczyAE51869-rqQGJT5JF1ogv_0ts7eGVIz_xkAnrv-BaRHvnjXvT2ehg5uL-PDErri3J056a7T2rQ3Kcfbd9U_0b_3_Az7r7uKpu1cBr3wHvJSW_XZ3z6Xn7t5PJBLsVAOftfdidzfLkV0B3y8D_013vwCfyX4EvFIJvFwJfGLgCnh0E_iku1-Av-7uWZRZd78A_2-6u_jz3T2l38ymcqs_btHNlt_tDdtYnB8eV9MvvJ0A_d7lH7ylGn1NwHXL37jhs2Y4dyvbeBbZfhgb1EGw_Khm-Cau6f5x72Szh02H_F1DtcgPdrW55hHZhxnc1cTADm1s1aDvHN21rd3VoOZphka5TuALDa2J3E5v350tvh6avG1sFHEKDsP7T7WNrbC_a8-ZmfE0D5B3eIGBMzm-Rkoz3k-iFnTld8itGVNp8SH_OVHgaHA_aEedrisu3nBz1oSQaXRdb-wtj5PlaNBuLvWeOjZ78WDkD2Ovx825dwW2gkUUR9FCjYE5Tb3Cwo6VxuuFKascR7magU2BodxAF0i9OARI-lWUoLBMCCZ1o7CurUz8IRga-8htdNZsNDf8mm1SLgrjvcA3KOwFAvM39MIbKA",
+    "serpapi_link": "https://serpapi.com/search.json?engine=google_ai_overview&page_token=Cf36DnicxZbdcro4FMDv9z2WG1sRSqt0htkJERVtVdSK9sZBwIDyoQRL6d2-y77MvsI-zYYPFVbsf_47s7O5IMnJycn5-HnG3_9wbG_31y9_WmG4x880HUVRHfk-csy67ru0hmNPpze-gwPd-g05gq5Rx6NjClENAlmRoWzN3c5xyfKM4c7jF6kfa4vJXmcRUlgeGypja6qEFZboqBOLshzB9Kj4Q3igdCw0KNMWnjiP1Yyx3N6762i9GyO83XJgSaVPC6u1hs0t8exzi-kVTT67Xx_aZFPHddOrh8O4hwwezDxcZxsMXx_RmksUwH80JDBJZ6gABcDrcwSkSvn5vph8ZaKnXIRKbvoyonQnikQzPexUGpPldNpJyYttjl2hrvYD__vlrZo-D9Fr6hSQRaniTpXsHOOgHMSVi1VCBJNEpUOMLtJKA8mwzkd-YpIDOoAXw9zpKTFfqAC1iTty7mcvGr2KI2lS7WCmA6AL9Gnv8WYcuaIiu1EeMYyGCkC0gQhtDXodkImhbd3S00WAEwjhjG_4HfQ4s5WH8VQNnWlntdmHXy3zsT1-b7gKra-JnuNrhmmsrFXjLsVdx2fecZH36Xwj2zNt6XRQ_aUuMgXYYZ7Wy5DIrqqccpaZQpjiOfWnDEqXZbrKlJcSkIps-wwpBAHgpGoSbhW5VMbsqAL28jKHXTz5jbKbJe_lM0tnF_RyZGdzuQtdMJTPJxC-lq0VQwS2kijJ3dO-oJu4AyFKIx8kl7JnegVbhZyg1K6CRLEoyT9n2NNqATGZ5BZKuBoQGczyAE51869-rqQGJT5JF1ogv_0ts7eGVIz_xkAnrv-BaRHvnjXvT2ehg5uL-PDErri3J056a7T2rQ3Kcfbd9U_0b_3_Az7r7uKpu1cBr3wHvJSW_XZ3z6Xn7t5PJBLsVAOftfdidzfLkV0B3y8D_013vwCfyX4EvFIJvFwJfGLgCnh0E_iku1-Av-7uWZRZd78A_2-6u_jz3T2l38ymcqs_btHNlt_tDdtYnB8eV9MvvJ0A_d7lH7ylGn1NwHXL37jhs2Y4dyvbeBbZfhgb1EGw_Khm-Cau6f5x72Szh02H_F1DtcgPdrW55hHZhxnc1cTADm1s1aDvHN21rd3VoOZphka5TuALDa2J3E5v350tvh6avG1sFHEKDsP7T7WNrbC_a8-ZmfE0D5B3eIGBMzm-Rkoz3k-iFnTld8itGVNp8SH_OVHgaHA_aEedrisu3nBz1oSQaXRdb-wtj5PlaNBuLvWeOjZ78WDkD2Ovx825dwW2gkUUR9FCjYE5Tb3Cwo6VxuuFKascR7magU2BodxAF0i9OARI-lWUoLBMCCZ1o7CurUz8IRga-8htdNZsNDf8mm1SLgrjvcA3KOwFAvM39MIbKA"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "Couples and Relationship Counselling Vancouver",
+      "link": "https://www.blueskywellnessclinic.ca/marriage-and-relationship-issues/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.blueskywellnessclinic.ca/marriage-and-relationship-issues/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBcQAQ",
+      "displayed_link": "https://www.blueskywellnessclinic.ca \u203a marriage-and-rel...",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqZUuivGwNUtXoiknR7LFjpM.png",
+      "snippet": "A trained therapist will guide you through discussions, exercises, and interventions designed to enhance your understanding of each other and your relationship ...",
+      "snippet_highlighted_words": [
+        "A trained therapist will guide you through discussions, exercises, and interventions"
+      ],
+      "rich_snippet": {
+        "bottom": {
+          "detected_extensions": {
+            "price_from": 180.0,
+            "price_to": 220.0,
+            "currency": "$",
+            "rating": 4.8,
+            "reviews": 98
+          },
+          "extensions": [
+            "$180.00 to $220.00",
+            "4.8(98)"
+          ]
+        }
+      },
+      "about_this_result": {
+        "source": {
+          "description": "A trained therapist will guide you through discussions, exercises, and interventions designed to enhance your understanding of each other and your relationship ...",
+          "source_info_link": "https://www.blueskywellnessclinic.ca/marriage-and-relationship-issues/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqS9FvtCcG_trNF_7rCcTrDYXAad6a9aWXvLONMg164TA.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.blueskywellnessclinic.ca/marriage-and-relationship-issues/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.blueskywellnessclinic.ca%2Fmarriage-and-relationship-issues%2F",
+      "source": "Blue Sky Wellness Clinic"
+    },
+    {
+      "position": 2,
+      "title": "Reignite Love with Couples Counselling Vancouver",
+      "link": "https://www.nofearcounselling.com/best-couples-counselling-vancouver",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.nofearcounselling.com/best-couples-counselling-vancouver&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBoQAQ",
+      "displayed_link": "https://www.nofearcounselling.com \u203a best-couples-coun...",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqcgwXea63mQC5S15QXm6At8.png",
+      "snippet": "Our skilled couples therapists in Vancouver, BC, use evidence-based approaches to help you understand each other better and grow as partners. Transform Your ...",
+      "snippet_highlighted_words": [
+        "couples",
+        "Vancouver",
+        "BC"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Our skilled couples therapists in Vancouver, BC, use evidence-based approaches to help you understand each other better and grow as partners. Transform Your ...",
+          "source_info_link": "https://www.nofearcounselling.com/best-couples-counselling-vancouver",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqXMD52wMNwSgAVvjlo88uko96fMZ-MaMkQ_dq87F0WfG.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.nofearcounselling.com/best-couples-counselling-vancouver&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.nofearcounselling.com%2Fbest-couples-counselling-vancouver",
+      "source": "No Fear Counselling"
+    },
+    {
+      "position": 3,
+      "title": "Vancouver Couple & Family Institute",
+      "link": "https://vcfi.ca/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://vcfi.ca/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBYQAQ",
+      "displayed_link": "https://vcfi.ca",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqZVPz-Oqmoy6hx3La4OThUQ.png",
+      "snippet": "We help individuals, couples, and families reach their personal goals and build strong bonds in their most important relationships.",
+      "snippet_highlighted_words": [
+        "We help individuals, couples, and families reach their personal goals"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "We help individuals, couples, and families reach their personal goals and build strong bonds in their most important relationships.",
+          "source_info_link": "https://vcfi.ca/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqVt5I8_k6fg6t7UuaBG1El5xpZc1G5OJRCr4QCGRHuRZ.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://vcfi.ca/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fvcfi.ca%2F",
+      "source": "Vancouver Couple & Family Institute"
+    },
+    {
+      "position": 4,
+      "title": "How to Choose the Right Couples Counsellor in Vancouver",
+      "link": "https://quoincounselling.com/resources/how-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://quoincounselling.com/resources/how-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBsQAQ",
+      "displayed_link": "https://quoincounselling.com \u203a resources \u203a how-to-cho...",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqV5X_N0BrX3hgMFr_RCKjm0.png",
+      "date": "Aug 11, 2025",
+      "snippet": "Make Sure They're Trained for Couples Work. Not all counsellors are. In BC, start by looking for therapists registered with the BC Association ...",
+      "snippet_highlighted_words": [
+        "Make Sure They're Trained for Couples Work"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Make Sure They're Trained for Couples Work. Not all counsellors are. In BC, start by looking for therapists registered with the BC Association ...",
+          "source_info_link": "https://quoincounselling.com/resources/how-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqeOISiX--0a14-qSFU9qo4pCdOma0InySY4lHpzLcyM6.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://quoincounselling.com/resources/how-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fquoincounselling.com%2Fresources%2Fhow-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for%2F",
+      "source": "Quoin Counselling"
+    },
+    {
+      "position": 5,
+      "title": "Couples Counselling in Vancouver & Across BC",
+      "link": "https://wellspringcounselling.ca/therapy/couples/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://wellspringcounselling.ca/therapy/couples/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBQQAQ",
+      "displayed_link": "https://wellspringcounselling.ca \u203a Therapy Services",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqfmsZyEBDZ3SvOF3D8k_y4s.png",
+      "snippet": "Couples counselling to improve communication and connection. Top therapists in BC, and online options across Vancouver and British Columbia.",
+      "snippet_highlighted_words": [
+        "Couples counselling to improve communication and connection"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couples counselling to improve communication and connection. Top therapists in BC, and online options across Vancouver and British Columbia.",
+          "source_info_link": "https://wellspringcounselling.ca/therapy/couples/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqewdlHIiKvU_G8q_wvMQVIgZpI0r7US4GS4JU0IAFUBF.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://wellspringcounselling.ca/therapy/couples/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwellspringcounselling.ca%2Ftherapy%2Fcouples%2F",
+      "source": "wellspringcounselling.ca"
+    },
+    {
+      "position": 6,
+      "title": "Does Couple Counselling Work? The Role of a ...",
+      "link": "https://boomerangcc.ca/does-couple-counselling-work/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://boomerangcc.ca/does-couple-counselling-work/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECD0QAQ",
+      "displayed_link": "https://boomerangcc.ca \u203a does-couple-counselling-work",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqYKAMzDQudVenUhMZYCcCZI.png",
+      "date": "Nov 6, 2025",
+      "snippet": "Couple counselling can assist when you are struggling to have a difficult conversation in an engaging and uplifting manner.",
+      "snippet_highlighted_words": [
+        "Couple counselling can",
+        "are"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couple counselling can assist when you are struggling to have a difficult conversation in an engaging and uplifting manner.",
+          "source_info_link": "https://boomerangcc.ca/does-couple-counselling-work/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqaQZ3oN4e9u6P4nK7aKoYFkEx-i5or1jENa7y2f9im_C.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://boomerangcc.ca/does-couple-counselling-work/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fboomerangcc.ca%2Fdoes-couple-counselling-work%2F",
+      "source": "Boomerang Counselling Centre"
+    },
+    {
+      "position": 7,
+      "title": "Women's Mental Health: Counselling in Vancouver",
+      "link": "https://www.womensmentalhealth.ca/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.womensmentalhealth.ca/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECD8QAQ",
+      "displayed_link": "https://www.womensmentalhealth.ca",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqfPsuHT_ydWPSqFvsfS4k6Y.jpeg",
+      "snippet": "Couples Counselling \u00b7 Support Groups. Counselling support for all of life's challenges. In-person counselling for women in Vancouver and online across BC.",
+      "snippet_highlighted_words": [
+        "Couples Counselling"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couples Counselling \u00b7 Support Groups. Counselling support for all of life's challenges. In-person counselling for women in Vancouver and online across BC.",
+          "source_info_link": "https://www.womensmentalhealth.ca/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqUj3E1QR-R5tSUmNH7LYdDmQm16CZpkxzhVJJkaFaq9E.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.womensmentalhealth.ca/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.womensmentalhealth.ca%2F",
+      "source": "womensmentalhealth.ca"
+    },
+    {
+      "position": 8,
+      "title": "Counselling Services in Vancouver Help Couples Resolve ...",
+      "link": "https://www.goodlifetherapy.ca/counselling-services-in-vancouver-help-couples-resolve-marriage-problems/?srsltid=AfmBOor2FQCcpEEadQ_uRo36worwMI_KEwBEdfpCCocAUlCETWKD0xrb",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.goodlifetherapy.ca/counselling-services-in-vancouver-help-couples-resolve-marriage-problems/%3Fsrsltid%3DAfmBOor2FQCcpEEadQ_uRo36worwMI_KEwBEdfpCCocAUlCETWKD0xrb&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBkQAQ",
+      "displayed_link": "https://www.goodlifetherapy.ca \u203a counselling-services-i...",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqTiW7HyVod60yRyx79gkPiA.png",
+      "snippet": "Attending couples counselling in Vancouver from professional services such as The Good Life Therapy Centre can help resolve conflict.",
+      "snippet_highlighted_words": [
+        "Attending couples counselling in Vancouver"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Attending couples counselling in Vancouver from professional services such as The Good Life Therapy Centre can help resolve conflict.",
+          "source_info_link": "https://www.goodlifetherapy.ca/counselling-services-in-vancouver-help-couples-resolve-marriage-problems/?srsltid=AfmBOor2FQCcpEEadQ_uRo36worwMI_KEwBEdfpCCocAUlCETWKD0xrb",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqTTCfptnkoj0I5wzkD92U3Cp26WdRxpNRwP3bjvdm-4y.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.goodlifetherapy.ca/counselling-services-in-vancouver-help-couples-resolve-marriage-problems/?srsltid=AfmBOor2FQCcpEEadQ_uRo36worwMI_KEwBEdfpCCocAUlCETWKD0xrb&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.goodlifetherapy.ca%2Fcounselling-services-in-vancouver-help-couples-resolve-marriage-problems%2F%3Fsrsltid%3DAfmBOor2FQCcpEEadQ_uRo36worwMI_KEwBEdfpCCocAUlCETWKD0xrb",
+      "source": "goodlifetherapy.ca"
+    },
+    {
+      "position": 9,
+      "title": "Couples Therapy | Couples Counselling Vancouver",
+      "link": "https://openspacecounselling.ca/couples-therapy/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://openspacecounselling.ca/couples-therapy/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBUQAQ",
+      "displayed_link": "https://openspacecounselling.ca \u203a ... \u203a Meet Our Team",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqQnpWOy44hBWiKnLfmpu2jw.png",
+      "snippet": "We provide free 20-minute consultations so that you and your partner can have an obligation-free opportunity to ask any questions you might have about the ...",
+      "snippet_highlighted_words": [
+        "free 20-minute consultations"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "We provide free 20-minute consultations so that you and your partner can have an obligation-free opportunity to ask any questions you might have about the ...",
+          "source_info_link": "https://openspacecounselling.ca/couples-therapy/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqbyl2JCugzm6Rt6uw3_HEeUJRscr1BgqE-R4zxHJOWBY.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://openspacecounselling.ca/couples-therapy/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fopenspacecounselling.ca%2Fcouples-therapy%2F",
+      "source": "Open Space Counselling"
+    },
+    {
+      "position": 10,
+      "title": "Turning Point Therapy: The Counselling Vancouver Trusts",
+      "link": "https://counselling-vancouver.com/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://counselling-vancouver.com/&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQFnoECBgQAQ",
+      "displayed_link": "https://counselling-vancouver.com",
+      "favicon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqXdqJx5WCIryLIU8A4bnWzc.jpeg",
+      "snippet": "At Turning Point Therapy in Vancouver, you'll find counselling for trauma, couples, anxiety, depression and more. Book your free consultation today.",
+      "snippet_highlighted_words": [
+        "counselling for trauma, couples, anxiety, depression and more"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "At Turning Point Therapy in Vancouver, you'll find counselling for trauma, couples, anxiety, depression and more. Book your free consultation today.",
+          "source_info_link": "https://counselling-vancouver.com/",
+          "icon": "https://serpapi.com/searches/69f689eaccb1e9291e5a145e/images/m5WAZw9OroKZa34T-moUqY_EZ5PE6TIe2KrcBQQJrzYcur71VQB_X1Oau6O2xKHq.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://counselling-vancouver.com/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcounselling-vancouver.com%2F",
+      "source": "counselling-vancouver.com"
+    },
+    {
+      "position": 1,
+      "title": "Couples Counselling in Vancouver BC:Is It Time to Seek Help?",
+      "link": "https://drkaranvirsingh.com/couples-counselling-in-vancouver-bc/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://drkaranvirsingh.com/couples-counselling-in-vancouver-bc/&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIFhAB",
+      "displayed_link": "https://drkaranvirsingh.com \u203a couples-counselling-in-van...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAZjvvFnjOlVf9-yLpMauVEM.png",
+      "date": "Jul 14, 2025",
+      "snippet": "Is it time for help? Explore how couples counselling in Vancouver BC with Dr. Karanvir Singh can rebuild trust, improve communication, ...",
+      "snippet_highlighted_words": [
+        "couples counselling in Vancouver BC"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Is it time for help? Explore how couples counselling in Vancouver BC with Dr. Karanvir Singh can rebuild trust, improve communication, ...",
+          "source_info_link": "https://drkaranvirsingh.com/couples-counselling-in-vancouver-bc/",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAUIohmZW5VWrKFBrPQLGmqOkJTgh23pE7k5jMI4DDLZ7.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://drkaranvirsingh.com/couples-counselling-in-vancouver-bc/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fdrkaranvirsingh.com%2Fcouples-counselling-in-vancouver-bc%2F",
+      "source": "drkaranvirsingh.com"
+    },
+    {
+      "position": 2,
+      "title": "The Relationship Clinic: Relationship Therapy in North & West ...",
+      "link": "https://relationshipclinic.ca/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://relationshipclinic.ca/&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIFBAB",
+      "displayed_link": "https://relationshipclinic.ca",
+      "snippet": "Couples Counselling Helps You Heal, Grow, and Deepen Your Connection \u00b7 Communicate more effectively and respectfully. \u00b7 Understand your and your partner's ...",
+      "snippet_highlighted_words": [
+        "Couples Counselling Helps You Heal, Grow, and Deepen Your Connection"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couples Counselling Helps You Heal, Grow, and Deepen Your Connection \u00b7 Communicate more effectively and respectfully. \u00b7 Understand your and your partner's ...",
+          "source_info_link": "https://relationshipclinic.ca/"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://relationshipclinic.ca/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Frelationshipclinic.ca%2F",
+      "source": "relationshipclinic.ca"
+    },
+    {
+      "position": 3,
+      "title": "What Vancouver Couples Therapy is All About",
+      "link": "https://counselmevancouver.com/what-couples-therapy-is-all-about/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://counselmevancouver.com/what-couples-therapy-is-all-about/&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIExAB",
+      "displayed_link": "https://counselmevancouver.com \u203a what-couples-therap...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAeaRB-uxDI2w_gKyB2l0xnA.png",
+      "snippet": "This form of therapy focuses on conflict resolution and improving communication between couples while addressing core issues in their relationship. As such, ...",
+      "snippet_highlighted_words": [
+        "therapy",
+        "couples"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "This form of therapy focuses on conflict resolution and improving communication between couples while addressing core issues in their relationship. As such, ...",
+          "source_info_link": "https://counselmevancouver.com/what-couples-therapy-is-all-about/",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAUp5-3YbcHzp2XvQrasHitDxbWRD9iVqC_Y184OKT9Bw.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://counselmevancouver.com/what-couples-therapy-is-all-about/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcounselmevancouver.com%2Fwhat-couples-therapy-is-all-about%2F",
+      "source": "Counsel Me Vancouver"
+    },
+    {
+      "position": 5,
+      "title": "Find Marriage And\u2215or Relationship Issues Counselling ...",
+      "link": "https://counsellingbc.com/counsellors?area=marriage%20and%E2%88%95or%20relationship%20issues",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://counsellingbc.com/counsellors%3Farea%3Dmarriage%2520and%25E2%2588%2595or%2520relationship%2520issues&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIFRAB",
+      "displayed_link": "https://counsellingbc.com \u203a counsellors",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAeXzZ7DN1gOnmaeQRqndvOo.png",
+      "snippet": "It helps the couple to work with each other, instead of on one another, helping each individual to find the person he or she is at the core level and to build a ...",
+      "snippet_highlighted_words": [
+        "It helps the couple to work with each other"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "It helps the couple to work with each other, instead of on one another, helping each individual to find the person he or she is at the core level and to build a ...",
+          "source_info_link": "https://counsellingbc.com/counsellors?area=marriage%20and%E2%88%95or%20relationship%20issues",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAUjG1fPFW0yaLZN-Ky-7fcxXs7hYk6_SDQ72CNWJfIo0.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://counsellingbc.com/counsellors?area=marriage%20and%E2%88%95or%20relationship%20issues&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcounsellingbc.com%2Fcounsellors%3Farea%3Dmarriage%2520and%25E2%2588%2595or%2520relationship%2520issues",
+      "source": "CounsellingBC"
+    },
+    {
+      "position": 6,
+      "title": "Couples Counselling Vancouver, BC",
+      "link": "https://sanacounselling.ca/services/couples-counselling-vancouver",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://sanacounselling.ca/services/couples-counselling-vancouver&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIGBAB",
+      "displayed_link": "https://sanacounselling.ca \u203a services \u203a couples-counselli...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAV-qe4SezLnUWX0NO23JsM4.png",
+      "snippet": "We serve individuals in relationships and folks of all nationalities and sexual orientations who are experiencing problematic relationship patterns.",
+      "snippet_highlighted_words": [
+        "We serve individuals in relationships"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "We serve individuals in relationships and folks of all nationalities and sexual orientations who are experiencing problematic relationship patterns.",
+          "source_info_link": "https://sanacounselling.ca/services/couples-counselling-vancouver",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAUYdRJWc3UdwqA6cipCGygXgA5C-VIcgsRfg1trly30X.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://sanacounselling.ca/services/couples-counselling-vancouver&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fsanacounselling.ca%2Fservices%2Fcouples-counselling-vancouver",
+      "source": "Sana Counselling"
+    },
+    {
+      "position": 7,
+      "title": "Couples & Marriage Counselling",
+      "link": "https://counsellinggroup.org/services/couples-marriage-counselling/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://counsellinggroup.org/services/couples-marriage-counselling/&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIFxAB",
+      "displayed_link": "https://counsellinggroup.org \u203a services \u203a couples-marria...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAZx1zJ2VJhoAOOQBWeMsvXU.png",
+      "snippet": "Using CBT, couples work with their counsellor to identify negative thoughts and beliefs impacting their relationship, and replace them with more realistic and ...",
+      "snippet_highlighted_words": [
+        "Using CBT, couples work with their counsellor"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Using CBT, couples work with their counsellor to identify negative thoughts and beliefs impacting their relationship, and replace them with more realistic and ...",
+          "source_info_link": "https://counsellinggroup.org/services/couples-marriage-counselling/",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAYhTSvyka81Ys7PQOzmoigpjNLWTUeKf2y4ZtXrt_fW-.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://counsellinggroup.org/services/couples-marriage-counselling/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcounsellinggroup.org%2Fservices%2Fcouples-marriage-counselling%2F",
+      "source": "BCG Counselling Group"
+    },
+    {
+      "position": 8,
+      "title": "Couples Counselling in Vancouver, BC: Therapy That Works.",
+      "link": "https://www.theravive.com/cities/bc/couples-counselling-vancouver.aspx",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.theravive.com/cities/bc/couples-counselling-vancouver.aspx&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIPBAB",
+      "displayed_link": "https://www.theravive.com \u203a cities \u203a couples-counselling...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAdCZu04ZVh4U-eiJ6UMKMyQ.png",
+      "snippet": "We will work on helping you communicate your true feelings to your partner without blaming, stonewalling, or criticizing. We will focus on helping you become ...",
+      "snippet_highlighted_words": [
+        "We will work on helping you communicate your true feelings to your partner"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "We will work on helping you communicate your true feelings to your partner without blaming, stonewalling, or criticizing. We will focus on helping you become ...",
+          "source_info_link": "https://www.theravive.com/cities/bc/couples-counselling-vancouver.aspx",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAWXeZUKMtjunQp5tqUE0_avjcatyw072MaHLd4orsuSh.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.theravive.com/cities/bc/couples-counselling-vancouver.aspx&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.theravive.com%2Fcities%2Fbc%2Fcouples-counselling-vancouver.aspx",
+      "source": "Theravive Counseling"
+    },
+    {
+      "position": 9,
+      "title": "Marriage Counsellors & Couples Therapists in Metro ...",
+      "link": "https://www.therapyroute.com/marriage-and-couples-counselling/canada/metro-vancouver-regional-district",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.therapyroute.com/marriage-and-couples-counselling/canada/metro-vancouver-regional-district&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIQhAB",
+      "displayed_link": "https://www.therapyroute.com \u203a canada \u203a metro-vancou...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAYK3Vy8nfea9G9CY6-twX9g.png",
+      "snippet": "Well, Health Counselling offers professional, compassionate, and effective online and telephone counseling for residents of British Columbia, Canada. Our ...",
+      "snippet_highlighted_words": [
+        "Counselling",
+        "British Columbia",
+        "Canada"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Well, Health Counselling offers professional, compassionate, and effective online and telephone counseling for residents of British Columbia, Canada. Our ...",
+          "source_info_link": "https://www.therapyroute.com/marriage-and-couples-counselling/canada/metro-vancouver-regional-district",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAdLX0JqSqafYjZHgj5axv1U4bJl4zxG0LBt5_8ClD6W8.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.therapyroute.com/marriage-and-couples-counselling/canada/metro-vancouver-regional-district&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.therapyroute.com%2Fmarriage-and-couples-counselling%2Fcanada%2Fmetro-vancouver-regional-district",
+      "source": "TherapyRoute"
+    },
+    {
+      "position": 10,
+      "title": "How Much Does Couples Counselling Cost in Vancouver?",
+      "link": "https://sagementalhealth.ca/how-much-does-couples-counselling-cost-in-vancouver/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://sagementalhealth.ca/how-much-does-couples-counselling-cost-in-vancouver/&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChAWegQIPhAB",
+      "displayed_link": "https://sagementalhealth.ca \u203a how-much-does-couples-c...",
+      "favicon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAcnmwxTiEHL4QbEves4_xD8.jpeg",
+      "date": "Nov 21, 2025",
+      "snippet": "Vancouver offers various affordable counselling options for couples. Many community organizations and clinics offer sliding-scale fees based on ...",
+      "snippet_highlighted_words": [
+        "Vancouver offers various affordable counselling options for couples"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Vancouver offers various affordable counselling options for couples. Many community organizations and clinics offer sliding-scale fees based on ...",
+          "source_info_link": "https://sagementalhealth.ca/how-much-does-couples-counselling-cost-in-vancouver/",
+          "icon": "https://serpapi.com/searches/69f689ecf6d5eeda9071c4b8/images/PnFKf8MEhZkZ4W9C2V0uAWZAwRQuwhxUXq_oAIIOpAlmnYrY0GceW91V6OXUmjiU.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://sagementalhealth.ca/how-much-does-couples-counselling-cost-in-vancouver/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fsagementalhealth.ca%2Fhow-much-does-couples-counselling-cost-in-vancouver%2F",
+      "source": "Sage Mental Health & Maternal Wellness"
+    },
+    {
+      "position": 1,
+      "title": "Counselling for Intimacy in Relationships Certificate",
+      "link": "https://vcct.ca/our-programs/counselling-for-intimacy-in-relationships-certificate/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://vcct.ca/our-programs/counselling-for-intimacy-in-relationships-certificate/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIFhAB",
+      "displayed_link": "https://vcct.ca \u203a Our Programs",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBtSG9rOXCA_wqvOzVx9CR5I.png",
+      "snippet": "The course will help familiarize students with listening and assertiveness skills, as well as introduce different approaches to conflict resolution.",
+      "snippet_highlighted_words": [
+        "familiarize students with listening and assertiveness skills"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "The course will help familiarize students with listening and assertiveness skills, as well as introduce different approaches to conflict resolution.",
+          "source_info_link": "https://vcct.ca/our-programs/counselling-for-intimacy-in-relationships-certificate/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBiPO1PJvqIMZeOolWzV6sxzulhpbVTFhL9fp3hGwY16a.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://vcct.ca/our-programs/counselling-for-intimacy-in-relationships-certificate/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fvcct.ca%2Four-programs%2Fcounselling-for-intimacy-in-relationships-certificate%2F",
+      "source": "Vancouver College of Counsellor Training"
+    },
+    {
+      "position": 2,
+      "title": "Couples & Marriage Therapy in Vancouver & Throughout BC",
+      "link": "https://www.jerichocounselling.com/couples-marriage-counselling/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.jerichocounselling.com/couples-marriage-counselling/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIGBAB",
+      "displayed_link": "https://www.jerichocounselling.com \u203a couples-marriage...",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBpuADYx_56l9djb7pOJvpdE.png",
+      "snippet": "Our Counsellors have extensive training and experience providing marriage and relationship therapy. We use very active, 'here and now' approaches.",
+      "snippet_highlighted_words": [
+        "have extensive training and experience providing marriage and relationship therapy"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Our Counsellors have extensive training and experience providing marriage and relationship therapy. We use very active, 'here and now' approaches.",
+          "source_info_link": "https://www.jerichocounselling.com/couples-marriage-counselling/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBqegfresVsfl6o0X8zOEw6FXByfWeKWVPMCDPfMQY_CH.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.jerichocounselling.com/couples-marriage-counselling/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.jerichocounselling.com%2Fcouples-marriage-counselling%2F",
+      "source": "Jericho Counselling"
+    },
+    {
+      "position": 3,
+      "title": "Strengthening Relationships through ...",
+      "link": "https://www.newtides.ca/couples-counselling-services",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.newtides.ca/couples-counselling-services&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIOBAB",
+      "displayed_link": "https://www.newtides.ca \u203a couples-counselling-services",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBq4nmMUZupsiPW7yKtKdkjw.png",
+      "snippet": "Couples counselling puts the relationship front and centre. With your counsellor you can explore negative cycles and loops and what contributes to the \u201cdance\u201d",
+      "snippet_highlighted_words": [
+        "Couples counselling puts the relationship front and centre"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couples counselling puts the relationship front and centre. With your counsellor you can explore negative cycles and loops and what contributes to the \u201cdance\u201d",
+          "source_info_link": "https://www.newtides.ca/couples-counselling-services",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBtvWO9F7VP5e8-LjZqKMxdDMMxw5GAQOnIZhCjGgDlw1.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.newtides.ca/couples-counselling-services&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.newtides.ca%2Fcouples-counselling-services",
+      "source": "New Tides Counselling and Wellness"
+    },
+    {
+      "position": 4,
+      "title": "Vida Relationships | Couples Counselling | Family Therapy in ...",
+      "link": "https://www.vidarelationships.com/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.vidarelationships.com/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIFRAB",
+      "displayed_link": "https://www.vidarelationships.com",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBqzfja4duPAZx7aalzuZxpg.png",
+      "snippet": "Emotionally Focused Couples Therapy helps partners move from conflict to connection by addressing the root of disconnection. Through couples counselling or ...",
+      "snippet_highlighted_words": [
+        "helps partners move from conflict to connection"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Emotionally Focused Couples Therapy helps partners move from conflict to connection by addressing the root of disconnection. Through couples counselling or ...",
+          "source_info_link": "https://www.vidarelationships.com/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBtMJNT6lbF6ccIKHv9OENFBSRvgGUJO0C0bFrr9J2Dcy.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.vidarelationships.com/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.vidarelationships.com%2F",
+      "source": "Vida Relationships"
+    },
+    {
+      "position": 5,
+      "title": "Relationship and Marriage Counselling in Vancouver,",
+      "link": "https://www.therapytribe.com/therapist/british-columbia-bc-vancouver/relationship-and-marriage-counseling/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.therapytribe.com/therapist/british-columbia-bc-vancouver/relationship-and-marriage-counseling/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIGxAB",
+      "displayed_link": "https://www.therapytribe.com \u203a ... \u203a Vancouver",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBn08bNfgemHZ4bZexG9IvLc.png",
+      "snippet": "Using Dialectical Behavioural Therapy for couples, we will work on identifying times of conflict, identifying how and where the miscommunications occurred and ...",
+      "snippet_highlighted_words": [
+        "Using Dialectical Behavioural Therapy for couples"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Using Dialectical Behavioural Therapy for couples, we will work on identifying times of conflict, identifying how and where the miscommunications occurred and ...",
+          "source_info_link": "https://www.therapytribe.com/therapist/british-columbia-bc-vancouver/relationship-and-marriage-counseling/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBlWmoDJ2oaVkdx12eYCCpPBs8s3aThX-EOTwoP7046tx.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.therapytribe.com/therapist/british-columbia-bc-vancouver/relationship-and-marriage-counseling/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.therapytribe.com%2Ftherapist%2Fbritish-columbia-bc-vancouver%2Frelationship-and-marriage-counseling%2F",
+      "source": "TherapyTribe"
+    },
+    {
+      "position": 6,
+      "title": "Couples Counselling in Vancouver BC",
+      "link": "https://counselling-vancouver.com/couples-counselling/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://counselling-vancouver.com/couples-counselling/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIGhAB",
+      "displayed_link": "https://counselling-vancouver.com \u203a couples-counselling",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBiRcp94P5W-Z6kq7McJVz4k.jpeg",
+      "snippet": "Rebuild connection and trust with couples counselling in Vancouver. Turning Point Therapy helps strengthen relationships with expert guidance.",
+      "snippet_highlighted_words": [
+        "couples counselling in Vancouver"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Rebuild connection and trust with couples counselling in Vancouver. Turning Point Therapy helps strengthen relationships with expert guidance.",
+          "source_info_link": "https://counselling-vancouver.com/couples-counselling/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBjQ_2hBz2ziTu6faLTVGiCS4XZGAcWJA434Sh6vSLoHj.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://counselling-vancouver.com/couples-counselling/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcounselling-vancouver.com%2Fcouples-counselling%2F",
+      "source": "counselling-vancouver.com"
+    },
+    {
+      "position": 7,
+      "title": "Couples Counselling in Vancouver",
+      "link": "https://www.vitalitycollective.ca/psychology-blog/vancouver-couple-counselling",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.vitalitycollective.ca/psychology-blog/vancouver-couple-counselling&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIGRAB",
+      "displayed_link": "https://www.vitalitycollective.ca \u203a psychology-blog \u203a v...",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBnG7l0RI6zymUM5RsincF5I.png",
+      "date": "Jan 27, 2025",
+      "snippet": "Couples counselling is designed to help you and your partner reconnect, navigate challenges, and strengthen your relationship. At Vitality ...",
+      "snippet_highlighted_words": [
+        "Couples counselling is"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couples counselling is designed to help you and your partner reconnect, navigate challenges, and strengthen your relationship. At Vitality ...",
+          "source_info_link": "https://www.vitalitycollective.ca/psychology-blog/vancouver-couple-counselling",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBh92GavJae3yHj7XNuqN42o6oAB2AU7i_oFmdLQwyKU2.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.vitalitycollective.ca/psychology-blog/vancouver-couple-counselling&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.vitalitycollective.ca%2Fpsychology-blog%2Fvancouver-couple-counselling",
+      "source": "Vitality Collective"
+    },
+    {
+      "position": 8,
+      "title": "Vancouver Relationship Counseling & Couples Therapy Experts",
+      "link": "https://gatherandground.ca/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://gatherandground.ca/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIFxAB",
+      "displayed_link": "https://gatherandground.ca",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBqiy3e2LNDi1T9QSNHU27Zk.png",
+      "snippet": "Every relationship moves through ups and downs. Couples therapy offers a space to slow down, tune into each other, and work through the challenges together.",
+      "snippet_highlighted_words": [
+        "Couples therapy",
+        "work"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Every relationship moves through ups and downs. Couples therapy offers a space to slow down, tune into each other, and work through the challenges together.",
+          "source_info_link": "https://gatherandground.ca/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBvB7DVSXn4DGCgYFNbSEeep2f1zW_nEuq43Ee_6RdYCN.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://gatherandground.ca/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fgatherandground.ca%2F",
+      "source": "Gather & Ground"
+    },
+    {
+      "position": 9,
+      "title": "Couples Counselling Vancouver",
+      "link": "https://mindrightcounselling.com/couples-counselling-vancouver/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://mindrightcounselling.com/couples-counselling-vancouver/&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIExAB",
+      "displayed_link": "https://mindrightcounselling.com \u203a couples-counselling...",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBlh82tIKs2jJ0yGnNNTM8lQ.png",
+      "snippet": "Couples counselling allows couples to learn new skills and tools that can help them better understand and communicate with each other. It can be beneficial for ...",
+      "snippet_highlighted_words": [
+        "Couples counselling allows couples to learn new skills and tools"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Couples counselling allows couples to learn new skills and tools that can help them better understand and communicate with each other. It can be beneficial for ...",
+          "source_info_link": "https://mindrightcounselling.com/couples-counselling-vancouver/",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBq0v2beH29WaFcZ_G8dwaieY5Ln4rsy_XAPv0PJ2oc57.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://mindrightcounselling.com/couples-counselling-vancouver/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fmindrightcounselling.com%2Fcouples-counselling-vancouver%2F",
+      "source": "MindRight Counselling & Consulting"
+    },
+    {
+      "position": 10,
+      "title": "Couples Counselling Therapists in Vancouver, BC",
+      "link": "https://www.psychologytoday.com/ca/therapists/bc/vancouver?category=couples-counselling",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.psychologytoday.com/ca/therapists/bc/vancouver%3Fcategory%3Dcouples-counselling&ved=2ahUKEwiH3eiQ4puUAxUzUEEAHT1UGc04FBAWegQIFBAB",
+      "displayed_link": "https://www.psychologytoday.com \u203a ... \u203a Vancouver",
+      "favicon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBu29IkB4zzyKPCiyc6c7ouc.png",
+      "snippet": "Research shows that couples counseling is effective; it can reduce relationship distress and improve emotional awareness, communication, empathy, intimacy, and ...",
+      "snippet_highlighted_words": [
+        "couples counseling is effective"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Research shows that couples counseling is effective; it can reduce relationship distress and improve emotional awareness, communication, empathy, intimacy, and ...",
+          "source_info_link": "https://www.psychologytoday.com/ca/therapists/bc/vancouver?category=couples-counselling",
+          "icon": "https://serpapi.com/searches/69f689edf73e4d08d00a5ef9/images/zvSnenk-s-dwUi5fpYIMBtyTB-o6fByz2RluLebAvzX_sMO69rKU57TVwDqUF4XU.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.psychologytoday.com/ca/therapists/bc/vancouver?category=couples-counselling&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.psychologytoday.com%2Fca%2Ftherapists%2Fbc%2Fvancouver%3Fcategory%3Dcouples-counselling",
+      "source": "Psychology Today"
+    }
+  ],
+  "related_searches": [
+    {
+      "block_position": 1,
+      "query": "Best couples counselling Vancouver",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Best+couples+counselling+Vancouver&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAg2EAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Best+couples+counselling+Vancouver"
+    },
+    {
+      "block_position": 1,
+      "query": "Couples counselling Vancouver reddit",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Couples+counselling+Vancouver+reddit&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAhLEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Couples+counselling+Vancouver+reddit"
+    },
+    {
+      "block_position": 1,
+      "query": "Couples counselling East Vancouver",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Couples+counselling+East+Vancouver&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAhJEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Couples+counselling+East+Vancouver"
+    },
+    {
+      "block_position": 1,
+      "query": "Gottman Method couples Therapy vancouver",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Gottman+Method+couples+Therapy+vancouver&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAhMEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Gottman+Method+couples+Therapy+vancouver"
+    },
+    {
+      "block_position": 1,
+      "query": "Family therapy Vancouver",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Family+therapy+Vancouver&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAhKEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Family+therapy+Vancouver"
+    },
+    {
+      "block_position": 1,
+      "query": "Couples counselling near me",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Couples+counselling+near+me&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAhFEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Couples+counselling+near+me"
+    },
+    {
+      "block_position": 1,
+      "query": "Couples counselling Burnaby",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Couples+counselling+Burnaby&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAhAEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Couples+counselling+Burnaby"
+    },
+    {
+      "block_position": 1,
+      "query": "Couples counselling Coquitlam",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Couples+counselling+Coquitlam&sa=X&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ1QJ6BAg8EAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Couples+counselling+Coquitlam"
+    },
+    {
+      "block_position": 1,
+      "query": "Vancouver couple and Family Institute",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&hl=en&gl=ca&q=Vancouver+couple+and+Family+Institute&sa=X&ved=2ahUKEwjDkZ6Q4puUAxVvWkEAHUsFKQE4ChDVAnoECDcQAQ",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=Vancouver+couple+and+Family+Institute&start=10"
+    }
+  ],
+  "pagination": {
+    "current": 1,
+    "next": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=10&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8NMDegQILRAW",
+    "other_pages": {
+      "2": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=10&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAE",
+      "3": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=20&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAG",
+      "4": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=30&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAI",
+      "5": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=40&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAK",
+      "6": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=50&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAM",
+      "7": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=60&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAO",
+      "8": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=70&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAQ",
+      "9": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=80&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAS",
+      "10": "https://www.google.com/search?q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=64n2adPIDpmbwbkPgsjj4AY&start=90&sa=N&sstk=Af77f_dyaaMJwBerLpBmW5ijutokyV9oogsqvJ8mhtDnVX85j-YNi2PDDjj9R48nXahb762VH6DoMJHnukJ3uozhJzfsNtPRIsx9mQ&ved=2ahUKEwiT6uaP4puUAxWZTTABHQLkGGwQ8tMDegQILRAU"
+    }
+  },
+  "serpapi_pagination": {
+    "current": 1,
+    "next_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=10",
+    "next": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=10",
+    "other_pages": {
+      "2": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=10",
+      "3": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=20",
+      "4": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=30",
+      "5": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=40",
+      "6": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=50",
+      "7": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=60",
+      "8": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=70",
+      "9": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=80",
+      "10": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=90"
+    }
+  },
+  "discussions_and_forums": [],
+  "pagination_pages_fetched": 3
+}

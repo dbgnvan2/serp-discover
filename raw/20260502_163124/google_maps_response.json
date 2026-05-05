@@ -1,0 +1,1618 @@
+{
+  "search_metadata": {
+    "id": "69f689f2db99ec9fc6ff2c3c",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/dmKRxf7FF_YtseT6TyEqag/69f689f2db99ec9fc6ff2c3c.json",
+    "created_at": "2026-05-02 23:34:10 UTC",
+    "processed_at": "2026-05-02 23:34:10 UTC",
+    "google_maps_url": "https://www.google.com/maps/search/how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada/@49.2827291,-123.1207375,14.0z/?hl=en&gl=ca",
+    "raw_html_file": "https://serpapi.com/searches/dmKRxf7FF_YtseT6TyEqag/69f689f2db99ec9fc6ff2c3c.html",
+    "prettify_html_file": "https://serpapi.com/searches/dmKRxf7FF_YtseT6TyEqag/69f689f2db99ec9fc6ff2c3c.prettify",
+    "total_time_taken": 0.91
+  },
+  "search_parameters": {
+    "engine": "google_maps",
+    "type": "search",
+    "q": "how does couples counselling work Vancouver, British Columbia, Canada",
+    "location_requested": "Vancouver, British Columbia, Canada",
+    "location_used": "Vancouver,British Columbia,Canada",
+    "z": "14",
+    "google_domain": "google.com",
+    "hl": "en",
+    "gl": "ca"
+  },
+  "search_information": {
+    "local_results_state": "Results for exact spelling",
+    "query_displayed": "how does couples counselling work Vancouver, British Columbia, Canada"
+  },
+  "local_results": [
+    {
+      "position": 1,
+      "title": "Blue Sky Counselling + Wellness Clinic",
+      "place_id": "ChIJfWq4A3ZzhlQRzu6L8j6FWyA",
+      "data_id": "0x5486737603b86a7d:0x205b853ef28beece",
+      "data_cid": "2331603737498087118",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x5486737603b86a7d%3A0x205b853ef28beece&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x5486737603b86a7d%3A0x205b853ef28beece&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2635139,
+        "longitude": -123.1263257
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJfWq4A3ZzhlQRzu6L8j6FWyA",
+      "provider_id": "/g/11rhq42ymg",
+      "rating": 4.8,
+      "reviews": 99,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "EMDR psychotherapist",
+        "Family counselor",
+        "Marriage or relationship counselor",
+        "Mental health clinic",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "emdr_psychotherapist",
+        "family_counselor",
+        "marriage_counselor",
+        "mental_health_clinic",
+        "psychotherapist"
+      ],
+      "address": "999 W Broadway Suite 590, Vancouver, BC V5Z 1K5",
+      "open_state": "Closes soon \u00b7 5\u202fp.m. \u00b7 Opens 9\u202fa.m. Sun",
+      "hours": "Closes soon \u00b7 5\u202fp.m. \u00b7 Opens 9\u202fa.m. Sun",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20135\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20135\u202fp.m.",
+        "monday": "9\u202fa.m.\u20139\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20139\u202fp.m.",
+        "friday": "9\u202fa.m.\u20135\u202fp.m."
+      },
+      "phone": "(604) 428-6046",
+      "website": "http://www.blueskywellnessclinic.ca/?utm_source=google&utm_medium=organic&utm_campaign=gmb",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "service_options": [
+            "Onsite services"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "service_options": {
+        "onsite_services": true
+      },
+      "book_online": "https://blueskywellnessclinic.janeapp.com/locations/blue-sky-counselling-wellness-clinic/book?rwg_token=AFd1xnEkOQdobtsG7sHKnZZoNGKTBW52f_FQyg-HhmlMBsREJ8NbpqJuK45LVkCWhKeBkhpDeKUig0n6y6rFZce75PjkpDT-ZQ%3D%3D",
+      "user_review": "\"Kolby is an amazing couple's counselor.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAHTktfqD_kJmQYyT9XHBfGTbg5GnJDxfg3FtXh3cUite53Ko1-Xn_Ea89fe7dsEWmVQwl3rtL0fyWYGx_GITlxcjyZgZwoGDVeZ6ThFN7F6AFe-pZMbG3LuV27n2Bv-je151KppGg=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/ann7eXicHcRJDoIwAADAF1XABlETDxCk7pGkInIhWrso0FZbBZ7oE_yNiXOY70dYq83UcWoBB1wpXtOXoU-ipKXSDohqHK4NIAYYJ9zv0ipc4MqyR1xWqyY99XiSLyKG8IX7SK7ijnGY2FxAcrhZ6sO18kAuy_l5PGE0uJr5scnStoZPu3FZfzyhrkRLXHfk3he8aBWKM1qMsEh2QTIKEwp0sb0guHllw0AOoze4U8_31lojPms913WB-E-A_AETaUUQ"
+    },
+    {
+      "position": 2,
+      "title": "Turning Point Therapy",
+      "place_id": "ChIJEXCVG3lxhlQRoNYr2xL9SVY",
+      "data_id": "0x548671791b957011:0x5649fd12db2bd6a0",
+      "data_cid": "6217779017990002336",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671791b957011%3A0x5649fd12db2bd6a0&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671791b957011%3A0x5649fd12db2bd6a0&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.284722599999995,
+        "longitude": -123.1144023
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJEXCVG3lxhlQRoNYr2xL9SVY",
+      "provider_id": "/g/1tr177yb",
+      "rating": 4.7,
+      "reviews": 37,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Family counselor",
+        "Marriage or relationship counselor",
+        "Mental health service",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "family_counselor",
+        "marriage_counselor",
+        "mental_health_service",
+        "psychotherapist"
+      ],
+      "address": "470 Granville St #311, Vancouver, BC V6C 1V4",
+      "open_state": "Open \u00b7 Closes 6\u202fp.m.",
+      "hours": "Open \u00b7 Closes 6\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20136\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20134\u202fp.m.",
+        "monday": "9\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "9\u202fa.m.\u20137\u202fp.m."
+      },
+      "phone": "(604) 638-7221",
+      "website": "http://counselling-vancouver.com/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "service_options": [
+            "Onsite services"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "service_options": {
+        "onsite_services": true
+      },
+      "book_online": "https://turningpointtherapy.janeapp.com/locations/311-470-granville-st-vancouver-bc/book?rwg_token=AFd1xnF9K2XISxbFYjWVGGDqZuAuc72aDVABbNP11mtr_Ih0fMcna27_wGi_9SLrXMAJXxLaLgTQWez6kz7DegGZS2c_KLGfnA%3D%3D",
+      "user_review": "\"I had several sessions with Lo, who is a counsellor here.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAF9ZFfcumV-GY5ctfWX0ItluRs2TTdYEUqRNwsd_UbOJnjWabfJnzZdW1hmLH64nflYGwx2srC9gA9ngSHf9AB4qIoUNaYLblfg6ZOj-O3VLzh-3I8M6AcymoeYjQdYCsQBsu_Pwkp7c6Xx=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/j66rRHicHcRLroIwFADQFVVQFOUlDqrxg-GBqIhlYqTQNlha9JagbtKxuzHxDM7nLYxp4M-ypHB6XGsuyxbKO9XKlMr0qK4t3gCigMDC2zC-4qWXLRlt6yNakRE1LD3ZvpHtDgaHQ0EWyW0XdlCckzzaqCq95GyjXlmR9kUdrN2hYpKsuscA7nOPY0_x_Zp5eDa8-ToJLyTIJeNuFlUoco7BSyDHn_y7mD5rXZIqLsgc4hm05213bcbUPT2mXd-2bSR-U6S-9XFIRA"
+    },
+    {
+      "position": 3,
+      "title": "CLEAR COUNSELLING - Individual & Couples Counselling, and Sex Therapy",
+      "place_id": "ChIJL2HamnhxhlQRG5HRVvVsdPE",
+      "data_id": "0x548671789ada612f:0xf1746cf556d1911b",
+      "data_cid": "17398651061418430747",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671789ada612f%3A0xf1746cf556d1911b&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671789ada612f%3A0xf1746cf556d1911b&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.284748,
+        "longitude": -123.11439589999999
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJL2HamnhxhlQRG5HRVvVsdPE",
+      "provider_id": "/g/11gbx93dy5",
+      "rating": 4.6,
+      "reviews": 19,
+      "type": "Psychotherapist",
+      "types": [
+        "Psychotherapist",
+        "Psychologist"
+      ],
+      "type_id": "psychotherapist",
+      "type_ids": [
+        "psychotherapist",
+        "psychologist"
+      ],
+      "address": "470 Granville St #621, Vancouver, BC V6C 1V5",
+      "open_state": "Closed \u00b7 Opens 10\u202fa.m. Sun",
+      "hours": "Closed \u00b7 Opens 10\u202fa.m. Sun",
+      "operating_hours": {
+        "saturday": "10\u202fa.m.\u20134\u202fp.m.",
+        "sunday": "10\u202fa.m.\u20134\u202fp.m.",
+        "monday": "8\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "8\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "8\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "8\u202fa.m.\u20138\u202fp.m.",
+        "friday": "8\u202fa.m.\u20138\u202fp.m."
+      },
+      "phone": "(604) 620-5010",
+      "website": "http://www.clearcounselling.ca/",
+      "extensions": [
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "user_review": "\"Renee is a considerate and helpful counsellor.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAHqgUbL1yx8XEcSNM8JaNRtUjgsopWw9q_QY8CaFE0Owqzb9XzKZAj9GMEFXDPJ38M5Mhu-mLnhFbhtU0i1Tuq2mNpt0hxLKad6oWttQ9sa990JXtPCDHd0hYer_NycnRQG7eVeyA=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/SHG5S3icHcRLDoIwFADAE1WKRqUmLoiCBqGCiqIbA7Vp_dCCfQTxhh7B25g4i_l-JEBlJpb1kIOe0Fo8eGP4k2kFXEGP6dISlUHMIGO5MU3u7rIWaRHa3cvJPLalkRPkdAPpTRhdHVpSn5OjM8t9D6_b-l2Q7L06uTeyiDw_m8fBwImGkWxQGSrpFxJSfLV3Td0vaQVYvsJVfhnpA0BCTE4IDjKIZ_PlBcsjf55px9QmWYz5nnfutLUxxkj-Z0j9APnERXY"
+    },
+    {
+      "position": 4,
+      "title": "Counsel Me Vancouver",
+      "place_id": "ChIJ3241SdVzhlQR9mwT4YwHty8",
+      "data_id": "0x548673d549356edf:0x2fb7078ce1136cf6",
+      "data_cid": "3438225142173625590",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548673d549356edf%3A0x2fb7078ce1136cf6&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548673d549356edf%3A0x2fb7078ce1136cf6&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2812653,
+        "longitude": -123.1254477
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJ3241SdVzhlQR9mwT4YwHty8",
+      "provider_id": "/g/11b6bct7t8",
+      "rating": 4.7,
+      "reviews": 13,
+      "type": "Marriage or relationship counselor",
+      "types": [
+        "Marriage or relationship counselor",
+        "Counselor",
+        "Family counselor",
+        "Fertility clinic",
+        "Life coach",
+        "Mental health service",
+        "Psychotherapist"
+      ],
+      "type_id": "marriage_counselor",
+      "type_ids": [
+        "marriage_counselor",
+        "counselor",
+        "family_counselor",
+        "fertility_clinic",
+        "life_coach",
+        "mental_health_service",
+        "psychotherapist"
+      ],
+      "address": "970 Burrard St, Vancouver, BC V6Z 2S1",
+      "open_state": "Open \u00b7 Closes 7\u202fp.m.",
+      "hours": "Open \u00b7 Closes 7\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20137\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20137\u202fp.m.",
+        "monday": "9\u202fa.m.\u20137\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20137\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20137\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20137\u202fp.m.",
+        "friday": "9\u202fa.m.\u20137\u202fp.m."
+      },
+      "phone": "(604) 218-1393",
+      "website": "https://counselmevancouver.com/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "service_options": [
+            "Online appointments",
+            "Onsite services"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        },
+        {
+          "parking": [
+            "On-site parking",
+            "Paid street parking"
+          ]
+        }
+      ],
+      "service_options": {
+        "online_appointments": true,
+        "onsite_services": true
+      },
+      "book_online": "https://counselmevancouver.janeapp.com/locations/counsel-me-vancouver/book?rwg_token=AFd1xnGzx_NNA8NmORXXiLhT4BHVmoUHRd0VHvRfbu80aam2J5fAWWCpc2EL5qUqRpUvIi-taxIgss5AI4VXQBxbbPED5DdFgA%3D%3D",
+      "user_review": "\"I highly recommend the counsellors at CMV.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAGpmH3PC2Eg9mCEPTZE0OtbuoPSHB_LrVcyxZwFcRMKfYjv9Nv4UiyWw-FKO9iSkiYPB7BKG85N4Vcnb5ksDzY2RRjV8gG1pT9bOm1qjaFQRqS0UItc5paZWKkXHq18NmEv4KPC=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/RnYjLXicHcRLjoIwAADQE1WKQgQTF4J8Jh2hgqKwMdJg-VhabAWdC84Z5jaT-Bbv77dWSsiVpt3rxYxyTu_VU1YPwntV9WpGONOokIBIILUNjvbdJhAsXGB37lGbuR4-FB6MVfnkOA2dy_cjI-9XMfkk2aFb3o52NBrH5n2agI9iu0m7JsfO0kGBZUZGRvrS7OT2J58nSZtZNNDFwS5jpg_t1d8nQwqPX4qY4lqcUHcOB92KmDcaCLvrSYcQgvozAf0_HP9DrQ"
+    },
+    {
+      "position": 5,
+      "title": "Clearheart Counselling",
+      "place_id": "ChIJ2_QRXL5zhlQRRNd__dYVguM",
+      "data_id": "0x548673be5c11f4db:0xe38215d6fd7fd744",
+      "data_cid": "16393689606702225220",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548673be5c11f4db%3A0xe38215d6fd7fd744&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548673be5c11f4db%3A0xe38215d6fd7fd744&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2572437,
+        "longitude": -123.139044
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJ2_QRXL5zhlQRRNd__dYVguM",
+      "provider_id": "/g/11h0b4mc5",
+      "rating": 4.7,
+      "reviews": 36,
+      "type": "Mental health service",
+      "types": [
+        "Mental health service",
+        "Family counselor",
+        "Health counselor",
+        "Marriage or relationship counselor"
+      ],
+      "type_id": "mental_health_service",
+      "type_ids": [
+        "mental_health_service",
+        "family_counselor",
+        "health_counselor",
+        "marriage_counselor"
+      ],
+      "address": "3195 Granville St #103, Vancouver, BC V6H 3K2",
+      "open_state": "Open \u00b7 Closes 7\u202fp.m.",
+      "hours": "Open \u00b7 Closes 7\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20137\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20137\u202fp.m.",
+        "monday": "9\u202fa.m.\u20139\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20139\u202fp.m.",
+        "friday": "9\u202fa.m.\u20139\u202fp.m."
+      },
+      "phone": "(778) 316-8080",
+      "website": "https://clearheartcounselling.com/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "service_options": [
+            "Onsite services"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "service_options": {
+        "onsite_services": true
+      },
+      "book_online": "https://clearheart.janeapp.com/locations/vancouver/book?rwg_token=AFd1xnHJRY1Aocb_00aOfWrufGt77qNf9ZSEmhjZzITk08KB57CNz0yEEVOMuXj8NjQ6uF3eTDzbnBOY-Tk-7ZGBof2B770S7g%3D%3D",
+      "user_review": "\"It's nice to connect with a councellor in an in-person setting.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAG3cTNSEglq6I4eiQfotFmNj7rWdE4cPHrOidar_fwnSYaUOE3fjg0wdJWX3YG5DjpVs12DXucfifimdUgm0zVRCtDsFxA4sdY-sy9YsQJZKRnZ6tcuIIDZT0Fqr1_Dc-KFCBvkay_CwDFx=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/un19Z3icHcTdboIwGADQJ6qUwTRbsgtGqaIJiv9wQ0hLCwgt9itD95K73tss2bk4vz-1tQO8O05XezOpteyqESrDtLKVsjOme0cOgBggcIJdkt6CpceOySGS3X0e-1WTCm1pn7QLc-GRz3Yrs214aQoxqUNWnraRJ1qJJ76-XL1s-Ura4QzuC7mOTDSi6flJ9vj7vA8tAfoIfOAZgudbBuk63-xVPrdsjGOSHzG9G7cgDG1o-Pl1K59FOBH6-JhcjDGq_2dI_QH2akg6"
+    },
+    {
+      "position": 6,
+      "title": "Open Space Counselling",
+      "place_id": "ChIJl3wI8MdzhlQR9WjzsLcQnH4",
+      "data_id": "0x548673c7f0087c97:0x7e9c10b7b0f368f5",
+      "data_cid": "9123185326279583989",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548673c7f0087c97%3A0x7e9c10b7b0f368f5&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548673c7f0087c97%3A0x7e9c10b7b0f368f5&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.263665499999995,
+        "longitude": -123.1548277
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJl3wI8MdzhlQR9WjzsLcQnH4",
+      "provider_id": "/g/11bxgn85_2",
+      "rating": 4.7,
+      "reviews": 25,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Marriage or relationship counselor",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "marriage_counselor",
+        "psychotherapist"
+      ],
+      "address": "2184 W Broadway #460, Vancouver, BC V6K 2E1",
+      "open_state": "Closes soon \u00b7 5\u202fp.m. \u00b7 Opens 9\u202fa.m. Sun",
+      "hours": "Closes soon \u00b7 5\u202fp.m. \u00b7 Opens 9\u202fa.m. Sun",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20135\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20136\u202fp.m.",
+        "monday": "9\u202fa.m.\u20139\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "wednesday": "8\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "8\u202fa.m.\u20136\u202fp.m."
+      },
+      "phone": "(778) 819-2256",
+      "website": "http://openspacecounselling.ca/?utm_source=organic&utm_medium=gbp&utm_campaign=vancouver",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "book_online": "https://openspace.janeapp.com/locations/open-space-counselling-kitsilano/book?rwg_token=AFd1xnGi5e2sG4DoQPZsLinqUDAUWRJtZJEDgzK1_lvUSqFcswnIIvEwa5hI6hMqqaTuF7-5AexgHKCzaDVP4zNDJeIc7dq0hw%3D%3D",
+      "user_review": "\"Elana's counselling practice and group clinic are beyond exceptional.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAFIlm2qcGOMZEjFq7xNv7B7i4OAOg5P0ELm8a_8mi0ZTTqjcPktCCBA6uigvQAQ2glZ6homTM83DzLTQsDTXXtAXBSsxeAujAqgWV6JVUdDp4hOg1_MhUpHRRg4h2z9HgyqLz4y=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/SMSdQHicHcRLroIwFADQFSEVEdDkDYr4DQhoVcLEmEpuQUqpLT5lg67B3Zh4BufzZlq3amqaNRsNQAioi04VdyoaXTR6QAU3oVUGVYYycbJNb3ixrrkl6TKO8nm1kO5z-3B9t7RjHMM4QfOQe5ezx0uUEyIrmtz0bOZjpyvhkeLUgjp3mOAk8kZBH5JUBSTLNM78vXoWuKuwhNPR2RwP16C1WQzDc8QO7Wq3A5tZ_WQFLxn29uvvf4gQMthvajRfGEtEVA"
+    },
+    {
+      "position": 7,
+      "title": "No Fear Counselling - North Commercial Drive | Low Cost Counselling in Vancouver",
+      "place_id": "ChIJb7sNhfJxhlQRihQIYyvLZzg",
+      "data_id": "0x548671f2850dbb6f:0x3867cb2b6308148a",
+      "data_cid": "4064440575930668170",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671f2850dbb6f%3A0x3867cb2b6308148a&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671f2850dbb6f%3A0x3867cb2b6308148a&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.271823399999995,
+        "longitude": -123.069327
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJb7sNhfJxhlQRihQIYyvLZzg",
+      "provider_id": "/g/11lgs60z18",
+      "rating": 5,
+      "reviews": 29,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Family counselor",
+        "Marriage or relationship counselor",
+        "Mental health service",
+        "Psychologist",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "family_counselor",
+        "marriage_counselor",
+        "mental_health_service",
+        "psychologist",
+        "psychotherapist"
+      ],
+      "address": "1416 Commercial Dr #101, Vancouver, BC V5L 3X9",
+      "open_state": "Open 24 hours",
+      "hours": "Open 24 hours",
+      "operating_hours": {
+        "saturday": "Open 24 hours",
+        "sunday": "Open 24 hours",
+        "monday": "Open 24 hours",
+        "tuesday": "Open 24 hours",
+        "wednesday": "Open 24 hours",
+        "thursday": "Open 24 hours",
+        "friday": "Open 24 hours"
+      },
+      "phone": "(778) 288-8361",
+      "website": "https://www.nofearcounselling.com/best-couples-counselling-vancouver",
+      "extensions": [
+        {
+          "accessibility": [
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "user_review": "\"My counsellor, Jenny, has helped me during very hard time.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAELXoHrVoxWRQe7oT5DOi77JJOgj2T5ThYXhCu4o5sp3sZujXaRAOIOfqnJMtoj1UvGY-d91_4LqzmI4Hw_9yqlPi5UgAIwwlFEt-6-u9MrJ8PO8LsVGR_9oGPYHzXclT3CLIel=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/_pNJZnicHcTbboIwGADgJyoHARETL4hzHIIrEmTgDTFdbWWVH2gR5QV9Bt9myb6L7_3iSnVyreuCWxoDYIKOkg4EWkVbpRG46ayTiEgkdT_9Ovz6u6SEcCjg8Z0dqAu584GvrhvHmDWL3Ml5VfLtaIMjO0uexqY8Zz6O8KVv472Cxjzegwr9eGZtJ_18i-xwqr1nL9Krc2R-NE3ic6fQEo3efohXKV4lsgiy2oMgrcK5JCK3tklExWYyDcNA_H-C2j9L20Q0"
+    },
+    {
+      "position": 8,
+      "title": "Thrive Downtown Counselling Centre",
+      "place_id": "ChIJ7yyfm3hxhlQRqkAvRY0IlAE",
+      "data_id": "0x548671789b9f2cef:0x194088d452f40aa",
+      "data_cid": "113725293435240618",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671789b9f2cef%3A0x194088d452f40aa&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671789b9f2cef%3A0x194088d452f40aa&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.284723,
+        "longitude": -123.1142409
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJ7yyfm3hxhlQRqkAvRY0IlAE",
+      "provider_id": "/g/11cn3q5n0h",
+      "rating": 4.9,
+      "reviews": 57,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Family counselor",
+        "Marriage or relationship counselor",
+        "Mental health clinic",
+        "Mental health service",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "family_counselor",
+        "marriage_counselor",
+        "mental_health_clinic",
+        "mental_health_service",
+        "psychotherapist"
+      ],
+      "address": "470 Granville St #518, Vancouver, BC V6C 1V5",
+      "open_state": "Closed \u00b7 Opens 9\u202fa.m. Mon",
+      "hours": "Closed \u00b7 Opens 9\u202fa.m. Mon",
+      "operating_hours": {
+        "saturday": "Closed",
+        "sunday": "Closed",
+        "monday": "9\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "9\u202fa.m.\u20138\u202fp.m."
+      },
+      "phone": "(604) 227-0297",
+      "website": "https://thrivedowntown.com/?utm_source=GBP&utm_medium=organic&utm_campaign=Google+Business+Profile&utm_id=Google+Business+Profile",
+      "extensions": [
+        {
+          "service_options": [
+            "Onsite services"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "service_options": {
+        "onsite_services": true
+      },
+      "user_review": "\"I have been so fortunate to receive counselling services from Estairia Hong.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAHcrrhJL2iw0zROLfaIrrGuaj_hpL3mSz_REcenD-p5oOWsOYVDSPOYf1LRBOdjbys2zNj84Ou51POiyHKSUwep_gajWrajuPquF367LIwiCCPo7qrGmQeSWFfnXfxu9Wu8h3sR=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/CeQT5nicHcRZEoIgAADQE-GS7TN9tNnGBOmU9eUYoUgJBDKWF-wM3aaZ3sf7flhdKzN23QcLnELK4kGtoZpIUVNRO0RWbqEMIAYYd4r3h_t0TbRmW9gpG6-NEMyzjdYrm_GUKRhUcZtGS0LFAqieRIlBl9MixuiS-zCaoRu_vk2n3fNhF9mej1H5Xu_iY0NVWmQ80Rm3-GnDoD-Am6acz7EcPPWqOtA4CXNxzl92lNghC0w0aXzP8wD7T4D4AetuRj4"
+    },
+    {
+      "position": 9,
+      "title": "Lighthouse Counselling",
+      "place_id": "ChIJRaqDSXh0hlQRU1a6_ahEgpI",
+      "data_id": "0x548674784983aa45:0x928244a8fdba5653",
+      "data_cid": "10557075969111905875",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548674784983aa45%3A0x928244a8fdba5653&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548674784983aa45%3A0x928244a8fdba5653&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.263540899999995,
+        "longitude": -123.14790119999999
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJRaqDSXh0hlQRU1a6_ahEgpI",
+      "provider_id": "/g/11c6cxb3lf",
+      "rating": 4.8,
+      "reviews": 22,
+      "type": "Mental health clinic",
+      "types": [
+        "Mental health clinic",
+        "EMDR psychotherapist",
+        "Marriage or relationship counselor",
+        "Mental health service",
+        "Psychotherapist"
+      ],
+      "type_id": "mental_health_clinic",
+      "type_ids": [
+        "mental_health_clinic",
+        "emdr_psychotherapist",
+        "marriage_counselor",
+        "mental_health_service",
+        "psychotherapist"
+      ],
+      "address": "1892 W Broadway #202, Vancouver, BC V6J 1Y9",
+      "open_state": "Open \u00b7 Closes 8\u202fp.m.",
+      "hours": "Open \u00b7 Closes 8\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20138\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20138\u202fp.m.",
+        "monday": "9\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "9\u202fa.m.\u20138\u202fp.m."
+      },
+      "phone": "(604) 809-5848",
+      "website": "http://www.lighthousetraumatherapy.ca/",
+      "extensions": [
+        {
+          "service_options": [
+            "Onsite services"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible parking lot"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "unsupported_extensions": [
+        {
+          "accessibility": [
+            "Wheelchair-accessible washroom"
+          ]
+        }
+      ],
+      "service_options": {
+        "onsite_services": true
+      },
+      "thumbnail": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=f7KBhUB4nlL4gDeegO_DyA&cb_client=search.gws-prod.gps&w=80&h=92&yaw=170.71297&pitch=0&thumbfov=100",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/3erDdXicHc1fCsIgHADg2_iWf8bAFkg09lbQU8_Dud9UcCpqs92ma3Wbogt83-dtSon5REguCaBsFmq0L3D5ECXWIWgHMtqMVVjJxkgxz3Xy0rpzlD7YWSz82ptH33p3a_UAoO_jsF-QmkblLPgiMsikDNb1J6YwYx0zquJIkRFdg3ZZBeMUc9Z0HEVblBEU_ZclbIJR-gVhtTlJ"
+    },
+    {
+      "position": 10,
+      "title": "The Good Life Therapy Centre",
+      "place_id": "ChIJsa9Um3hxhlQR2oBHfkUsJcQ",
+      "data_id": "0x548671789b54afb1:0xc4252c457e4780da",
+      "data_cid": "14133751682555150554",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671789b54afb1%3A0xc4252c457e4780da&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671789b54afb1%3A0xc4252c457e4780da&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.284531099999995,
+        "longitude": -123.1141129
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJsa9Um3hxhlQR2oBHfkUsJcQ",
+      "provider_id": "/g/1tdd4z7m",
+      "rating": 4.6,
+      "reviews": 10,
+      "type": "Marriage or relationship counselor",
+      "types": [
+        "Marriage or relationship counselor",
+        "Addiction treatment center"
+      ],
+      "type_id": "marriage_counselor",
+      "type_ids": [
+        "marriage_counselor",
+        "addiction_treatment_center"
+      ],
+      "address": "470 Granville St Suite 635 and Suite 626, Vancouver, BC V6C 1V5",
+      "open_state": "Open \u00b7 Closes 7\u202fp.m.",
+      "hours": "Open \u00b7 Closes 7\u202fp.m.",
+      "operating_hours": {
+        "saturday": "10\u202fa.m.\u20137\u202fp.m.",
+        "sunday": "10\u202fa.m.\u20137\u202fp.m.",
+        "monday": "9\u202fa.m.\u20139\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20139\u202fp.m.",
+        "friday": "9\u202fa.m.\u20139\u202fp.m."
+      },
+      "phone": "(604) 682-1484",
+      "website": "http://www.goodlifetherapy.ca/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "service_options": [
+            "Online appointments",
+            "Onsite services"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "service_options": {
+        "online_appointments": true,
+        "onsite_services": true
+      },
+      "user_review": "\"I have the utmost respect for Sue Diamond as a skilled couples therapist.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAGbkczdG1nyZXgx5KLewHNPUSrHvjuyB98N0ShNINf1exirlUZbcxMtRNTdKY3mNAch_a8Umk2tKIruZMOnXvr6uU6btE-9KwJiAMqq7BIUfmog5M4AxTQoWJ4YDpIbuS3DvZrbrw=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/Hfyf53icHcTbboIwAADQL6qAiFMTH2pYFJF6wWbKy7LW2jqgxV4A_UM_wb9ZsvNw3i9hbWNmnleJcMCV4hVzhmmqpGXSDqiqPd4YQA0wHtyhfQmXpKTPyzKQj-LE-yjdsG6FdjjXq_bXPRbTCfJzgRJ0DVh_0xUuCO0ze0DHS3oOawSp-P6Z4Loc2jTRrsi28tTqscNjYj_BNO3WN5jd7x-LBF9rxaNsBPvjXn2tR-e4SYjLw7gtNNHdvAt83wfifwrkH3dHRrg"
+    },
+    {
+      "position": 11,
+      "title": "Healing Anger",
+      "place_id": "ChIJTaYmGXlxhlQRxu_voQg1p4I",
+      "data_id": "0x548671791926a64d:0x82a73508a1efefc6",
+      "data_cid": "9414551857234177990",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671791926a64d%3A0x82a73508a1efefc6&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671791926a64d%3A0x82a73508a1efefc6&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.282728399999996,
+        "longitude": -123.112309
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJTaYmGXlxhlQRxu_voQg1p4I",
+      "provider_id": "/g/11g9vhqlq0",
+      "rating": 5,
+      "reviews": 40,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Family counselor",
+        "Life coach",
+        "Mental health service",
+        "Psychotherapist",
+        "Support group"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "family_counselor",
+        "life_coach",
+        "mental_health_service",
+        "psychotherapist",
+        "support_group"
+      ],
+      "address": "402 W Pender St, Vancouver, BC V6B 1T6",
+      "open_state": "Open \u00b7 Closes 8\u202fp.m.",
+      "hours": "Open \u00b7 Closes 8\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20138\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20138\u202fp.m.",
+        "monday": "9\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "9\u202fa.m.\u20138\u202fp.m."
+      },
+      "phone": "(778) 322-3329",
+      "website": "https://healinganger.ca/",
+      "extensions": [
+        {
+          "amenities": [
+            "Gender-neutral washroom",
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "user_review": "\"Alejandra and Brinita are wonderful and very knowledgeable facilitators.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAGhKcgUX5NfzS8yeqJkxCDZnvmA-2X3De3MTmQMQL0fgydT0-u49vIinXL0T9AGc9pemLg6RpSrLwFGNrr07fUtHWiQi619xe_2VDxW9VtTg3JWoVUmNKPPsboAY5ul-nFxGJYJ=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/KW2IpXicHcRdDoIgAADgE5GYZdHWA8tlmTktf3tpixBdAiZY1gU7Q7dp63v4vp9K61YtDKOprBGTkjW0V7QjUmgq9IhIbrBWAaKAMnAYRDfsVjvCknwalO_j_EXv3m1YOSfx4BiMc8uh1j7m0T7yYcle1xiCfoIe21rkPowRdglqKfeZfWiPnf9cu0HXwVmZ6E1WR7VtooGex6kzZCjVMbO8TKYJD3ZhqC4SF9O-AWI9uF7hLZ8mhBBU_wkQPzO0RB0"
+    },
+    {
+      "position": 12,
+      "title": "Chroma Counselling",
+      "place_id": "ChIJDa7HK3pxhlQRHNkAU_sPNZQ",
+      "data_id": "0x5486717a2bc7ae0d:0x94350ffb5300d91c",
+      "data_cid": "10679459663482771740",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x5486717a2bc7ae0d%3A0x94350ffb5300d91c&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x5486717a2bc7ae0d%3A0x94350ffb5300d91c&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.284780999999995,
+        "longitude": -123.1144576
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJDa7HK3pxhlQRHNkAU_sPNZQ",
+      "provider_id": "/g/11bccjgc6q",
+      "rating": 4.9,
+      "reviews": 48,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Health counselor",
+        "Mental health clinic",
+        "Mental health service",
+        "Psychologist",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "health_counselor",
+        "mental_health_clinic",
+        "mental_health_service",
+        "psychologist",
+        "psychotherapist"
+      ],
+      "address": "470 Granville St Unit 509, Vancouver, BC V6C 1V5",
+      "open_state": "Closes soon \u00b7 5\u202fp.m. \u00b7 Opens 9\u202fa.m. Sun",
+      "hours": "Closes soon \u00b7 5\u202fp.m. \u00b7 Opens 9\u202fa.m. Sun",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20135\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20138\u202fp.m.",
+        "monday": "9\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u201311\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u201311\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "9\u202fa.m.\u201311\u202fp.m."
+      },
+      "phone": "(604) 283-2523",
+      "website": "https://www.chromacounselling.ca/",
+      "extensions": [
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible entrance"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        },
+        {
+          "parking": [
+            "Paid parking lot",
+            "Paid street parking"
+          ]
+        }
+      ],
+      "book_online": "https://chroma.janeapp.com/locations/chroma-counselling/book?rwg_token=AFd1xnEpi_OEvbZQEYdY8JWqalh_mm0hTqvQZg4OYrUkyn7E3p49V5NsF1F-Oi7OqSoTMMVgPSxiyAviVXiy8cxV7hTyyOQMNg%3D%3D",
+      "user_review": "\"Jenny was very adaptable and helped me process my emotions.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAE27ZX1khfC1tzJf4ECc-4f3oISARyS8snWyFuSsLtChliYyMX_2nzzFNYFQqhhmT7TAGhzccFYEJVXDZ43vuCsowWVC-wXzf50Bzaz97Pq2sZEwhe28UJQFpI_GiYujvEKNsku72Wbdic9=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/a3atGHicHcTdboIwGADQJ6pAYUGX7AK71sg2IkPl58ZsHVAGtujXSuhLer23Mdm5OH93ofUIz44zCH_RKtUOtYH6ypXUtdQLrs5OOwLigMCJdknaRxSHVeH1oiGetnETUMJR0Phqm0Wfc7YEmc_MZPCuiRi6cv4oTlhay5KSpRchzvtwH22E5ZyVND4Wr1Xg3wwBNeVHgqbCNk_u2n7ZVbi7YKjoJGq8PMQpG7enTVea3xt9S6A3Ic6_fzq-epk813WR-J8j-QCtw0fZ"
+    },
+    {
+      "position": 13,
+      "title": "Well Beings Counselling - Vancouver",
+      "place_id": "ChIJ5y8RhHVxhlQRZiN2F-hMlJ0",
+      "data_id": "0x5486717584112fe7:0x9d944ce817762366",
+      "data_cid": "11354785120217604966",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x5486717584112fe7%3A0x9d944ce817762366&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x5486717584112fe7%3A0x9d944ce817762366&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.286141199999996,
+        "longitude": -123.1157307
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJ5y8RhHVxhlQRZiN2F-hMlJ0",
+      "provider_id": "/g/11h_6slyzj",
+      "rating": 4.4,
+      "reviews": 47,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Family counselor",
+        "Marriage or relationship counselor",
+        "Mental health clinic",
+        "Mental health service",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "family_counselor",
+        "marriage_counselor",
+        "mental_health_clinic",
+        "mental_health_service",
+        "psychotherapist"
+      ],
+      "address": "838 W Hastings St Suite #721, Vancouver, BC V6C 0A6",
+      "open_state": "Open \u00b7 Closes 8\u202fp.m.",
+      "hours": "Open \u00b7 Closes 8\u202fp.m.",
+      "operating_hours": {
+        "saturday": "8\u202fa.m.\u20138\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20135\u202fp.m.",
+        "monday": "8\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "8\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "8\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "8\u202fa.m.\u20138\u202fp.m.",
+        "friday": "8\u202fa.m.\u20138\u202fp.m."
+      },
+      "phone": "(604) 305-3870",
+      "website": "https://wellbeingscounselling.ca/vancouver/?utm_source=google&utm_medium=organic&utm_campaign=gmb-downtownvan",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        },
+        {
+          "parking": [
+            "Paid parking garage",
+            "Paid parking lot",
+            "Paid street parking"
+          ]
+        }
+      ],
+      "user_review": "\"Supported me in developing language and behaviours to work through trauma.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAF-0HSFEaitifLcxOYRT3Xh7vAruac0fVLwCry0cdwV7QVHg6k0cWraf1FPbwBWMlG_0JnjS1y_NI-olvU3eRt6MJlY3UarHqe0H122GzM5E6qsCeKha8a6UuiYY6kBHVJ7KaQ0=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/cGOnYnicHcRRboIwGADgExV-JCvGZA9oxA5ERQXHk6m1UKRSbYvMXdAzeJsl-x6-90tYezMT15XCd2qlasl7wzVTneWddZi6uvXNIGaQccPNKmvDCAHZRXPa2KZasp91ud373yJ4hLqnDKpiOcz0E9h5KIKsIDVugR00rbxocxqmh1QujhB3l533PK6-kJKP3Odbi9NYln5ONblzIN5otPhNP-b4bmY8EXRMcd43ZYnbKSniIKEZfA4eACDxP0PdHzUKQ5I"
+    },
+    {
+      "position": 14,
+      "title": "Skylark Counselling Clinic",
+      "place_id": "ChIJR-zW36ZxhlQRZx8kA4QbO0o",
+      "data_id": "0x548671a6dfd6ec47:0x4a3b1b8403241f67",
+      "data_cid": "5348899236234927975",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671a6dfd6ec47%3A0x4a3b1b8403241f67&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671a6dfd6ec47%3A0x4a3b1b8403241f67&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2836991,
+        "longitude": -123.11458329999999
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJR-zW36ZxhlQRZx8kA4QbO0o",
+      "provider_id": "/g/11j1mnl_bq",
+      "rating": 4.8,
+      "reviews": 32,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Family counselor",
+        "Marriage or relationship counselor"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "family_counselor",
+        "marriage_counselor"
+      ],
+      "address": "525 Seymour St Suite 311, Vancouver, BC V6B 3H6",
+      "open_state": "Open \u00b7 Closes 10\u202fp.m.",
+      "hours": "Open \u00b7 Closes 10\u202fp.m.",
+      "operating_hours": {
+        "saturday": "8\u202fa.m.\u201310\u202fp.m.",
+        "sunday": "8\u202fa.m.\u201310\u202fp.m.",
+        "monday": "8\u202fa.m.\u201310\u202fp.m.",
+        "tuesday": "8\u202fa.m.\u201310\u202fp.m.",
+        "wednesday": "8\u202fa.m.\u201310\u202fp.m.",
+        "thursday": "8\u202fa.m.\u201310\u202fp.m.",
+        "friday": "8\u202fa.m.\u201310\u202fp.m."
+      },
+      "phone": "(778) 899-3802",
+      "website": "https://skylarkclinic.ca/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "book_online": "https://skylarkclinic.janeapp.com/locations/skylark-counselling-vancouver/book?rwg_token=AFd1xnGkbSGyS5n24URTRNmww4NrXLQsoq0ig9AGO8XtT2oMQieAOIT1-jJhSpUPtOIgfc8T6GAQOEXrkd6aNWWhMAxV1C7uNQ%3D%3D",
+      "user_review": "\"Skylark counselling has been incredibly supportive within my journey!\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAHKitRKCHZoaNRqI6i17CsMP3XgOaGKVGICGfL-ULqjT0P8GdTSq_8IQkopKhC7aN2JZwWNnMifBn6xC8vwRt44itdV7FkhkW_ldQgL3EKs0NPWvnk-MoIQtgf8k59A7V-3XbpO=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/adjurXicHcTvEoEwAADwJ5pGKO58yI5kNRXK-eLSny3LVjbyhp7B27jz-_D7fpjWrZobRsPMAZWSNuVTlY9cCl0KPcjl3aCtArkCynBCEnFng2sdY7Q5y4zEnTethxZSQWie6C5zceJ6yK18cPS72wGGtlsc9t3F9iIuW8yQlZHR9tynRAR1tRTTN7JffazH41oXibXmjKeXpoiob66wgiRMX4KDQHqRppXNJzPHSoB5ura7RT-EEAL2PwfiB-8uQ28"
+    },
+    {
+      "position": 15,
+      "title": "Equimind Counselling",
+      "place_id": "ChIJmYdVHqFxhlQRrVbwL7kVroA",
+      "data_id": "0x548671a11e558799:0x80ae15b92ff056ad",
+      "data_cid": "9272372567919842989",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671a11e558799%3A0x80ae15b92ff056ad&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671a11e558799%3A0x80ae15b92ff056ad&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2853911,
+        "longitude": -123.1215501
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJmYdVHqFxhlQRrVbwL7kVroA",
+      "provider_id": "/g/11v5yp6bdv",
+      "rating": 5,
+      "reviews": 15,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Marriage or relationship counselor",
+        "Psychotherapist"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "marriage_counselor",
+        "psychotherapist"
+      ],
+      "address": "1055 W Georgia St Unit# 2410, Vancouver, BC V6E 3P3",
+      "open_state": "Open \u00b7 Closes 9\u202fp.m.",
+      "hours": "Open \u00b7 Closes 9\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20139\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20139\u202fp.m.",
+        "monday": "9\u202fa.m.\u20139\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20139\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20139\u202fp.m.",
+        "friday": "9\u202fa.m.\u20139\u202fp.m."
+      },
+      "phone": "(672) 472-9308",
+      "website": "https://equimindcounselling.com/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "unsupported_extensions": [
+        {
+          "accessibility": [
+            "Wheelchair accessible seating"
+          ]
+        }
+      ],
+      "user_review": "\"I would recommend Irmak for anyone seeking couple therapy and guidance :)\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAFB3Pbs1lo4sYGo6I309dQ70_xSGvQ7FIaCNjfVN_uAx_PDwvUXTdpMGFvKAuV2rt67tI0Dc_Kjyqky8Pob5M91Jrdxd6rf02Eh5TcI_Rzv2P63G6AJrknYR5RKYViWlQc982cl0g=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/c7A_Q3icHcRdDoIgAADgE5moidnWA_3ozOXQyvKJFZqWJAZo1g07Qrdp63v4vp9KqVZOdZ1V1qjkvGRFJwtBeaOKRo0ov-tlKzUqNakjHMU18uYWPkuD8bHMfA4DC7h57AAybP0-drzgtIhulzQiHRoIXj77_XGXtxvf60PUpaZQ0FEBWFIS3l6P-jXB_GxvXGMt8iGH4gLMVWXvaECSd29iaPkQrUXdZImdhFl6PbCYuhOTMlDOngYAQKv-U635AYFtRAw"
+    },
+    {
+      "position": 16,
+      "title": "Vida Relationships",
+      "place_id": "ChIJM2atF7hzhlQRenuD3GlnXZU",
+      "data_id": "0x548673b817ad6633:0x955d6769dc837b7a",
+      "data_cid": "10762872388854184826",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548673b817ad6633%3A0x955d6769dc837b7a&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548673b817ad6633%3A0x955d6769dc837b7a&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2638381,
+        "longitude": -123.1429215
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJM2atF7hzhlQRenuD3GlnXZU",
+      "provider_id": "/g/1ptx66nkj",
+      "rating": 5,
+      "reviews": 4,
+      "type": "Marriage or relationship counselor",
+      "types": [
+        "Marriage or relationship counselor"
+      ],
+      "type_id": "marriage_counselor",
+      "type_ids": [
+        "marriage_counselor"
+      ],
+      "address": "1687 W Broadway #200, Vancouver, BC V6J 1X2",
+      "open_state": "Closes soon \u00b7 5:30\u202fp.m. \u00b7 Opens 7\u202fa.m. Mon",
+      "hours": "Closes soon \u00b7 5:30\u202fp.m. \u00b7 Opens 7\u202fa.m. Mon",
+      "operating_hours": {
+        "saturday": "8\u202fa.m.\u20135:30\u202fp.m.",
+        "sunday": "Closed",
+        "monday": "7\u202fa.m.\u20134\u202fp.m.",
+        "tuesday": "7\u202fa.m.\u20138:30\u202fp.m.",
+        "wednesday": "7\u202fa.m.\u20138:30\u202fp.m.",
+        "thursday": "7\u202fa.m.\u20138:30\u202fp.m.",
+        "friday": "7\u202fa.m.\u20134\u202fp.m."
+      },
+      "phone": "(604) 307-6050",
+      "website": "http://www.vidarelationships.com/",
+      "extensions": [
+        {
+          "service_options": [
+            "Online appointments",
+            "Onsite services"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "planning": [
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "service_options": {
+        "online_appointments": true,
+        "onsite_services": true
+      },
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAFmyfBxzi_QuqiCjstHX6pewWMEFhZ-MjT2iaRtmJyfhCuD65CnxJEJiQSBvICtNAgEdTzl-kv_CogLD572QjGAPr3DGN-sc_5rw8GqFTTEsf7l-L7JTcJhP_yOK_1NPdg27shE=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/KfDHfHicHcRRboIwGADgE1UQgyxL9oCl4DphoE00vjSmQgsCBf4i4gU9w26zxO_h-3spYzr4tKxarRZSa1nnI-SD0K3JW7MQurFkB0gAAstPk-zmh81cbB7PkmdjX-IKzPa07vLpGJNQnVFcMae87E1D50LhMVi7uH1QQsvssLl_Y5P4klzZs0a3O8da7gLXc7Iq8tNhFUQJAsHdYfqI-pAxAoVXo51HmaAq5fPvD18m6VU6HijyNS1t20bqvUDtP8WERME"
+    },
+    {
+      "position": 17,
+      "title": "Sana Counselling",
+      "place_id": "ChIJF3to31VyhlQRF929bdFDzo0",
+      "data_id": "0x54867255df687b17:0x8dce43d16dbddd17",
+      "data_cid": "10218179171318619415",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x54867255df687b17%3A0x8dce43d16dbddd17&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x54867255df687b17%3A0x8dce43d16dbddd17&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.268004999999995,
+        "longitude": -123.1521866
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJF3to31VyhlQRF929bdFDzo0",
+      "provider_id": "/g/11cmhgcjbh",
+      "rating": 4.7,
+      "reviews": 43,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Marriage or relationship counselor",
+        "Mental health clinic",
+        "Mental health service"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "marriage_counselor",
+        "mental_health_clinic",
+        "mental_health_service"
+      ],
+      "address": "2078 W 4th Ave #101, Vancouver, BC V6J 1M9",
+      "open_state": "Closed \u00b7 Opens 9\u202fa.m. Sun",
+      "hours": "Closed \u00b7 Opens 9\u202fa.m. Sun",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20133:30\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20133\u202fp.m.",
+        "monday": "9\u202fa.m.\u20137\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20137\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20137:30\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20136\u202fp.m.",
+        "friday": "9\u202fa.m.\u20136\u202fp.m."
+      },
+      "phone": "(604) 809-2438",
+      "website": "https://sanacounselling.ca/?utm_source=google&utm_medium=organic&utm_campaign=gmb",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "service_options": [
+            "Onsite services"
+          ]
+        },
+        {
+          "amenities": [
+            "Gender-neutral washroom",
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "unsupported_extensions": [
+        {
+          "accessibility": [
+            "Wheelchair-accessible entrance"
+          ]
+        }
+      ],
+      "service_options": {
+        "onsite_services": true
+      },
+      "user_review": "\"Megan is an incredible counsellor!\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAF9LdVLJt5c_av9MJCNF6qoT0EvL4tapcpunpSukIJfq4MnSUDPOi23rR971On6-mPmJgydghMfqO0lGkp8ATCMHMXYi1AxJHX4pUm373BMpWHdrJhv_olQkruzvi10lqj8g1YW=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/GySwS3icHcRLcoIwAADQE0WSQgWc6YL6oxkiUPG3cpyACRKSQAK2XrBn8DbO9C3e849bq83McQR3J0wpJqrBVD1V0lbSTqhqHaYNoAYYJ8o2eROtwqTcJ9i-0_NlDAmeb1bTThVwOSaevWiqB6m3Q_OFr51H5Ha3yNL6ze2_Qx-lcgrarMXst2ScXLsUinWjg6iYk5gcTzWKfnB89PSudX33k-hDXPaYj2cl8qYfHmONoOhuAUOnw8cdQQgB_58C-QJBw0Sl"
+    },
+    {
+      "position": 18,
+      "title": "Fieldwork Counselling & Therapy",
+      "place_id": "ChIJs5EN4mdzhlQR6L8gIsB_JdA",
+      "data_id": "0x54867367e20d91b3:0xd0257fc02220bfe8",
+      "data_cid": "14998534597210324968",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x54867367e20d91b3%3A0xd0257fc02220bfe8&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x54867367e20d91b3%3A0xd0257fc02220bfe8&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.263051999999995,
+        "longitude": -123.10130919999999
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJs5EN4mdzhlQR6L8gIsB_JdA",
+      "provider_id": "/g/11t827wzys",
+      "rating": 5,
+      "reviews": 32,
+      "type": "Counselor",
+      "types": [
+        "Counselor",
+        "Mental health clinic",
+        "Mental health service",
+        "Psychotherapist",
+        "Social worker"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor",
+        "mental_health_clinic",
+        "mental_health_service",
+        "psychotherapist",
+        "social_worker"
+      ],
+      "address": "175 E Broadway #205, Vancouver, BC V5T 1W2",
+      "open_state": "Open \u00b7 Closes 9\u202fp.m.",
+      "hours": "Open \u00b7 Closes 9\u202fp.m.",
+      "operating_hours": {
+        "saturday": "8\u202fa.m.\u20139\u202fp.m.",
+        "sunday": "8\u202fa.m.\u20139\u202fp.m.",
+        "monday": "8\u202fa.m.\u20139\u202fp.m.",
+        "tuesday": "8\u202fa.m.\u20139\u202fp.m.",
+        "wednesday": "8\u202fa.m.\u20139\u202fp.m.",
+        "thursday": "8\u202fa.m.\u20139\u202fp.m.",
+        "friday": "8\u202fa.m.\u20139\u202fp.m."
+      },
+      "phone": "(604) 774-5344",
+      "website": "https://fieldworkcounselling.ca/?utm_source=google&utm_medium=local&utm_campaign=google_business_profile&utm_content=website_link&utm_term=lee_building",
+      "extensions": [
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible entrance",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Gender-neutral washroom",
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        },
+        {
+          "parking": [
+            "Paid parking garage",
+            "Paid street parking"
+          ]
+        }
+      ],
+      "user_review": "\"I am so lucky to have found Feildwork counseling and Graham.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAFuaGjzjnfOSA312wR2_lYYWntzlDJWCC3nca1yuei-QkR5xb6_T8BAY8PMLc3otk_Mgo8K-a3HZ7tzQnjiCPsktS4wj-7eNdR033pJw5CXQeCuVkEA03O3yGqWIres2ToyiLvjIg=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/MVzBB3icHcRNcoIwGADQE0UCn1SmMy7StLVafwCdIt0wNE0DCSbUBBFu6BG8TWf6Fu9-q5xr7aPnNRVMhDGi4Z3lZ2a049pNmDl5orWIWWQ9Em8TRV67ciFHqX92ewJ-0KdB0eR5pt3YPK8ySkGz0h86XqNEpeH166E4RE8kj-LNmoFxqtgIE72jEt4-Z25MtKxpbJXbT3uJZnz7nWKAdtWH9Jhw2n2oF4JhB8PiN1ueuQ0OZqjXF7kU897HGKPqf4b0H-knRTo"
+    },
+    {
+      "position": 19,
+      "title": "East Vancouver Counselling",
+      "place_id": "ChIJZamn4lhxhlQRqxRoHmheC8M",
+      "data_id": "0x54867158e2a7a965:0xc30b5e681e6814ab",
+      "data_cid": "14054430863419511979",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x54867158e2a7a965%3A0xc30b5e681e6814ab&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x54867158e2a7a965%3A0xc30b5e681e6814ab&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2698916,
+        "longitude": -123.06984899999999
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJZamn4lhxhlQRqxRoHmheC8M",
+      "provider_id": "/g/11f5c6q43j",
+      "rating": 4.7,
+      "reviews": 10,
+      "type": "Mental health service",
+      "types": [
+        "Mental health service",
+        "Counselor",
+        "Family counselor",
+        "Social worker"
+      ],
+      "type_id": "mental_health_service",
+      "type_ids": [
+        "mental_health_service",
+        "counselor",
+        "family_counselor",
+        "social_worker"
+      ],
+      "address": "1651 Commercial Dr #202, Vancouver, BC V5L 3Y3",
+      "open_state": "Open \u00b7 Closes 6\u202fp.m.",
+      "hours": "Open \u00b7 Closes 6\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20136\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20138\u202fp.m.",
+        "monday": "9\u202fa.m.\u20138\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20138\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20138\u202fp.m.",
+        "friday": "9\u202fa.m.\u20138\u202fp.m."
+      },
+      "phone": "(604) 900-1861",
+      "website": "http://www.eastvancouvercounselling.ca/",
+      "extensions": [
+        {
+          "from_the_business": [
+            "Identifies as women-owned"
+          ]
+        },
+        {
+          "accessibility": [
+            "Wheelchair accessible seating",
+            "Wheelchair-accessible washroom"
+          ]
+        },
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "crowd": [
+            "LGBTQ+ friendly",
+            "Transgender safe space"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "book_online": "https://eastvancouvercounselling.janeapp.com/?rwg_token=AFd1xnFytu6g4hmYZOu6L9XrbESRDC-r0p7TbSp2ME_55fyUQjyp8m34z1HxwJsH8kVfb30LCl0dqvDa5YBTKaooM_abEMWKqw%3D%3D",
+      "user_review": "\"East Van counselling has a lovely team of knowledgable therapists.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAFeVkch-Iie7nb5QbJLBTwweAVZAXHdsBqcKIf793XliCLhdcTB6YvhWrjhGDVdMGmzxkCo97GUKBMw0w6mlkp5SIhnZJ4ZCph4Bp0Ayl3Ap2H5WQ6PzmuAdCPAMRmvr0T5wn4u=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/6pFmBXicHcRbcoIwFADQFUVieY2d6UeCI6LSgRZR-TRErpJXCZjWDXYN3U1nPB_n7xfG0dhXzxPgzzqtO8Enywem1cjVOGNaep2xiFlkPVK8lz1Z8bpngLIrj9U5LM-bHa2c46RuyHHdWvrFttklXvhHcU120LKKRqc7HIYbpMu6zVP5-O4TvYjT_ZbmDrtIit6EnxmoZhM0iYGAGkx-hE_Myzo8lFHxkBNpk4LkH_I-4Cp0Kpje3BxjjOA5Q-ofXrlEdA"
+    },
+    {
+      "position": 20,
+      "title": "Moose Anger Management",
+      "place_id": "ChIJ3xkJG3lxhlQRM5MRLzhvx8s",
+      "data_id": "0x548671791b0919df:0xcbc76f382f119333",
+      "data_cid": "14683827397163324211",
+      "reviews_link": "https://serpapi.com/search.json?data_id=0x548671791b0919df%3A0xcbc76f382f119333&engine=google_maps_reviews&hl=en",
+      "photos_link": "https://serpapi.com/search.json?data_id=0x548671791b0919df%3A0xcbc76f382f119333&engine=google_maps_photos&hl=en",
+      "gps_coordinates": {
+        "latitude": 49.2827468,
+        "longitude": -123.11219369999999
+      },
+      "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJ3xkJG3lxhlQRM5MRLzhvx8s",
+      "provider_id": "/g/1tfql231",
+      "rating": 4.9,
+      "reviews": 95,
+      "type": "Counselor",
+      "types": [
+        "Counselor"
+      ],
+      "type_id": "counselor",
+      "type_ids": [
+        "counselor"
+      ],
+      "address": "402 W Pender St #203, Vancouver, BC V6B 1T6",
+      "open_state": "Open \u00b7 Closes 6\u202fp.m.",
+      "hours": "Open \u00b7 Closes 6\u202fp.m.",
+      "operating_hours": {
+        "saturday": "9\u202fa.m.\u20136\u202fp.m.",
+        "sunday": "9\u202fa.m.\u20136\u202fp.m.",
+        "monday": "9\u202fa.m.\u20136\u202fp.m.",
+        "tuesday": "9\u202fa.m.\u20136\u202fp.m.",
+        "wednesday": "9\u202fa.m.\u20136\u202fp.m.",
+        "thursday": "9\u202fa.m.\u20136\u202fp.m.",
+        "friday": "9\u202fa.m.\u20136\u202fp.m."
+      },
+      "phone": "(604) 723-5134",
+      "website": "http://www.angerman.ca/",
+      "extensions": [
+        {
+          "amenities": [
+            "Washroom"
+          ]
+        },
+        {
+          "planning": [
+            "Appointment required",
+            "Appointments recommended"
+          ]
+        }
+      ],
+      "user_review": "\"I find that Moose counseling is a great fit for me.\"",
+      "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAFjUQeoduib8k7SEPCYt1HXcQ4HPlEdd_wOrbps4oTpr9rKmmCDiEZkjoViPRkxFmoLsV2qU0ZMeqCrHq28sNlmZ2zDtkFwqm_-WLBRQvzNe5FR95QRWMGaQLSbfuUy9U3CMbSflA=w1000-h1000-c-n",
+      "serpapi_thumbnail": "https://serpapi.com/images/url/8iNQynicHcTbToMwAADQLyq3QRwmPiADSQSkMIbyskjpuLSl0BZR_tBP2N-YeB7O_bdXapaPuk77g9Zx3lG8SiwQnxSelIY407tZAiSB1L0shcQLxxJi3q5DcyQPRZD5H8qM3hG0o4wGbXvd3kQzS5ufZ-GKV8b80xDUZOSXIcvJd8h4LC_WUhp1ghdfRIt1lClltbWfFAm3hV1BFT_n8GtPsRPmrgPzKnn5hHHR3Nbyxy0PftIUN-o9baZhGKD_H4HpD3PhRnE"
+    }
+  ],
+  "serpapi_pagination": {
+    "next": "https://serpapi.com/search.json?engine=google_maps&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+does+couples+counselling+work+Vancouver%2C+British+Columbia%2C+Canada&start=20&type=search&z=14"
+  },
+  "pagination_pages_fetched": 1
+}

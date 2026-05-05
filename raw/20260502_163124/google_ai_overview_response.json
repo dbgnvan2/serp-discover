@@ -1,0 +1,260 @@
+{
+  "search_metadata": {
+    "id": "69f689eef8cc78b97d3202bc",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/f4FbeRif2PAxPFsQLg7TyA/69f689eef8cc78b97d3202bc.json",
+    "created_at": "2026-05-02 23:34:06 UTC",
+    "processed_at": "2026-05-02 23:34:06 UTC",
+    "google_ai_overview_url": "https://www.google.com/async/folsrch?gl=ca&uule=w+CAIQICIhVmFuY291dmVyLEJyaXRpc2ggQ29sdW1iaWEsQ2FuYWRh&hl=en&yv=3&cs=0&ei=64n2adPIDpmbwbkPgsjj4AY&async=_basejs:/xjs/_/js/k%3Dxjs.s.en.tNyHgd9ATns.2019.O/am%3DAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEARAAAAACQAQACAAAAAAAAAAAAAAAAAAgAEQACAAAAAAAAAAAAAAAAAAAAAAAAAAEBAAAAIAgAQAAAAAAAAAAQAAAAAEAAAAAAAAAAAwAEAAABBAIAQAAAAFAAAAAAAAAAAAAAAAAAAAAIIAAAAAkEACAAD42_gGaAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAJAAAAAAAAAAAAAAWAAAAQCgMAAAIAAIBEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAACAAAAAAAKAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAgCAAgAAAAAABwAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAhgAAAAAAAAoAAAI4AcACIAAAAAAAAA4AAAAAAAIBAAAAAAAWAgDAQAIAAAAACAHwOMBOERQAAAAAAAAAAAAAAAAAAAAAAAAACAACmAcSH5AAAQAAAAAAAAAAAAAAAAAAAAAAAAAAACQImwKAAAAAACwNQAg/dg%3D0/br%3D1/ichc%3D1/rs%3DACT90oFg5TiQ3PSWtlSF_fptz8e5DPZ0mQ/cb%3Dloaded_h_0,_basecss:/xjs/_/ss/k%3Dxjs.s.SVfIiTaYlFg.L.B1.O/am%3DAAACAAAgCAAAAAAAAAAAAECAABEAAAAAAAAAAAAAAAAAAIQAIAAAQAAAAAAAAAABAgAAAAAAABAAAAAAAEAABAAAAAAAAABAAQAAAAAYEAEACAAAAAAAAAAo1AcAAKABAAAAAAAeAAwQIgAAAAAAAAAAAABAAAAAgAQAAAAAAAAAAQAAAAAAAAAAQAAAAAAAAEAAABBABAAAAECAAgAABAAAEAAAAAAAAAAAAIAIAAAAAAACAAAAAAAAcAAAAAAAAAAAAAAQAAAAAAAAgAAAAAAGANIAAAAAAQAACCMAAAAAAAAAAAAIAAABAAAAAAAAAAiQAAQAIGAAAAAAAAMAAAAAAAAAACAAgCCgEACAAKAABAQAAAAAHAAAAAAAAAAICAAAAAAAAAAgAAABAQgBBAAAAAAAAgAAAAgAAAAgBwAAAAAAACAAAgABCAAAI8gAACQKACACAEAAABAAABEAAAAoAAJAAAAAAAAAAAAAAAAYAQAAAAAAAAAAACQAXgoDAQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAg/br%3D1/cb%3Dloaded_h_0/rs%3DACT90oHhVJSTtls7Xyq62_4U64EU08p8fg,_basecomb:/xjs/_/js/k%3Dxjs.s.en.tNyHgd9ATns.2019.O/ck%3Dxjs.s.SVfIiTaYlFg.L.B1.O/am%3DAAACAAAgCAAAAAAAAAAAAECAABEAAAAAAAAAAAAAAAAAAIQAIAAAQAAAAAAAAAABAgAAAAAAABAAAAAAAEAABAAAEARAAABACQAQACAYEAEACAAAAAAAAAAo1AcQAKABAAAAAAAeAAwQIgAAAAAAAAAAEBBAAAIAgAQAAAAAAAAAAQAAAAAEAAAAQAAAAAAwAEAAABBAJAQAAECFAgAABAAAEAAAAAAAAAAAAIIIAAAAkEACAAD42_gGeAAAAAAAAAAAAAAQAAAAAAAAgAAAAAAGJNIAAAAAAQAACCMWAAAAQCgMAAAIAAIBEAAAAAAAAAiQAAQAIGAAEAAAAAMAAAAAAAAAACAAgCCgEACAAKAABAQAAAQAHAAAAAAAAAAICAAAAAAAIAAgAAABAQgBBAAAAAAAAgCAAggAAAAgBwAAAAAAACAgAgABCAAAI8gAACQKACACAEAAAhgAABEAAAAoAAJI4AcACIAAAAAAAAA4AQAAAAAIBAAAACQAXgoDAQAIAAAAACAHwOMBOERQAAAAAAAAAAAAAAAAAAAAAAAAACAACmAcSH5BAAQAAAAAAAAAAAAAAAAAAAAAAAAAAACQImwKAAAAAACwNQAg/d%3D1/ed%3D1/dg%3D0/br%3D1/ujg%3D1/ichc%3D1/rs%3DACT90oGHNDsBVq5_SzsjRAc-m93nYWwzRA/cb%3Dloaded_h_0,_fmt:adl,_id:B2Jtyd&q=how+does+couples+counselling+work+Vancouver,+British+Columbia,+Canada&mlro=0a7gmFHpGTXz379idfQBSAqN-xWDshtJkDV1Td6VrgnqLCrlRuMwQ7ypRw8CmIZC4b1eQ89t9xRQCOK-KDwFGmBXUs7T7CC10GmnPnYuRYOKD7YcHWPeHyKOoNynH4V4ZQC8rXwywwXWyAeS&mlros=k2EPbXeIW44&madse=1&mrc=CAA4gANQAWgAcACYAQCgAQA&sca_esv=da254fc2e07f9b27&mgtyp=90&snr=1",
+    "raw_html_file": "https://serpapi.com/searches/f4FbeRif2PAxPFsQLg7TyA/69f689eef8cc78b97d3202bc.html",
+    "total_time_taken": 3.94
+  },
+  "search_parameters": {
+    "engine": "google_ai_overview",
+    "page_token": "Cf36DnicxZbdcro4FMDv9z2WG1sRSqt0htkJERVtVdSK9sZBwIDyoQRL6d2-y77MvsI-zYYPFVbsf_47s7O5IMnJycn5-HnG3_9wbG_31y9_WmG4x880HUVRHfk-csy67ru0hmNPpze-gwPd-g05gq5Rx6NjClENAlmRoWzN3c5xyfKM4c7jF6kfa4vJXmcRUlgeGypja6qEFZboqBOLshzB9Kj4Q3igdCw0KNMWnjiP1Yyx3N6762i9GyO83XJgSaVPC6u1hs0t8exzi-kVTT67Xx_aZFPHddOrh8O4hwwezDxcZxsMXx_RmksUwH80JDBJZ6gABcDrcwSkSvn5vph8ZaKnXIRKbvoyonQnikQzPexUGpPldNpJyYttjl2hrvYD__vlrZo-D9Fr6hSQRaniTpXsHOOgHMSVi1VCBJNEpUOMLtJKA8mwzkd-YpIDOoAXw9zpKTFfqAC1iTty7mcvGr2KI2lS7WCmA6AL9Gnv8WYcuaIiu1EeMYyGCkC0gQhtDXodkImhbd3S00WAEwjhjG_4HfQ4s5WH8VQNnWlntdmHXy3zsT1-b7gKra-JnuNrhmmsrFXjLsVdx2fecZH36Xwj2zNt6XRQ_aUuMgXYYZ7Wy5DIrqqccpaZQpjiOfWnDEqXZbrKlJcSkIps-wwpBAHgpGoSbhW5VMbsqAL28jKHXTz5jbKbJe_lM0tnF_RyZGdzuQtdMJTPJxC-lq0VQwS2kijJ3dO-oJu4AyFKIx8kl7JnegVbhZyg1K6CRLEoyT9n2NNqATGZ5BZKuBoQGczyAE51869-rqQGJT5JF1ogv_0ts7eGVIz_xkAnrv-BaRHvnjXvT2ehg5uL-PDErri3J056a7T2rQ3Kcfbd9U_0b_3_Az7r7uKpu1cBr3wHvJSW_XZ3z6Xn7t5PJBLsVAOftfdidzfLkV0B3y8D_013vwCfyX4EvFIJvFwJfGLgCnh0E_iku1-Av-7uWZRZd78A_2-6u_jz3T2l38ymcqs_btHNlt_tDdtYnB8eV9MvvJ0A_d7lH7ylGn1NwHXL37jhs2Y4dyvbeBbZfhgb1EGw_Khm-Cau6f5x72Szh02H_F1DtcgPdrW55hHZhxnc1cTADm1s1aDvHN21rd3VoOZphka5TuALDa2J3E5v350tvh6avG1sFHEKDsP7T7WNrbC_a8-ZmfE0D5B3eIGBMzm-Rkoz3k-iFnTld8itGVNp8SH_OVHgaHA_aEedrisu3nBz1oSQaXRdb-wtj5PlaNBuLvWeOjZ78WDkD2Ovx825dwW2gkUUR9FCjYE5Tb3Cwo6VxuuFKascR7magU2BodxAF0i9OARI-lWUoLBMCCZ1o7CurUz8IRga-8htdNZsNDf8mm1SLgrjvcA3KOwFAvM39MIbKA"
+  },
+  "ai_overview": {
+    "text_blocks": [
+      {
+        "type": "paragraph",
+        "snippet": "Couples counselling in Vancouver operates as a structured, collaborative process designed to help partners navigate conflicts, improve communication, and strengthen their emotional bond, often utilizing evidence-based approaches like Emotionally Focused Therapy (EFT) and the Gottman Method. Therapists in the Lower Mainland typically offer both in-person and online sessions, providing a safe, neutral space to break destructive patterns.",
+        "reference_indexes": [
+          1,
+          10,
+          8,
+          4
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "How the Process Works"
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Initial Consultation & Assessment: Most clinics offer free 15\u201320 minute consultations to ensure a good fit. Initial sessions focus on assessing relationship history, identifying current challenges, and setting goals."
+          },
+          {
+            "snippet": "Structured Sessions: Sessions (usually 50\u201360 minutes) are often collaborative, aiming to stop blaming and instead understand the \"negative cycle\" that causes conflict."
+          },
+          {
+            "snippet": "Evidence-Based Approaches:",
+            "list": [
+              {
+                "snippet": "Emotionally Focused Therapy (EFT): A popular Canadian-developed approach that restores safety and trust."
+              },
+              {
+                "snippet": "Gottman Method: Focuses on research-based behaviors to increase intimacy and conflict management."
+              },
+              {
+                "snippet": "Cognitive Behavioral Therapy (CBT): Helps replace distorted thoughts and improve communication."
+              }
+            ]
+          },
+          {
+            "snippet": "Homework: Therapists often provide exercises or \"homework\" to practice new communication skills in daily life."
+          },
+          {
+            "snippet": "Duration: While some issues are resolved in 6\u201312 sessions, others require longer-term engagement, notes No Fear Counselling.",
+            "snippet_links": [
+              {
+                "text": "No Fear Counselling",
+                "link": "https://www.nofearcounselling.com/best-couples-counselling-vancouver"
+              }
+            ]
+          }
+        ],
+        "reference_indexes": [
+          4,
+          10,
+          8,
+          6,
+          5,
+          11,
+          9,
+          7
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "Common Issues Addressed"
+      },
+      {
+        "type": "paragraph",
+        "snippet": "Couples in Vancouver often seek therapy for:"
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Communication breakdowns (recurring, unresolved arguments)."
+          },
+          {
+            "snippet": "Trust issues (infidelity, betrayal)."
+          },
+          {
+            "snippet": "Life transitions (new parenthood, blended families, career stress)."
+          },
+          {
+            "snippet": "Emotional disconnection (\"feeling like roommates\")."
+          }
+        ],
+        "reference_indexes": [
+          1,
+          4,
+          10,
+          7
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "Logistics and Costs in Vancouver",
+        "reference_indexes": [
+          12
+        ]
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Credentials: Look for an RCC (Registered Clinical Counsellor) or CCC (Canadian Certified Counsellor)."
+          },
+          {
+            "snippet": "Cost: Rates generally range from $130 to $200+ per session."
+          },
+          {
+            "snippet": "Insurance: Services are often covered by extended health plans, but not typically by BC's Medical Services Plan (MSP)."
+          },
+          {
+            "snippet": "Affordable Options: Some private clinics offer sliding scale fees, and community organizations (like Family Services of Greater Vancouver) offer lower-cost options.",
+            "snippet_links": [
+              {
+                "text": "Family Services of Greater Vancouver",
+                "link": "https://fsgv.ca/"
+              }
+            ]
+          },
+          {
+            "snippet": "Online/Virtual Counselling: Widely available, allowing couples to join from different locations."
+          }
+        ],
+        "reference_indexes": [
+          6,
+          8,
+          5,
+          0,
+          2,
+          3
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "Choosing a Therapist"
+      },
+      {
+        "type": "paragraph",
+        "snippet": "It is essential to find a therapist who specializes in couples work rather than just individual counseling. A successful match involves feeling safe and understood by a therapist who remains neutral.",
+        "reference_indexes": [
+          6,
+          8
+        ]
+      }
+    ],
+    "references": [
+      {
+        "title": "How Much Does Couples Counselling Cost in Vancouver?",
+        "link": "https://www.nofearcounselling.com/how-much-does-couples-counselling-cost-in-vancouver",
+        "snippet": "Jul 15, 2025 \u2014 Average Cost of Couples Counselling in Vancouver. The cost of couples counselling in Vancouver can vary significantly based on sev...",
+        "source": "No Fear Counselling",
+        "index": 0
+      },
+      {
+        "title": "Couples Counselling in Vancouver & Across BC",
+        "link": "https://wellspringcounselling.ca/therapy/couples/",
+        "snippet": "When communication breaks down, conflict escalates, or emotional connection fades, couples can begin to feel stuck, disconnected, ...",
+        "source": "wellspringcounselling.ca",
+        "index": 1
+      },
+      {
+        "title": "Reignite Love with Couples Counselling Vancouver",
+        "link": "https://www.nofearcounselling.com/best-couples-counselling-vancouver",
+        "snippet": "Frequently Asked Questions * Relationship therapy in Vancouver at No Fear Counselling focuses on helping couples understand underl...",
+        "source": "No Fear Counselling",
+        "index": 2
+      },
+      {
+        "title": "Couples Counselling Vancouver, BC",
+        "link": "https://sanacounselling.ca/services/couples-counselling-vancouver",
+        "snippet": "Couples Counselling Vancouver, BC. Build the tools you need to support your relationships. If you are looking for in person or onl...",
+        "source": "Sana Counselling",
+        "index": 3
+      },
+      {
+        "title": "Couples Counselling",
+        "link": "https://clearheartcounselling.com/couples-counselling/",
+        "snippet": "Couples Counselling in Vancouver & Coquitlam. Every relationship faces challenges. Whether you're struggling with communication, r...",
+        "source": "Clearheart Counselling",
+        "index": 4
+      },
+      {
+        "title": "Turning Point Therapy: The Counselling Vancouver Trusts",
+        "link": "https://counselling-vancouver.com/",
+        "snippet": "Relationship and Couples Counselling. Build a stronger, healthier relationship. Typical challenges in relationships involve commun...",
+        "source": "counselling-vancouver.com",
+        "index": 5
+      },
+      {
+        "title": "How to Choose the Right Couples Counsellor in Vancouver",
+        "link": "https://quoincounselling.com/resources/how-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for/",
+        "snippet": "Aug 11, 2025 \u2014 How to Choose the Right Couples Counsellor in Vancouver: 5 Things to Look For * Make Sure They're Trained for Couples Work. Not al...",
+        "source": "Quoin Counselling",
+        "index": 6
+      },
+      {
+        "title": "Couples & Marriage Counselling in North Vancouver, BC",
+        "link": "https://wellspringcounselling.ca/service-areas/north-vancouver/marriage-couples-counselling/",
+        "snippet": "Jan 29, 2025 \u2014 Why Choose Couples & Marriage Counselling in North Vancouver? Healthy relationships need effort, clear communication, and commitme...",
+        "source": "wellspringcounselling.ca",
+        "index": 7
+      },
+      {
+        "title": "Why Consider Couples Counselling in Vancouver?",
+        "link": "https://www.nofearcounselling.com/why-consider-couples-counselling-in-vancouver",
+        "snippet": "Jul 10, 2025 \u2014 What Is Couples Counselling? Couples counselling is a form of therapy designed to help partners understand each other better, reso...",
+        "source": "No Fear Counselling",
+        "index": 8
+      },
+      {
+        "title": "How Does Couples Therapy Work? | Psychology Today Canada",
+        "link": "https://www.psychologytoday.com/ca/basics/therapy/how-does-couples-therapy-work",
+        "snippet": "Jun 13, 2023 \u2014 Key points * Couples therapists hold advanced degrees in psychology, counseling, social work, or marriage/family therapy. * Couple...",
+        "source": "Psychology Today",
+        "index": 9
+      },
+      {
+        "title": "Couples and Relationship Counselling Vancouver",
+        "link": "https://www.blueskywellnessclinic.ca/marriage-and-relationship-issues/",
+        "snippet": "What is relationship counselling? Relationship counselling, also known as couples therapy or marriage counselling, is a therapeuti...",
+        "source": "Blue Sky Wellness Clinic",
+        "index": 10
+      },
+      {
+        "title": "Does Marriage Counseling Really Work? Success Rate & Statistics",
+        "link": "https://thewellnesscounselingcenter.com/marriage-counseling-success-rate/",
+        "snippet": "Apr 5, 2024 \u2014 Experienced marriage counselors work to identify these communication patterns and address them to help couples develop healthier c...",
+        "source": "thewellnesscounselingcenter.com",
+        "index": 11
+      },
+      {
+        "title": "Enhancing Relationships: Your Guide to Therapy Choices",
+        "link": "https://kcrelationshipinstitute.com/choosing-the-right-therapist-a-comprehensive-guide-to-addressing-your-relationship-and-marriage-needs/",
+        "snippet": "Are you seeking to improve communication with your spouse? Do you need support in navigating a specific challenge? Consider the pr...",
+        "source": "Kansas City Relationship Institute",
+        "thumbnail": "https://encrypted-tbn1.gstatic.com/images?q=tbn:ANd9GcTf6lD1pBUPDswCUYWCSO1I-DwC59ydGOVDsZKfUYkn2IauAvmM",
+        "source_icon": "https://encrypted-tbn1.gstatic.com/faviconV2?url=https://kcrelationshipinstitute.com&client=AIM&size=128&type=FAVICON&fallback_opts=TYPE,SIZE,URL",
+        "index": 12
+      }
+    ]
+  }
+}

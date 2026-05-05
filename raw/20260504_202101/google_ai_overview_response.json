@@ -1,0 +1,322 @@
+{
+  "search_metadata": {
+    "id": "69f962e1703f17087333561d",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/YZ9ziX2QCCBkW_FmKQjSSA/69f962e1703f17087333561d.json",
+    "created_at": "2026-05-05 03:24:17 UTC",
+    "processed_at": "2026-05-05 03:24:17 UTC",
+    "google_ai_overview_url": "https://www.google.com/async/folsrch?uule=w+CAIQICIhVmFuY291dmVyLEJyaXRpc2ggQ29sdW1iaWEsQ2FuYWRh&gl=ca&hl=en&yv=3&cs=0&ei=3WL5abMiu4-u4Q-by82gBQ&async=_basejs:/xjs/_/js/k%3Dxjs.s.en.ZQd6OG89Nss.2019.O/am%3DAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQBAAAQAAJABAAIAAAAAAAAAAAAAAAAAAAAZAAIAAAAAAAAAAAAAAAAAAAAAAAAAAQEAAAAgAABIAAAAAAAAABAAAAAAQAAAAAAAAAADAAAABAEAAgRAAAAAUAAAAAAAAAAAAAAAAAAAAAAgCAAAAQAIJAADgb-MboAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQAIAAAAAAAAAAABgAQAAAITCAACAACAQAAEAAAAAAAAAAAAAAAAAAAEAAAAAAAAAAAAAAAAAAAACAAAAAAAKAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAIAAAKAAAAAAAcAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAIIABAAAAAACAAgCAAH4AgAAIAAAAAACAAwAAAACAQAAAAAAAgIUwEACAAAAAAAByADwegEMEBQAAAAAAAAAAAAAAAAAAAAAAAAACoADGgeQHBEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKcKmAAAAAAAAWwMAAg/dg%3D0/br%3D1/ichc%3D1/rs%3DACT90oEBzH66t539kkSJUfuI2P8p08ApeQ/cb%3Dloaded_h_0,_basecss:/xjs/_/ss/k%3Dxjs.s.iPkc2iN8dmA.L.B1.O/am%3DAAACAAAgCAAAAAAAAAAAAEAAABEAAAAAAAAAAAAAAAAAAIAAIAAAAAEAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABQAAAABgQAQAIAAAAAAAAACgUB8AAIAGAAAAAAB4ADBAiAAAAAAAAAAAAAAAAQAAABIAAAAAAAAABAAAAAAAAAAAAAEAAAAAAAABAEAAEQAAAAABCgAAEAAAQAAAAAAAAAAAAAAiAAAAAAAIAAAAAAAAwAEAAAAAAAAAAAAAAQAAAAAAAAgAAABgACANAAAAEAAAgDACAAAAAAAAAACAAAAQAAAAAAAAAIAACUAAAAIGAAAAADAAAAAAAAAAAAACAAgCCgEACAAKQEAAAAAAwAEAAAAAAACAgAAAAAAAAAAAAgAQEIAQQAAAAAAAIAAAAIAAAAAAcgAAAAAAAAACIAAQgAAAMIIMAECiAAAiAAAEAAABABABAACAAiAABAAAAAAAAAAAAACAEQAAAAAAAAAAAEAC4KUwEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIA/br%3D1/cb%3Dloaded_h_0/rs%3DACT90oEu8qbz5mTiM4Gjaw2b3Yh8b6Wrdw,_basecomb:/xjs/_/js/k%3Dxjs.s.en.ZQd6OG89Nss.2019.O/ck%3Dxjs.s.iPkc2iN8dmA.L.B1.O/am%3DAAACAAAgCAAAAAAAAAAAAEAAABEAAAAAAAAAAAAAAAAAAIAAIAAAAAEAAAAAAAAEAAAAAAAAAAAAAAAAAAAAAAAAQBAAAQAAJQBAAIBgQAQAIAAAAAAAAACgUB9AAIAGAAAAAAB4ADBAiAAAAAAAAAAAQEAAAQgAABIAAAAAAAAABAAAAAAQAAAAAAEAAADAAAABAEAAkRAAAAAVCgAAEAAAQAAAAAAAAAAAAAgiAAAAQAIJAADgb-Mb4AEAAAAAAAAAAAAAAQAAAAAAAAgAAABgQCINAAAAEAAAgDBiAQAAAITCAACAACAQAAEAAAAAAIAACUAAAAIGAAEAADAAAAAAAAAAAAACAAgCCgEACAAKQEAAAEAAwAEAAAAAAACAgAAAAAAAAAIAAgAQEIAQQAAAAAAAIAAAKIAAAAAAcgAAAAAAAAACIgAQgAAAMIIMAECiAAAiAAAEIIABABABAACAAiCABH4AgAAIAAAAAACAEwAAAACAQAAAAEAC4KUwEACAAAAAAAByADwegEMEBQAAAAAAAAAAAAAAAAAAAAAAAAACoADGgeQXBEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAKcKmAAAAAAAAWwMAAg/d%3D1/ed%3D1/dg%3D0/br%3D1/ujg%3D1/ichc%3D1/rs%3DACT90oH_hiBdwsIbFisOIp9dOaJT37ca0g/cb%3Dloaded_h_0,_fmt:adl,_id:B2Jtyd&q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&mlro=0a6CDW0niBk1XLWhMpDN1wvH2Q9lEW6YwTszNyYZWgABZufwiiK889GcVTGngwGcD2TG9QF1Dd8LlT81ExrpRQQ41kxAwNzndqW9V1XLFDAR7FXdrzsFe1Z3lFDE_FZJi8D41sM5wl10aa_dew&mlros=9noiKcjkd0c&mrc=CAA4gANQAWgAcACYAQCgAQA&sca_esv=4984aa9a092ab98a&mgtyp=90&snr=1",
+    "raw_html_file": "https://serpapi.com/searches/YZ9ziX2QCCBkW_FmKQjSSA/69f962e1703f17087333561d.html",
+    "total_time_taken": 5.41
+  },
+  "search_parameters": {
+    "engine": "google_ai_overview",
+    "page_token": "EWYzuXicxZbdcqs2EMfv-x51L5zYgIkPZIbpCIEd2bFzSB07yY1HCCIU8-EgHOLcnXfp-_S-T1MB_o6dM81Mp7IHCbG7Wq1-_Icff4Ysnv39y19Bls35ZbOZ53mDJgkN_QZJoibmy5g0n5KQpyT4fbEIfSOvQ4AcBFEwjjqLB0WXvWi8vLZ7S3x_OycKpY6ic28iMzyxuaMIm8ltUKOhQXAtCA0_ri1fjVaNcEOq-cxoTa4vsDtgC_V8oTrn7lJTqOnUypWNqYu5_ywSe3vmzWlTXGa_tixx0-ANP248Ol77pqvpQ84biiTrjZsmjoQB-I-aYxYXAHpADNAxi8cT8yt_u7hSAMytkbl6tLWyqmlhS2_Libvj0SisHFFP-FD3fOAmwP48_73kTFquikYiTvkXd8f8j8aEq75_2qRoH4uBNk4AkN0H9EQEtC4RrLZ8pRamaDOXV_26gBTd5fYmPXMJrNyn9sA2HXCqwQRYXeo7V-bn5QN90o_W40k-EIs1PSp4k5puKjq5yUhAykHKCwzhSJcS23y_arezi5Y-m_3Ru3taIOW7Npc0MPedJnGFXZhgz_emwVQ6K4EnfEM83yWefZ8RhQ01LwKN64Yp7-Be7JfC3VyLrRzbD1rXzt61_LRVpTOpswcQpHemVgTrrqxUYJmAHToXvh9xP1y6xN2ujsiEtHpycGLr0Jtg-WHqGwda5iuqMlyvQi2wUx64Z11EhOVLhqq97AtIyR2kJVR9xz5cG-6TK14qGwFnHRztZEy2hlBMOcXtAKEBsCFb7a88tfJXrMYO6wXXNaqaSEntF7h_qZ2QlW1DYM31AaZ7eC-0F_f9Ihqxgdp9xrnith4CzW1PUi9f4ZxE7r9QcPL_Ab_R92KAjgGvfwp8CYfzmb4XBlt9n1X6Pj4OPGWV41bf1Z8A70C0A7zJTur7HvD2z4G3TwGPjgLfPwY8PQ58qe8b4CEwD_Td3tX3DfBf0vf7r-h7yb9fdftiv3imJ0X_ahow08s5cjuM36C57t3g3qj1jWCJfhT9pyi7xF54NmXepan0sqVXezGCJK9nSZ1nybye-nMfZyym9WhZn-PUjzP-mxhkmZ_GvD7GMUkWr356VjdTljEe1GESLiKX4bM6xDH2cC0K08SQcBtaEylm5ky-v54Eg7k1lPPXK8XRQ3vSfshH_H24fHicUGA-Lp5yxvqapnfJeNSNad4lljLq6k5HtjztOhxpsv2Wzm8dR5VnbyAfvsfey0Qfi8gdC9x-69x76Tvv-PJjK-xY9rTz2GOapcp8cJGHsoTx1PPzMi9u6HHC-uR55kmkFqXEEOerUjB0gMiEAPgAHFh8rdQ4wVOfvxqqrqkY61jSFezqmtgezZZzQ5dqPE4N-R-HExoO"
+  },
+  "ai_overview": {
+    "text_blocks": [
+      {
+        "type": "paragraph",
+        "snippet": "Breaking the cycle of intergenerational patterns involves increasing self-awareness, regulating your nervous system, and actively repairing ruptures when they occur. In Vancouver, BC, this process is supported by specialized, trauma-informed therapies such as Internal Family Systems (IFS), Somatic Experiencing (SE), and EMDR to help you stop reacting on autopilot and create new ways of relating.",
+        "reference_indexes": [
+          5,
+          1,
+          2
+        ]
+      },
+      {
+        "type": "paragraph",
+        "snippet": "Here is a guide to breaking these patterns based on local resources and therapeutic approaches."
+      },
+      {
+        "type": "heading",
+        "snippet": "1. Identify and Understand the Patterns",
+        "reference_indexes": [
+          0
+        ]
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Identify Triggers: Notice when you are \"losing control\" or reacting intensely\u2014often when a child whines, or a partner argues. These are signs of \"Walnut Brain\" activation, where past childhood trauma is triggered."
+          },
+          {
+            "snippet": "Journaling and Self-Reflection: Map out your family\u2019s history of anxiety, anger, or silence to distinguish your own personality from inherited habits."
+          },
+          {
+            "snippet": "Recognize \"Parts\": Understand that your reactions are \"parts\" of you trying to protect you (e.g., a \"people-pleasing part\" or \"angry part\") based on childhood survival mechanisms."
+          }
+        ],
+        "reference_indexes": [
+          2,
+          5,
+          4,
+          0,
+          10
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "2. Take Action to Break the Cycle"
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Create a \"Gap\": Increase the space between a trigger and your reaction. When you feel triggered, pause to breathe or step outside to calm your nervous system before responding."
+          },
+          {
+            "snippet": "The Power of Repair: Breaking the cycle doesn't mean never repeating a pattern; it means repairing it when you do. If you yell, apologize specifically to your child/partner, take accountability, and state a new plan, which directly breaks the cycle."
+          },
+          {
+            "snippet": "Internal Family Systems (IFS) Work: Use therapies like IFS to \"unblend\" from your triggers and connect with your \"Self\" (your calm, compassionate center)."
+          }
+        ],
+        "reference_indexes": [
+          4,
+          1,
+          5,
+          11,
+          12
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "3. Vancouver-Based Therapy and Resources"
+      },
+      {
+        "type": "paragraph",
+        "snippet": "Many clinics in Vancouver focus specifically on generational trauma, inner child work, and attachment-based parenting:"
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Lotus Therapy & Counselling Centre: Offers trauma-informed counseling for generational trauma using EMDR, Somatic Experiencing, and CBT.",
+            "snippet_links": [
+              {
+                "text": "Lotus Therapy & Counselling Centre",
+                "link": "https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/"
+              }
+            ]
+          },
+          {
+            "snippet": "Terra Counselling Services: Specializes in inner child work to heal childhood wounds and improve self-regulation.",
+            "snippet_links": [
+              {
+                "text": "Terra Counselling Services",
+                "link": "https://terracounselling.com/inner-child-work-in-vancouver/"
+              }
+            ]
+          },
+          {
+            "snippet": "SAO Therapy: Provides safe space to explore unresolved emotions and end toxic cycles.",
+            "snippet_links": [
+              {
+                "text": "SAO Therapy",
+                "link": "https://saotherapy.com/inner-child-work"
+              }
+            ]
+          },
+          {
+            "snippet": "Nurtured Foundations: Focuses on parenting burnout and co-regulation to help stay calm when children are dysregulated."
+          },
+          {
+            "snippet": "ShiftGrit: Uses structured imaginal exposure therapy to neutralize deep-seated triggers.",
+            "snippet_links": [
+              {
+                "text": "ShiftGrit",
+                "link": "https://shiftgrit.com/breaking-parenting-patterns/"
+              }
+            ]
+          },
+          {
+            "snippet": "Living Systems Counselling: Focuses on Bowen family systems theory for individuals looking to change their role within the family system.",
+            "snippet_links": [
+              {
+                "text": "Living Systems Counselling",
+                "link": "https://livingsystems.ca/"
+              }
+            ]
+          },
+          {
+            "snippet": "Family Services of Greater Vancouver: Provides trauma-informed, child-centered counselling, including the PEACE program for those who have witnessed family violence.",
+            "snippet_links": [
+              {
+                "text": "Family Services of Greater Vancouver",
+                "link": "https://fsgv.ca/programs/traumacounselling/"
+              }
+            ]
+          }
+        ],
+        "reference_indexes": [
+          2,
+          5,
+          0,
+          3,
+          6,
+          9,
+          8
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "4. Somatic and Body-Based Healing"
+      },
+      {
+        "type": "paragraph",
+        "snippet": "Because trauma is often \"stored\" in the body, traditional talk therapy may not be enough. In Vancouver, you can seek out:"
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Somatic Experiencing (SE): Helps release trapped energy and stored tension."
+          },
+          {
+            "snippet": "Breathwork and Movement Therapy: Used to restore the connection between mind and body."
+          }
+        ],
+        "reference_indexes": [
+          2
+        ]
+      },
+      {
+        "type": "heading",
+        "snippet": "5. Cultivating Self-Compassion"
+      },
+      {
+        "type": "list",
+        "list": [
+          {
+            "snippet": "Give Yourself Grace: Breaking cycles is not about being a perfect parent or partner; it's about being a conscious one."
+          },
+          {
+            "snippet": "Understand the \"Why\": Acknowledge that your reactions come from a place of \"tender, terrified\" feelings, not just because you are \"mean\" or \"unreasonable\"."
+          }
+        ],
+        "reference_indexes": [
+          0,
+          1,
+          13
+        ]
+      },
+      {
+        "type": "paragraph",
+        "snippet": "Disclaimer: If you are in crisis, you can connect with Victim Link BC or Family Services of Greater Vancouver for immediate support.",
+        "reference_indexes": [
+          7
+        ]
+      }
+    ],
+    "references": [
+      {
+        "title": "Breaking Generational Parenting Patterns: How to Raise Kids ...",
+        "link": "https://shiftgrit.com/breaking-parenting-patterns/",
+        "snippet": "Feb 10, 2025 \u2014 Breaking Generational Parenting Patterns: How to Raise Kids Differently * Why We Parent the Way We Do. * Why \u201cJust Try Harder\u201d Doe...",
+        "source": "ShiftGrit",
+        "index": 0
+      },
+      {
+        "title": "Am I Repeating My Parents' Patterns? \u2014 LMFT Guide",
+        "link": "https://anniewright.com/repeating-parents-patterns/",
+        "snippet": "Apr 9, 2026 \u2014 Breaking the cycle means you repair the pattern when you repeat it. First, acknowledge the rupture. Do not gaslight your child by ...",
+        "source": "Annie Wright, LMFT",
+        "index": 1
+      },
+      {
+        "title": "Breaking the Family Pattern: A Trauma-Informed Guide to ...",
+        "link": "https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/",
+        "snippet": "Nov 6, 2025 \u2014 Our team at Lotus Therapy & Counselling Centre often focuses on both the emotional and somatic experiences of inherited trauma. By...",
+        "source": "Lotus Therapy & Counselling Centre",
+        "index": 2
+      },
+      {
+        "title": "Living Systems Counselling: Affordable Counselling",
+        "link": "https://livingsystems.ca/",
+        "snippet": "Living Systems Counselling in the Vancouver area, uses Bowen family systems theory and therapy to address a wide variety of challe...",
+        "source": "Living Systems Counselling",
+        "index": 3
+      },
+      {
+        "title": "IFS Therapy Vancouver | Internal Family Systems Therapy",
+        "link": "https://www.shivaniwells.com/ifs",
+        "snippet": "Firefighters are reactive parts that get triggered whenever Exiles are activated. Like Managers, Firefights want to extinguish pai...",
+        "source": "Shivani Wells",
+        "index": 4
+      },
+      {
+        "title": "Inner Child Therapy Vancouver | Terra Counselling Services",
+        "link": "https://terracounselling.com/inner-child-work-in-vancouver/",
+        "snippet": "Inner Child Work in Vancouver * Having strong emotional reactions that feel younger than your current age? * Struggling with patte...",
+        "source": "Terra Counselling",
+        "index": 5
+      },
+      {
+        "title": "Inner Child Work in Vancouver - Sao Therapy",
+        "link": "https://saotherapy.com/inner-child-work",
+        "snippet": "Inner Child Work in Vancouver | Ending Toxic Cycles. Engage in Inner Child Work to heal, break cycles, and nurture growth. Inner C...",
+        "source": "Sao Therapy",
+        "index": 6
+      },
+      {
+        "title": "Trauma - Willow Tree Counselling",
+        "link": "https://willowtreecounselling.ca/counselling/areas-of-practice/trauma/",
+        "snippet": "willowtreecounselling.ca. Residential Historical Abuse Program (RHAP) vch.eduhealth.ca. BC Society for Male Survivors of Sexual Ab...",
+        "source": "Willow Tree Counselling",
+        "index": 7
+      },
+      {
+        "title": "Trauma Counselling - Family Services of Greater Vancouver",
+        "link": "https://fsgv.ca/programs/traumacounselling/",
+        "snippet": "TRAUMA COUNSELLING. ... Your browser can't play this video. ... An error occurred. Try watching this video on www.youtube.com, or ...",
+        "source": "Family Services of Greater Vancouver",
+        "index": 8
+      },
+      {
+        "title": "Parenting Burnout Therapy in Vancouver",
+        "link": "https://nurturedfoundations.com/parenting-burnout-therapy-vancouver",
+        "snippet": "Here's what we work on: * Understanding nervous system depletion. Why rest isn't enough and what capacity actually means. What dra...",
+        "source": "nurturedfoundations.com",
+        "index": 9
+      },
+      {
+        "title": "Counselor\u2019s Motivational \u2013 \u2013 Breaking patterns \u2014 Amy Enkling Counseling, LLC",
+        "link": "https://www.amyenklingcounseling.com/blog/2018/6/7/counselors-motivational-breaking-patterns",
+        "snippet": "You may or may not be able to identify what's contributing to holding onto these patterns. Whether it's something you do to cope, ...",
+        "source": "Amy Enkling Counseling, LLC",
+        "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRhSgvxlwd4eT3gw8Gr0dSGXmIFjRPCSJiBSt0iu4-cpKTupkkt",
+        "source_icon": "https://encrypted-tbn2.gstatic.com/faviconV2?url=https://www.amyenklingcounseling.com&client=AIM&size=128&type=FAVICON&fallback_opts=TYPE,SIZE,URL",
+        "index": 10
+      },
+      {
+        "title": "Breaking the Patterns of Parental Trauma: How to Regulate Ourselves So We Can Teach Our Children to Regulate -",
+        "link": "https://mainstreetcounselingnj.com/2025/11/28/breaking-the-patterns-of-parental-trauma-how-to-regulate-ourselves-so-we-can-teach-our-children-to-regulate/",
+        "snippet": "One useful approach is described in a resource by a parenting educator, who advises parents to learn to pause when triggered rathe...",
+        "source": "mainstreetcounselingnj.com",
+        "thumbnail": "https://encrypted-tbn3.gstatic.com/images?q=tbn:ANd9GcSC-VFwzKHtqMHprT-tckvEWsoj1cpwKUPq9v-NDVRo6Mkd8ZJz",
+        "source_icon": "https://encrypted-tbn0.gstatic.com/faviconV2?url=https://mainstreetcounselingnj.com&client=AIM&size=128&type=FAVICON&fallback_opts=TYPE,SIZE,URL",
+        "index": 11
+      },
+      {
+        "title": "Break the Loop: How to Stop Repeating Old Patterns and Step Into ...",
+        "link": "https://medium.com/@zahara_chetty/break-the-loop-how-to-stop-repeating-old-patterns-and-step-into-your-future-8c44359e9992",
+        "snippet": "Your Life Beyond the Loop\\n\\nBreaking cycles is not just about releasing the past \u2014 it is about reclaiming your power. You are not a...",
+        "source": "Medium",
+        "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRpzAmQCx-tEQSt7-M3rxFJzDNTvTa05EOzSiL84FeDgP9L04lu",
+        "source_icon": "https://encrypted-tbn2.gstatic.com/faviconV2?url=https://medium.com&client=AIM&size=128&type=FAVICON&fallback_opts=TYPE,SIZE,URL",
+        "index": 12
+      },
+      {
+        "title": "When parenting feels harder than it should, it\u2019s rarely about \u201cbad kids\u201d or \u201cbad parents.\u201d More often, it\u2019s the weight of unresolved childhood patterns resurfacing in the present. If you grew up without healthy conflict resolution, emotional safety, or consistent love, you may find yourself struggling to show up the way you want for your own kids. This is called generational emotional illiteracy\u2014patterns that get passed down until someone decides to break the cycle. Here\u2019s the hopeful truth: it can change. Through secure parenting practices\u2014like calm emotional regulation, clear and compassionate communication, and setting boundaries with love\u2014you can create a home that feels safe and connected, even if you never experienced that yourself. Your children don\u2019t need \u201cperfect parents.\u201d They need parents willing to grow, repair, and model security. And in the process, you begin to heal, too. Tell me in the comments - What patterns from your own upbringing do you notice showing up in your parenting?",
+        "link": "https://www.instagram.com/p/DPG-GVejnN7/",
+        "snippet": "Parenting doesn't just ask us to raise children \u2014 it asks us to re-parent the parts of ourselves that never felt seen. Breaking cy...",
+        "source": "Instagram",
+        "thumbnail": "https://encrypted-tbn2.gstatic.com/images?q=tbn:ANd9GcRpdXLZjfkZfqPzfRGf7TWUbkkf63fCixvn93OsAUr0dmhQAPic",
+        "source_icon": "https://encrypted-tbn1.gstatic.com/faviconV2?url=https://www.instagram.com&client=AIM&size=128&type=FAVICON&fallback_opts=TYPE,SIZE,URL",
+        "index": 13
+      }
+    ]
+  }
+}

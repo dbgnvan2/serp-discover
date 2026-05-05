@@ -1,0 +1,447 @@
+{
+  "search_metadata": {
+    "id": "69f962428c60ca9f79f2cf49",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/HF7xDIzFz9dzAH8WYhPgyw/69f962428c60ca9f79f2cf49.json",
+    "pixel_position_endpoint": "https://serpapi.com/searches/HF7xDIzFz9dzAH8WYhPgyw/69f962428c60ca9f79f2cf49.json_with_pixel_position",
+    "created_at": "2026-05-05 03:21:38 UTC",
+    "processed_at": "2026-05-05 03:21:38 UTC",
+    "google_url": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&oq=how+childhood+affects+adult+relationships&hl=en&gl=ca&sourceid=chrome&ie=UTF-8",
+    "raw_html_file": "https://serpapi.com/searches/HF7xDIzFz9dzAH8WYhPgyw/69f962428c60ca9f79f2cf49.html",
+    "total_time_taken": 2.23
+  },
+  "search_parameters": {
+    "engine": "google",
+    "q": "how childhood affects adult relationships",
+    "google_domain": "google.com",
+    "hl": "en",
+    "gl": "ca",
+    "device": "desktop"
+  },
+  "search_information": {
+    "query_displayed": "how childhood affects adult relationships",
+    "total_results": 322000000,
+    "time_taken_displayed": 0.28,
+    "organic_results_state": "Results for exact spelling"
+  },
+  "inline_videos": [
+    {
+      "position": 1,
+      "title": "How Childhood Trauma Affects Adult Relationships, Self ...",
+      "link": "https://www.youtube.com/watch?v=YovtDPdDlxI",
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTrNfIrqj9xyfrWROP5XOB9CtKPV5i-BlGoFmODmHZNvfV5s2jGzJnSJg&s",
+      "channel": "Wake Up with Marci",
+      "duration": "43:10",
+      "platform": "YouTube",
+      "date": "Feb 12, 2026",
+      "snippet": "Allison Kervin a licensed marriage and family therapist practice owner and trauma specialist who helps women heal from childhood and relational trauma.",
+      "short_clip": "https://encrypted-vtbn0.gstatic.com/video?q=tbn:ANd9GcQkLNw1WdpbV9fI8z1id7AhJSAxm0cUtzqyMg"
+    },
+    {
+      "position": 2,
+      "title": "How Childhood Neglect Shapes Your Relationships + Identity ...",
+      "link": "https://www.youtube.com/watch?v=X5ON-VGyaew",
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTkJOSI7SpR2HoB08CC7WnQ0q_FdmqgTobGbErdyeVGxG21qJeWkKsVsQ&s",
+      "channel": "Terri Cole",
+      "duration": "18:39",
+      "platform": "YouTube",
+      "date": "Dec 24, 2024",
+      "snippet": "Emotional neglect in childhood can lead to hyperindependence, bad boundaries, fear of abandonment, self-criticism, and emotional illiteracy in adulthood.",
+      "short_clip": "https://encrypted-vtbn0.gstatic.com/video?q=tbn:ANd9GcQnV0ezk88l8-1UQDKod4jseKtmTkr9aW_eeQ"
+    },
+    {
+      "position": 3,
+      "title": "How Your Childhood Experiences Shape and Affect Your ...",
+      "link": "https://www.youtube.com/watch?v=HwfqH8reKVQ",
+      "thumbnail": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQR0qwBwIKXOjwlpfEcHN4nKJOqULSgsvBZN06Rs6Ls2V9a3Z_CumEo2w&s",
+      "channel": "Coach Kate Durocher",
+      "duration": "17:27",
+      "platform": "YouTube",
+      "date": "Mar 26, 2024",
+      "snippet": "Early interactions with caregivers form the bedrock of emotional development, influencing how we connect with others later in life.",
+      "short_clip": "https://encrypted-vtbn0.gstatic.com/video?q=tbn:ANd9GcQt10RVvYxdIOh-P-DZS8DQwoGzDxc-xt6gew"
+    }
+  ],
+  "ai_overview": {
+    "page_token": "LRywMHicxZZtc6o4FMff7_dY3vRWULGVzjA7CVCNj6XV9to3TAgYEBAlKGtn9sV-l_1U99NcHnwuemc7s7PRISGcc3Jy8uOvf__ju3Pvx29_OXG8YA88nyRJhYYh9e0KCQMes82c8NPQZxFx_qC-TDDn-LI951i4iojtWjJxojCwuc1arnOEyQJnu_Jzq9fAeDaG3c1QWjWfZpPI9fQJl4eTDRMze5au9ueM8QafXrzf62p6U2EVe1551627YaspDRir1ISqVBnyOEgNwH_UdJhdAOiAdIDKLN4vzG_9texKAYAHI7h9dLBSi-nUlj7nE-PyaFQpHFEn9aHmbd8MgXY9_5PkIM1XRaM0Tv5N78r8S2Mq27572SRrn4uB9k4AkOMH9EIEtCuRUmy5LWamaD-XFP2ugBSNE22fHtwANbGp1tegDi41JQRqi9p6G14vH-iSbrAbvyX9dDHeoilvAm9GaVflXeKQfBCxDENlJAmhBj_ad3dxoy553ktnPF2h2lNzITTBwtZ5YqZ2fogt2zIcQ_iWA0_Ynnh2TLz75JGaO2haAaj0KrB6hHu2X6oc55ptpWw_aFc77djyaitKB6l-ApBCx7CZBWttrUSgQuCeO2e-n3E_XzrHXSuOCCq0eHJ2YrvQ-2DJeep7B5rnm1ZlsFuFquCoPMqJdRZRyV8yVOzlVEBy7hSaQ9XVtfO1lVNy05dKQ0DfBUdHGZODoZJO6dltH6E-0BR3u7_81PJPtpp7Xi9lV6OipSmJ3Qz3L7ULsnJoCOy4PsP0BO9Vc2l-NIKR2xdbM5zUzPrEaZp3b5GVbHEOA_NfKDj5_4Df63s2QGXAS1eBz-HQr-l7ZnDQd6_Q99dy4KlbOB70XfwF8LqCjoCH7kV9PwFe-zXw2iXgUSnw3TLgaTnwub7vgVcAPNN37Vjf98B_Sd-_f0Xfc_7tojsV-9WMXhT9tuG40EoYMh9dNkQLyRrizqh-T7BAP4v-NIgfsOV_M1zrAdY68cbilrITJjfEcX3LCUPrBk-nNonZDbZWfnwT2T6O3XDOHHfBuMCPQlnAjbixsNR70FOHY_2xF8PBbd8Xe7HkCYI56zsRu_PWz4KoLdXNdO7Xqw04Nalt3PfitwSrL5O145NEt6AzmiZ6ddrVQzKeDJ_SWiw9oa2H3iZm0Br20WtduI3fvuMlIGwovoOO8WjXno3NuNdXP_wXfzmBt3lWTO68jiQ2GD2ul4QLIiIrAIkeGOigRdOff2UCdCX7G8Ixgg2brWVRaooYS1iQatiUmpgLaLxZyGKVY_NIrv4EbdIAXg",
+    "serpapi_link": "https://serpapi.com/search.json?engine=google_ai_overview&page_token=LRywMHicxZZtc6o4FMff7_dY3vRWULGVzjA7CVCNj6XV9to3TAgYEBAlKGtn9sV-l_1U99NcHnwuemc7s7PRISGcc3Jy8uOvf__ju3Pvx29_OXG8YA88nyRJhYYh9e0KCQMes82c8NPQZxFx_qC-TDDn-LI951i4iojtWjJxojCwuc1arnOEyQJnu_Jzq9fAeDaG3c1QWjWfZpPI9fQJl4eTDRMze5au9ueM8QafXrzf62p6U2EVe1551627YaspDRir1ISqVBnyOEgNwH_UdJhdAOiAdIDKLN4vzG_9texKAYAHI7h9dLBSi-nUlj7nE-PyaFQpHFEn9aHmbd8MgXY9_5PkIM1XRaM0Tv5N78r8S2Mq27572SRrn4uB9k4AkOMH9EIEtCuRUmy5LWamaD-XFP2ugBSNE22fHtwANbGp1tegDi41JQRqi9p6G14vH-iSbrAbvyX9dDHeoilvAm9GaVflXeKQfBCxDENlJAmhBj_ad3dxoy553ktnPF2h2lNzITTBwtZ5YqZ2fogt2zIcQ_iWA0_Ynnh2TLz75JGaO2haAaj0KrB6hHu2X6oc55ptpWw_aFc77djyaitKB6l-ApBCx7CZBWttrUSgQuCeO2e-n3E_XzrHXSuOCCq0eHJ2YrvQ-2DJeep7B5rnm1ZlsFuFquCoPMqJdRZRyV8yVOzlVEBy7hSaQ9XVtfO1lVNy05dKQ0DfBUdHGZODoZJO6dltH6E-0BR3u7_81PJPtpp7Xi9lV6OipSmJ3Qz3L7ULsnJoCOy4PsP0BO9Vc2l-NIKR2xdbM5zUzPrEaZp3b5GVbHEOA_NfKDj5_4Df63s2QGXAS1eBz-HQr-l7ZnDQd6_Q99dy4KlbOB70XfwF8LqCjoCH7kV9PwFe-zXw2iXgUSnw3TLgaTnwub7vgVcAPNN37Vjf98B_Sd-_f0Xfc_7tojsV-9WMXhT9tuG40EoYMh9dNkQLyRrizqh-T7BAP4v-NIgfsOV_M1zrAdY68cbilrITJjfEcX3LCUPrBk-nNonZDbZWfnwT2T6O3XDOHHfBuMCPQlnAjbixsNR70FOHY_2xF8PBbd8Xe7HkCYI56zsRu_PWz4KoLdXNdO7Xqw04Nalt3PfitwSrL5O145NEt6AzmiZ6ddrVQzKeDJ_SWiw9oa2H3iZm0Br20WtduI3fvuMlIGwovoOO8WjXno3NuNdXP_wXfzmBt3lWTO68jiQ2GD2ul4QLIiIrAIkeGOigRdOff2UCdCX7G8Ixgg2brWVRaooYS1iQatiUmpgLaLxZyGKVY_NIrv4EbdIAXg"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "Childhood Emotional Maltreatment and Romantic Relationships",
+      "link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8666543/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://pmc.ncbi.nlm.nih.gov/articles/PMC8666543/&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECBYQAQ",
+      "displayed_link": "https://pmc.ncbi.nlm.nih.gov \u203a articles \u203a PMC8666543",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15kyUyq9FR_gDg7o4fbId3JFo.png",
+      "author": "by L Sun",
+      "snippet": "Past research indicates that childhood emotional maltreatment (CEM) undermines the quality of adult romantic relationships by fostering negative characteristics ...",
+      "snippet_highlighted_words": [
+        "childhood emotional maltreatment (CEM) undermines the quality of adult romantic relationships"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Past research indicates that childhood emotional maltreatment (CEM) undermines the quality of adult romantic relationships by fostering negative characteristics ...",
+          "source_info_link": "https://pmc.ncbi.nlm.nih.gov/articles/PMC8666543/",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k-PeOWZw_hkFuce6aSfb0zaOV6hTrbijA3HsVruHt-RZ.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://pmc.ncbi.nlm.nih.gov/articles/PMC8666543/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fpmc.ncbi.nlm.nih.gov%2Farticles%2FPMC8666543%2F",
+      "source": "PubMed Central (PMC) (.gov)"
+    },
+    {
+      "position": 2,
+      "title": "How Childhood Trauma May Affect Adult Relationships",
+      "link": "https://psychcentral.com/blog/how-childhood-trauma-affects-adult-relationships",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://psychcentral.com/blog/how-childhood-trauma-affects-adult-relationships&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECBkQAQ",
+      "displayed_link": "https://psychcentral.com \u203a blog \u203a how-childhood-traum...",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k4LnAG4Ip9tkoy4UAgqR31U.png",
+      "date": "Jun 10, 2021",
+      "snippet": "In more ways than one, childhood trauma can impact adult relationships. Yet the challenges don't have to be permanent \u2014 with some support, ...",
+      "snippet_highlighted_words": [
+        "childhood trauma can impact adult relationships"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "In more ways than one, childhood trauma can impact adult relationships. Yet the challenges don't have to be permanent \u2014 with some support, ...",
+          "source_info_link": "https://psychcentral.com/blog/how-childhood-trauma-affects-adult-relationships",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k1hwSRKQHC5oDMWcbD-nEM8yFs5z14tXe-urIw7rKNqN.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://psychcentral.com/blog/how-childhood-trauma-affects-adult-relationships&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fpsychcentral.com%2Fblog%2Fhow-childhood-trauma-affects-adult-relationships",
+      "source": "Psych Central"
+    },
+    {
+      "position": 3,
+      "title": "10 Ways Childhood Trauma Can Manifest in Adult ...",
+      "link": "https://www.psychologytoday.com/ca/blog/invisible-bruises/202202/10-ways-childhood-trauma-can-manifest-in-adult-relationships",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.psychologytoday.com/ca/blog/invisible-bruises/202202/10-ways-childhood-trauma-can-manifest-in-adult-relationships&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECBoQAQ",
+      "displayed_link": "https://www.psychologytoday.com \u203a invisible-bruises",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k0IK_o6BFtoyVJABX33ywm4.png",
+      "date": "Feb 19, 2022",
+      "snippet": "1. Fears of abandonment. \u00b7 2. Getting irritable or easily annoyed with others. \u00b7 3. Needing a lot of space or time to yourself. \u00b7 4. Unequal ...",
+      "snippet_highlighted_words": [
+        "Fears of abandonment"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "1. Fears of abandonment. \u00b7 2. Getting irritable or easily annoyed with others. \u00b7 3. Needing a lot of space or time to yourself. \u00b7 4. Unequal ...",
+          "source_info_link": "https://www.psychologytoday.com/ca/blog/invisible-bruises/202202/10-ways-childhood-trauma-can-manifest-in-adult-relationships",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k37jYG68k9P6TYx8mcRieMSRN78s8QE4xN8vx7Ez6z_t.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.psychologytoday.com/ca/blog/invisible-bruises/202202/10-ways-childhood-trauma-can-manifest-in-adult-relationships&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.psychologytoday.com%2Fca%2Fblog%2Finvisible-bruises%2F202202%2F10-ways-childhood-trauma-can-manifest-in-adult-relationships",
+      "source": "Psychology Today"
+    },
+    {
+      "position": 4,
+      "title": "The Impact of Childhood Trauma on Adult Relationships",
+      "link": "https://thriveworks.com/help-with/relationships/childhood-trauma-in-adult-relationships/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://thriveworks.com/help-with/relationships/childhood-trauma-in-adult-relationships/&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECB8QAQ",
+      "displayed_link": "https://thriveworks.com \u203a help-with \u203a childhood-trauma...",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15kxjvcFxsQYHKDPMJTRJojaQ.jpeg",
+      "date": "Nov 15, 2024",
+      "snippet": "Childhood trauma can cast a long shadow over a person's life, affecting how you connect with others well into adulthood.",
+      "snippet_highlighted_words": [
+        "how you connect with others well into adulthood"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Childhood trauma can cast a long shadow over a person's life, affecting how you connect with others well into adulthood.",
+          "source_info_link": "https://thriveworks.com/help-with/relationships/childhood-trauma-in-adult-relationships/",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15kx6Ez9YkzYmZ6W9SHoKvyNKLYZYo-faqVIzzORfhSePW.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://thriveworks.com/help-with/relationships/childhood-trauma-in-adult-relationships/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fthriveworks.com%2Fhelp-with%2Frelationships%2Fchildhood-trauma-in-adult-relationships%2F",
+      "source": "Thriveworks"
+    },
+    {
+      "position": 5,
+      "title": "Impact of Childhood Trauma on Adult RelationshipsThis ...",
+      "link": "https://www.buildingbrains.ca/blog/the-impact-of-childhood-trauma-on-individual-adult-relationships",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.buildingbrains.ca/blog/the-impact-of-childhood-trauma-on-individual-adult-relationships&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECBgQAQ",
+      "displayed_link": "https://www.buildingbrains.ca \u203a blog \u203a the-impact-of-c...",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15ky5pjT_8IHtm90-l54UWIE0.png",
+      "date": "Mar 28, 2026",
+      "snippet": "Childhood trauma can impact adult relationships in a lot of different ways. With the right support, recovery from traumatic experiences is achievable.",
+      "snippet_highlighted_words": [
+        "Childhood trauma can impact adult relationships"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Childhood trauma can impact adult relationships in a lot of different ways. With the right support, recovery from traumatic experiences is achievable.",
+          "source_info_link": "https://www.buildingbrains.ca/blog/the-impact-of-childhood-trauma-on-individual-adult-relationships",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k3sDpkBaLKTXt4dhV7_9VtkZ4RgkxjfGS06Theo2--6A.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.buildingbrains.ca/blog/the-impact-of-childhood-trauma-on-individual-adult-relationships&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.buildingbrains.ca%2Fblog%2Fthe-impact-of-childhood-trauma-on-individual-adult-relationships",
+      "source": "Building Brains Together"
+    },
+    {
+      "position": 6,
+      "title": "The Psychological Effects of Childhood Trauma on Adult ...",
+      "link": "https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=1442&context=studentpub",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://scholarsarchive.byu.edu/cgi/viewcontent.cgi%3Farticle%3D1442%26context%3Dstudentpub&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECDAQAQ",
+      "displayed_link": "https://scholarsarchive.byu.edu \u203a cgi \u203a viewcontent",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k0LKL7mrXiQneulwOyWkies.png",
+      "author": "by AB Dunford",
+      "snippet": "Individuals with a history of childhood trauma report higher levels of relationship anxiety, lower relationship satisfaction, and more ...",
+      "snippet_highlighted_words": [
+        "higher levels of relationship anxiety, lower relationship satisfaction"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Individuals with a history of childhood trauma report higher levels of relationship anxiety, lower relationship satisfaction, and more ...",
+          "source_info_link": "https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=1442&context=studentpub",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k9-A6EgBILFwSL0TumdcFMUnlyR31jdmojGswZZr_uJb.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=1442&context=studentpub&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fscholarsarchive.byu.edu%2Fcgi%2Fviewcontent.cgi%3Farticle%3D1442%26context%3Dstudentpub",
+      "source": "BYU ScholarsArchive"
+    },
+    {
+      "position": 7,
+      "title": "How Childhood Relationships Affect Your Adult Attachment ...",
+      "link": "https://www.scientificamerican.com/article/how-childhood-relationships-affect-your-adult-attachment-style-according-to/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.scientificamerican.com/article/how-childhood-relationships-affect-your-adult-attachment-style-according-to/&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECDQQAQ",
+      "displayed_link": "https://www.scientificamerican.com \u203a article \u203a how-child...",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k4uumXYw4JhSJV_mMsCpUNY.png",
+      "date": "Nov 1, 2025",
+      "snippet": "A large new study reveals how early relationships with parents and friends influence how we relate to those closest to us in adulthood.",
+      "snippet_highlighted_words": [
+        "relationships",
+        "adulthood"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "A large new study reveals how early relationships with parents and friends influence how we relate to those closest to us in adulthood.",
+          "source_info_link": "https://www.scientificamerican.com/article/how-childhood-relationships-affect-your-adult-attachment-style-according-to/",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k-OUzfFth-8SY6l_HOyvFFRrVkprJpZ1XdfTZ7KZ0wnp.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.scientificamerican.com/article/how-childhood-relationships-affect-your-adult-attachment-style-according-to/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.scientificamerican.com%2Farticle%2Fhow-childhood-relationships-affect-your-adult-attachment-style-according-to%2F",
+      "source": "Scientific American"
+    },
+    {
+      "position": 8,
+      "title": "How Childhood Trauma Affects Relationships",
+      "link": "https://abbymedcalf.com/how-childhood-trauma-affects-relationships/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://abbymedcalf.com/how-childhood-trauma-affects-relationships/&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECC4QAQ",
+      "displayed_link": "https://abbymedcalf.com \u203a how-childhood-trauma-affec...",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15kyS2nh3XSRJ3LdFF5wmaeu4.png",
+      "snippet": "Childhood trauma affects relationships and your ability to trust. In fact, many don't realize they experienced abuse or trauma as a kid.",
+      "snippet_highlighted_words": [
+        "Childhood trauma affects relationships"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Childhood trauma affects relationships and your ability to trust. In fact, many don't realize they experienced abuse or trauma as a kid.",
+          "source_info_link": "https://abbymedcalf.com/how-childhood-trauma-affects-relationships/",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k4BrPk8GbX7FYp9-39PCCetsoe4nCo3OQC3YSMzh0M9W.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://abbymedcalf.com/how-childhood-trauma-affects-relationships/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fabbymedcalf.com%2Fhow-childhood-trauma-affects-relationships%2F",
+      "source": "Abby Medcalf"
+    },
+    {
+      "position": 9,
+      "title": "How Childhood Trauma Can Impact Adult Relationships",
+      "link": "https://theeaves.org.uk/how-childhood-trauma-can-impact-adult-relationships/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://theeaves.org.uk/how-childhood-trauma-can-impact-adult-relationships/&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQFnoECDMQAQ",
+      "displayed_link": "https://theeaves.org.uk \u203a how-childhood-trauma-can-im...",
+      "favicon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k4T0iIvR1fCb3YH59II2C3E.png",
+      "date": "Oct 9, 2025",
+      "snippet": "The impact of childhood trauma can include trust issues, difficulty regulating emotions, insecure attachment styles, communication struggles, ...",
+      "snippet_highlighted_words": [
+        "childhood"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "The impact of childhood trauma can include trust issues, difficulty regulating emotions, insecure attachment styles, communication struggles, ...",
+          "source_info_link": "https://theeaves.org.uk/how-childhood-trauma-can-impact-adult-relationships/",
+          "icon": "https://serpapi.com/searches/69f962428c60ca9f79f2cf49/images/I1NvexL34IZsZk-bWT15k-UogTmBKMGZ_NuLJNx-VYmN25oXESpURBeF-uKirsKq.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://theeaves.org.uk/how-childhood-trauma-can-impact-adult-relationships/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Ftheeaves.org.uk%2Fhow-childhood-trauma-can-impact-adult-relationships%2F",
+      "source": "The Eaves Counselling and Psychology"
+    }
+  ],
+  "related_searches": [
+    {
+      "block_position": 1,
+      "query": "How childhood affects adult relationships psychology",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=How+childhood+affects+adult+relationships+psychology&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgoEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=How+childhood+affects+adult+relationships+psychology"
+    },
+    {
+      "block_position": 1,
+      "query": "How does childhood trauma affect relationships in adulthood",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=How+does+childhood+trauma+affect+relationships+in+adulthood&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgyEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=How+does+childhood+trauma+affect+relationships+in+adulthood"
+    },
+    {
+      "block_position": 1,
+      "query": "How does childhood trauma affect romantic relationships",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=How+does+childhood+trauma+affect+romantic+relationships&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgvEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=How+does+childhood+trauma+affect+romantic+relationships"
+    },
+    {
+      "block_position": 1,
+      "query": "How childhood trauma affects men in relationships",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=How+childhood+trauma+affects+men+in+relationships&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgtEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=How+childhood+trauma+affects+men+in+relationships"
+    },
+    {
+      "block_position": 1,
+      "query": "How childhood trauma affects adulthood",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=How+childhood+trauma+affects+adulthood&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgsEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=How+childhood+trauma+affects+adulthood"
+    },
+    {
+      "block_position": 1,
+      "query": "Relationship with someone with childhood trauma",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=Relationship+with+someone+with+childhood+trauma&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgrEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=Relationship+with+someone+with+childhood+trauma"
+    },
+    {
+      "block_position": 1,
+      "query": "Childhood trauma and abusive relationships",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=Childhood+trauma+and+abusive+relationships&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgqEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=Childhood+trauma+and+abusive+relationships"
+    },
+    {
+      "block_position": 1,
+      "query": "If you don T address your childhood traumas, your romantic relationship will",
+      "link": "https://www.google.com/search?sca_esv=4984aa9a092ab98a&gl=ca&hl=en&q=If+you+don+T+address+your+childhood+traumas,+your+romantic+relationship+will&sa=X&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ1QJ6BAgpEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=If+you+don+T+address+your+childhood+traumas%2C+your+romantic+relationship+will"
+    }
+  ],
+  "scholarly_articles": {
+    "title": "Scholarly articles for how childhood affects adult relationships",
+    "link": "https://scholar.google.ca/scholar?q=how+childhood+affects+adult+relationships&hl=en&as_sdt=0&as_vis=1&oi=scholart",
+    "serpapi_link": "https://serpapi.com/search.json?as_sdt=0&as_vis=1&engine=google_scholar&hl=en&q=how+childhood+affects+adult+relationships",
+    "articles": [
+      {
+        "title": "\u2026 adversity, attachment security, and adult relationships: \u2026",
+        "link": "https://www.sciencedirect.com/science/article/pii/016230959490006X",
+        "highlighted_words": [
+          "adult relationships"
+        ],
+        "author": "\u200eHill"
+      },
+      {
+        "title": "Childhood sexual abuse, other childhood factors, and \u2026",
+        "link": "https://scholarsarchive.byu.edu/cgi/viewcontent.cgi?article=5591&context=facpub",
+        "highlighted_words": [
+          "Childhood",
+          "childhood"
+        ],
+        "author": "\u200eWalker"
+      },
+      {
+        "title": "\u2026 in social relationships from childhood to adulthood",
+        "link": "https://api.taylorfrancis.com/content/chapters/edit/download?identifierName=doi&identifierValue=10.4324/9780203781760-5&type=chapterpdf",
+        "highlighted_words": [
+          "relationships",
+          "childhood",
+          "adulthood"
+        ],
+        "author": "\u200eWeiss"
+      }
+    ]
+  },
+  "pagination": {
+    "current": 1,
+    "next": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=10&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8NMDegQIJRAW",
+    "other_pages": {
+      "2": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=10&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAE",
+      "3": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=20&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAG",
+      "4": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=30&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAI",
+      "5": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=40&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAK",
+      "6": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=50&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAM",
+      "7": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=60&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAO",
+      "8": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=70&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAQ",
+      "9": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=80&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAS",
+      "10": "https://www.google.com/search?q=how+childhood+affects+adult+relationships&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=RGL5aajUBKyO9u8PjYrikQY&start=90&sa=N&sstk=Af77f_f2bTYJ1s2pQ8eY1I_lQ8tuGkaFNW-7SJjnl5PqMwbNRlBp4VvBQJ0Gq2Je-QzxgOMqEfS0vR5kZ1my9ulvWEgl6QPZJvn7HQ&ved=2ahUKEwiohq3dmKGUAxUsh_0HHQ2FOGIQ8tMDegQIJRAU"
+    }
+  },
+  "serpapi_pagination": {
+    "current": 1,
+    "next_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=10",
+    "next": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=10",
+    "other_pages": {
+      "2": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=10",
+      "3": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=20",
+      "4": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=30",
+      "5": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=40",
+      "6": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=50",
+      "7": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=60",
+      "8": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=70",
+      "9": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=80",
+      "10": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=how+childhood+affects+adult+relationships&start=90"
+    }
+  }
+}

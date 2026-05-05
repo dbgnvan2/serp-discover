@@ -1,0 +1,426 @@
+{
+  "schema_version": "1.0",
+  "source_run_id": "20260502_163124",
+  "source_run_timestamp": "2026-05-02T23:34:27Z",
+  "client_domain": "livingsystems.ca",
+  "client_brand_names": [
+    "Living Systems"
+  ],
+  "targets": [
+    {
+      "url": "https://www.nofearcounselling.com/how-much-does-couples-counselling-cost-in-vancouver",
+      "domain": "www.nofearcounselling.com",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "How Much Does Couples Counselling Cost in Vancouver?",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://sfss.ca/wp-content/uploads/2022/02/reduced-cost-counselling-january-2022-reduced-cost-counselling.pdf",
+      "domain": "sfss.ca",
+      "rank": 1,
+      "entity_type": "N/A",
+      "content_type": "pdf",
+      "title": "Reduced-Cost Counselling Options in Vancouver",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://sagementalhealth.ca/how-much-does-couples-counselling-cost-in-vancouver/",
+      "domain": "sagementalhealth.ca",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "How Much Does Couples Counselling Cost in Vancouver?",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://www.vancouvercounsellingclinic.com/pricing/",
+      "domain": "www.vancouvercounsellingclinic.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Pricing",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://www.openpr.com/news/4316043/what-does-couples-counselling-cost-per-session-in-vancouver",
+      "domain": "www.openpr.com",
+      "rank": 2,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "What Does Couples Counselling Cost per Session in ...",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://www.averytherapy.com/low-cost-counselling-vancouver",
+      "domain": "www.averytherapy.com",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Low Cost Counselling in Vancouver",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://www.reddit.com/r/vancouver/comments/k5jr0f/where_to_get_reasonably_priced_couples_therapy/",
+      "domain": "www.reddit.com",
+      "rank": 3,
+      "entity_type": "media",
+      "content_type": "other",
+      "title": "Where to get reasonably priced couples therapy : r/vancouver",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://arccounselling.ca/fees/",
+      "domain": "arccounselling.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "service",
+      "title": "Fees | ARC: Counselling Vancouver & Psychotherapy",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://www.jerichocounselling.com/who-we-are/rates/registered-therapists-rates/",
+      "domain": "www.jerichocounselling.com",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Registered Therapists Rates - Vancouver",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://equimindcounselling.com/how-much-does-counselling-cost-in-vancouver/",
+      "domain": "equimindcounselling.com",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "How Much Does Counselling Cost In Vancouver?",
+      "source_keyword": "How much is couples therapy in Vancouver?",
+      "primary_keyword_for_url": "How much is couples therapy in Vancouver?"
+    },
+    {
+      "url": "https://www.aercs.ca/couples-counselling-success-rate/",
+      "domain": "www.aercs.ca",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "What Are the Success Rates for Couples Counselling?",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://www.jerichocounselling.com/couples-marriage-counselling/choosing-marriage-counsellor/",
+      "domain": "www.jerichocounselling.com",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Choosing a Marriage Counsellor",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://www.therapytribe.com/therapist/british-columbia-bc-north-vancouver/relationship-and-marriage-counseling/",
+      "domain": "www.therapytribe.com",
+      "rank": 1,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Relationship and Marriage Counselling in North Vancouver,",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://www.nofearcounselling.com/why-consider-couples-counselling-in-vancouver",
+      "domain": "www.nofearcounselling.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Why Consider Couples Counselling in Vancouver?",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://www.lovedonewell.com/",
+      "domain": "www.lovedonewell.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "service",
+      "title": "Love Done Well: Relationship Counselling Vancouver ...",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "couples counselling"
+    },
+    {
+      "url": "https://burnabycounsellors.com/",
+      "domain": "burnabycounsellors.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "One Oak Counselling – Burnaby & Vancouver's Top Rated ...",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "effective couples therapy?"
+    },
+    {
+      "url": "https://www.theravive.com/cities/bc/marriage-counselling-east-vancouver.aspx",
+      "domain": "www.theravive.com",
+      "rank": 3,
+      "entity_type": "directory",
+      "content_type": "other",
+      "title": "Marriage Counselling East Vancouver, BC: Restoration ...",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://willowtreecounselling.ca/wp-content/uploads/resources/reduced-cost-counselling.pdf",
+      "domain": "willowtreecounselling.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "pdf",
+      "title": "Reduced-Cost Counselling Options in Vancouver April 2026",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://vcfi.ca/",
+      "domain": "vcfi.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Vancouver Couple & Family Institute",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "success rate of couples therapy?"
+    },
+    {
+      "url": "https://www.reddit.com/r/vancouver/comments/16rg958/anyone_know_a_good_couples_therapist/",
+      "domain": "www.reddit.com",
+      "rank": 4,
+      "entity_type": "media",
+      "content_type": "other",
+      "title": "Anyone know a good couples therapist? : r/vancouver",
+      "source_keyword": "success rate of couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://www.psychologytoday.com/ca/therapists/bc/vancouver?category=couples-counselling",
+      "domain": "www.psychologytoday.com",
+      "rank": 1,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Couples Counselling Therapists in Vancouver, BC",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://clearcounselling.ca/",
+      "domain": "clearcounselling.ca",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Clear Counselling | Individual & Couples Counselling",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://www.firstsession.com/find/couples-therapists-in-vancouver",
+      "domain": "www.firstsession.com",
+      "rank": 1,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Find the right therapist for Couples therapy in Vancouver.",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://www.nofearcounselling.com/best-couples-counselling-vancouver",
+      "domain": "www.nofearcounselling.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "directory",
+      "title": "Reignite Love with Couples Counselling Vancouver",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://www.therapytribe.com/therapist/british-columbia-bc-vancouver/gottman-method/",
+      "domain": "www.therapytribe.com",
+      "rank": 2,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Gottman Method Couples therapists in Vancouver,",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://theralist.ca/therapists/bc/vancouver-bc/couples-counselling",
+      "domain": "theralist.ca",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Find Couples Counselling Therapists in Vancouver, BC",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://openspacecounselling.ca/",
+      "domain": "openspacecounselling.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Open Space Counselling: Therapy | In-Person and Virtual",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://www.stephenmadigan.ca/",
+      "domain": "www.stephenmadigan.ca",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Home | Dr. Stephen Madigan Couples Therapist ...",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "couples counselling"
+    },
+    {
+      "url": "https://boomerangcc.ca/",
+      "domain": "boomerangcc.ca",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "North Vancouver Counselling - Boomerang Centre",
+      "source_keyword": "What type of therapist is best for couples therapy?",
+      "primary_keyword_for_url": "What type of therapist is best for couples therapy?"
+    },
+    {
+      "url": "https://relationshipclinic.ca/",
+      "domain": "relationshipclinic.ca",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "The Relationship Clinic: Relationship Therapy in North & West ...",
+      "source_keyword": "effective couples therapy?",
+      "primary_keyword_for_url": "effective couples therapy?"
+    },
+    {
+      "url": "https://www.jerichocounselling.com/couples-marriage-counselling/",
+      "domain": "www.jerichocounselling.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Couples & Marriage Therapy in Vancouver & Throughout BC",
+      "source_keyword": "effective couples therapy?",
+      "primary_keyword_for_url": "effective couples therapy?"
+    },
+    {
+      "url": "https://www.blueskywellnessclinic.ca/marriage-and-relationship-issues/",
+      "domain": "www.blueskywellnessclinic.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Couples and Relationship Counselling Vancouver",
+      "source_keyword": "effective couples therapy?",
+      "primary_keyword_for_url": "how does couples counselling work"
+    },
+    {
+      "url": "https://openspacecounselling.ca/couples-therapy/",
+      "domain": "openspacecounselling.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Couples Therapy | Couples Counselling Vancouver",
+      "source_keyword": "effective couples therapy?",
+      "primary_keyword_for_url": "effective couples therapy?"
+    },
+    {
+      "url": "https://chartingpathways.ca/couples-counselling-vancouver",
+      "domain": "chartingpathways.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Couples Counselling Vancouver",
+      "source_keyword": "effective couples therapy?",
+      "primary_keyword_for_url": "effective couples therapy?"
+    },
+    {
+      "url": "https://lotustherapy.ca/",
+      "domain": "lotustherapy.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Lotus Therapy & Counselling Centre | Vancouver & Coquitlam",
+      "source_keyword": "couples counselling",
+      "primary_keyword_for_url": "couples counselling"
+    },
+    {
+      "url": "https://counsellingbc.com/",
+      "domain": "counsellingbc.com",
+      "rank": 4,
+      "entity_type": "directory",
+      "content_type": "other",
+      "title": "CounsellingBC: Psychologists, Counsellors and Therapists ...",
+      "source_keyword": "couples counselling",
+      "primary_keyword_for_url": "couples counselling"
+    },
+    {
+      "url": "https://drkaranvirsingh.com/couples-counselling-in-vancouver-bc/",
+      "domain": "drkaranvirsingh.com",
+      "rank": 1,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "Couples Counselling in Vancouver BC:Is It Time to Seek Help?",
+      "source_keyword": "how does couples counselling work",
+      "primary_keyword_for_url": "how does couples counselling work"
+    },
+    {
+      "url": "https://vcct.ca/our-programs/counselling-for-intimacy-in-relationships-certificate/",
+      "domain": "vcct.ca",
+      "rank": 1,
+      "entity_type": "professional_association",
+      "content_type": "other",
+      "title": "Counselling for Intimacy in Relationships Certificate",
+      "source_keyword": "how does couples counselling work",
+      "primary_keyword_for_url": "how does couples counselling work"
+    },
+    {
+      "url": "https://counselmevancouver.com/what-couples-therapy-is-all-about/",
+      "domain": "counselmevancouver.com",
+      "rank": 3,
+      "entity_type": "directory",
+      "content_type": "news",
+      "title": "What Vancouver Couples Therapy is All About",
+      "source_keyword": "how does couples counselling work",
+      "primary_keyword_for_url": "how does couples counselling work"
+    },
+    {
+      "url": "https://www.newtides.ca/couples-counselling-services",
+      "domain": "www.newtides.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Strengthening Relationships through ...",
+      "source_keyword": "how does couples counselling work",
+      "primary_keyword_for_url": "how does couples counselling work"
+    },
+    {
+      "url": "https://quoincounselling.com/resources/how-to-choose-the-right-couples-counsellor-in-vancouver-5-things-to-look-for/",
+      "domain": "quoincounselling.com",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "How to Choose the Right Couples Counsellor in Vancouver",
+      "source_keyword": "how does couples counselling work",
+      "primary_keyword_for_url": "how does couples counselling work"
+    }
+  ],
+  "exclusions": {
+    "client_urls_excluded": 0,
+    "omit_list_excluded": 0,
+    "omit_list_used": []
+  }
+}

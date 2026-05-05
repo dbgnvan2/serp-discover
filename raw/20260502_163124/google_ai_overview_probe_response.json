@@ -1,0 +1,480 @@
+{
+  "search_metadata": {
+    "id": "69f6898e302394a9c8a2bb08",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/j7owOhqO0vj63JYOfsTevA/69f6898e302394a9c8a2bb08.json",
+    "pixel_position_endpoint": "https://serpapi.com/searches/j7owOhqO0vj63JYOfsTevA/69f6898e302394a9c8a2bb08.json_with_pixel_position",
+    "created_at": "2026-05-02 23:32:30 UTC",
+    "processed_at": "2026-05-02 23:32:30 UTC",
+    "google_url": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy%3F&oq=What+type+of+therapist+is+best+for+couples+therapy%3F&hl=en&gl=ca&sourceid=chrome&ie=UTF-8",
+    "raw_html_file": "https://serpapi.com/searches/j7owOhqO0vj63JYOfsTevA/69f6898e302394a9c8a2bb08.html",
+    "total_time_taken": 1.2
+  },
+  "search_parameters": {
+    "engine": "google",
+    "q": "What type of therapist is best for couples therapy?",
+    "google_domain": "google.com",
+    "hl": "en",
+    "gl": "ca",
+    "device": "desktop"
+  },
+  "search_information": {
+    "query_displayed": "What type of therapist is best for couples therapy?",
+    "total_results": 218000000,
+    "time_taken_displayed": 0.23,
+    "organic_results_state": "Results for exact spelling"
+  },
+  "related_questions": [
+    {
+      "question": "What type of therapy is best for couples?",
+      "type": "featured_snippet",
+      "title": "The Best Types of Relationship Therapy",
+      "date": "Aug 24, 2025",
+      "link": "https://mentalhealthinc.com/2025/08/24/best-types-of-relationship-therapy/",
+      "list": [
+        "Emotionally Focused Therapy (EFT) Best for: Rebuilding emotional connection and resolving attachment issues. ... ",
+        "Gottman Method Couples Therapy. ... ",
+        "Imago Relationship Therapy. ... ",
+        "Cognitive-Behavioral Therapy (CBT) for Couples. ... ",
+        "Narrative Therapy."
+      ],
+      "displayed_link": "https://mentalhealthinc.com \u203a 2025/08/24 \u203a best-types-of...",
+      "source_logo": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/iZW5ZZErFzCSJk4KRXLFaHIHz2nfSYk4YCENs6cXGKQ.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IHR5cGUgb2YgdGhlcmFweSBpcyBiZXN0IGZvciBjb3VwbGVzPyIsImxrIjoiR2loM2FHRjBJSFI1Y0dVZ2IyWWdkR2hsY21Gd2VTQnBjeUJpWlhOMElHWnZjaUJqYjNWd2JHVnoiLCJicyI6ImMtT0s0dElNejBnc1VTaXBMRWhWeUU5VEtNbElMVW9zcUZUSUxGWklTaTB1VVVqTEwxSkl6aTh0eUVrdHRwYzRhMnlrSmFWUlRxUjZMbDh1TGJEWlFEbWdNZ1ZUTUN3cXpVbFZ5TXlES1lJWllDX1JKMlVrSXlXRnBBaE5CVmNObHhXeWNjcUdDZ1ZGLVVrNXFibEFMbEE0Tng5b1BVeFBVbEZtWHJwQ1NUN0MtQm1XUnRaU2x1WGtHc0FWQV9WTVhuNEpTTGc0c1ZJaHBSU3NDS1lGU09jVnAtWUFoZXdsTm5nWmFVdHBsaE9yUVlBUkFBIiwiaWQiOiJmY19qb24yYVp2ek9MNlBydUVQN09taGtRRV8xIn0=",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IHR5cGUgb2YgdGhlcmFweSBpcyBiZXN0IGZvciBjb3VwbGVzPyIsImxrIjoiR2loM2FHRjBJSFI1Y0dVZ2IyWWdkR2hsY21Gd2VTQnBjeUJpWlhOMElHWnZjaUJqYjNWd2JHVnoiLCJicyI6ImMtT0s0dElNejBnc1VTaXBMRWhWeUU5VEtNbElMVW9zcUZUSUxGWklTaTB1VVVqTEwxSkl6aTh0eUVrdHRwYzRhMnlrSmFWUlRxUjZMbDh1TGJEWlFEbWdNZ1ZUTUN3cXpVbFZ5TXlES1lJWllDX1JKMlVrSXlXRnBBaE5CVmNObHhXeWNjcUdDZ1ZGLVVrNXFibEFMbEE0Tng5b1BVeFBVbEZtWHJwQ1NUN0MtQm1XUnRaU2x1WGtHc0FWQV9WTVhuNEpTTGc0c1ZJaHBSU3NDS1lGU09jVnAtWUFoZXdsTm5nWmFVdHBsaE9yUVlBUkFBIiwiaWQiOiJmY19qb24yYVp2ek9MNlBydUVQN09taGtRRV8xIn0%3D"
+    },
+    {
+      "question": "What is the 5 5 5 rule in couples therapy?",
+      "type": "featured_snippet",
+      "snippet": "The 5-5-5 Rule: Each partner gets five minutes to speak without interruption, five minutes to listen, and five minutes to discuss solutions together. Compromise Lists: Write down possible solutions separately, then compare and find common ground.",
+      "title": "Effective Couples Therapy Techniques | Brian Stalcup MED",
+      "link": "https://www.brianstalcup.com/couples-therapy-techniques-you-can-practice-at-home#:~:text=The%205%2D5%2D5%20Rule,compare%20and%20find%20common%20ground.",
+      "displayed_link": "https://www.brianstalcup.com \u203a couples-therapy-techniq...",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IGlzIHRoZSA1IDUgNSBydWxlIGluIGNvdXBsZXMgdGhlcmFweT8iLCJsayI6ImM1T1NNbFVBd2FMU25GU0Y1UHpTZ3B6VVlvV1NqTlNpeElKS0FBIiwiYnMiOiJjLU9LNHRJTXowZ3NVU2lwTEVoVnlFOVRLTWxJTFVvc3FGVElMRlpJU2kwdVVVakxMMUpJemk4dHlFa3R0cGM0YTJ5a0phVlJUcVI2TGw4dUxiRFpRRG1nTWdWVE1Dd3F6VWxWeU15REtZSVpZQ19SSjJVa0l5V0ZwQWhOQlZjTmx4V3ljY3FHQ2dWRi1VazVxYmxBTGxBNE54OW9QVXhQVWxGbVhycENTVDdDLUJtV1J0WlNsdVhrR3NBVkFfVk1YbjRKU0xnNHNWSWhwUlNzQ0tZRlNPY1ZwLVlBaGV3bE5uZ1phVXRwbGhPclFZQVJBQSIsImlkIjoiZmNfam9uMmFadnpPTDZQcnVFUDdPbWhrUUVfMSJ9",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IGlzIHRoZSA1IDUgNSBydWxlIGluIGNvdXBsZXMgdGhlcmFweT8iLCJsayI6ImM1T1NNbFVBd2FMU25GU0Y1UHpTZ3B6VVlvV1NqTlNpeElKS0FBIiwiYnMiOiJjLU9LNHRJTXowZ3NVU2lwTEVoVnlFOVRLTWxJTFVvc3FGVElMRlpJU2kwdVVVakxMMUpJemk4dHlFa3R0cGM0YTJ5a0phVlJUcVI2TGw4dUxiRFpRRG1nTWdWVE1Dd3F6VWxWeU15REtZSVpZQ19SSjJVa0l5V0ZwQWhOQlZjTmx4V3ljY3FHQ2dWRi1VazVxYmxBTGxBNE54OW9QVXhQVWxGbVhycENTVDdDLUJtV1J0WlNsdVhrR3NBVkFfVk1YbjRKU0xnNHNWSWhwUlNzQ0tZRlNPY1ZwLVlBaGV3bE5uZ1phVXRwbGhPclFZQVJBQSIsImlkIjoiZmNfam9uMmFadnpPTDZQcnVFUDdPbWhrUUVfMSJ9"
+    },
+    {
+      "question": "What is the #1 problem that most couples bring to therapy?",
+      "type": "featured_snippet",
+      "snippet": "Communication problems are the most common issue couples bring to therapy. Under stress, many couples drift into four predictable moves that damage emotional intimacy and trust: Criticism: global judgments like \u201cyou always\u201d or \u201cyou never,\u201d which create negative feelings and defensiveness.",
+      "title": "What Is the Most Common Problem Addressed in Couples Therapy?",
+      "date": "Sep 16, 2025",
+      "link": "https://energeticsinstitute.com.au/articles/what-is-the-most-common-problem-addressed-in-couples-therapy/#:~:text=Communication%20problems%20are%20the%20most,create%20negative%20feelings%20and%20defensiveness.",
+      "displayed_link": "https://energeticsinstitute.com.au \u203a articles \u203a what-is-the-...",
+      "source_logo": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/iZW5ZZErFzCSJk4KRXLFaNXAoSr-fWRFcYH8JFaSsVE.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IGlzIHRoZSAjMSBwcm9ibGVtIHRoYXQgbW9zdCBjb3VwbGVzIGJyaW5nIHRvIHRoZXJhcHk/IiwibGsiOiJjNU95TE05SUxGSElMRllveVVoVlVEWlVLQ2pLVDhwSnpRVnlnY0s1LWNVbENzbjVwUVU1cWNVS1NVV1plZWtLSmZrZ2xVV0pCWlVBIiwiYnMiOiJjLU9LNHRJTXowZ3NVU2lwTEVoVnlFOVRLTWxJTFVvc3FGVElMRlpJU2kwdVVVakxMMUpJemk4dHlFa3R0cGM0YTJ5a0phVlJUcVI2TGw4dUxiRFpRRG1nTWdWVE1Dd3F6VWxWeU15REtZSVpZQ19SSjJVa0l5V0ZwQWhOQlZjTmx4V3ljY3FHQ2dWRi1VazVxYmxBTGxBNE54OW9QVXhQVWxGbVhycENTVDdDLUJtV1J0WlNsdVhrR3NBVkFfVk1YbjRKU0xnNHNWSWhwUlNzQ0tZRlNPY1ZwLVlBaGV3bE5uZ1phVXRwbGhPclFZQVJBQSIsImlkIjoiZmNfam9uMmFadnpPTDZQcnVFUDdPbWhrUUVfMSJ9",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IGlzIHRoZSAjMSBwcm9ibGVtIHRoYXQgbW9zdCBjb3VwbGVzIGJyaW5nIHRvIHRoZXJhcHk%2FIiwibGsiOiJjNU95TE05SUxGSElMRllveVVoVlVEWlVLQ2pLVDhwSnpRVnlnY0s1LWNVbENzbjVwUVU1cWNVS1NVV1plZWtLSmZrZ2xVV0pCWlVBIiwiYnMiOiJjLU9LNHRJTXowZ3NVU2lwTEVoVnlFOVRLTWxJTFVvc3FGVElMRlpJU2kwdVVVakxMMUpJemk4dHlFa3R0cGM0YTJ5a0phVlJUcVI2TGw4dUxiRFpRRG1nTWdWVE1Dd3F6VWxWeU15REtZSVpZQ19SSjJVa0l5V0ZwQWhOQlZjTmx4V3ljY3FHQ2dWRi1VazVxYmxBTGxBNE54OW9QVXhQVWxGbVhycENTVDdDLUJtV1J0WlNsdVhrR3NBVkFfVk1YbjRKU0xnNHNWSWhwUlNzQ0tZRlNPY1ZwLVlBaGV3bE5uZ1phVXRwbGhPclFZQVJBQSIsImlkIjoiZmNfam9uMmFadnpPTDZQcnVFUDdPbWhrUUVfMSJ9"
+    },
+    {
+      "question": "What not to say during couples counseling?",
+      "type": "featured_snippet",
+      "title": "Here are some things not to say in marriage counseling, along with why they should be avoided:",
+      "date": "Feb 14, 2026",
+      "link": "https://brianheydon.com/12-things-you-shouldnt-say-in-marriage-counseling/",
+      "list": [
+        "\u201cYou always\u2026\u201d or \u201cYou never\u2026\u201d ... ",
+        "\u201cThis is your fault\u201d or \u201cIt's all your fault\u201d ... ",
+        "\u201cI don't love you anymore\u201d or \u201cI think we should just give up\u201d ... ",
+        "\u201cYou don't understand me\u201d ... ",
+        "\u201cIf you really loved me, you would\u2026\u201d"
+      ],
+      "displayed_link": "https://brianheydon.com \u203a 12-things-you-shouldnt-say-i...",
+      "source_logo": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/iZW5ZZErFzCSJk4KRXLFaABPILHaH4NNMQaAFQngcUY.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IG5vdCB0byBzYXkgZHVyaW5nIGNvdXBsZXMgY291bnNlbGluZz8iLCJsayI6ImM1UFNMTTlJTEZISXl5OVJLTWxYS0U2c1ZFZ3BMY3JNUzFkSXppOHR5RWt0QnRGNXhhazVRQ0VBIiwiYnMiOiJjLU9LNHRJTXowZ3NVU2lwTEVoVnlFOVRLTWxJTFVvc3FGVElMRlpJU2kwdVVVakxMMUpJemk4dHlFa3R0cGM0YTJ5a0phVlJUcVI2TGw4dUxiRFpRRG1nTWdWVE1Dd3F6VWxWeU15REtZSVpZQ19SSjJVa0l5V0ZwQWhOQlZjTmx4V3ljY3FHQ2dWRi1VazVxYmxBTGxBNE54OW9QVXhQVWxGbVhycENTVDdDLUJtV1J0WlNsdVhrR3NBVkFfVk1YbjRKU0xnNHNWSWhwUlNzQ0tZRlNPY1ZwLVlBaGV3bE5uZ1phVXRwbGhPclFZQVJBQSIsImlkIjoiZmNfam9uMmFadnpPTDZQcnVFUDdPbWhrUUVfMSJ9",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFFQkNtSkJUVzR6TFhsVWEzUkJMVU5GTmxWWlExRjRSelpGUjA1dWRIZFBSRjl5YlZsbFFuVk5jV2x0VGxwa1RGSm9jVGRJZGpoRmFWWTBTV2xSV0hoTFRFbHBiVWhFYmtvemRtMHhibXgxYlhwVE1XUkpWMU15UTFoUGRqaGtaMDlDVkdWT1FSSVhhbTl1TW1GYWRucFBURFpRY25WRlVEZFBiV2hyVVVVYUlrRktTMHhHYlVsdU5VTmllbHB2WkVaSllVNURWRmxITlhSV05XdzVRMXBvTjNjIiwiZmN2IjoiMyIsImVpIjoiam9uMmFadnpPTDZQcnVFUDdPbWhrUUUiLCJxYyI6ImMtTXlLczlJTEZFb3FTeElWY2hQVXlqSlNDMUtMTWdzTGxISUxGWklTZ1hTYWZsRkNzbjVwUVU1cWNWUTJVb0JodHFjVzFMMkFBIiwicXVlc3Rpb24iOiJXaGF0IG5vdCB0byBzYXkgZHVyaW5nIGNvdXBsZXMgY291bnNlbGluZz8iLCJsayI6ImM1UFNMTTlJTEZISXl5OVJLTWxYS0U2c1ZFZ3BMY3JNUzFkSXppOHR5RWt0QnRGNXhhazVRQ0VBIiwiYnMiOiJjLU9LNHRJTXowZ3NVU2lwTEVoVnlFOVRLTWxJTFVvc3FGVElMRlpJU2kwdVVVakxMMUpJemk4dHlFa3R0cGM0YTJ5a0phVlJUcVI2TGw4dUxiRFpRRG1nTWdWVE1Dd3F6VWxWeU15REtZSVpZQ19SSjJVa0l5V0ZwQWhOQlZjTmx4V3ljY3FHQ2dWRi1VazVxYmxBTGxBNE54OW9QVXhQVWxGbVhycENTVDdDLUJtV1J0WlNsdVhrR3NBVkFfVk1YbjRKU0xnNHNWSWhwUlNzQ0tZRlNPY1ZwLVlBaGV3bE5uZ1phVXRwbGhPclFZQVJBQSIsImlkIjoiZmNfam9uMmFadnpPTDZQcnVFUDdPbWhrUUVfMSJ9"
+    }
+  ],
+  "ai_overview": {
+    "page_token": "7tfbz3icxZVfc6o4FMDf93ssL14FFEvtDNMJiIq0VVpvrfeFgRADFYwSKPW-7XfZD7CfZz_N8k_Fiu3cndnZPJDk5OTknJwfJ3_86Xvr1d-__eVG0YbesGySJC1MCPZRC5KAtehuDdkl8WkI3VvsS9BiKIlDiDxHgm5IAsS4voTWzO5N6jCQShyDPOmVrNvWj7efk7uraRirU3ESuCtDZXJzkmlbFL2mp72_UtZk08_q904_nbRoC61b0cNuhJ0emK1pq83xvdaEtYJUAfxHTQWPea8YwADK-ToGaq38sF_OvlqqZxyFRmn62JJ8JsupZr44qDWmaXm3UrMT-0LbxEPrC__Hp9N5fryC73OngCarNXvqZIcY9dMgzlysE2Ilu6i8yclRWmsga-5hiWQmBQCBcjQs7I-Sy8Ec4H7qjlb6OUom9_JEfax3sNABSgDg06h7MY5S0dCCpIxYSR4MgFkHp7RxrB2mHc960IX5IKQZhMqsx5EB7s48ozN9mkf-08BcbqKf16jbn_7gAoOFdqrnE8tBjuma3G0-59t8l-t1RPFbTj-kB_xpFf-n56XmzayFP8Ctu5bMV9hXyls-tpynmkxqRY4qUctno5Nt8l55oQK1ijrh07ykPOx3oRRjQ8Mf9maOnbN_OizZz7XVghX5oxvaAa2DC_A0soO50oUheNAOK4pyf2qtGjfwjExJG-7nFd3MHUXBeeR6tqk4ZlSxVbkTnNs1sCxXJeXnwH6eLSBnnXaNM8z0VKYU9wD2eSNnf2-agxNc06L0gkn_U4QvNbUa_4WG95h_oLZK-4iKgUeIkMQ6RdvxtRdjsfkKn-FkhOvpJoH9C9Ud_n_8F7Vf3tf-Ov6Nz_hXcwou1_5Seqj940yiKoN6_oviX6396DSyM_7Hp_x_UvuP_Beyr_g3avnXavnPDJzxjy_yn9X-I__ntb-Isqj9R_7_Te2Xf7325z8DKrrThyB-xRcfhGE4xvp0NE7mZHXVwXSsUI-PRavPveAvH4RlEN1Yjv_N9JwbuT2Odg6zleauFTWi3QY1yLIRuSi0Nh6NGh5t2CjtlyRsQBJvfETL1d0tE_ghkThLNC3bW0WT6fuA9p21fZXcR8PRilcfJtF2PX9pkm28joRnzm7bQA4Fbh5w_VWMO0N9Hdk6D0a63nSBPdsu9IU547-LvOItu4M50M2R0B8qTSfeXQmD8PFtJS_goCvuXtw7pzd5f_cNFMTNBRqSbe4NlTbBbiGYfZEk35nAciiSeCYIoZQmScAgvfM5zvK_yLBNk8VQaJmIvkmO1e4KS9hGnLjs2W2RCXB6G1K7x9B1KPH_AEpmD4I",
+    "serpapi_link": "https://serpapi.com/search.json?engine=google_ai_overview&page_token=7tfbz3icxZVfc6o4FMDf93ssL14FFEvtDNMJiIq0VVpvrfeFgRADFYwSKPW-7XfZD7CfZz_N8k_Fiu3cndnZPJDk5OTknJwfJ3_86Xvr1d-__eVG0YbesGySJC1MCPZRC5KAtehuDdkl8WkI3VvsS9BiKIlDiDxHgm5IAsS4voTWzO5N6jCQShyDPOmVrNvWj7efk7uraRirU3ESuCtDZXJzkmlbFL2mp72_UtZk08_q904_nbRoC61b0cNuhJ0emK1pq83xvdaEtYJUAfxHTQWPea8YwADK-ToGaq38sF_OvlqqZxyFRmn62JJ8JsupZr44qDWmaXm3UrMT-0LbxEPrC__Hp9N5fryC73OngCarNXvqZIcY9dMgzlysE2Ilu6i8yclRWmsga-5hiWQmBQCBcjQs7I-Sy8Ec4H7qjlb6OUom9_JEfax3sNABSgDg06h7MY5S0dCCpIxYSR4MgFkHp7RxrB2mHc960IX5IKQZhMqsx5EB7s48ozN9mkf-08BcbqKf16jbn_7gAoOFdqrnE8tBjuma3G0-59t8l-t1RPFbTj-kB_xpFf-n56XmzayFP8Ctu5bMV9hXyls-tpynmkxqRY4qUctno5Nt8l55oQK1ijrh07ykPOx3oRRjQ8Mf9maOnbN_OizZz7XVghX5oxvaAa2DC_A0soO50oUheNAOK4pyf2qtGjfwjExJG-7nFd3MHUXBeeR6tqk4ZlSxVbkTnNs1sCxXJeXnwH6eLSBnnXaNM8z0VKYU9wD2eSNnf2-agxNc06L0gkn_U4QvNbUa_4WG95h_oLZK-4iKgUeIkMQ6RdvxtRdjsfkKn-FkhOvpJoH9C9Ud_n_8F7Vf3tf-Ov6Nz_hXcwou1_5Seqj940yiKoN6_oviX6396DSyM_7Hp_x_UvuP_Beyr_g3avnXavnPDJzxjy_yn9X-I__ntb-Isqj9R_7_Te2Xf7325z8DKrrThyB-xRcfhGE4xvp0NE7mZHXVwXSsUI-PRavPveAvH4RlEN1Yjv_N9JwbuT2Odg6zleauFTWi3QY1yLIRuSi0Nh6NGh5t2CjtlyRsQBJvfETL1d0tE_ghkThLNC3bW0WT6fuA9p21fZXcR8PRilcfJtF2PX9pkm28joRnzm7bQA4Fbh5w_VWMO0N9Hdk6D0a63nSBPdsu9IU547-LvOItu4M50M2R0B8qTSfeXQmD8PFtJS_goCvuXtw7pzd5f_cNFMTNBRqSbe4NlTbBbiGYfZEk35nAciiSeCYIoZQmScAgvfM5zvK_yLBNk8VQaJmIvkmO1e4KS9hGnLjs2W2RCXB6G1K7x9B1KPH_AEpmD4I"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "5 Things to Look for When Choosing a Couples Therapist",
+      "link": "https://www.psychologytoday.com/ca/blog/the-dynamics-of-love/202505/5-things-to-look-for-when-choosing-a-couples-therapist",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.psychologytoday.com/ca/blog/the-dynamics-of-love/202505/5-things-to-look-for-when-choosing-a-couples-therapist&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECBoQAQ",
+      "displayed_link": "https://www.psychologytoday.com \u203a blog \u203a 5-things-to...",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ9RphEEs_IZN7Rhtn6q_Dko.png",
+      "date": "May 5, 2025",
+      "snippet": "A good couples therapist is trained to hold space for two people at once, navigate conflict neutrally, and manage the emotional heat that often comes with ...",
+      "snippet_highlighted_words": [
+        "trained to hold space for two people at once"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "A good couples therapist is trained to hold space for two people at once, navigate conflict neutrally, and manage the emotional heat that often comes with ...",
+          "source_info_link": "https://www.psychologytoday.com/ca/blog/the-dynamics-of-love/202505/5-things-to-look-for-when-choosing-a-couples-therapist",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ3HKtWMKA8EY6qX8iiYBI6HZEpSKtIz6gxIW3fK3CSl9.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.psychologytoday.com/ca/blog/the-dynamics-of-love/202505/5-things-to-look-for-when-choosing-a-couples-therapist&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.psychologytoday.com%2Fca%2Fblog%2Fthe-dynamics-of-love%2F202505%2F5-things-to-look-for-when-choosing-a-couples-therapist",
+      "source": "Psychology Today"
+    },
+    {
+      "position": 2,
+      "title": "How to Choose the Right Relationship Therapist in Toronto",
+      "link": "https://soyouneed.ca/how-to-choose-relationship-therapist-toronto/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://soyouneed.ca/how-to-choose-relationship-therapist-toronto/&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECC0QAQ",
+      "displayed_link": "https://soyouneed.ca \u203a how-to-choose-relationship-thera...",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZy51LV1MaRWob5MU4Cp1IeY.png",
+      "date": "Sep 9, 2025",
+      "snippet": "When looking for a relationship therapist, choose someone who is trained in couple therapy models. They should be honest, open-minded, and never ...",
+      "snippet_highlighted_words": [
+        "someone who is trained in couple therapy models"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "When looking for a relationship therapist, choose someone who is trained in couple therapy models. They should be honest, open-minded, and never ...",
+          "source_info_link": "https://soyouneed.ca/how-to-choose-relationship-therapist-toronto/",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZwf-ImgEtXaZNl3Uda53m2JsbaZ_sbeA9AjRPkJLbdUe.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://soyouneed.ca/how-to-choose-relationship-therapist-toronto/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fsoyouneed.ca%2Fhow-to-choose-relationship-therapist-toronto%2F",
+      "source": "So You Need Therapy"
+    },
+    {
+      "position": 3,
+      "title": "How to Find a Couples Therapist Who Can Actually Help You",
+      "link": "https://www.gottman.com/blog/how-to-find-a-couples-therapist-who-can-actually-help-you/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.gottman.com/blog/how-to-find-a-couples-therapist-who-can-actually-help-you/&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECDAQAQ",
+      "displayed_link": "https://www.gottman.com \u203a blog \u203a how-to-find-a-coupl...",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ_F1-TQXzEcbsJni_wIGWhU.png",
+      "date": "Mar 3, 2020",
+      "snippet": "4 Tips to Find a Competent Couples Therapist \u00b7 Step 1: Search for Therapists with Specialized Training in Couples Therapy \u00b7 Step 2: Interview ...",
+      "snippet_highlighted_words": [
+        "Search for Therapists with Specialized Training in Couples Therapy"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "4 Tips to Find a Competent Couples Therapist \u00b7 Step 1: Search for Therapists with Specialized Training in Couples Therapy \u00b7 Step 2: Interview ...",
+          "source_info_link": "https://www.gottman.com/blog/how-to-find-a-couples-therapist-who-can-actually-help-you/",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZyuhBSm4sKICmjSMbo5a5ePWLKhLn5OgynrUb5EnH25Y.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.gottman.com/blog/how-to-find-a-couples-therapist-who-can-actually-help-you/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.gottman.com%2Fblog%2Fhow-to-find-a-couples-therapist-who-can-actually-help-you%2F",
+      "source": "The Gottman Institute"
+    },
+    {
+      "position": 4,
+      "title": "Couples therapy - what kind of professional to look for?",
+      "link": "https://www.reddit.com/r/relationship_advice/comments/uuvdda/couples_therapy_what_kind_of_professional_to_look/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.reddit.com/r/relationship_advice/comments/uuvdda/couples_therapy_what_kind_of_professional_to_look/&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECEUQAQ",
+      "displayed_link": "9 comments \u00b7 3 years ago",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ8oIhEm5Ns1wnY3S76Yi0EE.png",
+      "snippet": "Look for someone trained and certified in the Gottman method of couples counseling. They need to at a minimum be masters degree level in ...",
+      "snippet_highlighted_words": [
+        "Look for someone trained and certified in the Gottman method of couples counseling"
+      ],
+      "sitelinks": {
+        "list": [
+          {
+            "title": "Couples therapists who are trained in more than one ...",
+            "link": "https://www.reddit.com/r/therapists/comments/145zehl/couples_therapists_who_are_trained_in_more_than/",
+            "answer_count": 35,
+            "date": "Jun 10, 2023"
+          },
+          {
+            "title": "Tips/red flags for choosing a couple's therapist? : r ...",
+            "link": "https://www.reddit.com/r/TalkTherapy/comments/109744w/tipsred_flags_for_choosing_a_couples_therapist/",
+            "answer_count": 9,
+            "date": "Jan 11, 2023"
+          }
+        ]
+      },
+      "about_this_result": {
+        "source": {
+          "description": "Look for someone trained and certified in the Gottman method of couples counseling. They need to at a minimum be masters degree level in ...",
+          "source_info_link": "https://www.reddit.com/r/relationship_advice/comments/uuvdda/couples_therapy_what_kind_of_professional_to_look/",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ8TBBCiwET7z9HrFqFmv5unrXQe2vqK7gJ52RAf6yjzu.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.reddit.com/r/relationship_advice/comments/uuvdda/couples_therapy_what_kind_of_professional_to_look/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.reddit.com%2Fr%2Frelationship_advice%2Fcomments%2Fuuvdda%2Fcouples_therapy_what_kind_of_professional_to_look%2F",
+      "source": "Reddit \u00b7 r/relationship_advice"
+    },
+    {
+      "position": 5,
+      "title": "How to Find the Right Therapist For You",
+      "link": "https://www.estherperel.com/blog/how-to-find-the-right-therapist-for-you",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.estherperel.com/blog/how-to-find-the-right-therapist-for-you&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECC4QAQ",
+      "displayed_link": "https://www.estherperel.com \u203a blog \u203a how-to-find-the-r...",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ3GoQqOlh1Y-_2PvIEH9p5k.png",
+      "date": "Aug 19, 2019",
+      "snippet": "The kind of therapist I always recommend is one who is challenging and direct but not judgmental; is open-minded and willing to let people explore options in ...",
+      "snippet_highlighted_words": [
+        "one who is challenging and direct but not judgmental"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "The kind of therapist I always recommend is one who is challenging and direct but not judgmental; is open-minded and willing to let people explore options in ...",
+          "source_info_link": "https://www.estherperel.com/blog/how-to-find-the-right-therapist-for-you",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ5KSUj3QVPDOx4oXByxRBdmvnxQ5f5CsBCrnrdFlCaV7.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.estherperel.com/blog/how-to-find-the-right-therapist-for-you&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.estherperel.com%2Fblog%2Fhow-to-find-the-right-therapist-for-you",
+      "source": "EstherPerel.com"
+    },
+    {
+      "position": 6,
+      "title": "4 Highly Recommended Toronto Couples Therapists",
+      "link": "https://thetherapycentre.ca/couples-therapy-toronto/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://thetherapycentre.ca/couples-therapy-toronto/&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECCwQAQ",
+      "displayed_link": "https://thetherapycentre.ca \u203a couples-therapy-toronto",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ6tmDQC9cEqJQr5nUo_9dDY.png",
+      "snippet": "A licensed mental health professional such as a psychotherapist, psychologist, or social worker who is specifically trained in relationship counselling is ideal ...",
+      "snippet_highlighted_words": [
+        "A licensed mental health professional"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "A licensed mental health professional such as a psychotherapist, psychologist, or social worker who is specifically trained in relationship counselling is ideal ...",
+          "source_info_link": "https://thetherapycentre.ca/couples-therapy-toronto/",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZwKav-36hYUQ805lNrVUmqN7MDvgW3ZFFL5pG2LpVrkz.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://thetherapycentre.ca/couples-therapy-toronto/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fthetherapycentre.ca%2Fcouples-therapy-toronto%2F",
+      "source": "The Therapy Centre"
+    },
+    {
+      "position": 7,
+      "title": "What Kind of Therapist is Best for Couples?",
+      "link": "https://www.whiteboardcounselling.com/post/what-kind-of-therapist-is-best-for-couples",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.whiteboardcounselling.com/post/what-kind-of-therapist-is-best-for-couples&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECDIQAQ",
+      "displayed_link": "https://www.whiteboardcounselling.com \u203a post \u203a what-...",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ_1CPFv1ji4x1zkZ8cZanQE.png",
+      "date": "Jan 28, 2025",
+      "snippet": "A non-judgmental therapist fosters a sense of safety. This allows each partner to share their feelings and perspectives honestly, even when it's ...",
+      "snippet_highlighted_words": [
+        "therapist"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "A non-judgmental therapist fosters a sense of safety. This allows each partner to share their feelings and perspectives honestly, even when it's ...",
+          "source_info_link": "https://www.whiteboardcounselling.com/post/what-kind-of-therapist-is-best-for-couples",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ6am_3H9KzluJ84UGTAQYtgFDxNYCWOPsT5b8rkmLaIr.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.whiteboardcounselling.com/post/what-kind-of-therapist-is-best-for-couples&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.whiteboardcounselling.com%2Fpost%2Fwhat-kind-of-therapist-is-best-for-couples",
+      "source": "Whiteboard Counselling"
+    },
+    {
+      "position": 8,
+      "title": "What type of therapist is best for marriage counseling?",
+      "link": "https://brianheydon.com/what-type-of-therapist-is-best-for-marriage-counseling/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://brianheydon.com/what-type-of-therapist-is-best-for-marriage-counseling/&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECDEQAQ",
+      "displayed_link": "https://brianheydon.com \u203a what-type-of-therapist-is-bes...",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ-Tc6lwtyEL7RjmWF1vdD4k.png",
+      "date": "Feb 14, 2026",
+      "snippet": "Specialization: Clinical psychologists, particularly those who specialize in couples therapy, can be a good choice for marriage counseling.",
+      "snippet_highlighted_words": [
+        "Clinical psychologists"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Specialization: Clinical psychologists, particularly those who specialize in couples therapy, can be a good choice for marriage counseling.",
+          "source_info_link": "https://brianheydon.com/what-type-of-therapist-is-best-for-marriage-counseling/",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ7KRl6Mc9HV6wKmDvqgXUq_bo6JzLIhIqkp4Ko2yLzty.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://brianheydon.com/what-type-of-therapist-is-best-for-marriage-counseling/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fbrianheydon.com%2Fwhat-type-of-therapist-is-best-for-marriage-counseling%2F",
+      "source": "Brian Heydon"
+    },
+    {
+      "position": 9,
+      "title": "Different Types of Therapy Professionals",
+      "link": "https://vaughantherapy.ca/understanding-the-different-types-of-therapy-professionals/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://vaughantherapy.ca/understanding-the-different-types-of-therapy-professionals/&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQFnoECC8QAQ",
+      "displayed_link": "https://vaughantherapy.ca \u203a Blog",
+      "favicon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ7jua1koEoRjyFmFdAYty0g.png",
+      "date": "Jul 24, 2017",
+      "snippet": "For the most effective treatment for relationship problems, we recommend that you opt for a therapist specifically trained in Couples Therapy .",
+      "snippet_highlighted_words": [
+        "therapist specifically trained in Couples Therapy"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "For the most effective treatment for relationship problems, we recommend that you opt for a therapist specifically trained in Couples Therapy .",
+          "source_info_link": "https://vaughantherapy.ca/understanding-the-different-types-of-therapy-professionals/",
+          "icon": "https://serpapi.com/searches/69f6898e302394a9c8a2bb08/images/CoIOOn8k7c-9QzxxHJgLZ_EztrtHtjU9xTkgaNmAmz2nbD371sjGtW7YBs4AEGuy.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://vaughantherapy.ca/understanding-the-different-types-of-therapy-professionals/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fvaughantherapy.ca%2Funderstanding-the-different-types-of-therapy-professionals%2F",
+      "source": "Vaughan Relationship Centre"
+    }
+  ],
+  "related_searches": [
+    {
+      "block_position": 1,
+      "query": "What type of therapist is best for couples therapy reddit",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+reddit&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAgrEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+reddit"
+    },
+    {
+      "block_position": 1,
+      "query": "What type of therapist is best for couples therapy near me",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+near+me&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAhMEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+near+me"
+    },
+    {
+      "block_position": 1,
+      "query": "What type of therapist is best for couples therapy in canada",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+in+canada&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAhIEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+in+canada"
+    },
+    {
+      "block_position": 1,
+      "query": "What type of therapist is best for couples therapy near",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+near&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAhGEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy+near"
+    },
+    {
+      "block_position": 1,
+      "query": "Gottman Method",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Gottman+Method&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAg-EAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=Gottman+Method"
+    },
+    {
+      "block_position": 1,
+      "query": "Gottman Method couples therapy",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Gottman+Method+couples+therapy&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAg2EAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=Gottman+Method+couples+therapy"
+    },
+    {
+      "block_position": 1,
+      "query": "What should I look for in a couples therapist",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=What+should+I+look+for+in+a+couples+therapist&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAg0EAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+should+I+look+for+in+a+couples+therapist"
+    },
+    {
+      "block_position": 1,
+      "query": "Best couples therapist",
+      "link": "https://www.google.com/search?sca_esv=da254fc2e07f9b27&gl=ca&hl=en&q=Best+couples+therapist&sa=X&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ1QJ6BAgzEAE",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=Best+couples+therapist"
+    }
+  ],
+  "discussions_and_forums": [
+    {
+      "title": "Couples Therapy that worked: How did you find a good therapist etc. Or particular things to look for",
+      "link": "https://www.reddit.com/r/workingmoms/comments/1h3wzzd/couples_therapy_that_worked_how_did_you_find_a/",
+      "date": "1 year ago",
+      "extensions": [
+        "r/workingmoms",
+        "30+ comments"
+      ],
+      "source": "Reddit",
+      "answers": [
+        {
+          "link": "https://www.reddit.com/r/workingmoms/comments/1h3wzzd/couples_therapy_that_worked_how_did_you_find_a/"
+        }
+      ]
+    },
+    {
+      "title": "What is the difference between seeing a therapist for relationship issues ...",
+      "link": "https://www.quora.com/What-is-the-difference-between-seeing-a-therapist-for-relationship-issues-and-going-to-couples-counseling-or-seeing-a-marriage-counselor",
+      "date": "1 year ago",
+      "extensions": [
+        "2 answers"
+      ],
+      "source": "Quora",
+      "answers": [
+        {
+          "link": "https://www.quora.com/What-is-the-difference-between-seeing-a-therapist-for-relationship-issues-and-going-to-couples-counseling-or-seeing-a-marriage-counselor"
+        }
+      ]
+    }
+  ],
+  "pagination": {
+    "current": 1,
+    "next": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=10&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8NMDegQITRAW",
+    "other_pages": {
+      "2": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=10&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAE",
+      "3": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=20&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAG",
+      "4": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=30&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAI",
+      "5": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=40&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAK",
+      "6": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=50&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAM",
+      "7": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=60&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAO",
+      "8": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=70&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAQ",
+      "9": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=80&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAS",
+      "10": "https://www.google.com/search?q=What+type+of+therapist+is+best+for+couples+therapy?&sca_esv=da254fc2e07f9b27&gl=ca&hl=en&ei=jon2aZvzOL6PruEP7OmhkQE&start=90&sa=N&sstk=Af77f_c2ReqWsv_nUn1eQN5ENwoXmyhf1I8nI3hv8HQKv7YCLtrKCxhcaEgbcj7-9rjSpmdF0OLcB0T9jof2-p7x-LxKPs0lTWmDyQ&ved=2ahUKEwib8uTj4ZuUAxW-hysGHex0KBIQ8tMDegQITRAU"
+    }
+  },
+  "serpapi_pagination": {
+    "current": 1,
+    "next_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=10",
+    "next": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=10",
+    "other_pages": {
+      "2": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=10",
+      "3": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=20",
+      "4": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=30",
+      "5": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=40",
+      "6": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=50",
+      "7": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=60",
+      "8": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=70",
+      "9": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=80",
+      "10": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&q=What+type+of+therapist+is+best+for+couples+therapy%3F&start=90"
+    }
+  }
+}

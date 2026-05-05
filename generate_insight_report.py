@@ -280,6 +280,122 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
     return report
 
 
+def _get_entity_dominance_interpretation(entity_dist: dict, config: dict):
+    """
+    Purpose: Generate interpretive sentence based on entity dominance percentages.
+    Spec:    report_clarity_spec.md#RC.6
+    Tests:   tests/test_report_clarity.py::test_rc6_interpretation_*
+    """
+    thresholds = config.get("report_thresholds", {}).get("entity_dominance", {})
+    counselling_dir_threshold = thresholds.get("counselling_directory_combined", 0.4)
+    education_threshold = thresholds.get("education", 0.15)
+    government_threshold = thresholds.get("government", 0.20)
+
+    # Calculate percentages
+    counselling_pct = entity_dist.get("counselling", 0) / 100.0
+    directory_pct = entity_dist.get("directory", 0) / 100.0
+    education_pct = entity_dist.get("education", 0) / 100.0
+    government_pct = entity_dist.get("government", 0) / 100.0
+
+    # Check thresholds in priority order
+    if (counselling_pct + directory_pct) > counselling_dir_threshold:
+        return (
+            "Competitors are primarily counselling providers and directories. For "
+            "informational keywords, your competition is guide/article content, not "
+            "service pages."
+        )
+    elif education_pct > education_threshold:
+        return (
+            "Educational institutions hold significant SERP share. Content must meet "
+            "an academic evidence standard to compete."
+        )
+    elif government_pct > government_threshold:
+        return (
+            "Government sources dominate. These keywords may be difficult to rank for "
+            "regardless of DA — consider whether the audience finding government results "
+            "is the same audience you are targeting."
+        )
+    else:
+        return (
+            "No single entity type dominates. SERP is fragmented — differentiated "
+            "content has room to enter."
+        )
+
+
+def _order_briefs_by_opportunity(data: dict, strategic_recs: list, best_opportunity_kw: str):
+    """
+    Purpose: Order content briefs for sequencing (RC.8).
+    Spec:    report_clarity_spec.md#RC.8
+    Tests:   tests/test_report_clarity.py::test_rc8_*
+
+    Returns list of (index, pattern_name, most_relevant_keyword, rank_info) tuples,
+    ordered by: best opportunity keyword first, then by feasibility/intent ranking.
+    """
+    if not strategic_recs or not data.get("keyword_profiles"):
+        return list(enumerate((rec.get("Pattern_Name", ""), None, None) for rec in strategic_recs))
+
+    config = _load_config()
+    preferred_intents = config.get("client", {}).get("preferred_intents", ["informational"])
+    keyword_profiles = data.get("keyword_profiles", {})
+    keyword_feasibility = data.get("keyword_feasibility", [])
+    organic_results = data.get("organic_results", [])
+    paa_questions = data.get("paa_questions", [])
+
+    feas_map = {r.get("Keyword"): r for r in keyword_feasibility if r.get("Query_Label") != "P"}
+
+    # Build brief metadata
+    brief_metadata = []
+    for idx, rec in enumerate(strategic_recs):
+        pattern_name = rec.get("Pattern_Name", "")
+        most_rel_kw = _get_most_relevant_keyword(rec, organic_results, keyword_profiles, paa_questions)
+
+        if not most_rel_kw or most_rel_kw not in keyword_profiles:
+            most_rel_kw = None
+
+        # Get ranking info for this keyword
+        if most_rel_kw:
+            profile = keyword_profiles.get(most_rel_kw, {})
+            feas_record = feas_map.get(most_rel_kw, {})
+            intent = profile.get("serp_intent", {}).get("primary_intent", "")
+            confidence = profile.get("serp_intent", {}).get("confidence", "")
+            feas_status = feas_record.get("feasibility_status", "")
+
+            # Feasibility ranking
+            feas_rank = (
+                3 if "High" in feas_status else
+                2 if "Moderate" in feas_status else
+                1 if "Low" in feas_status else 0
+            )
+
+            # Intent match
+            is_mixed = profile.get("serp_intent", {}).get("is_mixed", False)
+            if is_mixed:
+                components = profile.get("serp_intent", {}).get("mixed_components", [])
+                intent_match = 1 if any(c in preferred_intents for c in components) else 0
+            else:
+                intent_match = 1 if intent in preferred_intents else 0
+
+            # Confidence ranking
+            conf_rank = 3 if confidence == "high" else 2 if confidence == "medium" else 1
+
+            rank_score = (feas_rank, intent_match, conf_rank, most_rel_kw)
+        else:
+            rank_score = (-1, 0, 0, "")
+
+        brief_metadata.append((idx, pattern_name, most_rel_kw, rank_score))
+
+    # Sort: best opportunity keyword first, then by rank score (descending feas/intent/conf)
+    def sort_key(item):
+        idx, pattern_name, most_rel_kw, rank_score = item
+        # First, sort by whether it matches best_opportunity_kw (True = higher priority)
+        matches_best = 1 if most_rel_kw == best_opportunity_kw else 0
+        # Then by rank score (descending)
+        return (-matches_best, -rank_score[0], -rank_score[1], -rank_score[2], rank_score[3])
+
+    brief_metadata.sort(key=sort_key)
+    return brief_metadata
+
+
 def generate_report(data):
     report = []
 
@@ -306,10 +422,7 @@ def generate_report(data):
     # 1. Overview & Opportunity
     report.append("## 1. Market Overview")
     if overview:
-        total_vol = sum(int(o.get("Total_Results", 0) or 0) for o in overview)
         report.append(f"- **Keywords Analyzed:** {len(overview)}")
-        report.append(
-            f"- **Total Search Volume (Proxy):** {total_vol:,} results")
 
         # Top SERP Features
         features = [o.get("SERP_Features")
@@ -462,6 +575,11 @@ def generate_report(data):
                     for k, v in sorted(ents.items(), key=lambda x: x[1], reverse=True):
                         report.append(f"- **{k}:** {v}%")
 
+                    # RC.6 — Entity dominance interpretation
+                    config = _load_config()
+                    interpretation = _get_entity_dominance_interpretation(ents, config)
+                    report.append(f"\n*{interpretation}*")
+
                 conts = dominance.get("content_dominance", {})
                 if conts:
                     report.append("\n### Content Type Dominance (Top 10)")
@@ -473,10 +591,11 @@ def generate_report(data):
     _kw_profiles_for_5b = data.get("keyword_profiles", {})
     report.extend(_render_serp_intent_section(_kw_profiles_for_5b))
 
-    # 5c. Keyword Feasibility & Pivot Recommendations
+    # 5c. Keyword Feasibility & Pivot Recommendations (RC.5 — always render)
+    report.append("## 5c. Keyword Feasibility & Pivot Recommendations\n")
+
     feasibility_rows = data.get("keyword_feasibility", [])
     if feasibility_rows:
-        report.append("## 5c. Keyword Feasibility & Pivot Recommendations")
         report.append(
             "Domain Authority gap analysis for each keyword. "
             "Low Feasibility keywords include a hyper-local pivot suggestion "
@@ -541,8 +660,18 @@ def generate_report(data):
                     report.append(f"**{kw}:** {strategy}\n")
 
         report.append("\n")
+    else:
+        # RC.5 — No feasibility data: show credential instructions
+        report.append("**⚠️ Feasibility data unavailable for this run.**\n")
+        report.append(
+            "Domain Authority scoring requires at least one of:\n"
+            "- `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` in `.env` (pay-per-use, primary)\n"
+            "- `MOZ_TOKEN` in `.env` (free tier, 50 rows/month)\n\n"
+            "Without DA data, keyword ranking is based on intent alignment only (see Section 0). "
+            "Re-run with credentials to enable full feasibility scoring.\n"
+        )
 
-    # Section 6 — Market Volatility
+    # Section 6 — Market Volatility (RC.7 — suppress or explain non-comparable runs)
     if METRICS_AVAILABLE:
         _overview = data.get("overview", [])
         _run_id = _overview[0].get("Run_ID") if _overview else None
@@ -550,24 +679,46 @@ def generate_report(data):
             vol = metrics.get_volatility_metrics(_run_id)
             if vol and vol.get("status") == "success":
                 report.append("## 6. Market Volatility")
-                report.append(
-                    f"**Volatility Score:** {vol['volatility_score']} (Avg rank change)")
-                report.append(
-                    f"**Stable URLs:** {vol['stable_urls_count']} / {vol['total_compared']}")
-                if vol.get("comparability_warning"):
-                    report.append(f"**Comparability Warning:** {vol['comparability_warning']}")
 
-                if vol['winners']:
-                    report.append("\n### 🚀 Top Movers (Winners)")
-                    for w in vol['winners']:
-                        report.append(
-                            f"- **{w['url']}** (+{w['rank_delta']} positions) for '{w['keyword_text']}'")
+                # RC.7 — Handle nan or null volatility scores
+                vol_score = vol.get("volatility_score")
+                is_nan = (
+                    vol_score is None or
+                    str(vol_score).lower() == "nan" or
+                    (isinstance(vol_score, float) and vol_score != vol_score)  # NaN check
+                )
 
-                if vol['losers']:
-                    report.append("\n### 🔻 Top Movers (Losers)")
-                    for l in vol['losers']:
-                        report.append(
-                            f"- **{l['url']}** ({l['rank_delta']} positions) for '{l['keyword_text']}'")
+                if is_nan and vol.get("comparability_warning"):
+                    report.append("**Not applicable for this run.**\n")
+                    report.append(
+                        "Volatility requires two runs with the same keyword set. "
+                        "This run used a different keyword set than the previous run:\n"
+                    )
+                    report.append(f"- **This run:** {vol.get('keywords_current', 'unknown')}")
+                    report.append(f"- **Previous run:** {vol.get('keywords_previous', 'unknown')}\n")
+                    report.append(
+                        "Run again with the same keywords to establish a baseline for rank change tracking."
+                    )
+                elif not is_nan and vol_score is not None:
+                    # Valid score: render as normal
+                    report.append(
+                        f"**Volatility Score:** {vol_score} (Avg rank change)")
+                    report.append(
+                        f"**Stable URLs:** {vol['stable_urls_count']} / {vol['total_compared']}")
+                    if vol.get("comparability_warning"):
+                        report.append(f"**Comparability Warning:** {vol['comparability_warning']}")
+
+                    if vol.get('winners'):
+                        report.append("\n### 🚀 Top Movers (Winners)")
+                        for w in vol['winners']:
+                            report.append(
+                                f"- **{w['url']}** (+{w['rank_delta']} positions) for '{w['keyword_text']}'")
+
+                    if vol.get('losers'):
+                        report.append("\n### 🔻 Top Movers (Losers)")
+                        for l in vol['losers']:
+                            report.append(
+                                f"- **{l['url']}** ({l['rank_delta']} positions) for '{l['keyword_text']}'")
                 report.append("\n")
 
     return "\n".join(report)

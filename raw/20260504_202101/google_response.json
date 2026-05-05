@@ -1,0 +1,922 @@
+{
+  "search_metadata": {
+    "id": "69f962dcf680d1b043298f4e",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/_e1GjKeRn-r3mcrgt9aRBw/69f962dcf680d1b043298f4e.json",
+    "pixel_position_endpoint": "https://serpapi.com/searches/_e1GjKeRn-r3mcrgt9aRBw/69f962dcf680d1b043298f4e.json_with_pixel_position",
+    "created_at": "2026-05-05 03:24:12 UTC",
+    "processed_at": "2026-05-05 03:24:12 UTC",
+    "google_url": "https://www.google.com/search?q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&oq=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&uule=w+CAIQICIhVmFuY291dmVyLEJyaXRpc2ggQ29sdW1iaWEsQ2FuYWRh&hl=en&gl=ca&sourceid=chrome&ie=UTF-8",
+    "raw_html_file": "https://serpapi.com/searches/_e1GjKeRn-r3mcrgt9aRBw/69f962dcf680d1b043298f4e.html",
+    "total_time_taken": 0.89
+  },
+  "search_parameters": {
+    "engine": "google",
+    "q": "how to stop repeating my parents' patterns Vancouver, British Columbia, Canada",
+    "location_requested": "Vancouver, British Columbia, Canada",
+    "location_used": "Vancouver,British Columbia,Canada",
+    "google_domain": "google.com",
+    "hl": "en",
+    "gl": "ca",
+    "device": "desktop"
+  },
+  "search_information": {
+    "query_displayed": "how to stop repeating my parents' patterns Vancouver, British Columbia, Canada",
+    "total_results": 1520000,
+    "time_taken_displayed": 0.46,
+    "organic_results_state": "Results for exact spelling"
+  },
+  "inline_videos": [
+    {
+      "position": 1,
+      "title": "The parenting sandwich : parenting ourselves while parenting ...",
+      "link": "https://www.instagram.com/reel/DX18KfcRz0c/",
+      "thumbnail": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/nhk1BTkSNVvYOqyHSBa01dy-CQCyZ4A8ssXr6EAo7fc.jpeg",
+      "channel": "Sarah Baldeo \u2022 HBSc, MBA, PhD(c)",
+      "duration": "0:59",
+      "platform": "Instagram",
+      "date": "2 days ago"
+    },
+    {
+      "position": 2,
+      "title": "How Not to Repeat your Parents' Mistakes with Your Children",
+      "link": "https://www.youtube.com/watch?v=01qKQH4H8ts",
+      "thumbnail": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/t3eBoQsTQa_BF3KJeYoMSyvKwhxTm6-G7QYQjgHZCUU.jpeg",
+      "channel": "Marcela Collier From HIC Parenting Education",
+      "duration": "15:23",
+      "platform": "YouTube",
+      "date": "Jan 22, 2025",
+      "snippet": "You are going to gain clarity about each one of the five childhood scars you are going to identify yourself if you if you have one of those.",
+      "short_clip": "https://encrypted-vtbn0.gstatic.com/video?q=tbn:ANd9GcSOgdSKw5iANHUboO3YQAapXjfcKZoVRMS9kQ"
+    },
+    {
+      "position": 3,
+      "title": "How to Break Generational Parenting Patterns Without ...",
+      "link": "https://www.youtube.com/watch?v=tuH2_fJocI0",
+      "thumbnail": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/MxaC4EkfgUlU5DWsJ0SZlBOcY0xH0TyUEqHyPu4TW70.jpeg",
+      "channel": "The Art of Raising Humans Podcast",
+      "duration": "33:53",
+      "platform": "YouTube",
+      "date": "3 weeks ago",
+      "short_clip": "https://encrypted-vtbn0.gstatic.com/video?q=tbn:ANd9GcQfISpdFm73NF5yPifmMPQm9vcRb2YIvwWOwA"
+    }
+  ],
+  "related_questions": [
+    {
+      "question": "What is the 10-10-10 rule for parenting?",
+      "type": "featured_snippet",
+      "snippet": "First 10 minutes when your children wake up, be present, the first 10 minutes after seeing them after being away (work or anywhere) be present, and then last 10 minutes before bed. It truly sets a tone! To be able to be present is a gift to parent and child.",
+      "title": "Let's talk about the 10/10/10 rule. First 10 minutes when your children ...",
+      "date": "Dec 14, 2024",
+      "link": "https://www.facebook.com/ThisMamaNeedsANap1/posts/lets-talk-about-the-101010-rulefirst-10-minutes-when-your-children-wake-up-be-pr/888468743450113/#:~:text=10%2F10%20rule.-,First%2010%20minutes%20when%20your%20children%20wake%20up%2C%20be%20present,It%20truly%20sets%20a%20tone!&text=To%20be%20able%20to%20be,gift%20to%20parent%20and%20child.",
+      "displayed_link": "https://www.facebook.com \u203a posts \u203a lets-talk-about-the-1...",
+      "source_logo": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/gRjkrQaoQOaaIcHlKG1kzzUY4CQfLmDh6sOb7PAWnes.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJXaGF0IGlzIHRoZSAxMC0xMC0xMCBydWxlIGZvciBwYXJlbnRpbmc/IiwibGsiOiJjNU5TTDg5SUxGSElMRllveVVoVk1EU0FvcUxTbkZTRnRQd2loWUxFb3RTOGtzeThkQUEiLCJicyI6ImM0M1F2UXJDTUJTR1laeUVURzdXVG1lcmZ3WHQ1TmJWTzZpVGNHeFRFNHhKU1ZKREYtOUZ2QzN4V3F6MUIwVkI0ZHZPLXl5SExFZ19ZV2lCRzdDTXduUVNOZ05kQ2dxNTBsQ2dwdEp5dVk2OTB6NGEtSUY3eS1fN3pBbVNNR0U4WlpBeUxyS3JLRTJKUWxTTnZIVW1nQngzU25OTFktX1Fqa0pfNUg2YUp5RkxNcG9yQjFiQlNsUGNRRmFadkpTcDVVcWlxTE10cjJXQjFsSXRUZXlkWFRUMmgteHZRV2JFZXp5blFKbmg2ek9PUmRUenUtNzd1ZE82QUEiLCJpZCI6ImZjXzNXTDVhYk1pdTQtdTRRLWJ5ODJnQlFfMyJ9",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJXaGF0IGlzIHRoZSAxMC0xMC0xMCBydWxlIGZvciBwYXJlbnRpbmc%2FIiwibGsiOiJjNU5TTDg5SUxGSElMRllveVVoVk1EU0FvcUxTbkZTRnRQd2loWUxFb3RTOGtzeThkQUEiLCJicyI6ImM0M1F2UXJDTUJTR1laeUVURzdXVG1lcmZ3WHQ1TmJWTzZpVGNHeFRFNHhKU1ZKREYtOUZ2QzN4V3F6MUIwVkI0ZHZPLXl5SExFZ19ZV2lCRzdDTXduUVNOZ05kQ2dxNTBsQ2dwdEp5dVk2OTB6NGEtSUY3eS1fN3pBbVNNR0U4WlpBeUxyS3JLRTJKUWxTTnZIVW1nQngzU25OTFktX1Fqa0pfNUg2YUp5RkxNcG9yQjFiQlNsUGNRRmFadkpTcDVVcWlxTE10cjJXQjFsSXRUZXlkWFRUMmgteHZRV2JFZXp5blFKbmg2ek9PUmRUenUtNzd1ZE82QUEiLCJpZCI6ImZjXzNXTDVhYk1pdTQtdTRRLWJ5ODJnQlFfMyJ9"
+    },
+    {
+      "question": "Which child is usually the parents' favorite?",
+      "type": "featured_snippet",
+      "snippet": "The study revealed that parents often show subtle bias toward daughters, which can influence family relationships. Personality also plays a big role. Children who are agreeable and responsible, regardless of birth order or gender, generally receive more favorable treatment as well.",
+      "title": "Do parents really have a favorite child? Here's what new research ...",
+      "date": "Jan 16, 2025",
+      "link": "https://news.byu.edu/intellect/do-parents-really-have-a-favorite-child-heres-what-new-research-from-byu-says#:~:text=The%20study%20revealed%20that%20parents,which%20can%20influence%20family%20relationships.&text=Personality%20also%20plays%20a%20big,more%20favorable%20treatment%20as%20well.",
+      "displayed_link": "https://news.byu.edu \u203a intellect \u203a do-parents-really-have-...",
+      "source_logo": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/gRjkrQaoQOaaIcHlKG1kzy67SRXI_h5Y_WzlJe3OZCw.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJXaGljaCBjaGlsZCBpcyB1c3VhbGx5IHRoZSBwYXJlbnRzJyBmYXZvcml0ZT8iLCJsayI6IkdpdDNhR2xqYUNCamFHbHNaQ0JwY3lCMWMzVmhiR3g1SUhSb1pTQndZWEpsYm5SeklHWmhkbTl5YVhSbCIsImJzIjoiYzQzUXZRckNNQlNHWVp5RVRHN1dUbWVyZndYdDVOYlZPNmlUY0d4VEU0eEpTVkpERi05RnZDM3hXcXoxQjBWQjRkdk8teXlITEVnX1lXaUJHN0NNd25RU05nTmRDZ3E1MGxDZ3B0Snl1WTY5MHo0YS1JRjd5LV83ekFtU01HRThaWkF5THJLcktFMkpRbFNOdkhVbWdCeDNTbk5MWS1fUWprSl81SDZhSnlGTE1wb3JCMWJCU2xQY1FGYVp2SlNwNVVxaXFMTXRyMldCMWxJdFRleWRYVFQyaC14dlFXYkVlenluUUpuaDZ6T09SZFR6dS03N3VkTzZBQSIsImlkIjoiZmNfM1dMNWFiTWl1NC11NFEtYnk4MmdCUV8zIn0=",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJXaGljaCBjaGlsZCBpcyB1c3VhbGx5IHRoZSBwYXJlbnRzJyBmYXZvcml0ZT8iLCJsayI6IkdpdDNhR2xqYUNCamFHbHNaQ0JwY3lCMWMzVmhiR3g1SUhSb1pTQndZWEpsYm5SeklHWmhkbTl5YVhSbCIsImJzIjoiYzQzUXZRckNNQlNHWVp5RVRHN1dUbWVyZndYdDVOYlZPNmlUY0d4VEU0eEpTVkpERi05RnZDM3hXcXoxQjBWQjRkdk8teXlITEVnX1lXaUJHN0NNd25RU05nTmRDZ3E1MGxDZ3B0Snl1WTY5MHo0YS1JRjd5LV83ekFtU01HRThaWkF5THJLcktFMkpRbFNOdkhVbWdCeDNTbk5MWS1fUWprSl81SDZhSnlGTE1wb3JCMWJCU2xQY1FGYVp2SlNwNVVxaXFMTXRyMldCMWxJdFRleWRYVFQyaC14dlFXYkVlenluUUpuaDZ6T09SZFR6dS03N3VkTzZBQSIsImlkIjoiZmNfM1dMNWFiTWl1NC11NFEtYnk4MmdCUV8zIn0%3D"
+    },
+    {
+      "question": "How to break dysfunctional family patterns?",
+      "type": "featured_snippet",
+      "title": "How To Heal From Dysfunctional Family Roles",
+      "date": "Jul 23, 2025",
+      "link": "https://www.embarkbh.com/treatment/therapies/family-therapy/dysfunctional-family-roles/",
+      "list": [
+        "Identify dysfunctional family roles. Being self-aware of the different roles of family members, including the one you play, is the first step in healing your family's relationships. ... ",
+        "Practice self-care. ... ",
+        "Create healthy boundaries. ... ",
+        "Seek professional help."
+      ],
+      "displayed_link": "https://www.embarkbh.com \u203a therapies \u203a family-therapy",
+      "source_logo": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/gRjkrQaoQOaaIcHlKG1kz5epXqPPKBgrDtH6ztazOCg.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJIb3cgdG8gYnJlYWsgZHlzZnVuY3Rpb25hbCBmYW1pbHkgcGF0dGVybnM/IiwibGsiOiJHaXBvYjNjZ2RHOGdZbkpsWVdzZ1pIbHpablZ1WTNScGIyNWhiQ0JtWVcxcGJIa2djR0YwZEdWeWJuTSIsImJzIjoiYzQzUXZRckNNQlNHWVp5RVRHN1dUbWVyZndYdDVOYlZPNmlUY0d4VEU0eEpTVkpERi05RnZDM3hXcXoxQjBWQjRkdk8teXlITEVnX1lXaUJHN0NNd25RU05nTmRDZ3E1MGxDZ3B0Snl1WTY5MHo0YS1JRjd5LV83ekFtU01HRThaWkF5THJLcktFMkpRbFNOdkhVbWdCeDNTbk5MWS1fUWprSl81SDZhSnlGTE1wb3JCMWJCU2xQY1FGYVp2SlNwNVVxaXFMTXRyMldCMWxJdFRleWRYVFQyaC14dlFXYkVlenluUUpuaDZ6T09SZFR6dS03N3VkTzZBQSIsImlkIjoiZmNfM1dMNWFiTWl1NC11NFEtYnk4MmdCUV8zIn0=",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJIb3cgdG8gYnJlYWsgZHlzZnVuY3Rpb25hbCBmYW1pbHkgcGF0dGVybnM%2FIiwibGsiOiJHaXBvYjNjZ2RHOGdZbkpsWVdzZ1pIbHpablZ1WTNScGIyNWhiQ0JtWVcxcGJIa2djR0YwZEdWeWJuTSIsImJzIjoiYzQzUXZRckNNQlNHWVp5RVRHN1dUbWVyZndYdDVOYlZPNmlUY0d4VEU0eEpTVkpERi05RnZDM3hXcXoxQjBWQjRkdk8teXlITEVnX1lXaUJHN0NNd25RU05nTmRDZ3E1MGxDZ3B0Snl1WTY5MHo0YS1JRjd5LV83ekFtU01HRThaWkF5THJLcktFMkpRbFNOdkhVbWdCeDNTbk5MWS1fUWprSl81SDZhSnlGTE1wb3JCMWJCU2xQY1FGYVp2SlNwNVVxaXFMTXRyMldCMWxJdFRleWRYVFQyaC14dlFXYkVlenluUUpuaDZ6T09SZFR6dS03N3VkTzZBQSIsImlkIjoiZmNfM1dMNWFiTWl1NC11NFEtYnk4MmdCUV8zIn0%3D"
+    },
+    {
+      "question": "What is panda parenting?",
+      "type": "featured_snippet",
+      "snippet": "Panda parenting, a term first coined by Esther Wojcicki in her book How to Raise Successful People: Simple Lessons for Radical Results, describes a parenting style that is hands off and based on trusting your children to make their own decisions.",
+      "title": "6 Signs You're a Panda Parent and What That Means",
+      "date": "Mar 29, 2026",
+      "link": "https://www.parents.com/signs-of-panda-parenting-11935672#:~:text=Panda%20parenting%2C%20a%20term%20first,to%20make%20their%20own%20decisions.",
+      "displayed_link": "https://www.parents.com \u203a signs-of-panda-parenting-119...",
+      "source_logo": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/gRjkrQaoQOaaIcHlKG1kzx5gzRpHE0hIlNwf4iywE0I.png",
+      "next_page_token": "eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJXaGF0IGlzIHBhbmRhIHBhcmVudGluZz8iLCJsayI6IkdoZDNhR0YwSUdseklIQmhibVJoSUhCaGNtVnVkR2x1WnciLCJicyI6ImM0M1F2UXJDTUJTR1laeUVURzdXVG1lcmZ3WHQ1TmJWTzZpVGNHeFRFNHhKU1ZKREYtOUZ2QzN4V3F6MUIwVkI0ZHZPLXl5SExFZ19ZV2lCRzdDTXduUVNOZ05kQ2dxNTBsQ2dwdEp5dVk2OTB6NGEtSUY3eS1fN3pBbVNNR0U4WlpBeUxyS3JLRTJKUWxTTnZIVW1nQngzU25OTFktX1Fqa0pfNUg2YUp5RkxNcG9yQjFiQlNsUGNRRmFadkpTcDVVcWlxTE10cjJXQjFsSXRUZXlkWFRUMmgteHZRV2JFZXp5blFKbmg2ek9PUmRUenUtNzd1ZE82QUEiLCJpZCI6ImZjXzNXTDVhYk1pdTQtdTRRLWJ5ODJnQlFfMyJ9",
+      "serpapi_link": "https://serpapi.com/search.json?device=desktop&engine=google_related_questions&google_domain=google.com&next_page_token=eyJvbnMiOiIxMDA0MSIsImZjIjoiRXFBQkNtSkJUVzR6TFhsVU1XZHRaVlJIUTFsbVIxOHpRbkZ6VW1oVVQwMUxSVTVNUzNCSU0wTkhjRVJMVEdkYWVtUk9SRFpLY0ZoZk1tRnRUMlJwU21oWlZISTNOa2hvUlVSTlZVeENOMDEyUTBSSGFtUnlURVYxYm5sdWFsWmZURW8xVDAxRlVSSVdNMWRNTldGaVRXbDFOQzExTkZFdFluazRNbWRDVVJvaVFVcExURVp0U2xKdU5HRndaVEl5TnpaMFkyMDBXbTR4TUZOalQzaFBjR1ZqWnciLCJmY3YiOiIzIiwiZWkiOiIzV0w1YWJNaXU0LXU0US1ieTgyZ0JRIiwicWMiOiJjdzNGc1EyQU1Bd0VRR29xSkJiNFRSaUFLWnhnUVNSaVI0NERvbUJDSm1FTHVPYjZlZE1UcnFpdUJjYUZ5Wk9zeUJjS0dZdlhmM2MycVRoSW9yYUREY0dTcDdvaDZ0NXlTSVJJUWdzTjNmMjg0X1FCIiwicXVlc3Rpb24iOiJXaGF0IGlzIHBhbmRhIHBhcmVudGluZz8iLCJsayI6IkdoZDNhR0YwSUdseklIQmhibVJoSUhCaGNtVnVkR2x1WnciLCJicyI6ImM0M1F2UXJDTUJTR1laeUVURzdXVG1lcmZ3WHQ1TmJWTzZpVGNHeFRFNHhKU1ZKREYtOUZ2QzN4V3F6MUIwVkI0ZHZPLXl5SExFZ19ZV2lCRzdDTXduUVNOZ05kQ2dxNTBsQ2dwdEp5dVk2OTB6NGEtSUY3eS1fN3pBbVNNR0U4WlpBeUxyS3JLRTJKUWxTTnZIVW1nQngzU25OTFktX1Fqa0pfNUg2YUp5RkxNcG9yQjFiQlNsUGNRRmFadkpTcDVVcWlxTE10cjJXQjFsSXRUZXlkWFRUMmgteHZRV2JFZXp5blFKbmg2ek9PUmRUenUtNzd1ZE82QUEiLCJpZCI6ImZjXzNXTDVhYk1pdTQtdTRRLWJ5ODJnQlFfMyJ9"
+    }
+  ],
+  "ai_overview": {
+    "page_token": "EWYzuXicxZbdcqs2EMfv-x51L5zYgIkPZIbpCIEd2bFzSB07yY1HCCIU8-EgHOLcnXfp-_S-T1MB_o6dM81Mp7IHCbG7Wq1-_Icff4Ysnv39y19Bls35ZbOZ53mDJgkN_QZJoibmy5g0n5KQpyT4fbEIfSOvQ4AcBFEwjjqLB0WXvWi8vLZ7S3x_OycKpY6ic28iMzyxuaMIm8ltUKOhQXAtCA0_ri1fjVaNcEOq-cxoTa4vsDtgC_V8oTrn7lJTqOnUypWNqYu5_ywSe3vmzWlTXGa_tixx0-ANP248Ol77pqvpQ84biiTrjZsmjoQB-I-aYxYXAHpADNAxi8cT8yt_u7hSAMytkbl6tLWyqmlhS2_Libvj0SisHFFP-FD3fOAmwP48_73kTFquikYiTvkXd8f8j8aEq75_2qRoH4uBNk4AkN0H9EQEtC4RrLZ8pRamaDOXV_26gBTd5fYmPXMJrNyn9sA2HXCqwQRYXeo7V-bn5QN90o_W40k-EIs1PSp4k5puKjq5yUhAykHKCwzhSJcS23y_arezi5Y-m_3Ru3taIOW7Npc0MPedJnGFXZhgz_emwVQ6K4EnfEM83yWefZ8RhQ01LwKN64Yp7-Be7JfC3VyLrRzbD1rXzt61_LRVpTOpswcQpHemVgTrrqxUYJmAHToXvh9xP1y6xN2ujsiEtHpycGLr0Jtg-WHqGwda5iuqMlyvQi2wUx64Z11EhOVLhqq97AtIyR2kJVR9xz5cG-6TK14qGwFnHRztZEy2hlBMOcXtAKEBsCFb7a88tfJXrMYO6wXXNaqaSEntF7h_qZ2QlW1DYM31AaZ7eC-0F_f9Ihqxgdp9xrnith4CzW1PUi9f4ZxE7r9QcPL_Ab_R92KAjgGvfwp8CYfzmb4XBlt9n1X6Pj4OPGWV41bf1Z8A70C0A7zJTur7HvD2z4G3TwGPjgLfPwY8PQ58qe8b4CEwD_Td3tX3DfBf0vf7r-h7yb9fdftiv3imJ0X_ahow08s5cjuM36C57t3g3qj1jWCJfhT9pyi7xF54NmXepan0sqVXezGCJK9nSZ1nybye-nMfZyym9WhZn-PUjzP-mxhkmZ_GvD7GMUkWr356VjdTljEe1GESLiKX4bM6xDH2cC0K08SQcBtaEylm5ky-v54Eg7k1lPPXK8XRQ3vSfshH_H24fHicUGA-Lp5yxvqapnfJeNSNad4lljLq6k5HtjztOhxpsv2Wzm8dR5VnbyAfvsfey0Qfi8gdC9x-69x76Tvv-PJjK-xY9rTz2GOapcp8cJGHsoTx1PPzMi9u6HHC-uR55kmkFqXEEOerUjB0gMiEAPgAHFh8rdQ4wVOfvxqqrqkY61jSFezqmtgezZZzQ5dqPE4N-R-HExoO",
+    "serpapi_link": "https://serpapi.com/search.json?engine=google_ai_overview&page_token=EWYzuXicxZbdcqs2EMfv-x51L5zYgIkPZIbpCIEd2bFzSB07yY1HCCIU8-EgHOLcnXfp-_S-T1MB_o6dM81Mp7IHCbG7Wq1-_Icff4Ysnv39y19Bls35ZbOZ53mDJgkN_QZJoibmy5g0n5KQpyT4fbEIfSOvQ4AcBFEwjjqLB0WXvWi8vLZ7S3x_OycKpY6ic28iMzyxuaMIm8ltUKOhQXAtCA0_ri1fjVaNcEOq-cxoTa4vsDtgC_V8oTrn7lJTqOnUypWNqYu5_ywSe3vmzWlTXGa_tixx0-ANP248Ol77pqvpQ84biiTrjZsmjoQB-I-aYxYXAHpADNAxi8cT8yt_u7hSAMytkbl6tLWyqmlhS2_Libvj0SisHFFP-FD3fOAmwP48_73kTFquikYiTvkXd8f8j8aEq75_2qRoH4uBNk4AkN0H9EQEtC4RrLZ8pRamaDOXV_26gBTd5fYmPXMJrNyn9sA2HXCqwQRYXeo7V-bn5QN90o_W40k-EIs1PSp4k5puKjq5yUhAykHKCwzhSJcS23y_arezi5Y-m_3Ru3taIOW7Npc0MPedJnGFXZhgz_emwVQ6K4EnfEM83yWefZ8RhQ01LwKN64Yp7-Be7JfC3VyLrRzbD1rXzt61_LRVpTOpswcQpHemVgTrrqxUYJmAHToXvh9xP1y6xN2ujsiEtHpycGLr0Jtg-WHqGwda5iuqMlyvQi2wUx64Z11EhOVLhqq97AtIyR2kJVR9xz5cG-6TK14qGwFnHRztZEy2hlBMOcXtAKEBsCFb7a88tfJXrMYO6wXXNaqaSEntF7h_qZ2QlW1DYM31AaZ7eC-0F_f9Ihqxgdp9xrnith4CzW1PUi9f4ZxE7r9QcPL_Ab_R92KAjgGvfwp8CYfzmb4XBlt9n1X6Pj4OPGWV41bf1Z8A70C0A7zJTur7HvD2z4G3TwGPjgLfPwY8PQ58qe8b4CEwD_Td3tX3DfBf0vf7r-h7yb9fdftiv3imJ0X_ahow08s5cjuM36C57t3g3qj1jWCJfhT9pyi7xF54NmXepan0sqVXezGCJK9nSZ1nybye-nMfZyym9WhZn-PUjzP-mxhkmZ_GvD7GMUkWr356VjdTljEe1GESLiKX4bM6xDH2cC0K08SQcBtaEylm5ky-v54Eg7k1lPPXK8XRQ3vSfshH_H24fHicUGA-Lp5yxvqapnfJeNSNad4lljLq6k5HtjztOhxpsv2Wzm8dR5VnbyAfvsfey0Qfi8gdC9x-69x76Tvv-PJjK-xY9rTz2GOapcp8cJGHsoTx1PPzMi9u6HHC-uR55kmkFqXEEOerUjB0gMiEAPgAHFh8rdQ4wVOfvxqqrqkY61jSFezqmtgezZZzQ5dqPE4N-R-HExoO"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "Breaking Generational Parenting Patterns: How to Raise ...",
+      "link": "https://shiftgrit.com/breaking-parenting-patterns/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://shiftgrit.com/breaking-parenting-patterns/&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECCUQAQ",
+      "displayed_link": "https://shiftgrit.com \u203a breaking-parenting-patterns",
+      "date": "Feb 10, 2025",
+      "snippet": "Breaking Parenting Patterns: How to Rewire Your Parenting Instincts \u00b7 1. Identify Your Automatic Triggers \u00b7 2. Recognize That Your Child Isn't the ...",
+      "snippet_highlighted_words": [
+        "1. Identify Your Automatic Triggers"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Breaking Parenting Patterns: How to Rewire Your Parenting Instincts \u00b7 1. Identify Your Automatic Triggers \u00b7 2. Recognize That Your Child Isn't the ...",
+          "source_info_link": "https://shiftgrit.com/breaking-parenting-patterns/"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://shiftgrit.com/breaking-parenting-patterns/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fshiftgrit.com%2Fbreaking-parenting-patterns%2F",
+      "source": "ShiftGrit"
+    },
+    {
+      "position": 2,
+      "title": "Breaking the Family Pattern: A Trauma-Informed Guide to ...",
+      "link": "https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECBoQAQ",
+      "displayed_link": "https://lotustherapy.ca \u203a breaking-the-family-pattern-a-t...",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP-JGgZATtRZ2Uj-oeprGl8w.png",
+      "snippet": "Break free from generational trauma. Learn how trauma-informed counselling in Vancouver can help you heal from inherited pain.",
+      "snippet_highlighted_words": [
+        "Vancouver"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Break free from generational trauma. Learn how trauma-informed counselling in Vancouver can help you heal from inherited pain.",
+          "source_info_link": "https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP4S_cXYgnGbUfWYr7PF-DSB5a4ftM936w_l6gvVw3k9I.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Flotustherapy.ca%2Fbreaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma%2F",
+      "source": "Lotus Therapy & Counselling Centre"
+    },
+    {
+      "position": 3,
+      "title": "Am I Repeating My Parents' Patterns? \u2014 LMFT Guide",
+      "link": "https://anniewright.com/repeating-parents-patterns/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://anniewright.com/repeating-parents-patterns/&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECB0QAQ",
+      "displayed_link": "https://anniewright.com \u203a repeating-parents-patterns",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP_owGjV_mLbsgQsiElGGOAU.png",
+      "date": "Apr 9, 2026",
+      "snippet": "Q: How do I stop the pattern before it comes out of my mouth? A: By increasing the gap between the trigger and the response. This requires ...",
+      "snippet_highlighted_words": [
+        "By increasing the gap between the trigger and the response"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Q: How do I stop the pattern before it comes out of my mouth? A: By increasing the gap between the trigger and the response. This requires ...",
+          "source_info_link": "https://anniewright.com/repeating-parents-patterns/",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP-D6UpYq6mxUvkdtjstAHyvbYsNrjhy3ausgsKOirwDJ.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://anniewright.com/repeating-parents-patterns/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fanniewright.com%2Frepeating-parents-patterns%2F",
+      "missing": [
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "Annie Wright, LMFT"
+    },
+    {
+      "position": 4,
+      "title": "Stop Repeating Your Parents' Dysfunctional Patterns",
+      "link": "https://cw.liveyourtruth.com/stop-repeating-your-parents-dysfunctional-patterns/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://cw.liveyourtruth.com/stop-repeating-your-parents-dysfunctional-patterns/&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECC8QAQ",
+      "displayed_link": "https://cw.liveyourtruth.com \u203a Podcast",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP6-GVjxwqQSMTqxgv6LCLcQ.jpeg",
+      "snippet": "Become aware of a parenting approach you don't like, but that you keep repeating. Put yourself in your child's shoes by asking yourself, \u201cHow would I have ...",
+      "snippet_highlighted_words": [
+        "Become aware of a parenting approach you don't like"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Become aware of a parenting approach you don't like, but that you keep repeating. Put yourself in your child's shoes by asking yourself, \u201cHow would I have ...",
+          "source_info_link": "https://cw.liveyourtruth.com/stop-repeating-your-parents-dysfunctional-patterns/",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP2__5L6w6qW-HUU5jZgRUJK8E0LBC6wZht-ctgzUOYET.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://cw.liveyourtruth.com/stop-repeating-your-parents-dysfunctional-patterns/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcw.liveyourtruth.com%2Fstop-repeating-your-parents-dysfunctional-patterns%2F",
+      "missing": [
+        "Vancouver,",
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "The Child Whisperer"
+    },
+    {
+      "position": 5,
+      "title": "A Parent's Guide to Body-Focused Repetitive Behaviors",
+      "link": "https://www.psychologytoday.com/ca/blog/from-surviving-to-thriving/202602/a-parents-guide-to-body-focused-repetitive-behaviors",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.psychologytoday.com/ca/blog/from-surviving-to-thriving/202602/a-parents-guide-to-body-focused-repetitive-behaviors&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECC4QAQ",
+      "displayed_link": "https://www.psychologytoday.com \u203a blog \u203a a-parents-g...",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerPyjIDar-HD-fWudRxmhGUvY.png",
+      "date": "Feb 9, 2026",
+      "snippet": "What if helping your child with hair pulling or skin picking isn't about stopping, but about helping them thrive?",
+      "snippet_highlighted_words": [
+        "your"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "What if helping your child with hair pulling or skin picking isn't about stopping, but about helping them thrive?",
+          "source_info_link": "https://www.psychologytoday.com/ca/blog/from-surviving-to-thriving/202602/a-parents-guide-to-body-focused-repetitive-behaviors",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP-Hum_BEjlnUjDQVOxi0NcKlSWEx3gswvmBclWqUv99-.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.psychologytoday.com/ca/blog/from-surviving-to-thriving/202602/a-parents-guide-to-body-focused-repetitive-behaviors&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.psychologytoday.com%2Fca%2Fblog%2Ffrom-surviving-to-thriving%2F202602%2Fa-parents-guide-to-body-focused-repetitive-behaviors",
+      "source": "Psychology Today"
+    },
+    {
+      "position": 6,
+      "title": "Breaking the Cycle: How Parental Tone and Word Choice ...",
+      "link": "https://capstone.capilanou.ca/2025/06/10/breaking-the-cycle-how-parental-tone-and-word-choice-shape-emotional-and-cognitive-development/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://capstone.capilanou.ca/2025/06/10/breaking-the-cycle-how-parental-tone-and-word-choice-shape-emotional-and-cognitive-development/&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECCsQAQ",
+      "displayed_link": "https://capstone.capilanou.ca \u203a 2025/06/10 \u203a breaking-th...",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP7rZVg0hm9lsbBdLVZNklNw.png",
+      "date": "Jun 10, 2025",
+      "snippet": "This is a perfect example of how to break generational patterns, through self-awareness, consistent, and supportive responses. The Key is ...",
+      "snippet_highlighted_words": [
+        "self-awareness, consistent, and supportive responses"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "This is a perfect example of how to break generational patterns, through self-awareness, consistent, and supportive responses. The Key is ...",
+          "source_info_link": "https://capstone.capilanou.ca/2025/06/10/breaking-the-cycle-how-parental-tone-and-word-choice-shape-emotional-and-cognitive-development/",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerPziS6VtnU_GVBxx6sVoQfW63s_pUDQN8jd8BmuO__h7m.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://capstone.capilanou.ca/2025/06/10/breaking-the-cycle-how-parental-tone-and-word-choice-shape-emotional-and-cognitive-development/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fcapstone.capilanou.ca%2F2025%2F06%2F10%2Fbreaking-the-cycle-how-parental-tone-and-word-choice-shape-emotional-and-cognitive-development%2F",
+      "source": "Capstone Magazine"
+    },
+    {
+      "position": 7,
+      "title": "Stop the Cycle: Four Ways to Parent in the Past",
+      "link": "https://frpbc.ca/stop-the-cycle-four-ways-to-parent-in-the-past/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://frpbc.ca/stop-the-cycle-four-ways-to-parent-in-the-past/&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECCoQAQ",
+      "displayed_link": "https://frpbc.ca \u203a Uncategorized",
+      "snippet": "1. Expose your Roots. It is a powerful thing to shine light on what lurks in the shadows of the past. \u00b7 2. Uproot Old Beliefs \u00b7 3. Cultivate Curiosity \u00b7 4. Await ...",
+      "snippet_highlighted_words": [
+        "1. Expose your Roots"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "1. Expose your Roots. It is a powerful thing to shine light on what lurks in the shadows of the past. \u00b7 2. Uproot Old Beliefs \u00b7 3. Cultivate Curiosity \u00b7 4. Await ...",
+          "source_info_link": "https://frpbc.ca/stop-the-cycle-four-ways-to-parent-in-the-past/"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://frpbc.ca/stop-the-cycle-four-ways-to-parent-in-the-past/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Ffrpbc.ca%2Fstop-the-cycle-four-ways-to-parent-in-the-past%2F",
+      "source": "Family Resource Programs of BC"
+    },
+    {
+      "position": 8,
+      "title": "How can I ensure I don't replicate my parents' negative ...",
+      "link": "https://www.focusonthefamily.ca/content/q-a-how-can-i-ensure-i-dont-replicate-my-parents-negative-parenting-style",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.focusonthefamily.ca/content/q-a-how-can-i-ensure-i-dont-replicate-my-parents-negative-parenting-style&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECCwQAQ",
+      "displayed_link": "https://www.focusonthefamily.ca \u203a content \u203a q-a-how-c...",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP2RxRq_CZL0o9jNnYVKcDUI.png",
+      "snippet": "Q&A: How can I ensure I don't replicate my parents' negative parenting style? \u00b7 What's Inside: \u00b7 Learn to forgive \u00b7 Commit to prayer \u00b7 Discuss your feelings.",
+      "snippet_highlighted_words": [
+        "Learn to forgive"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Q&A: How can I ensure I don't replicate my parents' negative parenting style? \u00b7 What's Inside: \u00b7 Learn to forgive \u00b7 Commit to prayer \u00b7 Discuss your feelings.",
+          "source_info_link": "https://www.focusonthefamily.ca/content/q-a-how-can-i-ensure-i-dont-replicate-my-parents-negative-parenting-style",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerP6VqLgYykjMQGMEZCYkR9igKjdnre3fbLUI1OodNZij6.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.focusonthefamily.ca/content/q-a-how-can-i-ensure-i-dont-replicate-my-parents-negative-parenting-style&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.focusonthefamily.ca%2Fcontent%2Fq-a-how-can-i-ensure-i-dont-replicate-my-parents-negative-parenting-style",
+      "missing": [
+        "repeating",
+        "Vancouver,",
+        "British",
+        "Columbia,"
+      ],
+      "source": "Focus on the Family Canada"
+    },
+    {
+      "position": 9,
+      "title": "Are You Repeating Your Parents' Traits?",
+      "link": "https://www.psychologytoday.com/ca/blog/compassion-matters/202107/are-you-repeating-your-parents-traits",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.psychologytoday.com/ca/blog/compassion-matters/202107/are-you-repeating-your-parents-traits&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQFnoECC0QAQ",
+      "displayed_link": "https://www.psychologytoday.com \u203a compassion-matters",
+      "favicon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerPy_W3TXydu0YuJJwn1BmFuw.png",
+      "date": "Jul 6, 2021",
+      "snippet": "Recognizing limiting behavior patterns can help people overcome them. The reasons we act like our parents may not seem like a great mystery.",
+      "snippet_highlighted_words": [
+        "Recognizing limiting behavior patterns can help people overcome them"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Recognizing limiting behavior patterns can help people overcome them. The reasons we act like our parents may not seem like a great mystery.",
+          "source_info_link": "https://www.psychologytoday.com/ca/blog/compassion-matters/202107/are-you-repeating-your-parents-traits",
+          "icon": "https://serpapi.com/searches/69f962dcf680d1b043298f4e/images/VVDRJpqrs5eSc7H5KkerPykaxVWeRvt8mY2yUfemEPX12BBHcWGrRBUD6V6HLNNj.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.psychologytoday.com/ca/blog/compassion-matters/202107/are-you-repeating-your-parents-traits&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.psychologytoday.com%2Fca%2Fblog%2Fcompassion-matters%2F202107%2Fare-you-repeating-your-parents-traits",
+      "source": "Psychology Today"
+    },
+    {
+      "position": 1,
+      "title": "How to Stop Repeating Negative Parenting Patterns",
+      "link": "https://oonaalexander.co.uk/worried-youre-repeating-parent-child-patterns-from-your-childhood/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://oonaalexander.co.uk/worried-youre-repeating-parent-child-patterns-from-your-childhood/&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQIFBAB",
+      "displayed_link": "https://oonaalexander.co.uk \u203a worried-youre-repeating-...",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxDXPhwIUwbEdZuB9CU3S0SI.jpeg",
+      "snippet": "Practical parenting advice if you're worried you're repeating patterns you've inherited from your own parents. Three questions to ask yourself.",
+      "snippet_highlighted_words": [
+        "Practical parenting advice"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Practical parenting advice if you're worried you're repeating patterns you've inherited from your own parents. Three questions to ask yourself.",
+          "source_info_link": "https://oonaalexander.co.uk/worried-youre-repeating-parent-child-patterns-from-your-childhood/",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxHGPXeGCOANkEB8ab2QHuQNFQClIBqSJ564fNIu5pZfZ.jpeg"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://oonaalexander.co.uk/worried-youre-repeating-parent-child-patterns-from-your-childhood/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Foonaalexander.co.uk%2Fworried-youre-repeating-parent-child-patterns-from-your-childhood%2F",
+      "missing": [
+        "Vancouver,",
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "Oona Alexander"
+    },
+    {
+      "position": 2,
+      "title": "Parent Support Services Society of BC: Home",
+      "link": "https://www.parentsupportbc.ca/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.parentsupportbc.ca/&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQIFhAB",
+      "displayed_link": "https://www.parentsupportbc.ca",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxNwnyLzuvlP0icpe_iR-syY.png",
+      "snippet": "We work with Parents, Grandparents & Kinship Caregivers to provide emotional, educational, legal, & child-minding support.",
+      "snippet_highlighted_words": [
+        "Parents"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "We work with Parents, Grandparents & Kinship Caregivers to provide emotional, educational, legal, & child-minding support.",
+          "source_info_link": "https://www.parentsupportbc.ca/",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxIrxOQXM5R3g5-wmnaJc-JR1ZMivxPXROpOV9gq_1nTc.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.parentsupportbc.ca/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.parentsupportbc.ca%2F",
+      "missing": [
+        "stop",
+        "repeating",
+        "patterns"
+      ],
+      "source": "Parent Support Services Society of BC"
+    },
+    {
+      "position": 4,
+      "title": "How to avoid repeating my parents poor relationship dynamic",
+      "link": "https://www.quora.com/How-can-I-avoid-repeating-my-parents-poor-relationship-dynamic",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.quora.com/How-can-I-avoid-repeating-my-parents-poor-relationship-dynamic&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQIHhAB",
+      "displayed_link": "5 answers \u00b7 5 years ago",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxB67bAtShcrOBq59DglbPt8.png",
+      "snippet": "Look at the dynamics there, and see if you can identify patterns and similarities, especially around what you see in your parent's dynamic.",
+      "snippet_highlighted_words": [
+        "patterns",
+        "your parent's"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Look at the dynamics there, and see if you can identify patterns and similarities, especially around what you see in your parent's dynamic.",
+          "source_info_link": "https://www.quora.com/How-can-I-avoid-repeating-my-parents-poor-relationship-dynamic",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxCBknNExwW7UPPbkCSgfXk0A0hUkKkX5ZsX312Cij-6p.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.quora.com/How-can-I-avoid-repeating-my-parents-poor-relationship-dynamic&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.quora.com%2FHow-can-I-avoid-repeating-my-parents-poor-relationship-dynamic",
+      "missing": [
+        "Vancouver,",
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "Quora"
+    },
+    {
+      "position": 6,
+      "title": "Why Do I Repeat My Parents' Hurtful Behavior with Others?",
+      "link": "https://www.goodtherapy.org/blog/why-do-i-repeat-my-parents-hurtful-behavior-with-others-1017164",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.goodtherapy.org/blog/why-do-i-repeat-my-parents-hurtful-behavior-with-others-1017164&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQIGRAB",
+      "displayed_link": "https://www.goodtherapy.org \u203a blog \u203a why-do-i-repeat-...",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxDrwMT7ytn2kVp2jX74vMCY.png",
+      "date": "Oct 17, 2016",
+      "snippet": "Maddy, Frank, and Ellen are bewildered when they find themselves repeating relationships with their parents that had a negative impact on them.",
+      "snippet_highlighted_words": [
+        "repeating",
+        "their parents"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Maddy, Frank, and Ellen are bewildered when they find themselves repeating relationships with their parents that had a negative impact on them.",
+          "source_info_link": "https://www.goodtherapy.org/blog/why-do-i-repeat-my-parents-hurtful-behavior-with-others-1017164",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxMIDseZQiLUe0_NlpsIz59x0wYMvIbM_x1UUopurMD-Y.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.goodtherapy.org/blog/why-do-i-repeat-my-parents-hurtful-behavior-with-others-1017164&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.goodtherapy.org%2Fblog%2Fwhy-do-i-repeat-my-parents-hurtful-behavior-with-others-1017164",
+      "missing": [
+        "Vancouver,",
+        "British",
+        "Canada"
+      ],
+      "source": "GoodTherapy.org"
+    },
+    {
+      "position": 7,
+      "title": "How to Stop Repeating Unwanted Parenting Patterns",
+      "link": "https://wisecompass.com/knowledge-base/how-can-i-stop-repeating-the-same-parenting-patterns-i-promised-myself-i-would-never-pass-on/?srsltid=AfmBOortqWmMc5-CrLKWmLIBFDE4R8WewrxqI1t_YHGsPHWaDQ6roMx8",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://wisecompass.com/knowledge-base/how-can-i-stop-repeating-the-same-parenting-patterns-i-promised-myself-i-would-never-pass-on/%3Fsrsltid%3DAfmBOortqWmMc5-CrLKWmLIBFDE4R8WewrxqI1t_YHGsPHWaDQ6roMx8&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQIGhAB",
+      "displayed_link": "https://wisecompass.com \u203a Knowledge Base",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxFjaRZFb1hujzcSdhTIyce0.png",
+      "date": "Aug 11, 2025",
+      "snippet": "Breaking generational cycles begins with raising awareness. Start by tracking the emotion that caused your response. Did you feel afraid?",
+      "snippet_highlighted_words": [
+        "Start by tracking the emotion that caused your response"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Breaking generational cycles begins with raising awareness. Start by tracking the emotion that caused your response. Did you feel afraid?",
+          "source_info_link": "https://wisecompass.com/knowledge-base/how-can-i-stop-repeating-the-same-parenting-patterns-i-promised-myself-i-would-never-pass-on/?srsltid=AfmBOortqWmMc5-CrLKWmLIBFDE4R8WewrxqI1t_YHGsPHWaDQ6roMx8",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxAzqVf2dAtLSq96pr6cHuHAZdtzKu8_JZs_9E8HWxllV.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://wisecompass.com/knowledge-base/how-can-i-stop-repeating-the-same-parenting-patterns-i-promised-myself-i-would-never-pass-on/?srsltid=AfmBOortqWmMc5-CrLKWmLIBFDE4R8WewrxqI1t_YHGsPHWaDQ6roMx8&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwisecompass.com%2Fknowledge-base%2Fhow-can-i-stop-repeating-the-same-parenting-patterns-i-promised-myself-i-would-never-pass-on%2F%3Fsrsltid%3DAfmBOortqWmMc5-CrLKWmLIBFDE4R8WewrxqI1t_YHGsPHWaDQ6roMx8",
+      "source": "Wise Compass"
+    },
+    {
+      "position": 8,
+      "title": "Parent Group Support",
+      "link": "https://www.bgcbc.ca/counselling-support-services/parent-group-support/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.bgcbc.ca/counselling-support-services/parent-group-support/&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQINxAB",
+      "displayed_link": "https://www.bgcbc.ca \u203a counselling-support-services \u203a pa...",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxNBfl1GpOiKSUD6kHkDE86g.png",
+      "snippet": "PARENTS TOGETHER AND PARENTS IN THE KNOW. Two support programs for parents of youth and young adults through BGC South Coast BC.",
+      "snippet_highlighted_words": [
+        "Two support programs for parents of youth and young adults"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "PARENTS TOGETHER AND PARENTS IN THE KNOW. Two support programs for parents of youth and young adults through BGC South Coast BC.",
+          "source_info_link": "https://www.bgcbc.ca/counselling-support-services/parent-group-support/",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxI3EdTP2Gw11yNSsQBBYIWhArv23M3xn24pgqEt7uRL-.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.bgcbc.ca/counselling-support-services/parent-group-support/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.bgcbc.ca%2Fcounselling-support-services%2Fparent-group-support%2F",
+      "source": "BGC South Coast BC"
+    },
+    {
+      "position": 9,
+      "title": "Why Good Parents Keep Repeating Bad Patterns (And ...",
+      "link": "https://www.linkedin.com/pulse/why-good-parents-keep-repeating-bad-patterns-how-break-falovitch-2pchc",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.linkedin.com/pulse/why-good-parents-keep-repeating-bad-patterns-how-break-falovitch-2pchc&ved=2ahUKEwjKte-mmaGUAxUZ3ckDHfY_PVk4ChAWegQIOBAB",
+      "displayed_link": "https://www.linkedin.com \u203a pulse \u203a why-good-parents-k...",
+      "favicon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxGvsQbxdI2-3GA4vXVhOen4.png",
+      "date": "Apr 28, 2025",
+      "snippet": "It's unconscious programming. And until it's addressed, no strategy, script, or family meeting will fix it. Why Patterns Repeat (Even When You ...",
+      "snippet_highlighted_words": [
+        "no strategy, script, or family meeting will fix"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "It's unconscious programming. And until it's addressed, no strategy, script, or family meeting will fix it. Why Patterns Repeat (Even When You ...",
+          "source_info_link": "https://www.linkedin.com/pulse/why-good-parents-keep-repeating-bad-patterns-how-break-falovitch-2pchc",
+          "icon": "https://serpapi.com/searches/69f962ddcfa23080ae0fdab5/images/MlfE7xqZCdvNFt4eoEnbxDGJRt08Xy8bapA9bGVk8b5bsuvX6N7cd_GogAoshRxB.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.linkedin.com/pulse/why-good-parents-keep-repeating-bad-patterns-how-break-falovitch-2pchc&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.linkedin.com%2Fpulse%2Fwhy-good-parents-keep-repeating-bad-patterns-how-break-falovitch-2pchc",
+      "source": "LinkedIn"
+    },
+    {
+      "position": 1,
+      "title": "How can we reduce the likelihood of repeating our parents' ...",
+      "link": "https://parenting.stackexchange.com/questions/28104/how-can-we-reduce-the-likelihood-of-repeating-our-parents-mistakes",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://parenting.stackexchange.com/questions/28104/how-can-we-reduce-the-likelihood-of-repeating-our-parents-mistakes&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIFhAB",
+      "displayed_link": "https://parenting.stackexchange.com \u203a questions \u203a how-...",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeDIAbzy1Zb_VluGTQchnz4U.png",
+      "date": "Dec 9, 2016",
+      "snippet": "Write out all the mistakes your parents made. Write out all the mistakes you repeated. Put it on paper so you remember.",
+      "snippet_highlighted_words": [
+        "Write out all the mistakes your parents made"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Write out all the mistakes your parents made. Write out all the mistakes you repeated. Put it on paper so you remember.",
+          "source_info_link": "https://parenting.stackexchange.com/questions/28104/how-can-we-reduce-the-likelihood-of-repeating-our-parents-mistakes",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeAbrKJcwHUK-g0PwMj_fhOluLUKdpXSthDxFcGc3u4jl.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://parenting.stackexchange.com/questions/28104/how-can-we-reduce-the-likelihood-of-repeating-our-parents-mistakes&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fparenting.stackexchange.com%2Fquestions%2F28104%2Fhow-can-we-reduce-the-likelihood-of-repeating-our-parents-mistakes",
+      "source": "Parenting Stack Exchange"
+    },
+    {
+      "position": 2,
+      "title": "Ways to break generational parenting patterns in ...",
+      "link": "https://www.facebook.com/groups/532388661096306/posts/701209747547529/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.facebook.com/groups/532388661096306/posts/701209747547529/&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIHBAB",
+      "displayed_link": "1 comment \u00b7 4 years ago",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXePHU6yJuw_sNMdzxQKDFmKE.png",
+      "snippet": "\u201cHow can I stop my child from repeating my mistakes?\u201d Start by owning your story. Heal. Grow. Talk. Be real. Dear parents, What you refuse to ...",
+      "snippet_highlighted_words": [
+        "Start by owning your story"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "\u201cHow can I stop my child from repeating my mistakes?\u201d Start by owning your story. Heal. Grow. Talk. Be real. Dear parents, What you refuse to ...",
+          "source_info_link": "https://www.facebook.com/groups/532388661096306/posts/701209747547529/",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeNYc7dEK08TybsJdLDbHPj7G6ESmuQcMZxcVl9YFaouF.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.facebook.com/groups/532388661096306/posts/701209747547529/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.facebook.com%2Fgroups%2F532388661096306%2Fposts%2F701209747547529%2F",
+      "source": "Facebook \u00b7 General Hospital Fandom Lab \ud83d\udc49"
+    },
+    {
+      "position": 3,
+      "title": "Parenting helplines in British Columbia, Canada",
+      "link": "https://findahelpline.com/countries/ca/bc/topics/parenting",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://findahelpline.com/countries/ca/bc/topics/parenting&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIFBAB",
+      "displayed_link": "https://findahelpline.com \u203a countries \u203a topics \u203a parenting",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeAL7QZTFPGaeB2rltUbLOUw.png",
+      "snippet": "Need to talk? Get free, confidential support with Parenting from a real human. Online chat, text and phone helplines. No sign up or personal info required.",
+      "snippet_highlighted_words": [
+        "Get free, confidential support with Parenting"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Need to talk? Get free, confidential support with Parenting from a real human. Online chat, text and phone helplines. No sign up or personal info required.",
+          "source_info_link": "https://findahelpline.com/countries/ca/bc/topics/parenting",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeIE9A2O99DXVA2JMEhUFVyl6-FDs7mLLZgNn-mDA9pCc.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://findahelpline.com/countries/ca/bc/topics/parenting&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Ffindahelpline.com%2Fcountries%2Fca%2Fbc%2Ftopics%2Fparenting",
+      "source": "Find a Helpline"
+    },
+    {
+      "position": 4,
+      "title": "Keeping kids safe from abuse in B.C. - Protecting children",
+      "link": "https://www2.gov.bc.ca/gov/content/safety/public-safety/protecting-children/keeping-kids-safe",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www2.gov.bc.ca/gov/content/safety/public-safety/protecting-children/keeping-kids-safe&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIFRAB",
+      "displayed_link": "https://www2.gov.bc.ca \u203a content \u203a safety \u203a public-safety",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeK2_0LFndZCfiu38N6PD20I.png",
+      "date": "Apr 8, 2026",
+      "snippet": "The best way to protect a child from abuse is to have a good, open relationship with them. That means spending time with them, letting them know you care.",
+      "snippet_highlighted_words": [
+        "have a good, open relationship with them"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "The best way to protect a child from abuse is to have a good, open relationship with them. That means spending time with them, letting them know you care.",
+          "source_info_link": "https://www2.gov.bc.ca/gov/content/safety/public-safety/protecting-children/keeping-kids-safe",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeLUfdgoTH_RvI_tsspE2fEmVLPj3-LTkG405KzctEQZA.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www2.gov.bc.ca/gov/content/safety/public-safety/protecting-children/keeping-kids-safe&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww2.gov.bc.ca%2Fgov%2Fcontent%2Fsafety%2Fpublic-safety%2Fprotecting-children%2Fkeeping-kids-safe",
+      "source": "BC government"
+    },
+    {
+      "position": 5,
+      "title": "Stop repeating yourself as a parent. Want to know more about ...",
+      "link": "https://www.facebook.com/BratBustersParenting/videos/stop-repeating-yourself-as-a-parent-want-to-know-more-about-my-thoughts-on-this-/871416272262599/",
+      "displayed_link": "830+ reactions \u00b7 4 months ago",
+      "thumbnail": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeAGWPvEEiHqOnfyGh3AHMmw.jpeg",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeKXI8Vayw_-POWEVkcbZA-8.png",
+      "snippet": "Stop repeating yourself as a parent. Want to know more about my thoughts on this topic? Check out the full episode of the BratBusters Parenting ...",
+      "duration": "0:49",
+      "about_this_result": {
+        "source": {
+          "description": "Stop repeating yourself as a parent. Want to know more about my thoughts on this topic? Check out the full episode of the BratBusters Parenting ...",
+          "source_info_link": "https://www.facebook.com/BratBustersParenting/videos/stop-repeating-yourself-as-a-parent-want-to-know-more-about-my-thoughts-on-this-/871416272262599/",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeImGJMHXQGELTCMS1j0naOIA6pgzQnBvP6svwaLRXsxZ.png"
+        }
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.facebook.com/BratBustersParenting/videos/stop-repeating-yourself-as-a-parent-want-to-know-more-about-my-thoughts-on-this-/871416272262599/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.facebook.com%2FBratBustersParenting%2Fvideos%2Fstop-repeating-yourself-as-a-parent-want-to-know-more-about-my-thoughts-on-this-%2F871416272262599%2F",
+      "missing": [
+        "patterns",
+        "Vancouver,",
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "Facebook \u00b7 BratBusters Parenting"
+    },
+    {
+      "position": 6,
+      "title": "How To Break Free From Your Parents Blueprint",
+      "link": "https://stealthesethoughts.com/2019/03/20/change-your-behaviour/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://stealthesethoughts.com/2019/03/20/change-your-behaviour/&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIFxAB",
+      "displayed_link": "https://stealthesethoughts.com \u203a Blog",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeMmekkJt9kzLUMln-abh4i8.png",
+      "date": "Mar 20, 2019",
+      "snippet": "This post is a exploration to understand why we function the way we do. No matter if that's in how we think, feel or behave.",
+      "snippet_highlighted_words": [
+        "the"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "This post is a exploration to understand why we function the way we do. No matter if that's in how we think, feel or behave.",
+          "source_info_link": "https://stealthesethoughts.com/2019/03/20/change-your-behaviour/",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeNMx22S2YLj41q6onJCX5MpITnW5r5a9YL5gYYjHTVOi.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://stealthesethoughts.com/2019/03/20/change-your-behaviour/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fstealthesethoughts.com%2F2019%2F03%2F20%2Fchange-your-behaviour%2F",
+      "missing": [
+        "Vancouver,",
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "Steal These Thoughts!"
+    },
+    {
+      "position": 7,
+      "title": "Stop Nagging and Repeating Yourself. It's Not a Parenting ...",
+      "link": "https://terrificparenting.com/stop-nagging-and-repeating-yourself-its-not-a-parenting-plan/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://terrificparenting.com/stop-nagging-and-repeating-yourself-its-not-a-parenting-plan/&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIJRAB",
+      "displayed_link": "https://terrificparenting.com \u203a stop-nagging-and-repeati...",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeMzDf-gPd9uFtRQ1NQ83eNo.png",
+      "snippet": "LIFE RULE #1: If mom or dad repeat their messages, children keep repeating their behavior. \u00b7 Solution: The Ask Once\u2026Take Action Approach.",
+      "snippet_highlighted_words": [
+        "repeat their",
+        "keep repeating their",
+        "The"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "LIFE RULE #1: If mom or dad repeat their messages, children keep repeating their behavior. \u00b7 Solution: The Ask Once\u2026Take Action Approach.",
+          "source_info_link": "https://terrificparenting.com/stop-nagging-and-repeating-yourself-its-not-a-parenting-plan/",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXePuzhVPc1_nCNSCqnoKCaSTJ5lvvxkxjKTqxll-CwoF1.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://terrificparenting.com/stop-nagging-and-repeating-yourself-its-not-a-parenting-plan/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fterrificparenting.com%2Fstop-nagging-and-repeating-yourself-its-not-a-parenting-plan%2F",
+      "missing": [
+        "Vancouver,",
+        "British",
+        "Columbia,",
+        "Canada"
+      ],
+      "source": "Terrific Parenting"
+    },
+    {
+      "position": 8,
+      "title": "10 Proven Ways To Finally Stop Yelling At Your Kids",
+      "link": "https://www.todaysparent.com/family/discipline/proven-ways-to-finally-stop-yelling-at-your-kids/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.todaysparent.com/family/discipline/proven-ways-to-finally-stop-yelling-at-your-kids/&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQIKRAB",
+      "displayed_link": "https://www.todaysparent.com \u203a ... \u203a Family \u203a Discipline",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeEZuEM8XXP92g6BkDTF1dvI.png",
+      "date": "Sep 28, 2020",
+      "snippet": "It scares your kids and makes you feel terrible\u2014and experts say it doesn't even work. Stop yelling with this 10-step program.",
+      "snippet_highlighted_words": [
+        "Stop yelling with this 10-step program"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "It scares your kids and makes you feel terrible\u2014and experts say it doesn't even work. Stop yelling with this 10-step program.",
+          "source_info_link": "https://www.todaysparent.com/family/discipline/proven-ways-to-finally-stop-yelling-at-your-kids/",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeDeGVNbyZHIET4Q6cPBQxE3ByZNxt9o4Bc4MvHsxin_E.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.todaysparent.com/family/discipline/proven-ways-to-finally-stop-yelling-at-your-kids/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.todaysparent.com%2Ffamily%2Fdiscipline%2Fproven-ways-to-finally-stop-yelling-at-your-kids%2F",
+      "source": "Today's Parent"
+    },
+    {
+      "position": 9,
+      "title": "\"I don't want to repeat the patterns I grew ...",
+      "link": "https://www.instagram.com/p/DO6KjFoDxDp/",
+      "redirect_link": "https://www.google.com/url?sa=t&source=web&rct=j&opi=89978449&url=https://www.instagram.com/p/DO6KjFoDxDp/&ved=2ahUKEwi5v-SnmaGUAxVrvokEHSKsNdI4FBAWegQILBAB",
+      "displayed_link": "https://www.instagram.com \u203a ...",
+      "favicon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeAOHdX5ETaobQb6yFTo4_Bo.png",
+      "date": "Sep 22, 2025",
+      "snippet": "Some gentle ways to start: Notice when you're reacting vs. responding Take breaks when you feel overwhelmed (it's not selfish, it's ...",
+      "snippet_highlighted_words": [
+        "Notice when you're reacting vs. responding"
+      ],
+      "about_this_result": {
+        "source": {
+          "description": "Some gentle ways to start: Notice when you're reacting vs. responding Take breaks when you feel overwhelmed (it's not selfish, it's ...",
+          "source_info_link": "https://www.instagram.com/p/DO6KjFoDxDp/",
+          "icon": "https://serpapi.com/searches/69f962dfe3e176d6b7b25c8b/images/axpjt6IsFk0wspJ6CHyXeFbx0zqWDW_iQ8KoQkyQckUvgDtWEOzgZQZp49JltQoP.png"
+        },
+        "languages": [
+          "en"
+        ],
+        "regions": [
+          "CA"
+        ]
+      },
+      "about_page_link": "https://www.google.com/search?q=About+https://www.instagram.com/p/DO6KjFoDxDp/&tbm=ilp",
+      "about_page_serpapi_link": "https://serpapi.com/search.json?engine=google_about_this_result&google_domain=google.com&q=About+https%3A%2F%2Fwww.instagram.com%2Fp%2FDO6KjFoDxDp%2F",
+      "source": "Instagram"
+    }
+  ],
+  "pagination": {
+    "current": 1,
+    "next": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=10&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8NMDegQIKRAW",
+    "other_pages": {
+      "2": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=10&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAE",
+      "3": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=20&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAG",
+      "4": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=30&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAI",
+      "5": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=40&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAK",
+      "6": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=50&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAM",
+      "7": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=60&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAO",
+      "8": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=70&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAQ",
+      "9": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=80&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAS",
+      "10": "https://www.google.com/search?q=how+to+stop+repeating+my+parents'+patterns+Vancouver,+British+Columbia,+Canada&sca_esv=4984aa9a092ab98a&gl=ca&hl=en&ei=3WL5abMiu4-u4Q-by82gBQ&start=90&sa=N&sstk=Af77f_cBmHIJMW8mpgzSd64sjR7UYf0p2-x2a2VmqnUgVQJKaa-pmOV2QHrpPpxT7iWntNnZ_dWjhLP2LWoRZHHk134Vm8g_NQj3wA&ved=2ahUKEwjzhKOmmaGUAxW7hysGHZtlE1QQ8tMDegQIKRAU"
+    }
+  },
+  "serpapi_pagination": {
+    "current": 1,
+    "next_link": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=10",
+    "next": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=10",
+    "other_pages": {
+      "2": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=10",
+      "3": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=20",
+      "4": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=30",
+      "5": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=40",
+      "6": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=50",
+      "7": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=60",
+      "8": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=70",
+      "9": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=80",
+      "10": "https://serpapi.com/search.json?device=desktop&engine=google&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&q=how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada&start=90"
+    }
+  },
+  "related_searches": [],
+  "discussions_and_forums": [],
+  "pagination_pages_fetched": 3
+}

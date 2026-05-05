@@ -1,0 +1,265 @@
+{
+  "search_metadata": {
+    "id": "69f962e652acc60bbcdb0795",
+    "status": "Success",
+    "json_endpoint": "https://serpapi.com/searches/R0ihuhWrzRP1P11Vgr_qZw/69f962e652acc60bbcdb0795.json",
+    "created_at": "2026-05-05 03:24:22 UTC",
+    "processed_at": "2026-05-05 03:24:22 UTC",
+    "google_maps_url": "https://www.google.com/maps/search/how+to+stop+repeating+my+parents%27+patterns+Vancouver%2C+British+Columbia%2C+Canada/@49.2827291,-123.1207375,14.0z/?hl=en&gl=ca",
+    "raw_html_file": "https://serpapi.com/searches/R0ihuhWrzRP1P11Vgr_qZw/69f962e652acc60bbcdb0795.html",
+    "prettify_html_file": "https://serpapi.com/searches/R0ihuhWrzRP1P11Vgr_qZw/69f962e652acc60bbcdb0795.prettify",
+    "total_time_taken": 0.7
+  },
+  "search_parameters": {
+    "engine": "google_maps",
+    "type": "search",
+    "q": "how to stop repeating my parents' patterns Vancouver, British Columbia, Canada",
+    "location_requested": "Vancouver, British Columbia, Canada",
+    "location_used": "Vancouver,British Columbia,Canada",
+    "z": "14",
+    "google_domain": "google.com",
+    "hl": "en",
+    "gl": "ca"
+  },
+  "search_information": {
+    "local_results_state": "Showing results for type: \"place\" instead of type: \"search\"",
+    "query_displayed": "how to stop repeating my parents' patterns Vancouver, British Columbia, Canada"
+  },
+  "place_results": {
+    "title": "Parent Support Services Society of BC",
+    "place_id": "ChIJUXZ6EE92hlQR467PpOn8V0A",
+    "data_id": "0x5486764f107a7651:0x4057fce9a4cfaee3",
+    "data_cid": "4636452421823868643",
+    "reviews_link": "https://serpapi.com/search.json?data_id=0x5486764f107a7651%3A0x4057fce9a4cfaee3&engine=google_maps_reviews&hl=en",
+    "photos_link": "https://serpapi.com/search.json?data_id=0x5486764f107a7651%3A0x4057fce9a4cfaee3&engine=google_maps_photos&hl=en",
+    "gps_coordinates": {
+      "latitude": 49.232692199999995,
+      "longitude": -123.0241837
+    },
+    "place_id_search": "https://serpapi.com/search.json?engine=google_maps&google_domain=google.com&hl=en&place_id=ChIJUXZ6EE92hlQR467PpOn8V0A",
+    "provider_id": "/g/11_tyx3wf",
+    "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAEVOPwKo57oAwKRIwdNKhHkD9mVuCQMiqacQ_ItxMYYXA6LwmDjeZk23e64ate6jc4Zy5VRQiLwLFLfQ2FR1SayA6ZuHvdE6t2qKADwxhieNUlBN25rQe2a32fNLdvTiTnntqc=w1000-h1000-c-n",
+    "serpapi_thumbnail": "https://serpapi.com/images/url/YLPPenicHcRRDoIgAADQE5mGSqutD8paTaKwcuVPc0hiKmRg1AW7Q7dp632870cYc9cT122EPyiVKhvea_5gShouzYCp1i3v2mHa0S7aEVqjRbrd2ViFI4VsnKxtQWKxqqNxm_Zzuqm6nNHL2rw25_MJQWzb6MazGvgcBrnh8MaC7B2mCa2wxUt8pWCZDPf5G8GsXz2LBTSgi1FkX6Li5NjMCAgflIPcB1eCi-ehOkhpOja1Q8_zHPGfOfIHGrdEdg",
+    "rating_summary": [
+      {
+        "stars": 1,
+        "amount": 0
+      },
+      {
+        "stars": 2,
+        "amount": 0
+      },
+      {
+        "stars": 3,
+        "amount": 0
+      },
+      {
+        "stars": 4,
+        "amount": 0
+      },
+      {
+        "stars": 5,
+        "amount": 4
+      }
+    ],
+    "rating": 5,
+    "reviews": 4,
+    "type": [
+      "Social services organization"
+    ],
+    "type_ids": [
+      "social_services_organization"
+    ],
+    "extensions": [
+      {
+        "accessibility": [
+          "Wheelchair-accessible entrance",
+          "Wheelchair-accessible parking lot"
+        ]
+      }
+    ],
+    "address": "3665 Kingsway #330, Vancouver, BC V5R 5W2",
+    "located_in": "Boundary Plaza",
+    "website": "http://www.parentsupportbc.ca/",
+    "phone": "(604) 669-1616",
+    "open_state": "Closed \u00b7 Opens 9 a.m. Tue",
+    "plus_code": "6XMG+38 Vancouver, British Columbia",
+    "hours": [
+      {
+        "monday": "9 a.m.\u20135 p.m."
+      },
+      {
+        "tuesday": "9 a.m.\u20135 p.m."
+      },
+      {
+        "wednesday": "9 a.m.\u20135 p.m."
+      },
+      {
+        "thursday": "9 a.m.\u20135 p.m."
+      },
+      {
+        "friday": "9 a.m.\u20135 p.m."
+      },
+      {
+        "saturday": "Closed"
+      },
+      {
+        "sunday": "Closed"
+      }
+    ],
+    "images": [
+      {
+        "title": "All",
+        "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAEVOPwKo57oAwKRIwdNKhHkD9mVuCQMiqacQ_ItxMYYXA6LwmDjeZk23e64ate6jc4Zy5VRQiLwLFLfQ2FR1SayA6ZuHvdE6t2qKADwxhieNUlBN25rQe2a32fNLdvTiTnntqc=w1000-h1000-c-n",
+        "serpapi_thumbnail": "https://serpapi.com/images/url/YLPPenicHcRRDoIgAADQE5mGSqutD8paTaKwcuVPc0hiKmRg1AW7Q7dp632870cYc9cT122EPyiVKhvea_5gShouzYCp1i3v2mHa0S7aEVqjRbrd2ViFI4VsnKxtQWKxqqNxm_Zzuqm6nNHL2rw25_MJQWzb6MazGvgcBrnh8MaC7B2mCa2wxUt8pWCZDPf5G8GsXz2LBTSgi1FkX6Li5NjMCAgflIPcB1eCi-ehOkhpOja1Q8_zHPGfOfIHGrdEdg"
+      },
+      {
+        "title": "By owner",
+        "thumbnail": "https://lh3.googleusercontent.com/gps-cs-s/APNQkAHugGZ3A5jor1Vh3zlVghLzxCjLo_GrkFhDgELGGPAHgLVN2jfFGMSe-NcvZNVLyJGR0X8AIKK84EC51tV6vEhbo3iqQqNrMIzmjFHv9ShOeG0RSp0lAGMJzB7O_mNwXUQeI8XbYg=w1000-h1000-c-n",
+        "serpapi_thumbnail": "https://serpapi.com/images/url/E-elRHicHcRRboIwAADQE1XKUMeW7KMqFLRUgdigPyY2tR0CRVpw44YewduY-D7e86Gsbc2341TKm0itZSV6IzquGysaO-G6dmRrADfAOGhH0yuKeomPHpqVunOZ8saKSUXGv2VJ9Al311CtZEAw3qFIEkY_ykuIk1wAyocjZeR_jTNY-CjebPxpsJy5ls2HQJ2193tLb7RL4rEuw2j4ytVWYJjlLawQTtbj4nN7qum92Kci9ovzQf7cXQghUO85aF6y5kRx"
+      },
+      {
+        "title": "Street View & 360\u00b0",
+        "thumbnail": "https://streetviewpixels-pa.googleapis.com/v1/thumbnail?panoid=4C--PfpAnAAzCUkeQLtr3g&cb_client=maps_sv.tactile.gps&w=224&h=298&yaw=67.633064&pitch=0&thumbfov=100",
+        "serpapi_thumbnail": "https://serpapi.com/images/url/1yOZMnicHc1LDsIgEADQ27Ar0E_qJyGm6daFLlw3FJFOpDApI1WP4628jYnvAu_7mYgw7YVItFhLGeyK8LQ-Fai5i9F5qxESN3EWuRQ0PeYxaPAH1CHCVTV9UZxu2IWue_eXuz0faakdM-NgPNhAataYhpQ5aUPgLXeY2KqqqmGTqnZb9tKraje8rWvZNgyBzKQk-z-3mFUp5Q_P6znS"
+      }
+    ],
+    "user_reviews": {
+      "most_relevant": [
+        {
+          "username": "Shobhit Puri",
+          "rating": 5,
+          "contributor_id": "113765747901830082311",
+          "user_review_count": 109,
+          "user_photo_count": 11,
+          "user_thumbnail": "https://lh3.googleusercontent.com/a-/ALV-UjXxVVr7CEtNydWNev2TXYIhFoi3yNeDLnJKWnGTYr0cH21teIxSFA=s120-c-rp-mo-ba4-br100",
+          "description": "Very educational sessions for parents!",
+          "link": "https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChZDSUhNMG9nS0VJQ0FnSUNzbTdEVFpBEAE!2m1!1s0x0:0x4057fce9a4cfaee3!3m1!1s2@1:CIHM0ogKEICAgICsm7DTZA%7C%7C?hl=en-US",
+          "date": "6 years ago",
+          "date_iso8601": "2020-02-15T05:34:11+00:00"
+        },
+        {
+          "username": "Gabriela Morales Aguilar",
+          "rating": 5,
+          "contributor_id": "113701833473182130157",
+          "user_review_count": 68,
+          "user_photo_count": 44,
+          "user_thumbnail": "https://lh3.googleusercontent.com/a-/ALV-UjV0UcGMAfv92acZgCYGAZjoi3zEdypygkAW9F9IUqvAPmKaiLEe=s120-c-rp-mo-ba4-br100",
+          "link": "https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChdDSUhNMG9nS0VJQ0FnTUNJM2RucjZRRRAB!2m1!1s0x0:0x4057fce9a4cfaee3!3m1!1s2@1:CIHM0ogKEICAgMCI3dnr6QE%7C%7C?hl=en-US",
+          "date": "a year ago",
+          "date_iso8601": "2025-04-04T04:13:57+00:00"
+        },
+        {
+          "username": "Katie Robertson",
+          "rating": 5,
+          "contributor_id": "103795837466226885644",
+          "user_review_count": 33,
+          "user_photo_count": 0,
+          "user_thumbnail": "https://lh3.googleusercontent.com/a-/ALV-UjXfI3SHQxSSprtQJAlPaEj0UdbxJpRQvoF0D6hmfF2lVLQlKYni=s120-c-rp-mo-ba3-br100",
+          "link": "https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChdDSUhNMG9nS0VJQ0FnSURSdGJMQnhnRRAB!2m1!1s0x0:0x4057fce9a4cfaee3!3m1!1s2@1:CIHM0ogKEICAgIDRtbLBxgE%7C%7C?hl=en-US",
+          "date": "3 years ago",
+          "date_iso8601": "2023-04-30T15:52:49+00:00"
+        },
+        {
+          "username": "Soma Soma",
+          "rating": 5,
+          "contributor_id": "102122980859282634172",
+          "user_review_count": 41,
+          "user_photo_count": 147,
+          "user_thumbnail": "https://lh3.googleusercontent.com/a-/ALV-UjVPzxqJSbwZOk4nrpbZ5CaiWArOKS76aBoKT3cRl8BzMzlRC9qaew=s120-c-rp-mo-ba4-br100",
+          "link": "https://www.google.com/maps/reviews/data=!4m8!14m7!1m6!2m5!1sChdDSUhNMG9nS0VJQ0FnSUQ2ejhqZzdBRRAB!2m1!1s0x0:0x4057fce9a4cfaee3!3m1!1s2@1:CIHM0ogKEICAgID6z8jg7AE%7C%7C?hl=en-US",
+          "date": "4 years ago",
+          "date_iso8601": "2021-10-14T21:22:22+00:00"
+        }
+      ]
+    },
+    "people_also_search_for": [
+      {
+        "search_term": "People also search for",
+        "local_results": [
+          {
+            "position": 1,
+            "title": "Pacific Post Partum Support Society",
+            "data_id": "0x0:0xf3fc463b1564d6dd",
+            "data_cid": "17581004264923518685",
+            "reviews_link": "https://serpapi.com/search.json?data_id=0x0%3A0xf3fc463b1564d6dd&engine=google_maps_reviews&hl=en",
+            "photos_link": "https://serpapi.com/search.json?data_id=0x0%3A0xf3fc463b1564d6dd&engine=google_maps_photos&hl=en",
+            "gps_coordinates": {
+              "latitude": 49.249270599999996,
+              "longitude": -122.95032619999999
+            },
+            "place_id_search": "https://serpapi.com/search.json?data=%214m5%213m4%211s0x0%3A0xf3fc463b1564d6dd%218m2%213d49.249270599999996%214d-122.95032619999999&engine=google_maps&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&type=place&z=14",
+            "rating": 4.8,
+            "reviews": 4,
+            "thumbnail": "https://www.google.com/maps/vt/data=gKyvkLHuKhYO3hPDA7E-ZyaZUlHX1-xGtUhntvZX5rlG8mad6-Z7WLBLbHQy-ISLuP2K7iJFm_2nDKn3MxojfeEMVV4Valiull3JRuO0FyXEzyg8IbG8_BoD0gZ_1dPUP82_3fc2JdFBcRiiRfQkYLw_Sb58Vr8f",
+            "type": [
+              "Family counselor"
+            ]
+          },
+          {
+            "position": 2,
+            "title": "Post Abortion Community Services",
+            "data_id": "0x0:0x955e028ca30e314a",
+            "data_cid": "10763042962516357450",
+            "reviews_link": "https://serpapi.com/search.json?data_id=0x0%3A0x955e028ca30e314a&engine=google_maps_reviews&hl=en",
+            "photos_link": "https://serpapi.com/search.json?data_id=0x0%3A0x955e028ca30e314a&engine=google_maps_photos&hl=en",
+            "gps_coordinates": {
+              "latitude": 49.2262136,
+              "longitude": -122.93780710000001
+            },
+            "place_id_search": "https://serpapi.com/search.json?data=%214m5%213m4%211s0x0%3A0x955e028ca30e314a%218m2%213d49.2262136%214d-122.93780710000001&engine=google_maps&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&type=place&z=14",
+            "rating": 1,
+            "reviews": 1,
+            "thumbnail": "https://www.google.com/maps/vt/data=7-PhT757gF0csmNm1R1injcLU2wYsFb3BTdX8iUW2vJC8HaNnDsLWtojk0kUiSWPl7qF2OcbqYv3uk1NDBsUcLMOWJHbYylxDgJq9tm71bA3f9JrznUtr1-AkThm2jMO8HJ3g8aCo_QQb19YB66-EcBRXqTxo0cO",
+            "type": [
+              "Non-profit organization",
+              "Charity"
+            ]
+          },
+          {
+            "position": 3,
+            "title": "Information Children",
+            "data_id": "0x0:0x559c3dbb20e26eb9",
+            "data_cid": "6168873463510625977",
+            "reviews_link": "https://serpapi.com/search.json?data_id=0x0%3A0x559c3dbb20e26eb9&engine=google_maps_reviews&hl=en",
+            "photos_link": "https://serpapi.com/search.json?data_id=0x0%3A0x559c3dbb20e26eb9&engine=google_maps_photos&hl=en",
+            "gps_coordinates": {
+              "latitude": 49.2743542,
+              "longitude": -122.9122373
+            },
+            "place_id_search": "https://serpapi.com/search.json?data=%214m5%213m4%211s0x0%3A0x559c3dbb20e26eb9%218m2%213d49.2743542%214d-122.9122373&engine=google_maps&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&type=place&z=14",
+            "rating": 0,
+            "reviews": 0,
+            "thumbnail": "https://www.google.com/maps/vt/data=BVlMD7zjsC-H8iiiiLy3Hf-z36-re50Id563ZRrjjm-52Fo39ADu4mqACDztWarRlaD_10FhE-czfIrdi_lXBrKjwwstYYM2igHt6HrFJln971HbilJsUnXXRCiHHT6JjMgs0OpGTmHUbqu6WRjhAoyFVRt6drHF",
+            "type": [
+              "Non-profit organization"
+            ]
+          },
+          {
+            "position": 4,
+            "title": "The New Parent Support Centre",
+            "data_id": "0x0:0xcef2390526b2a279",
+            "data_cid": "14912044010463994489",
+            "reviews_link": "https://serpapi.com/search.json?data_id=0x0%3A0xcef2390526b2a279&engine=google_maps_reviews&hl=en",
+            "photos_link": "https://serpapi.com/search.json?data_id=0x0%3A0xcef2390526b2a279&engine=google_maps_photos&hl=en",
+            "gps_coordinates": {
+              "latitude": 49.3131151,
+              "longitude": -123.08346639999998
+            },
+            "place_id_search": "https://serpapi.com/search.json?data=%214m5%213m4%211s0x0%3A0xcef2390526b2a279%218m2%213d49.3131151%214d-123.08346639999998&engine=google_maps&gl=ca&google_domain=google.com&hl=en&location=Vancouver%2C+British+Columbia%2C+Canada&type=place&z=14",
+            "rating": 0,
+            "reviews": 0,
+            "thumbnail": "https://www.google.com/maps/vt/data=l4VzK14aHZExjkmUC5Eo_QDmpl86I--XTAdJ6gR4Lfp2GTkYQ3kYjEjbchACPTO0HvoqJt_Zg8lDagP_p97ALt-RbqiYfGXIt61yzh7vvOpTqjvFOxUOLjiS8WvOrdwkHz5WgRbHQq7rP8MDKYcLoFdgGW8y_aQH",
+            "type": [
+              "Counselor"
+            ]
+          }
+        ]
+      }
+    ],
+    "web_results_link": "https://www.google.com/search?q=local+guide+program&ibp=gwp;0,26,OjkKNyIzUGFyZW50IFN1cHBvcnQgU2VydmljZXMgU29jaWV0eSBvZiBCQyBWYW5jb3V2ZXIsIEJDKAI&pcl=lp",
+    "serpapi_web_results_link": "https://serpapi.com/search.json?device=desktop&engine=google&google_domain=google.com&ibp=gwp%3B0%2C26%2COjkKNyIzUGFyZW50IFN1cHBvcnQgU2VydmljZXMgU29jaWV0eSBvZiBCQyBWYW5jb3V2ZXIsIEJDKAI&q=local+guide+program"
+  },
+  "local_results": [],
+  "pagination_pages_fetched": 1
+}

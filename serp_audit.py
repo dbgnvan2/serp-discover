@@ -2018,15 +2018,49 @@ def main():
         md_content.append(generate_insight_report.generate_report(full_data))
         md_content.append("\n---\n")
 
-        # 2. Content Briefs
+        # 2. Content Briefs (RC.8 — brief sequencing)
         recs = full_data.get("strategic_recommendations", [])
         if recs:
             md_content.append("# Content Briefs\n")
-            for i in range(len(recs)):
+
+            # RC.8 — Determine best opportunity keyword and order briefs
+            preferred_intents = CONFIG.get("client", {}).get("preferred_intents", ["informational"])
+            best_kw, _ = generate_insight_report._get_best_opportunity_keyword(
+                full_data.get("keyword_profiles", {}),
+                full_data.get("keyword_feasibility", []),
+                preferred_intents
+            )
+
+            # Get ordered brief metadata
+            ordered_briefs = generate_insight_report._order_briefs_by_opportunity(
+                full_data, recs, best_kw
+            )
+
+            # RC.8 — Render sequencing block
+            md_content.append("**Recommended writing order:**\n")
+            for brief_num, (orig_idx, pattern_name, most_rel_kw, _) in enumerate(ordered_briefs, 1):
+                if most_rel_kw:
+                    md_content.append(f"{brief_num}. `{pattern_name}` — targets `{most_rel_kw}`")
+                else:
+                    md_content.append(f"{brief_num}. `{pattern_name}` — (no primary keyword match)")
+
+            if not any(item[2] for item in ordered_briefs):
                 md_content.append(
-                    f"## Brief {i+1}: {recs[i].get('Pattern_Name')}")
+                    "\n*Without feasibility data, briefs are ordered by intent confidence "
+                    "(high → medium → low) of their most relevant keyword.*"
+                )
+            else:
                 md_content.append(
-                    generate_content_brief.generate_brief(full_data, rec_index=i))
+                    "\nWrite in this order to address the highest-opportunity keyword first. "
+                    "Each brief below is self-contained."
+                )
+            md_content.append("")
+
+            # Render briefs in ordered sequence
+            for brief_num, (orig_idx, pattern_name, most_rel_kw, _) in enumerate(ordered_briefs, 1):
+                md_content.append(f"## Brief {brief_num}: {pattern_name}")
+                md_content.append(
+                    generate_content_brief.generate_brief(full_data, rec_index=orig_idx))
                 md_content.append("\n---\n")
 
         with open(OUTPUT_MD, "w", encoding="utf-8") as f:

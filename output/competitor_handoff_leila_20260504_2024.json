@@ -1,0 +1,596 @@
+{
+  "schema_version": "1.0",
+  "source_run_id": "20260504_202101",
+  "source_run_timestamp": "2026-05-05T03:24:46Z",
+  "client_domain": "livingsystems.ca",
+  "client_brand_names": [
+    "Living Systems"
+  ],
+  "targets": [
+    {
+      "url": "https://www.psychologytoday.com/ca/blog/platonic-psychology/202512/why-you-act-like-a-child-around-your-family",
+      "domain": "www.psychologytoday.com",
+      "rank": 1,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Why You Can Act Like a Child Around Your Family",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www2.gov.bc.ca/gov/content/safety/public-safety/protecting-children/keeping-kids-safe",
+      "domain": "www2.gov.bc.ca",
+      "rank": 1,
+      "entity_type": "government",
+      "content_type": "guide",
+      "title": "Keeping kids safe from abuse in B.C. - Protecting children",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.psychologytoday.com/ca/blog/the-baby-scientist/202212/why-does-my-kid-behave-better-for-other-people",
+      "domain": "www.psychologytoday.com",
+      "rank": 1,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Why Do Kids Seem to Behave for Everyone but Their ...",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.reddit.com/r/vancouver/comments/a7va5a/vancouver_attitudes/",
+      "domain": "www.reddit.com",
+      "rank": 2,
+      "entity_type": "media",
+      "content_type": "other",
+      "title": "Vancouver Attitudes?",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.bccsu.ca/bc-recovery-services/",
+      "domain": "www.bccsu.ca",
+      "rank": 2,
+      "entity_type": "nonprofit",
+      "content_type": "guide",
+      "title": "BC Recovery Services",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.facebook.com/groups/2371202252/",
+      "domain": "www.facebook.com",
+      "rank": 2,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "I LOVE THE RCMP",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.quora.com/I-act-differently-when-I-m-around-my-family-and-different-when-Im-around-my-friends-but-I-dont-do-it-on-purpose-Does-this-make-me-a-hypocrite",
+      "domain": "www.quora.com",
+      "rank": 3,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "I act differently when I'm around my family and ...",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.heretohelp.bc.ca/audience/family-members?page=10",
+      "domain": "www.heretohelp.bc.ca",
+      "rank": 3,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "Family members | Here to Help",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://www.healthlinkbc.ca/mental-health-and-substance-use/mental-health/mental-health-supports-and-resources",
+      "domain": "www.healthlinkbc.ca",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Mental health supports and resources",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://askthepsych.com/atp/2013/07/10/i-seem-to-act-differently-in-each-social-circle-so-who-is-the-real-me/",
+      "domain": "askthepsych.com",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "I Seem to Act Differently in Each Social Circle, So Who is ...",
+      "source_keyword": "why do I act differently around my family",
+      "primary_keyword_for_url": "why do I act differently around my family"
+    },
+    {
+      "url": "https://counsellingbc.com/blog/why-early-life-relationships-influence-adulthood-attachment",
+      "domain": "counsellingbc.com",
+      "rank": 1,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Why Early Life Relationships Influence Adulthood Attachment",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://willowtreecounselling.ca/counselling/areas-of-practice/relationship-issues/",
+      "domain": "willowtreecounselling.ca",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Relationship Issues",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://open.library.ubc.ca/media/stream/pdf/24/1.0071301/2",
+      "domain": "open.library.ubc.ca",
+      "rank": 1,
+      "entity_type": "education",
+      "content_type": "pdf",
+      "title": "EXPERIENCES OF ADULT OFFSPRING OF PARENTS WITH ...",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://www.psychologytoday.com/ca/blog/invisible-bruises/202507/how-childhood-coping-traits-affect-our-adult-relationships",
+      "domain": "www.psychologytoday.com",
+      "rank": 2,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "How Childhood Coping Traits Affect Our Adult Relationships",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://www.options.bc.ca/program/peace-children-youth-experiencing-violence",
+      "domain": "www.options.bc.ca",
+      "rank": 2,
+      "entity_type": "nonprofit",
+      "content_type": "other",
+      "title": "PEACE For Children & Youth Experiencing Violence",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://www.vch.ca/en/health-topics/child-and-youth-mental-health-and-substance-use",
+      "domain": "www.vch.ca",
+      "rank": 2,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "Child and youth mental health and substance use",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://med-fom-ubcmj.sites.olt.ubc.ca/files/2017/03/v8i1-news2.pdf",
+      "domain": "med-fom-ubcmj.sites.olt.ubc.ca",
+      "rank": 3,
+      "entity_type": "education",
+      "content_type": "pdf",
+      "title": "The lasting effects of childhood trauma on mental health in ...",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://www.safespacecounselling.ca/family-therapy",
+      "domain": "www.safespacecounselling.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Family Therapy",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://lotustherapy.ca/vancouver-aedp-therapy/",
+      "domain": "lotustherapy.ca",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Learn How Childhood Trauma Affects Us in Vancouver BC",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://www.canada.ca/en/public-health/services/publications/health-risks-safety/trauma-violence-informed-approaches-policy-practice.html",
+      "domain": "www.canada.ca",
+      "rank": 4,
+      "entity_type": "government",
+      "content_type": "guide",
+      "title": "Trauma and violence-informed approaches to policy ...",
+      "source_keyword": "how childhood affects adult relationships",
+      "primary_keyword_for_url": "how childhood affects adult relationships"
+    },
+    {
+      "url": "https://anelegantmind.com/blog/why-do-i-keep-ending-up-in-the-same-relationship-patterns",
+      "domain": "anelegantmind.com",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Why Do I Keep Ending Up in the Same Relationship ...",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://vcfi.ca/about-us/",
+      "domain": "vcfi.ca",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "N/A",
+      "title": "About Us",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://alignedrelationshipcounselling.com/couples-counselling",
+      "domain": "alignedrelationshipcounselling.com",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Couples Counselling & Therapy Vancouver",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://arccounselling.ca/relationship-therapy-vancouver/",
+      "domain": "arccounselling.ca",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Relationship Therapy Vancouver | Counselling In-Person & ...",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://www.thehealingcove.ca/attachment",
+      "domain": "www.thehealingcove.ca",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Attachment Therapy Counsellor Burnaby — The Healing Cove",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://www.headandheartcounselling.com/relationship-issues-counselling-in-vancouver",
+      "domain": "www.headandheartcounselling.com",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Relationship Issues Counselling in Vancouver",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://www.psychologytoday.com/ca/therapists/british-columbia?category=couples-counselling",
+      "domain": "www.psychologytoday.com",
+      "rank": 3,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Couples Counselling Therapists in British Columbia",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://www.helenwhitehead.ca/",
+      "domain": "www.helenwhitehead.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "North Vancouver Counselling | Helen Whitehead R.C.C.",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://www.vantherapy.ca/insights-updates/recognize-and-break-relationship-patterns",
+      "domain": "www.vantherapy.ca",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "How to recognize and break unhealthy relationships patterns",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://emergence-counselling.com/attachment-therapy-vancouver/",
+      "domain": "emergence-counselling.com",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Attachment Therapy | Emergence Counselling & Wellness Inc.",
+      "source_keyword": "repeating relationship patterns",
+      "primary_keyword_for_url": "repeating relationship patterns"
+    },
+    {
+      "url": "https://www2.psych.ubc.ca/~dpaulhus/research/BIRTH_ORDER/PS.99.pdf",
+      "domain": "www2.psych.ubc.ca",
+      "rank": 1,
+      "entity_type": "education",
+      "content_type": "pdf",
+      "title": "Research Article - Description",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://www.verywellmind.com/how-does-birth-order-shape-your-personality-8431968",
+      "domain": "www.verywellmind.com",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "How Does Birth Order Shape Your Personality?",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://online.jwu.edu/blog/how-birth-order-impacts-your-personality/",
+      "domain": "online.jwu.edu",
+      "rank": 1,
+      "entity_type": "education",
+      "content_type": "news",
+      "title": "How Birth Order Impacts Your Personality | JWU CPS",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://www.psychologytoday.com/ca/blog/singletons/201706/does-birth-order-affect-personality",
+      "domain": "www.psychologytoday.com",
+      "rank": 2,
+      "entity_type": "directory",
+      "content_type": "guide",
+      "title": "Does Birth Order Affect Personality?",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://parentscanada.com/family-life/does-sibling-order-theory-matter/",
+      "domain": "parentscanada.com",
+      "rank": 2,
+      "entity_type": "N/A",
+      "content_type": "news",
+      "title": "Does Sibling Order Theory Actually Mean Anything?",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://journals.sagepub.com/doi/10.1111/1467-9280.00193",
+      "domain": "journals.sagepub.com",
+      "rank": 2,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "Birth Order Effects on Personality and Achievement Within ...",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://www2.psych.ubc.ca/~dpaulhus/research/BIRTH_ORDER/Encyclopedia%20of%20Devpt%20chapter.pdf",
+      "domain": "www2.psych.ubc.ca",
+      "rank": 3,
+      "entity_type": "education",
+      "content_type": "pdf",
+      "title": "Encyclopedia of Devpt chapter.pdf",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://psychcentral.com/blog/birth-order-and-personality",
+      "domain": "psychcentral.com",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Does Birth Order Impact Personality?",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://www.vch.ca/en/growth-and-development-toddlers",
+      "domain": "www.vch.ca",
+      "rank": 3,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "Growth and development, toddlers",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://globalnews.ca/news/2120509/family-matters-birth-order-doesnt-affect-personality-iq-among-siblings-study-suggests/",
+      "domain": "globalnews.ca",
+      "rank": 4,
+      "entity_type": "N/A",
+      "content_type": "guide",
+      "title": "Family matters: Birth order doesn't affect personality, IQ ...",
+      "source_keyword": "how does birth order affect personality",
+      "primary_keyword_for_url": "how does birth order affect personality"
+    },
+    {
+      "url": "https://vancouvercounsellor.ca/family-counselling/",
+      "domain": "vancouvercounsellor.ca",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Family Counselling Vancouver",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://fasdcounselling.com/",
+      "domain": "fasdcounselling.com",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "FASD Counselling and Consulting - Counselling, Play Therapy",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://helpstartshere.gov.bc.ca/resources?key=Wellness&from=word_cloud&latlon_2%5Bvalue%5D=50000&latlon_2%5Bsource_configuration%5D%5Borigin%5D%5Blat%5D=54.226707764386695&latlon_2%5Bsource_configuration%5D%5Borigin%5D%5Blon%5D=-125.99121093750001&latlon_boundary%5Blat_north_east%5D=60.1524422143808&latlon_boundary%5Blng_north_east%5D=-116.9384765625&latlon_boundary%5Blat_south_west%5D=47.30903424774781&latlon_boundary%5Blng_south_west%5D=-135.04394531250003&browser_path=/resources&browser_query=%3Fkey%3DWellness%26from%3Dword_cloud%26latlon_1%255Bvalue%255D%3D%26latlon_2%255Bvalue%255D%3D50000%26page%3D%252C21&tab_id=articles&latlon_1%5Bvalue%5D=&page=%2C59%2C2",
+      "domain": "helpstartshere.gov.bc.ca",
+      "rank": 2,
+      "entity_type": "government",
+      "content_type": "N/A",
+      "title": "Browse Supports | HelpStartsHere",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://www.theravive.com/cities/bc/family-counselling-east-vancouver.aspx",
+      "domain": "www.theravive.com",
+      "rank": 3,
+      "entity_type": "directory",
+      "content_type": "other",
+      "title": "Family Counselling Services in East Vancouver, BC.",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://www.blueskywellnessclinic.ca/family-counselling/",
+      "domain": "www.blueskywellnessclinic.ca",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "other",
+      "title": "Family Counselling Vancouver",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://www.parentsupportbc.ca/",
+      "domain": "www.parentsupportbc.ca",
+      "rank": 3,
+      "entity_type": "nonprofit",
+      "content_type": "guide",
+      "title": "Parent Support Services Society of BC: Home",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://rcav.org/personal-counselling",
+      "domain": "rcav.org",
+      "rank": 4,
+      "entity_type": "counselling",
+      "content_type": "guide",
+      "title": "Personal Counselling",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://www.bccancer.bc.ca/our-services/services/supportive-care/patient-family-counselling",
+      "domain": "www.bccancer.bc.ca",
+      "rank": 4,
+      "entity_type": "nonprofit",
+      "content_type": "guide",
+      "title": "Patient & Family Counselling",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://www.psychologytoday.com/ca/blog/how-to-do-life/202108/how-has-your-family-of-origin-affected-you",
+      "domain": "www.psychologytoday.com",
+      "rank": 4,
+      "entity_type": "directory",
+      "content_type": "other",
+      "title": "How Has Your Family of Origin Affected You?",
+      "source_keyword": "family of origin issues",
+      "primary_keyword_for_url": "family of origin issues"
+    },
+    {
+      "url": "https://shiftgrit.com/breaking-parenting-patterns/",
+      "domain": "shiftgrit.com",
+      "rank": 1,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Breaking Generational Parenting Patterns: How to Raise ...",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://oonaalexander.co.uk/worried-youre-repeating-parent-child-patterns-from-your-childhood/",
+      "domain": "oonaalexander.co.uk",
+      "rank": 1,
+      "entity_type": "N/A",
+      "content_type": "news",
+      "title": "How to Stop Repeating Negative Parenting Patterns",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://parenting.stackexchange.com/questions/28104/how-can-we-reduce-the-likelihood-of-repeating-our-parents-mistakes",
+      "domain": "parenting.stackexchange.com",
+      "rank": 1,
+      "entity_type": "N/A",
+      "content_type": "guide",
+      "title": "How can we reduce the likelihood of repeating our parents' ...",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://lotustherapy.ca/breaking-the-family-pattern-a-trauma-informed-guide-to-generational-trauma/",
+      "domain": "lotustherapy.ca",
+      "rank": 2,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Breaking the Family Pattern: A Trauma-Informed Guide to ...",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://www.facebook.com/groups/532388661096306/posts/701209747547529/",
+      "domain": "www.facebook.com",
+      "rank": 2,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "Ways to break generational parenting patterns in ...",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://anniewright.com/repeating-parents-patterns/",
+      "domain": "anniewright.com",
+      "rank": 3,
+      "entity_type": "counselling",
+      "content_type": "news",
+      "title": "Am I Repeating My Parents' Patterns? — LMFT Guide",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://findahelpline.com/countries/ca/bc/topics/parenting",
+      "domain": "findahelpline.com",
+      "rank": 3,
+      "entity_type": "nonprofit",
+      "content_type": "other",
+      "title": "Parenting helplines in British Columbia, Canada",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://cw.liveyourtruth.com/stop-repeating-your-parents-dysfunctional-patterns/",
+      "domain": "cw.liveyourtruth.com",
+      "rank": 4,
+      "entity_type": "N/A",
+      "content_type": "news",
+      "title": "Stop Repeating Your Parents' Dysfunctional Patterns",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    },
+    {
+      "url": "https://www.quora.com/How-can-I-avoid-repeating-my-parents-poor-relationship-dynamic",
+      "domain": "www.quora.com",
+      "rank": 4,
+      "entity_type": "N/A",
+      "content_type": "other",
+      "title": "How to avoid repeating my parents poor relationship dynamic",
+      "source_keyword": "how to stop repeating my parents' patterns",
+      "primary_keyword_for_url": "how to stop repeating my parents' patterns"
+    }
+  ],
+  "exclusions": {
+    "client_urls_excluded": 0,
+    "omit_list_excluded": 0,
+    "omit_list_used": []
+  }
+}
