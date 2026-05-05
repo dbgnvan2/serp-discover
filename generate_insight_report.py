@@ -80,6 +80,206 @@ def load_data(json_path):
         sys.exit(1)
 
 
+def _load_config():
+    """Load config.yml to get preferred_intents and report thresholds."""
+    path = os.path.join(_REPO_ROOT, "config.yml")
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            return yaml.safe_load(f) or {}
+    except Exception:
+        return {}
+
+
+def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_intents: list):
+    """
+    Purpose: Rank keywords by feasibility > intent alignment > confidence.
+    Spec:    report_clarity_spec.md#RC.1.1
+    Tests:   tests/test_report_clarity.py::test_rc1_*
+
+    Returns list of (keyword, rank_score, feasibility_status, intent, confidence).
+    Higher rank_score = higher priority.
+    """
+    feasibility_map = {
+        r.get("Keyword"): r
+        for r in keyword_feasibility
+        if r.get("Query_Label") != "P"  # Exclude pivot keywords
+    }
+
+    ranked = []
+    for kw, profile in keyword_profiles.items():
+        feas_record = feasibility_map.get(kw, {})
+        feas_status = feas_record.get("feasibility_status", "")
+
+        intent = profile.get("serp_intent", {}).get("primary_intent", "")
+        confidence = profile.get("serp_intent", {}).get("confidence", "")
+        is_mixed = profile.get("serp_intent", {}).get("is_mixed", False)
+
+        # Feasibility ranking (High=3, Moderate=2, Low=1, None=0)
+        feas_rank = (
+            3 if "High" in feas_status
+            else 2 if "Moderate" in feas_status
+            else 1 if "Low" in feas_status
+            else 0
+        )
+
+        # Intent match (preferred=1, not preferred=0)
+        # For mixed intent, check if any component matches preferred intents
+        if is_mixed:
+            components = profile.get("serp_intent", {}).get("mixed_components", [])
+            intent_match = 1 if any(c in preferred_intents for c in components) else 0
+        else:
+            intent_match = 1 if intent in preferred_intents else 0
+
+        # Confidence ranking (high=3, medium=2, low=1)
+        conf_rank = (
+            3 if confidence == "high"
+            else 2 if confidence == "medium"
+            else 1
+        )
+
+        # Combined score: (feas, intent_match, conf, alphabetical as tiebreaker)
+        score = (feas_rank, intent_match, conf_rank, kw)
+        ranked.append((kw, score, feas_status, intent, confidence, intent_match))
+
+    # Sort by score (descending on numeric parts, ascending on kw for tie-break)
+    ranked.sort(key=lambda x: (-x[1][0], -x[1][1], -x[1][2], x[1][3]))
+    return ranked
+
+
+def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: list, preferred_intents: list):
+    """
+    Purpose: Determine the single best keyword to pursue.
+    Spec:    report_clarity_spec.md#RC.1.1
+    Tests:   tests/test_report_clarity.py::test_rc1_best_opportunity_statement_present
+
+    Returns tuple: (keyword_name, reason) or (None, reason_why_not).
+    """
+    if not keyword_profiles:
+        return None, "No keywords to analyze."
+
+    # Filter to keywords with feasibility data
+    feas_map = {
+        r.get("Keyword"): r
+        for r in keyword_feasibility
+        if r.get("Query_Label") != "P"
+    }
+    keywords_with_feas = [kw for kw in keyword_profiles if kw in feas_map]
+
+    if not keywords_with_feas:
+        # All keywords lack feasibility data
+        return None, "feasibility data is missing. Run with DA credentials to enable ranking. See Section 5c."
+
+    # Rank only keywords with feasibility data
+    profiles_subset = {kw: keyword_profiles[kw] for kw in keywords_with_feas}
+    ranked = _rank_keywords(profiles_subset, keyword_feasibility, preferred_intents)
+
+    if not ranked:
+        return None, "could not be determined."
+
+    best_kw, _, feas_status, intent, _, _ = ranked[0]
+    reason = f"{intent} intent, {feas_status.lower()}"
+    return best_kw, reason
+
+
+def _get_keyword_action(keyword: str, profile: dict, feas_record: dict, preferred_intents: list):
+    """
+    Purpose: Determine the action value for a keyword.
+    Spec:    report_clarity_spec.md#RC.1.3
+    Tests:   tests/test_report_clarity.py::test_rc1_action_*
+
+    Returns one of: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked, 🔴 Pivot or skip, ⛔ Mismatched intent
+    """
+    serp_intent = profile.get("serp_intent", {})
+    intent = serp_intent.get("primary_intent", "")
+    feas_status = feas_record.get("feasibility_status", "")
+    is_mixed = serp_intent.get("is_mixed", False)
+
+    # Check intent match first (mandatory)
+    # For mixed intent, check if any component matches preferred intents
+    intent_matches = False
+    if is_mixed:
+        components = serp_intent.get("mixed_components", [])
+        intent_matches = any(c in preferred_intents for c in components)
+    else:
+        intent_matches = intent in preferred_intents
+
+    if intent and not intent_matches:
+        return "⛔ Mismatched intent"
+
+    # If no feasibility data
+    if not feas_status:
+        return "📊 Unranked"
+
+    # Map feasibility status to action
+    if "High" in feas_status:
+        return "✅ Pursue"
+    elif "Moderate" in feas_status:
+        return "⚠️ Pursue with effort"
+    elif "Low" in feas_status:
+        return "🔴 Pivot or skip"
+    else:
+        return "📊 Unranked"
+
+
+def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportunity_reason: str):
+    """
+    Purpose: Render Section 0 (Executive Summary) with best opportunity, brief priority, and action table.
+    Spec:    report_clarity_spec.md#RC.1
+    Tests:   tests/test_report_clarity.py::test_rc1_executive_summary_section_placement
+
+    Returns list of report lines.
+    """
+    config = _load_config()
+    preferred_intents = config.get("client", {}).get("preferred_intents", ["informational"])
+
+    keyword_profiles = data.get("keyword_profiles", {})
+    keyword_feasibility = data.get("keyword_feasibility", [])
+    feas_map = {r.get("Keyword"): r for r in keyword_feasibility if r.get("Query_Label") != "P"}
+
+    report = []
+    report.append("## 0. Executive Summary\n")
+
+    # RC.1.1 — Best opportunity statement
+    if best_opportunity_kw:
+        report.append(f"**Best keyword opportunity:** `{best_opportunity_kw}` — {best_opportunity_reason}.\n")
+    else:
+        report.append(f"**Best keyword opportunity:** cannot be determined — {best_opportunity_reason}\n")
+
+    # RC.1.2 — Content brief priority (placeholder; will be filled by RC.8)
+    report.append("*Content brief prioritization will be added by RC.8.*\n")
+
+    # RC.1.3 — Keyword action table
+    report.append("| Keyword | Intent | Confidence | Feasibility | Action |")
+    report.append("|---------|--------|------------|-------------|--------|")
+
+    # Build rows and sort by action group
+    rows = []
+    for kw, profile in sorted(keyword_profiles.items()):
+        intent = profile.get("serp_intent", {}).get("primary_intent", "—")
+        confidence = profile.get("serp_intent", {}).get("confidence", "—")
+        feas_record = feas_map.get(kw, {})
+        feas_status = feas_record.get("feasibility_status", "—")
+        action = _get_keyword_action(kw, profile, feas_record, preferred_intents)
+
+        # Sort priority: Pursue > Pursue with effort > Unranked > Pivot or skip > Mismatched intent
+        action_priority = (
+            0 if action.startswith("✅") else
+            1 if action.startswith("⚠️") else
+            2 if action.startswith("📊") else
+            3 if action.startswith("🔴") else
+            4
+        )
+        rows.append((action_priority, kw, intent, confidence, feas_status, action))
+
+    # Sort by action group, then alphabetically
+    rows.sort(key=lambda x: (x[0], x[1]))
+    for _, kw, intent, confidence, feas_status, action in rows:
+        report.append(f"| {kw} | {intent} | {confidence} | {feas_status} | {action} |")
+
+    report.append("")
+    return report
+
+
 def generate_report(data):
     report = []
 
@@ -91,6 +291,17 @@ def generate_report(data):
 
     report.append(f"# Market Intelligence Report")
     report.append(f"**Run ID:** {run_id} | **Date:** {date}\n")
+
+    # 0. Executive Summary (RC.1)
+    config = _load_config()
+    preferred_intents = config.get("client", {}).get("preferred_intents", ["informational"])
+    keyword_feasibility = data.get("keyword_feasibility", [])
+    best_kw, best_reason = _get_best_opportunity_keyword(
+        data.get("keyword_profiles", {}),
+        keyword_feasibility,
+        preferred_intents
+    )
+    report.extend(_render_executive_summary(data, best_kw, best_reason))
 
     # 1. Overview & Opportunity
     report.append("## 1. Market Overview")
