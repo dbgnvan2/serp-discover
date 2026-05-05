@@ -434,10 +434,11 @@ def generate_report(data):
                 f"- **Dominant SERP Features:** {', '.join(unique_features)}")
     report.append("\n")
 
-    # 2. The "Anxiety Loop" (PAA Analysis)
+    # 2. The "Anxiety Loop" (PAA Analysis) (RC.3 — PAA improvements)
     report.append("## 2. The 'Anxiety Loop' (User Intent)")
     report.append(
-        "What users are frantically searching for (Problem-Awareness).")
+        "These are the questions your audience is already asking. Use them as "
+        "headings, FAQ items, or opening hooks in content targeting these keywords.")
 
     paa = data.get("paa_questions", [])
     if paa:
@@ -459,25 +460,51 @@ def generate_report(data):
         reactivity = [q["Question"]
                       for q in deduped_paa if q.get("Category") == "Reactivity"]
 
-        if distress:
-            report.append("\n### 🚨 High Distress Signals")
-            for q in distress[:5]:
+        if distress or reactivity or commercial:
+            # RC.3.2 — Categorized PAA (no change to existing logic)
+            if distress:
+                report.append("\n### 🚨 High Distress Signals")
+                for q in distress[:5]:
+                    report.append(f"- {q}")
+
+            if reactivity:
+                report.append("\n### 🔥 Reactivity & Blame")
+                for q in reactivity[:5]:
+                    report.append(f"- {q}")
+
+            if commercial:
+                report.append("\n### 💰 Resource/Cost Anxiety")
+                for q in commercial[:5]:
+                    report.append(f"- {q}")
+        else:
+            # RC.3.3 & RC.3.4 — Uncategorized PAA with frequency ordering
+            report.append("\n*No category signals detected. Questions are listed by frequency across keywords.*\n")
+
+            # Count how many distinct keywords each question appears under
+            q_keyword_counts = {}
+            for item in deduped_paa:
+                q = item.get("Question", "")
+                source_kw = item.get("Source_Keyword", "")
+                if q and source_kw:
+                    if q not in q_keyword_counts:
+                        q_keyword_counts[q] = set()
+                    q_keyword_counts[q].add(source_kw)
+
+            # Sort by number of distinct keywords (descending), then alphabetically
+            sorted_questions = sorted(
+                q_keyword_counts.items(),
+                key=lambda x: (-len(x[1]), x[0])
+            )
+
+            for q, keywords in sorted_questions[:5]:
                 report.append(f"- {q}")
 
-        if reactivity:
-            report.append("\n### 🔥 Reactivity & Blame")
-            for q in reactivity[:5]:
-                report.append(f"- {q}")
-
-        if commercial:
-            report.append("\n### 💰 Resource/Cost Anxiety")
-            for q in commercial[:5]:
-                report.append(f"- {q}")
-
-        # General top questions if no categories matched
-        if not (commercial or distress or reactivity):
-            for q in deduped_paa[:5]:
-                report.append(f"- {q['Question']}")
+            # RC.3.4 — Most common question block
+            if sorted_questions:
+                most_common_q, most_common_kws = sorted_questions[0]
+                kw_list = ", ".join(sorted(most_common_kws))
+                report.append(f"\n**Most common question:** `{most_common_q}`")
+                report.append(f"**Appears for:** {kw_list}")
     else:
         report.append("_No PAA data found._")
     report.append("\n")
@@ -548,13 +575,42 @@ def generate_report(data):
             report.append("")
             report.append(_render_pattern_intent_context(rec, _organic_results, _kw_profiles, _paa_questions))
             report.append("")
-            report.append(f"- **Status Quo:** {rec.get('Status_Quo_Message')}")
+            # RC.4.2 — Add (template) labels to distinguish editorial from data-driven
+            report.append(f"- **Status Quo (template):** {rec.get('Status_Quo_Message')}")
             report.append(
-                f"- **The Reframe:** {rec.get('Bowen_Bridge_Reframe')}")
-            report.append(f"- **Content Angle:** *{rec.get('Content_Angle')}*")
+                f"- **Bowen Reframe (template):** {rec.get('Bowen_Bridge_Reframe')}")
+            report.append(f"- **Content Angle (template):** *{rec.get('Content_Angle')}*")
+
+            # RC.4.1 — Add evidence block if triggers found
             if rec.get("Detected_Triggers") and rec.get("Detected_Triggers") != "N/A":
-                report.append(
-                    f"- *Triggers found:* {rec.get('Detected_Triggers')}")
+                triggers_str = rec.get('Detected_Triggers')
+                report.append(f"- *Triggers found:* {triggers_str}")
+
+                # Build evidence block from organic_results
+                triggers = [t.strip().lower() for t in triggers_str.split(",") if t.strip()]
+                most_rel_kw = _get_most_relevant_keyword(rec, _organic_results, _kw_profiles, _paa_questions)
+
+                if triggers and most_rel_kw:
+                    # Find organic results for this keyword that contain trigger words
+                    evidence_titles = []
+                    for org_result in _organic_results:
+                        if org_result.get("Root_Keyword") != most_rel_kw:
+                            continue
+                        title = org_result.get("title", "").lower()
+                        domain = org_result.get("domain", "")
+                        if any(trigger in title for trigger in triggers):
+                            evidence_titles.append((org_result.get("title", ""), domain))
+                            if len(evidence_titles) >= 3:
+                                break
+
+                    # RC.4.1 — Render evidence block if titles found
+                    if evidence_titles:
+                        report.append("\n> **Why this pattern fired:**")
+                        report.append(f"> Trigger word(s) `{triggers_str}` appeared in SERP results for")
+                        report.append(f"> **`{most_rel_kw}`**:")
+                        for title, domain in evidence_titles:
+                            report.append(f"> - *\"{title}\"* — `{domain}`")
+                        report.append("")
     else:
         report.append("_No strategic recommendations generated._")
 
