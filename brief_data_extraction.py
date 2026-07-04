@@ -936,6 +936,66 @@ def _build_bing_visibility(bing_rows, root_keywords):
     }
 
 
+def find_latest_gsc_sidecar(directory="."):
+    """Newest ``gsc_analysis_*.json`` sidecar written by run_gsc_analysis.py.
+
+    Returns (path, data) or (None, None). Reads only a local JSON file —
+    no gsc_client import, no network — so the pipeline stays decoupled
+    from the GSC integration (G.4.4).
+    Spec: seo_geo_deferred_spec_v1.md#G.4.
+    """
+    import glob as _glob
+    candidates = _glob.glob(os.path.join(directory, "gsc_analysis_*.json"))
+    if not candidates:
+        return None, None
+    path = max(candidates, key=os.path.getmtime)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return path, json.load(f)
+    except (OSError, ValueError) as exc:
+        progress(f"[warn] Could not read GSC sidecar {path}: {exc}")
+        return None, None
+
+
+def _build_gsc_summary(sidecar):
+    """Compact ``gsc_summary`` payload block from a run_gsc_analysis sidecar.
+
+    Only attached when config gsc.feed_strategic_flags is true and a
+    sidecar exists (see brief_rendering.list_recommendations). GSC numbers
+    are the client's PRIVATE first-party data: the prompt restricts them
+    to client-position statements, never market-level claims.
+    Spec: seo_geo_deferred_spec_v1.md#G.4.
+    """
+    if not sidecar:
+        return None
+    top_queries = sorted(
+        [r for r in sidecar.get("per_query", []) if r.get("found")],
+        key=lambda r: -(r.get("impressions") or 0),
+    )[:10]
+    return {
+        "generated_at": sidecar.get("generated_at"),
+        "source_analysis": sidecar.get("source_analysis"),
+        "lookback_days": sidecar.get("lookback_days"),
+        "date_range": sidecar.get("date_range"),
+        "queries_checked": sidecar.get("queries_checked"),
+        "queries_with_data": sidecar.get("queries_with_data"),
+        "sponge": sidecar.get("sponge"),
+        "reformat_candidates": (sidecar.get("reformat_candidates") or [])[:10],
+        "top_queries": [
+            {
+                "query": r.get("query"),
+                "query_label": r.get("query_label"),
+                "clicks": r.get("clicks"),
+                "impressions": r.get("impressions"),
+                "ctr": r.get("ctr"),
+                "position": r.get("position"),
+                "has_ai_overview": r.get("has_ai_overview"),
+            }
+            for r in top_queries
+        ],
+    }
+
+
 def _build_feasibility_summary(feasibility_rows):
     """Compact summary of keyword feasibility data for the LLM payload.
 

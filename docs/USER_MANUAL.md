@@ -759,6 +759,59 @@ cap: 20 questions × 2 engines = 40 calls). The script always prints that
 math first and makes **zero** calls unless you pass `--yes` (or set
 `ai_visibility.assume_yes: true`).
 
+#### The Search Console sponge analysis (standalone: gsc_analysis_*.md)
+
+**What it is:** a standalone script (`python run_gsc_analysis.py`) that
+joins Google Search Console — the client's own free, first-party
+clicks/impressions data — onto the keywords and question-style queries
+from the latest market analysis. For every query it shows clicks,
+impressions, click-through rate (CTR), average position, and whether
+Google showed an AI Overview for it in this run. It writes a markdown
+report plus a JSON sidecar the content brief can optionally consume.
+
+**Why it matters — the "sponge" effect:** the SERP tool sees rank but
+never clicks. A page can hold position #3 and still starve, because an AI
+Overview above it answers the question and soaks up the click. That loss
+is invisible in ranking reports; it only shows in the client's own CTR.
+
+**How to read the sponge table:** the table compares the *median CTR at
+comparable position* — e.g. among queries where the client ranks 1–3,
+what's the typical CTR when an AI Overview is present vs when it isn't?
+- A **lower AIO median at the same position band** is the sponge effect
+  measured on the client's own traffic: rankings intact, clicks absorbed.
+- Each band is only compared when **both** buckets hold at least 3
+  queries; otherwise the row says "insufficient data" — the tool never
+  extrapolates from one or two queries.
+- The **reformat candidates** list below it names the queries that rank
+  well (top 10) but earn a CTR below the no-AIO median for their band —
+  the pages losing clicks despite good positions. Rows flagged ⚑ also
+  carry a GEO alert (the client ranks but the AI Overview cites other
+  sources): reformat those pages for answer extraction FIRST, because
+  fixing them can win back both the citation and the click.
+- Queries with "no GSC data" had no recorded impressions in the window —
+  reported as absent, never invented as zero.
+
+**Setup (one-time, service account):**
+1. In Google Cloud Console, create (or reuse) a project, enable the
+   **Search Console API**, and create a **service account**. Download its
+   JSON key file.
+2. In **Search Console → Settings → Users and permissions**, add the
+   service account's email address (`...@...iam.gserviceaccount.com`) as
+   a user (Full or Restricted) on the `livingsystems.ca` property. This
+   grant is what lets the headless key read the data — without it every
+   call returns a permission error.
+3. In `.env`, set `GSC_CREDENTIALS_PATH=/path/to/key.json`, and in
+   `config.yml` set `gsc.enabled: true` (check `gsc.property` matches the
+   Search Console property, e.g. `sc-domain:livingsystems.ca`).
+
+GSC is free — there is no API spend to guard — but the integration stays
+off (`gsc.enabled: false`) until the grant exists, and when disabled or
+unconfigured the script exits with a clear message and zero API calls.
+Results are cached locally for 7 days. If `gsc.feed_strategic_flags` is
+turned on, the content brief will quote these numbers, but only ever
+about the client's own pages — they are private data, never presented as
+market-wide facts.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

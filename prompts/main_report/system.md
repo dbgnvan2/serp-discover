@@ -169,6 +169,20 @@ AI OVERVIEW:
   means the Bing check did not run for that keyword — say the check
   was disabled; NEVER estimate or guess Bing standing. These are
   visibility facts only; Bing results are not classified or enriched.
+- gsc_summary: OPTIONAL first-party Google Search Console data for the
+  client's own property (null when the GSC feed is off or no sidecar
+  exists — in that case never mention GSC). Contains date_range,
+  queries_checked/queries_with_data, sponge (median CTR at comparable
+  position for AIO-present vs AIO-absent queries; bands with
+  sufficient=false mean insufficient data — say so, never extrapolate),
+  reformat_candidates (queries ranking well whose CTR sits below the
+  no-AIO median; geo_alert=true marks the highest-priority
+  answer-extraction reformats), and top_queries. HARD RULE: these
+  numbers are the client's PRIVATE data — quote them only in
+  client-position contexts ("the client's page at position 4 earns a
+  2% CTR"), NEVER as market-level claims ("CTR in this market is 2%").
+  Queries absent from GSC have no impressions recorded — that is
+  measured absence, not zero traffic to report as fact.
 
 FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
 - bowen_reframe_faqs: PAA questions classified External Locus

@@ -10,6 +10,9 @@ google-search-results>=2.4,<3
 python-dotenv>=1.0,<2
 anthropic>=0.40,<1
 pytest>=8,<10
+# GSC service-account auth (gsc_client.py — imported lazily; only needed
+# when GSC_CREDENTIALS_PATH auth is actually used; seo_geo_deferred G.4)
+google-auth>=2.30,<3
 # Optional analysis extras — code degrades gracefully when absent
 # (see serp_audit.py ImportError guards), but installed by default.
 textblob>=0.18,<1

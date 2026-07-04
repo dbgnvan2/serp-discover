@@ -199,6 +199,10 @@ def build_main_report_payload(extracted_data):
         "aio_citation_surfaces": extracted_data.get("aio_citation_surfaces", {}),
         "aio_trigger_analysis": extracted_data.get("aio_trigger_analysis", {}),
         "bing_visibility": extracted_data.get("bing_visibility", {}),
+        # Client-private GSC data (Spec: seo_geo_deferred_spec_v1.md#G.4).
+        # None unless config gsc.feed_strategic_flags is true and a
+        # run_gsc_analysis sidecar exists.
+        "gsc_summary": extracted_data.get("gsc_summary"),
         "forum_threads_by_keyword": {
             keyword: rows[:5]
             for keyword, rows in (extracted_data.get("forum_threads_by_keyword", {}) or {}).items()

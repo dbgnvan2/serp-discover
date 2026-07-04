@@ -59,6 +59,18 @@ ai_visibility:
   assume_yes: false
   history_runs: 5
   geo_context: I'm in North Vancouver, BC.
+gsc:
+  # Google Search Console integration (run_gsc_analysis.py). Free
+  # first-party data, but off by default until the service-account grant
+  # (gate D-3) is in place: set GSC_CREDENTIALS_PATH and add the
+  # service-account email to the Search Console property.
+  enabled: false
+  property: sc-domain:livingsystems.ca
+  lookback_days: 90
+  cache_ttl_days: 7
+  # When true, generate_content_brief attaches the latest gsc_analysis_*
+  # sidecar as gsc_summary to the LLM payload (client-private data).
+  feed_strategic_flags: false
 serp_intent:
   thresholds:
     primary_share: 0.6

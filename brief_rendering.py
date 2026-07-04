@@ -13,6 +13,7 @@ import yaml
 from brief_data_extraction import (
     _safe_int, extract_analysis_data_from_json,
     load_yaml_config, load_client_context_from_config,
+    find_latest_gsc_sidecar, _build_gsc_summary,
 )
 from brief_validation import (
     validate_extraction, validate_llm_report,
@@ -491,6 +492,17 @@ def list_recommendations(data, args):
         preferred_intents=preferred_intents,
         outreach_entity_types=outreach_entity_types,
     )
+    # Optional GSC feed-forward (Spec: seo_geo_deferred_spec_v1.md#G.4):
+    # when config gsc.feed_strategic_flags is true and run_gsc_analysis.py
+    # has written a sidecar, attach the compact gsc_summary. Reads a local
+    # JSON only — the pipeline never imports gsc_client (G.4.4).
+    gsc_cfg = config.get("gsc", {}) if isinstance(config, dict) else {}
+    if gsc_cfg.get("feed_strategic_flags", False):
+        sidecar_path, sidecar = find_latest_gsc_sidecar()
+        if sidecar:
+            progress(f"      Attaching GSC summary from {sidecar_path}.")
+            extracted["gsc_summary"] = _build_gsc_summary(sidecar)
+
     warnings = validate_extraction(extracted)
     progress(
         f"      Extracted {len(extracted.get('root_keywords', []))} root keywords, "

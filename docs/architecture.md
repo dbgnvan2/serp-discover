@@ -38,6 +38,8 @@ market_analysis_*.json
 | `brief_rendering.py` | Renders content briefs and opportunity reports; `generate_brief()`, `list_recommendations()`, `generate_local_report()` (split from `generate_content_brief.py` I.5) |
 | `run_feasibility.py` | Standalone DA feasibility analysis and pivot report |
 | `probe_ai_visibility.py` | Standalone AI-engine mention probing (Claude + Gemini, gate D-2) — per-engine mention/citation trend in SQLite, cost-guarded; never imported by the pipeline (seo_geo_deferred G.1) |
+| `run_gsc_analysis.py` | Standalone Google Search Console sponge-effect analysis — joins first-party CTR data onto the run's queries; writes `gsc_analysis_*.{md,json}` (seo_geo_deferred G.4) |
+| `gsc_client.py` | GSC Search Analytics client — service-account auth (gate D-3), http_retry semantics, 7-day SQLite `gsc_cache`; only imported by `run_gsc_analysis.py`, never by the pipeline |
 | `classifiers.py` | Rule-based content & entity type classifiers |
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |
 | `intent_verdict.py` | Spec v2 — computes per-keyword SERP intent verdict from intent_mapping.yml rules (primary_intent, is_mixed, confidence, distribution) |
