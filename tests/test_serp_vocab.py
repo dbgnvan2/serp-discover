@@ -54,6 +54,14 @@ class TestVocabParity(unittest.TestCase):
             self.assertIn(branch, templates)
             self.assertEqual(len(templates[branch]), 2)
 
+    def test_situational_templates_present(self):
+        # Spec: seo_geo_deferred_spec_v1.md#T.5 (T.5.5) — loader-required
+        # editorial section; detailed tests in tests/test_situational_probes.py.
+        templates = self.vocab["situational_templates"]
+        self.assertIsInstance(templates, list)
+        self.assertTrue(templates)
+        self.assertTrue(all(isinstance(t, str) and t.strip() for t in templates))
+
 
 class TestVocabLoader(unittest.TestCase):
 

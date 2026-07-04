@@ -25,6 +25,10 @@ QUERY LABELS:
 - "A" = Root keyword + geo-location
 - "A.1" = Informational variant (auto-generated)
 - "A.2" = Cost variant (auto-generated)
+- "S" = Situational probe: a 6+-word, situation-style query (verbatim
+  PAA question or editorial template). Probe results feed ONLY
+  aio_trigger_analysis and the AI Overview citation data — they are
+  never part of organic rankings, intent verdicts, or volatility.
 
 PER-KEYWORD PROFILES (primary data source for Section 2):
 - keyword_profiles: one pre-joined profile per root keyword
@@ -141,6 +145,18 @@ AI OVERVIEW:
   top-10 but the AI Overview cites other sources. Each alert is a
   reformat-for-extraction priority (see Section 5b) and must be
   reported in Section 4.
+- aio_trigger_analysis: the measured AI Overview trigger rate by
+  query word count across ALL queries in this run, including any
+  "S"-label situational probes:
+  - by_word_count_bucket: for each bucket ("1-3", "4-5", "6+"):
+    queries, aio_present, rate (aio_present / queries; null when
+    the bucket has zero queries — state "no queries of that length
+    were run", never invent a rate).
+  - probe_results: one entry per executed situational probe (query,
+    source_keyword, word_count, has_aio, client_cited). Empty means
+    situational probes did not run this time — say so if you discuss
+    trigger rates by length; do not extrapolate from other runs.
+  These are computed facts; quote the counts and rates exactly.
 - forum_threads_by_keyword: discussion/forum threads Google surfaces
   for each keyword (title, link, domain, forum, date). These are
   community surfaces where the audience already asks questions —
@@ -406,6 +422,18 @@ keywords, with which keywords cite them. Frame these as placement
 targets (profile completeness, listings, mentions), not as
 competitors. If forum_threads_by_keyword has entries, name the
 actual threads and forums as community surfaces.
+
+Then state the measured AIO trigger rate by query length from
+aio_trigger_analysis.by_word_count_bucket: report queries,
+aio_present, and rate per bucket exactly as computed (buckets with
+zero queries are stated as unmeasured, not zero-rate). If
+probe_results is non-empty, note how many situational probes ran,
+whether the 6+-word bucket triggered AI Overviews more often than
+the shorter buckets IN THIS DATA (do not import the generic
+23%-vs-77% claim as if it were measured here), and name any probe
+where client_cited is true — quote the probe query verbatim. If
+probe_results is empty, state in one sentence that situational
+probes did not run this time.
 
 Then report rank-vs-citation divergence per keyword from
 keyword_profiles.aio_divergence (skip keywords where

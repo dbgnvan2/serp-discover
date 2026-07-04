@@ -47,6 +47,12 @@ def build_competitor_handoff(
 
     # First pass: find best (lowest) rank per URL across all keywords
     for item in all_organic:
+        # Situational "S"-label probe rows feed only the AIO trigger-rate
+        # analysis — never the handoff (Spec: seo_geo_deferred_spec_v1.md
+        # #T.5, criterion T.5.3). The probe pass produces no organic rows;
+        # this filter is a defensive guarantee.
+        if item.get("Query_Label") == "S":
+            continue
         url = item.get("Link") or item.get("url", "")
         if not url or url == "N/A":
             continue
@@ -70,6 +76,8 @@ def build_competitor_handoff(
     from collections import defaultdict
     by_keyword: dict[str, list] = defaultdict(list)
     for item in all_organic:
+        if item.get("Query_Label") == "S":  # see T.5.3 note above
+            continue
         url = item.get("Link") or item.get("url", "")
         if not url or url == "N/A":
             continue

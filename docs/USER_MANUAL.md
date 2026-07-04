@@ -669,6 +669,38 @@ Short tokens match whole words only ("RP" never matches inside "harp"). How
 much of each page's opening text is scanned is configurable via
 `enrichment.eeat_scan_chars` in `config.yml` (default 8000 characters).
 
+#### The situational query probes and AI-answer trigger rate (report Section 4)
+
+**What it is:** an optional probe pass that searches Google the way people
+actually talk to AI assistants. Instead of a keyword like "couples
+counselling north vancouver", each probe is a full situation — "why does my
+partner refuse to go to counselling" — taken verbatim from the keyword's own
+People-Also-Ask questions (6+ words, medical-model-framed ones first) or,
+when a keyword has no long questions, from editorial templates you can edit
+in `serp_vocab.yml` (`situational_templates`). The report then states the
+measured AI Overview trigger rate by query length — how often 1–3-word,
+4–5-word, and 6+-word queries produced an AI answer in THIS run — and names
+any probe where Living Systems was cited in the AI answer.
+
+**Why it matters:** the claim driving this feature is that short keywords
+trigger an AI answer roughly 23% of the time while six-plus-word,
+situation-style queries trigger one about 77% of the time — and that nobody
+types keywords into ChatGPT; they describe their whole situation. If that
+holds on this market, the future search surface for these keywords is the AI
+answer, not the ten blue links, and answer-extraction formatting (Section 5b)
+becomes the priority. Rather than assuming the industry figure, the probes
+measure it on the client's own keywords, in the client's own city, so
+strategy rests on local evidence.
+
+**Cost control:** every probe is a paid SerpAPI call, so the feature is OFF
+by default (`situational_probes.enabled: false` in `config.yml`). When
+enabled it is hard-capped at `max_probes_per_run` calls (default 6 — two
+probes for each of the top three priority keywords), and the run log prints
+exactly how many probe calls were made. Deep Research mode turns probes on;
+Low API mode never runs them. Probe results feed only the trigger-rate
+analysis and the AI-citation data — they never distort organic rankings,
+intent verdicts, rank-change history, or the competitor handoff file.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

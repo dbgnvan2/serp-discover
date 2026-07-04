@@ -818,6 +818,80 @@ def _build_aio_divergence(cited_domains, top10_domains, client_domain_lower,
     }
 
 
+_WORD_COUNT_BUCKETS = ("1-3", "4-5", "6+")
+
+
+def _word_count_bucket(word_count):
+    if word_count >= 6:
+        return "6+"
+    if word_count >= 4:
+        return "4-5"
+    return "1-3"
+
+
+def _build_aio_trigger_analysis(overview_rows, probe_rows):
+    """AI Overview trigger rate by query word count, run-wide.
+
+    Spec: seo_geo_deferred_spec_v1.md#T.5 (T.5.4) — measures, on the
+    client's own market, the claim that 6+-word situation-style queries
+    trigger AI answers far more often than short keywords (the 23%-vs-77%
+    figure from the source transcript). Computed across ALL queries in the
+    run: every executed query in the overview (labels A / A.1 / A.2 / …)
+    plus the "S"-label situational probes.
+
+    Word counts use the logical query text (Executed_Query), not the
+    location-suffixed string sent to Google — the forced-local suffix is a
+    tool artifact, not part of how the searcher phrased the query. AIO
+    presence is the main-response flag (Has_Main_AI_Overview for overview
+    rows; probes never make fallback or token follow-up calls).
+
+    Returns data_available=False for old analysis JSONs with no query
+    rows; probe_results is empty when probes did not run.
+    """
+    entries = []
+    for row in overview_rows or []:
+        query = str(row.get("Executed_Query") or row.get("Source_Keyword") or "").strip()
+        if not query:
+            continue
+        entries.append((len(query.split()), bool(row.get("Has_Main_AI_Overview"))))
+
+    probe_results = []
+    for row in probe_rows or []:
+        query = str(row.get("Executed_Query") or "").strip()
+        if not query:
+            continue
+        word_count = _safe_int(row.get("Word_Count"), len(query.split()))
+        has_aio = bool(row.get("Has_AI_Overview"))
+        entries.append((word_count, has_aio))
+        probe_results.append({
+            "query": query,
+            "source_keyword": row.get("Source_Keyword"),
+            "word_count": word_count,
+            "has_aio": has_aio,
+            "client_cited": bool(row.get("Client_Cited")),
+        })
+
+    buckets = {
+        bucket: {"queries": 0, "aio_present": 0, "rate": None}
+        for bucket in _WORD_COUNT_BUCKETS
+    }
+    for word_count, has_aio in entries:
+        bucket = buckets[_word_count_bucket(word_count)]
+        bucket["queries"] += 1
+        if has_aio:
+            bucket["aio_present"] += 1
+    for bucket in buckets.values():
+        if bucket["queries"]:
+            bucket["rate"] = round(bucket["aio_present"] / bucket["queries"], 2)
+
+    return {
+        "data_available": bool(entries),
+        "by_word_count_bucket": buckets,
+        "probe_count": len(probe_results),
+        "probe_results": probe_results,
+    }
+
+
 def _build_feasibility_summary(feasibility_rows):
     """Compact summary of keyword feasibility data for the LLM payload.
 
@@ -921,6 +995,9 @@ def extract_analysis_data_from_json(
     bigrams_trigrams = data.get("serp_language_patterns", [])
     recs = data.get("strategic_recommendations", [])
     ads = data.get("competitors_ads", [])
+    # "S"-label situational probe rows (Spec: seo_geo_deferred_spec_v1.md
+    # #T.5). Absent from old analysis JSONs / disabled runs — empty list.
+    situational_probes = data.get("situational_probes", [])
 
     if overview:
         first = overview[0]
@@ -1584,6 +1661,7 @@ def extract_analysis_data_from_json(
         "aio_total_citations": sum(aio_source_counter.values()),
         "aio_unique_sources": len(aio_source_counter),
         "aio_citation_surfaces": aio_citation_surfaces,
+        "aio_trigger_analysis": _build_aio_trigger_analysis(overview, situational_probes),
         "forum_threads_by_keyword": dict(forum_threads_by_kw),
         "autocomplete_by_keyword": dict(autocomplete_by_kw),
         "related_searches_by_keyword": dict(related_by_kw),

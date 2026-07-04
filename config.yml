@@ -37,6 +37,11 @@ app:
   - enter_cautiously
 moz:
   cache_ttl_days: 30
+situational_probes:
+  enabled: false
+  max_probes_per_run: 6
+  probes_per_keyword: 2
+  keywords: priority
 serp_intent:
   thresholds:
     primary_share: 0.6

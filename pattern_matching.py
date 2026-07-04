@@ -21,18 +21,20 @@ _VOCAB_REQUIRED_KEYS = {
     "service_like_tokens",
     "ai_alternative_templates",
     "eeat_signals",
+    "situational_templates",
 }
 
 
 def load_serp_vocab(path=_SERP_VOCAB_PATH):
     """Load the editorial SERP vocabulary (stop words, PAA category
     triggers, service tokens, AI-alternative templates, E-E-A-T
-    credential/review vocab).
+    credential/review vocab, situational probe templates).
 
     Spec: seo_geo_review_20260704.md C.4 — these lists are editorial and
     live in serp_vocab.yml, not in Python. Missing file or missing keys
     raise so configuration mistakes surface loudly. The eeat_signals
-    section is required per seo_geo_deferred_spec_v1.md#G.3.
+    section is required per seo_geo_deferred_spec_v1.md#G.3; the
+    situational_templates section per seo_geo_deferred_spec_v1.md#T.5.
     """
     if not os.path.exists(path):
         raise FileNotFoundError(

@@ -197,6 +197,7 @@ def build_main_report_payload(extracted_data):
         "aio_total_citations": extracted_data.get("aio_total_citations"),
         "aio_unique_sources": extracted_data.get("aio_unique_sources"),
         "aio_citation_surfaces": extracted_data.get("aio_citation_surfaces", {}),
+        "aio_trigger_analysis": extracted_data.get("aio_trigger_analysis", {}),
         "forum_threads_by_keyword": {
             keyword: rows[:5]
             for keyword, rows in (extracted_data.get("forum_threads_by_keyword", {}) or {}).items()

@@ -141,6 +141,21 @@ eeat_signals:
     - clinically reviewed
     - reviewed by
 
+# Situational (conversational) probe templates (Spec:
+# seo_geo_deferred_spec_v1.md#T.5). Fallback source for the "S"-label
+# query probes: a keyword's own 6+-word PAA questions are used first
+# (verbatim); these templates fill the remaining probes_per_keyword slots.
+# Placeholders: {base} = de-localised keyword, {topic} = the subject after
+# "help with " (otherwise same as {base}), {city} = configured SERP city.
+# Keep every template 6+ words — the probes exist to measure how often
+# long, situation-style queries trigger an AI answer versus short keywords.
+situational_templates:
+  - "my partner refuses to try {base} what can I do"
+  - "how do I know if we actually need {base} or if it is too late"
+  - "what should I expect from a first {base} session in {city}"
+  - "I feel stuck dealing with {topic} on my own where do I start"
+  - "my family keeps having the same fight over and over will {base} help"
+
 # Templates for the two AI-likely informational alternatives generated per
 # keyword. Placeholders: {base} = de-localised keyword, {topic} = the
 # subject after "help with ", {city} = configured SERP city.
