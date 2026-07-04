@@ -3,6 +3,7 @@ from tkinter import ttk, scrolledtext, messagebox
 import subprocess
 import sys
 import threading
+import traceback
 import os
 import json
 import re
@@ -70,6 +71,11 @@ class SerpLauncherApp:
 
     def __init__(self, root):
         self.root = root
+        # Surface ANY exception raised inside a Tkinter callback. By default
+        # Tkinter prints callback tracebacks to stderr only — invisible when
+        # the app is launched without a terminal — so a failing button
+        # handler looks like the button "does nothing".
+        self.root.report_callback_exception = self._report_callback_exception
         self.root.title("SERP Intelligence Launcher")
         self.root.geometry("800x650")
         self.domain_review_window = None
@@ -327,6 +333,21 @@ class SerpLauncherApp:
             log_frame, height=12, state="disabled", bg="#1e1e1e", fg="#00ff00", font=("Consolas", 10))
         self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
         self.refresh_keyword_file_options()
+
+    def _report_callback_exception(self, exc_type, exc_value, exc_tb):
+        details = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        try:
+            self.log("\n[ERROR] GUI action failed:\n" + details + "\n")
+        except Exception:
+            pass
+        try:
+            messagebox.showerror(
+                "Action failed",
+                f"{exc_type.__name__}: {exc_value}\n\n"
+                "The full traceback is in the log pane."
+            )
+        except Exception:
+            print(details, file=sys.stderr)
 
     def on_select(self, event):
         selection = self.script_listbox.curselection()
