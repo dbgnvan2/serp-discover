@@ -723,6 +723,42 @@ Turn it on to add exactly one call per root keyword; `bing_check.num`
 (default 20) controls how deep the Bing results go, and the run log states
 how many Bing calls were made.
 
+#### The AI-engine visibility probe (standalone: ai_visibility_*.md)
+
+**What it is:** a standalone script (`python probe_ai_visibility.py --yes`)
+that asks real AI assistants — Claude and Google Gemini, each with web
+search/grounding turned on — the same situation-style questions a
+therapy-seeker would type ("my partner refuses to try counselling what can
+I do", prefixed with "I'm in North Vancouver, BC."), and records per engine
+whether the answer **mentioned** Living Systems by name, **cited**
+livingsystems.ca as a source, and which **competitors** were cited instead.
+Questions come from the run's own situational probes when available, then
+long People-Also-Ask questions, then the editorial templates in
+`serp_vocab.yml`. Every run is stored in the local database, and the report
+shows this run's mention/citation rate per engine next to the same rates
+from previous runs.
+
+**Why it matters — and why it's a trend, not a snapshot:** AI answers are a
+growing referral surface: people increasingly ask an assistant instead of
+searching, and whether the assistant names or links Living Systems decides
+whether those people ever reach the site. But assistant behaviour swings
+between model versions — the same question can produce a citation one month
+and silence the next. A single measurement is therefore nearly meaningless;
+the signal is the direction across runs ("cited in 2 of the last 5 runs,
+up from 0"). That's why the tool records every run per engine and the report
+always carries a caveat that single-run values are snapshots.
+
+**Choosing engines:** `config.yml ai_visibility.engines` (default both
+`claude` and `gemini`) controls which assistants run; `--engines claude`
+overrides for one run. Claude uses your existing `ANTHROPIC_API_KEY`;
+Gemini needs the optional `GEMINI_API_KEY` — if it's not set the engine is
+skipped with a warning and the rest of the run completes.
+
+**Cost control:** each question is one paid API call per engine (default
+cap: 20 questions × 2 engines = 40 calls). The script always prints that
+math first and makes **zero** calls unless you pass `--yes` (or set
+`ai_visibility.assume_yes: true`).
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

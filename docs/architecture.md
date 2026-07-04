@@ -37,6 +37,7 @@ market_analysis_*.json
 | `brief_llm.py` | Anthropic API call wrapper; `run_llm_report()` handles multi-turn correction flow (split from `generate_content_brief.py` I.5) |
 | `brief_rendering.py` | Renders content briefs and opportunity reports; `generate_brief()`, `list_recommendations()`, `generate_local_report()` (split from `generate_content_brief.py` I.5) |
 | `run_feasibility.py` | Standalone DA feasibility analysis and pivot report |
+| `probe_ai_visibility.py` | Standalone AI-engine mention probing (Claude + Gemini, gate D-2) — per-engine mention/citation trend in SQLite, cost-guarded; never imported by the pipeline (seo_geo_deferred G.1) |
 | `classifiers.py` | Rule-based content & entity type classifiers |
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |
 | `intent_verdict.py` | Spec v2 — computes per-keyword SERP intent verdict from intent_mapping.yml rules (primary_intent, is_mixed, confidence, distribution) |

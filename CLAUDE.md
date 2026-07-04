@@ -43,6 +43,11 @@ keyword feasibility via Domain Authority gap analysis.
 - `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` — primary DA provider
   (pay-per-use).
 - `MOZ_TOKEN` — fallback DA provider (free tier: 50 rows/month).
+- `GEMINI_API_KEY` — **optional**; enables the Gemini engine in
+  `probe_ai_visibility.py` (G.1). Missing key = engine skipped with a
+  warning, never an abort.
+- `GSC_CREDENTIALS_PATH` — **optional**; path to the Google Search Console
+  service-account JSON key used by `run_gsc_analysis.py` (G.4).
 
 Tests do not require API keys — all external calls are mocked.
 

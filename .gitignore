@@ -17,6 +17,8 @@ competitor_handoff_*
 advisory_briefing_*
 content_opportunities_*
 feasibility_*.md
+ai_visibility_*
+gsc_analysis_*
 *.validation.md
 
 # Secrets
