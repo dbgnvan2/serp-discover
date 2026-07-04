@@ -3,9 +3,21 @@ __pycache__/
 .DS_Store
 venv/
 
-# Data & Output
+# Data & Output — run artifacts must stay local (see CLAUDE.md)
 *.xlsx
 *.png
+*.db
+raw/
 normalized/
+output/
+exports/
+diff_report.json
+market_analysis_*
+competitor_handoff_*
+advisory_briefing_*
+content_opportunities_*
+feasibility_*.md
+*.validation.md
+
 # Secrets
 .env
