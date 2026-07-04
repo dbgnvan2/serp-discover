@@ -364,11 +364,20 @@ class SerpLauncherApp:
         self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
         self.refresh_keyword_file_options()
 
-        # Select the first script by default so the Run button is live the
-        # moment the window opens. Without a default, Run stays disabled
-        # until a script row is clicked — a disabled button gives zero
-        # feedback, which reads as "the Run button does nothing".
-        self.script_listbox.select_set(0)
+        # Select the first *runnable* script by default so the Run button is
+        # live the moment the window opens. Without a default, Run stays
+        # disabled until a script row is clicked — a disabled button gives
+        # zero feedback, which reads as "the Run button does nothing".
+        #
+        # The listbox contains non-selectable rows (blank spacers at index 0
+        # and section headers), so listbox index 0 is NOT the first script —
+        # selecting it would leave Run disabled. Map to the first real script
+        # via listbox_to_script_index (its lowest listbox index).
+        if self.listbox_to_script_index:
+            first_script_row = min(self.listbox_to_script_index)
+            self.script_listbox.select_set(first_script_row)
+            self.script_listbox.activate(first_script_row)
+            self.script_listbox.see(first_script_row)
         self.on_select(None)
 
         # Startup banner: prove which code and interpreter this window is

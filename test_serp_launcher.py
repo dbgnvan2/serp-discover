@@ -170,6 +170,41 @@ class TestRunButtonSelectionRegression(unittest.TestCase):
             "not return silently",
         )
 
+    def test_startup_preselect_targets_a_real_script_not_a_header(self):
+        """Startup default selection must resolve via listbox_to_script_index.
+
+        The script listbox contains non-selectable rows — a blank spacer at
+        index 0 and section headers (e.g. "A) Generate & Validate Data") — so
+        the first real script is NOT at listbox index 0. A bare
+        select_set(0) selects the blank spacer, on_select maps it to no
+        script, and the Run button stays disabled at startup: the "Run
+        button does nothing" symptom. The default selection must target the
+        first real script through the listbox_to_script_index mapping.
+        """
+        # Never hardcode index 0 as the default script row.
+        self.assertNotIn(
+            "self.script_listbox.select_set(0)", self.source,
+            "startup must not select listbox index 0 — a blank spacer / "
+            "section-header row — which leaves Run disabled. Select the "
+            "first real script via listbox_to_script_index instead.",
+        )
+        # Isolate the startup default-selection region (between the log-pane
+        # setup and the startup banner) and require it to derive the row
+        # from the script-index mapping.
+        region_start = self.source.index("refresh_keyword_file_options()")
+        region_end = self.source.index("Startup banner", region_start)
+        region = self.source[region_start:region_end]
+        self.assertIn(
+            "listbox_to_script_index", region,
+            "startup pre-selection must map through listbox_to_script_index "
+            "so it lands on a real script row, not a header/spacer.",
+        )
+        self.assertIn(
+            "select_set", region,
+            "startup must actually pre-select a script row so the Run "
+            "button is live when the window opens.",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
