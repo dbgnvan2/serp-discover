@@ -113,6 +113,27 @@ AI OVERVIEW:
   key_phrases, opening_excerpt
 - aio_citations_top25, aio_total_citations, aio_unique_sources
 
+FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
+- bowen_reframe_faqs: PAA questions classified External Locus
+  (medical-model framing). These are the prime candidates for a
+  Bowen-framed FAQ answer that differentiates the client. Every
+  question is verbatim from the SERP.
+- aligned_demand_faqs: PAA questions classified Systemic (already
+  framed in the client's vocabulary). Evidence of demand the client
+  is naturally positioned to answer; do not "reframe" these.
+- keyword_profiles.schema_signals: structured-data audit of the
+  enriched top-10 organic pages for that keyword:
+  - data_available: false means schema data was not captured for
+    this run — say so and skip schema-gap claims for that keyword.
+  - enriched_count, schema_type_counts (schema.org @type → page
+    count), faq_page_count, pages_with_schema (rank, source, types).
+- schema_recommendations: the editorial table of schema.org markup
+  the client may be advised to add (context, label, schema_types,
+  key_properties, rationale). Recommend ONLY types from this table,
+  and only where the recommended content genuinely matches the
+  context (e.g. FAQPage only alongside a recommended FAQ block).
+  If the list is empty, omit markup recommendations.
+
 PAA ANALYSIS (primary data source for Section 5):
 - paa_analysis: pre-computed cross-cluster analysis.
   - cross_cluster: questions appearing for 2+ keywords with exact
@@ -332,6 +353,38 @@ no PAA question, cite autocomplete or related search evidence and
 label it as "inferred from autocomplete/related searches" rather
 than PAA-confirmed. For each gap, explicitly label whether it is a
 SERP-evidenced demand gap or a client differentiation hypothesis.
+
+### Section 5b: FAQ / Answer-Extraction Plan
+AI answer engines select pages they can lift a complete, confident
+answer from. This section turns captured PAA demand into a concrete
+page-formatting plan. For each keyword whose strategic_flags action
+is defend, strengthen, or enter (skip keywords get nothing):
+
+- Select up to 3 PAA questions for that keyword, quoted VERBATIM
+  (RULE 4 applies — every question must exist in paa_analysis).
+  Prefer questions from bowen_reframe_faqs; mark each selected
+  question as External Locus, Systemic, or General.
+- For each question: recommend it as a literal H2/H3 heading in the
+  user's own words, followed by a direct 1–3 sentence answer in the
+  FIRST sentence(s) of the section — no warm-up prose — with depth
+  after. For External Locus questions, state the Bowen reframe
+  angle the answer should take (ground it in the relevant
+  tool_recommendations_verified pattern if one fired; otherwise
+  label it a client differentiation hypothesis).
+- Close each keyword's plan with a structured-data line:
+  - If schema_signals.data_available is false, write "no schema
+    data was captured for this run" and stop.
+  - Otherwise state how many of the enriched top-10 pages carry
+    FAQPage markup (schema_signals.faq_page_count of
+    schema_signals.enriched_count) and which schema types dominate
+    (schema_type_counts).
+  - Recommend markup for the client's page using ONLY entries from
+    schema_recommendations, naming the schema_types and
+    key_properties (an FAQ block recommendation always pairs with
+    the faq_block entry).
+
+Do not fabricate answers to the questions — this section plans the
+page structure; the client writes the clinical content.
 
 ### Section 6: Tool Recommendation Assessment
 For each entry in tool_recommendations_verified, state: pattern

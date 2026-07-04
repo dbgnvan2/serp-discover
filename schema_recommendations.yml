@@ -1,0 +1,66 @@
+# schema_recommendations.yml — structured-data (schema.org JSON-LD)
+# recommendations surfaced in the content brief.
+#
+# Spec: seo_geo_review_20260704.md G.2 (with T.1 FAQ / Answer-Extraction Plan)
+#
+# EDITORIAL FILE. Which schema types the brief recommends for which page
+# context is an editorial judgment, not code. Edit this file to change the
+# recommendations; no Python change is required.
+#
+# Schema for each entry:
+#   context:        machine key — matched against the kind of content the
+#                   brief is recommending (see brief prompt Section 5b)
+#   label:          human-readable name used in the brief
+#   schema_types:   schema.org @type values to recommend, most important first
+#   key_properties: properties worth calling out explicitly in the brief
+#   rationale:      one or two sentences the brief may quote — WHY this
+#                   markup matters for search/AI-answer visibility
+#
+# Notes for editors:
+# - Therapy content is YMYL ("Your Money or Your Life"): authorship and
+#   organizational trust markup carry more weight than in other niches.
+# - Recommend markup only where the visible page content genuinely matches
+#   it (e.g. FAQPage only when a real FAQ block exists on the page).
+
+recommendations:
+  - context: faq_block
+    label: FAQ section
+    schema_types: [FAQPage]
+    key_properties: [mainEntity, acceptedAnswer]
+    rationale: >
+      Marks question/answer pairs so search and AI answer engines can lift a
+      complete answer directly. Pairs with the FAQ / Answer-Extraction Plan:
+      the visible FAQ block and the markup must contain the same questions.
+
+  - context: service_page
+    label: Service page
+    schema_types: [ProfessionalService, LocalBusiness]
+    key_properties: [name, address, areaServed, availableService, telephone]
+    rationale: >
+      Ties the service to a real local organization — the strongest
+      structured signal for local-intent queries and local pack eligibility.
+
+  - context: practitioner_bio
+    label: Practitioner biography
+    schema_types: [Person]
+    key_properties: [name, jobTitle, honorificSuffix, memberOf, knowsAbout]
+    rationale: >
+      Credentials (RCC, MSW, PhD) expressed as machine-readable Person markup
+      support E-E-A-T assessment on YMYL health content.
+
+  - context: educational_article
+    label: Educational article or guide
+    schema_types: [Article]
+    key_properties: [author, datePublished, dateModified, reviewedBy]
+    rationale: >
+      Authorship and freshness signals for informational content; reviewedBy
+      links clinical review to a credentialed Person.
+
+  - context: organization_home
+    label: Organization / home page
+    schema_types: [Organization]
+    key_properties: [name, url, logo, sameAs, foundingDate]
+    rationale: >
+      Establishes the entity behind the site; sameAs links (directory
+      profiles, professional associations) help engines connect off-site
+      mentions to the organization.

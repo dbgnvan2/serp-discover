@@ -71,3 +71,9 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 **Input:** `market_analysis_*.json` + `strategic_recommendations`.
 
 `generate_content_brief.py` selects relevant PAA questions and competitors for each pattern using routing rules from `brief_pattern_routing.yml` (`paa_themes`, `paa_categories`, `keyword_hints`). An LLM (Anthropic API) generates the main report and advisory briefing. Outputs are validated before writing; hard validation failures abort, soft failures retry once.
+
+### FAQ / Answer-Extraction Plan (report Section 5b)
+
+The payload gives the LLM two intent-bucketed PAA lists: `bowen_reframe_faqs` (External Locus questions — the reframe candidates) and `aligned_demand_faqs` (Systemic questions — demand already in the client's vocabulary). For each priority keyword the report recommends up to 3 verbatim PAA questions as literal page headings with answer-first formatting guidance, plus a structured-data line built from `keyword_profiles.schema_signals` (schema.org types and FAQPage presence observed on the enriched top-10 pages). Markup recommendations are restricted to the editorial table in `schema_recommendations.yml`.
+
+*Spec: seo_geo_review_20260704.md T.1 / G.2 / C.2. Implemented 2026-07-04.*

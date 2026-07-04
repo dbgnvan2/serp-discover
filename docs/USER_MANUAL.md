@@ -540,6 +540,34 @@ Per-keyword content roadmap. For each keyword:
 
 **How to use:** Content team uses this to build the publishing roadmap. Start with high-feasibility, high-confidence keywords.
 
+#### The FAQ / Answer-Extraction Plan (report Section 5b)
+
+**What it is:** For each priority keyword, the report recommends up to three real
+People Also Ask questions — quoted word-for-word from the SERP — to be used as
+literal headings on the client's page, each with answer-first formatting
+guidance and a structured-data (schema.org markup) recommendation.
+
+**Why it matters:** AI answer surfaces (Google's AI Overviews and AI assistants)
+don't read a page the way a person does. They scan for a complete, confident
+answer they can lift directly. A page that opens each section with the exact
+question a searcher asks, followed immediately by a 1–3 sentence direct answer,
+is far more likely to be cited than one that buries the answer after warm-up
+prose. This is also why the plan distinguishes two kinds of questions:
+
+- **Reframe candidates** (medical-model framing, e.g. "How is anxiety
+  diagnosed?"): the searcher is inside the framing Living Systems
+  differentiates from. Answering these in Bowen terms is the differentiation
+  play — the report states the reframe angle for each.
+- **Aligned demand** (already in systems language, e.g. "How does family of
+  origin affect relationships?"): demand Living Systems is naturally
+  positioned to answer; no reframe needed.
+
+**The structured-data line:** for each keyword the report states how many of
+the analyzed top-10 pages carry FAQ markup (FAQPage) and which schema.org
+types dominate, then recommends markup for the client's page. Recommendations
+come from the editorial table in `schema_recommendations.yml` — edit that file
+(not Python) to change what markup the tool may recommend.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

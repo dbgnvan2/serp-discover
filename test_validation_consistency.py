@@ -25,7 +25,10 @@ USER_TEMPLATE = os.path.join(os.path.dirname(__file__), "prompts", "main_report"
 # mechanically rule-checked by regex.  Add new entries here only when the
 # field is legitimately not checkable; add a brief reason in the comment.
 KNOWN_UNVALIDATED = frozenset({
-    "top5_organic",   # used as evidence anchor; no enforceable claim shape
+    "top5_organic",     # used as evidence anchor; no enforceable claim shape
+    "schema_signals",   # Section 5b evidence anchor (counts/types of schema
+                        # markup on ranking pages); prose claims about markup
+                        # gaps have no mechanically checkable shape
 })
 
 

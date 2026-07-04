@@ -437,6 +437,52 @@ def _classify_paa_intent(paa_rows):
     return buckets
 
 
+def _build_schema_signals(kw_rows):
+    """Summarise structured-data signals from enriched top-10 organic rows.
+
+    Feeds the brief's FAQ / Answer-Extraction Plan and schema-gap lines.
+    Spec: seo_geo_review_20260704.md T.1/G.2.
+
+    Returns a dict with:
+    - ``data_available``: False when no row carries schema enrichment data
+      (e.g. analysis JSON predates schema capture, or enrichment disabled).
+      All other fields are zero/empty in that case.
+    - ``enriched_count``: rows that were enriched with schema data.
+    - ``schema_type_counts``: {schema.org @type: page count} across rows.
+    - ``faq_page_count``: rows with an FAQ block (FAQPage schema or FAQ
+      heading heuristic).
+    - ``pages_with_schema``: [{rank, source, schema_types, faq_present}]
+      for rows carrying at least one schema type, rank order.
+    """
+    signals = {
+        "data_available": False,
+        "enriched_count": 0,
+        "schema_type_counts": {},
+        "faq_page_count": 0,
+        "pages_with_schema": [],
+    }
+    type_counts = Counter()
+    for row in kw_rows[:10]:
+        if "schema_types" not in row and "faq_present" not in row:
+            continue
+        signals["data_available"] = True
+        signals["enriched_count"] += 1
+        schema_types = row.get("schema_types") or []
+        for schema_type in set(schema_types):
+            type_counts[str(schema_type)] += 1
+        if row.get("faq_present"):
+            signals["faq_page_count"] += 1
+        if schema_types:
+            signals["pages_with_schema"].append({
+                "rank": row.get("rank"),
+                "source": row.get("source"),
+                "schema_types": sorted(str(t) for t in set(schema_types)),
+                "faq_present": bool(row.get("faq_present")),
+            })
+    signals["schema_type_counts"] = dict(type_counts.most_common())
+    return signals
+
+
 def _build_feasibility_summary(feasibility_rows):
     """Compact summary of keyword feasibility data for the LLM payload.
 
@@ -632,6 +678,13 @@ def extract_analysis_data_from_json(
                 "entity_type": entity,
                 "content_type": effective_ct,
             }
+            # Schema/FAQ enrichment signals (Spec: seo_geo_review T.1/G.2).
+            # Only enriched rows carry these; older analysis JSONs have
+            # neither key, which _build_schema_signals treats as
+            # "no schema data captured".
+            if "Schema_Types" in row or "FAQ_Present" in row:
+                row_profile["schema_types"] = row.get("Schema_Types") or []
+                row_profile["faq_present"] = bool(row.get("FAQ_Present"))
             organic_rows_by_kw[source_kw].append(row_profile)
             if src:
                 entry = top_sources_by_kw_counter[source_kw][src]
@@ -997,6 +1050,7 @@ def extract_analysis_data_from_json(
             "client_aio_cited": bool(kw_client_aio),
             "serp_intent": serp_intent,
             "title_patterns": title_patterns,
+            "schema_signals": _build_schema_signals(kw_rows),
         }
 
     client_aio_text_mentions = []

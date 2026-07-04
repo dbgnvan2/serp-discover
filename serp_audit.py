@@ -1554,6 +1554,13 @@ def main():
                                 item['Entity_Type'] = e_type
                                 item['Word_Count'] = features.get(
                                     'word_count_est', "N/A")
+                                # Schema/FAQ signals feed the brief's
+                                # FAQ / Answer-Extraction Plan (Spec:
+                                # seo_geo_review_20260704.md T.1/G.2).
+                                item['Schema_Types'] = features.get(
+                                    'schema_types', [])
+                                item['FAQ_Present'] = features.get(
+                                    'faq_present', False)
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:

@@ -93,6 +93,7 @@ Editorial content currently lives in:
 - `clinical_dictionary.json` — Bowen vs medical vocabulary tiers
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
+- `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
 - `config.yml` — operational settings
 
 When in doubt, ask the user before adding new editorial content to a `.py` file.
