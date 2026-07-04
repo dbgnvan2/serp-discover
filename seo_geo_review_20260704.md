@@ -7,7 +7,8 @@
 > SerpAPI spend), G.1 (AI-engine mention probing), G.3 (E-E-A-T author
 > signals), G.4 (Google Search Console OAuth), G.5 (Bing check), G.6
 > (freshness tracking), and C.9 (out-of-repo shared_config.json contract —
-> documented, not changed).
+> documented, not changed). The deferred items are fully specified with
+> binding acceptance criteria in `seo_geo_deferred_spec_v1.md`.
 
 Scope: full-repo review of `serp-discover` (Tool 1) against (a) the Neil Patel
 "Keywords are dead" transcript (micro-moments / AI-citation / GEO themes) and
