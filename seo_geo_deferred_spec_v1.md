@@ -46,18 +46,29 @@ document wins.
    versions. Probing features store history in SQLite and report change
    over time; single-run numbers are labeled as snapshots.
 
-## Decisions required from the user (gates)
+## Decision gates — RESOLVED by the user 2026-07-04
 
-| Gate | Item(s) | Decision needed | Default if unstated |
-|---|---|---|---|
-| D-1 | T.5 | Max extra SerpAPI calls per run for situational probes | 6 per run (2 per priority keyword, top 3 keywords) |
-| D-2 | G.1 | Which AI engines to probe in Phase 1; monthly probe budget | Claude only (existing `ANTHROPIC_API_KEY`), ≤ 20 questions/run, ≤ 2 runs/month |
-| D-3 | G.4 | GSC auth method: OAuth client (interactive) vs service account added to the Search Console property | Service account (headless-friendly) |
-| D-4 | G.5 | Enable Bing check at all? | Implemented but `enabled: false` in config |
-| D-5 | C.9 | Is `../shared_config.json` still consumed by Tool 2 / other tools? | Assume yes → formalize, do not remove |
+| Gate | Item(s) | Decision |
+|---|---|---|
+| D-1 | T.5 | **6 extra SerpAPI calls per run** (2 per priority keyword, top 3 keywords) |
+| D-2 | G.1 | **Claude (Anthropic) AND Gemini**, with the engine list user-selectable via config (`ai_visibility.engines`). Budget defaults stand: ≤ 20 questions/run, ≤ 2 runs/month. Gemini requires optional `GEMINI_API_KEY` env var; a missing key skips that engine with a logged warning, never an abort. |
+| D-3 | G.4 | **Headless service account** (JSON key via `GSC_CREDENTIALS_PATH`; the service-account email is granted on the Search Console property). |
+| D-4 | G.5 | **Default OFF** (`bing_check.enabled: false`); implemented and documented, user flips the flag. |
+| D-5 | C.9 | **Yes — Tool 2 consumes `shared_config.json`.** Formalize the contract; do NOT remove the file's authority or relocate its keys. |
 
-Implementation may proceed item-by-item without all gates resolved; each
-item states which gate blocks it. Do not silently pick a non-default.
+All gates are resolved; no item is blocked. Do not silently deviate from
+these decisions.
+
+## Execution model
+
+The three phases are implemented by separate agents run SEQUENTIALLY
+(A → B → C) on branch `claude/repo-seo-geo-review-sas8m6`. Sequential
+because the phases share editable surfaces (`serp_vocab.yml` + loader,
+the canary allowlist, `config.yml`, `docs/methodology.md`,
+`docs/USER_MANUAL.md`, `docs/config_reference.md`) and G.1 prefers T.5's
+probe questions when available. Each agent: pulls the branch first,
+implements only its phase, keeps the full suite green, commits per item
+with `Spec:` references, and pushes before finishing.
 
 ## Definition of done (whole spec)
 
@@ -346,55 +357,72 @@ therapy-seeker questions is unmeasured — and per the review's own
 evidence, this swings between model versions, so it must be tracked as a
 trend, not a snapshot.
 
-## Required change — Phase 1 (Claude only, gate D-2)
+## Required change (per gate D-2: Claude + Gemini, engine list configurable)
 
-1. New standalone script `probe_ai_visibility.py` (pattern:
+1. Provider-pluggable from the start: an `AiEngineProbe` protocol
+   (`ask(question) → {answer_text, source_urls, model_id}`) with two
+   implementations:
+   - **ClaudeProbe** — Anthropic API **with the web search tool enabled**;
+     reuse `brief_llm.py`'s client-construction conventions; model id from
+     config (`ai_visibility.claude_model`), never hardcoded.
+   - **GeminiProbe** — Gemini API with grounding/search enabled; API key
+     from optional `GEMINI_API_KEY` env var; model id from
+     `ai_visibility.gemini_model`. Missing key → skip engine with a
+     logged warning, never abort. New dependency pinned in
+     requirements.txt (prefer plain REST via `requests` + `http_retry`
+     over adding the google SDK if the REST surface suffices).
+2. New standalone script `probe_ai_visibility.py` (pattern:
    `run_feasibility.py` — runs any time, reads config, no pipeline
    coupling):
+   - Engine selection: `ai_visibility.engines` list in config
+     (default `[claude, gemini]`); a `--engines claude` CLI flag
+     overrides per run. Unknown engine names → clear error listing
+     valid options.
    - Question set: the run's situational probes (T.5 output) when
      available, else PAA questions 6+ words, else `situational_templates`;
-     capped by `ai_visibility.max_questions` (default 20).
-   - For each question, one Anthropic API call **with the web search tool
-     enabled**, geo-context prefixed ("I'm in North Vancouver, BC…").
-     Reuse `brief_llm.py`'s client-construction conventions; model id from
-     config (`ai_visibility.model`), never hardcoded.
-   - Detection: `mentioned` (client name patterns from
-     `analysis_report.client_name_patterns`, case-insensitive),
-     `cited` (client domain in any returned source URL),
-     `competitors_cited` (domains matched against `known_brands` +
+     capped by `ai_visibility.max_questions` (default 20) — the cap is
+     per engine; total calls = questions × engines, and the cost guard
+     states both numbers.
+   - Geo-context prefixed to every question ("I'm in North Vancouver,
+     BC…").
+   - Detection (engine-agnostic, applied to each answer): `mentioned`
+     (client name patterns from `analysis_report.client_name_patterns`,
+     case-insensitive), `cited` (client domain in any returned source
+     URL), `competitors_cited` (domains matched against `known_brands` +
      top competitor domains from the latest analysis JSON).
-2. Persistence: new SQLite table `ai_visibility_probes`
+3. Persistence: new SQLite table `ai_visibility_probes`
    (`run_ts, engine, model, question, mentioned, cited,
    competitor_domains_json, answer_excerpt`), written via `storage.py`
-   conventions (parameterized, UTC timestamps).
-3. Report `ai_visibility_<topic>_<ts>.md`: this run's mention/citation
-   rate, the same rate for the previous N runs (trend table), engines/
-   model ids used, and a mandatory caveat paragraph that single-run
-   values are snapshots. Output name follows the gitignored report globs.
-4. Cost guard: the script prints estimated call count and exits without
-   calling unless `--yes` or `ai_visibility.assume_yes: true`.
-
-## Required change — Phase 2 (only after Phase 1 has ≥2 runs of data)
-
-Provider-pluggable interface (`AiEngineProbe` protocol: `ask(question) →
-{answer_text, source_urls}`), mirroring the DataForSEO/Moz dual-provider
-pattern, so additional engines slot in behind config without touching the
-analysis/reporting layer. Phase 2 engine choice is a new user gate — do
-not implement speculatively.
+   conventions (parameterized, UTC timestamps). `engine` is part of the
+   row so trends are per-engine.
+4. Report `ai_visibility_<topic>_<ts>.md`: this run's mention/citation
+   rate PER ENGINE, the same rates for the previous N runs (per-engine
+   trend table), model ids used, and a mandatory caveat paragraph that
+   single-run values are snapshots. Output name follows the gitignored
+   report globs.
+5. Cost guard: the script prints estimated call count per engine and
+   exits without calling unless `--yes` or `ai_visibility.assume_yes:
+   true`.
 
 ## Acceptance criteria
 
 - G.1.1 All API calls mocked in tests: detection logic verified for
   mentioned-only, cited, neither, and competitor-cited answers.
-- G.1.2 Table created idempotently; rows written with UTC `run_ts`;
-  trend query returns runs in order (test with two synthetic runs).
+- G.1.2 Table created idempotently; rows written with UTC `run_ts` and
+  `engine`; per-engine trend query returns runs in order (test with two
+  synthetic runs across both engines).
 - G.1.3 No calls without explicit confirmation (test: default run with
-  mocked client asserts zero API calls, exit message states the cap).
-- G.1.4 Report renders with zero prior history (first run) and with
-  history; caveat paragraph always present.
-- G.1.5 `docs/USER_MANUAL.md` explains WHAT (mention/citation trend) and
-  WHY (AI answers are a growing referral surface; volatility across model
-  versions is why the trend view exists).
+  mocked clients asserts zero API calls; exit message states questions ×
+  engines).
+- G.1.4 Engine selection honored: `--engines claude` runs only
+  ClaudeProbe; missing `GEMINI_API_KEY` skips Gemini with a warning and
+  still completes Claude probes (both mocked tests).
+- G.1.5 Report renders with zero prior history (first run) and with
+  history; per-engine rates; caveat paragraph always present.
+- G.1.6 `docs/USER_MANUAL.md` explains WHAT (per-engine mention/citation
+  trend) and WHY (AI answers are a growing referral surface; volatility
+  across model versions is why the trend view exists), including how to
+  choose engines.
 
 ---
 
