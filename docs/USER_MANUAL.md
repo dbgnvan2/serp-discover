@@ -568,6 +568,30 @@ types dominate, then recommends markup for the client's page. Recommendations
 come from the editorial table in `schema_recommendations.yml` — edit that file
 (not Python) to change what markup the tool may recommend.
 
+#### The citation surface map and GEO alerts (report Section 4)
+
+**What it is:** the report classifies every source the AI Overview cites
+(directory, media, counselling competitor, …) and reports two things most
+SEO tools miss:
+
+- **Outreach candidates** — third-party surfaces (Psychology Today-style
+  directories, media outlets, associations, named Reddit/forum threads) that
+  the AI Overview already trusts for your keywords. Being listed, complete,
+  and mentioned on those surfaces is how you occupy the roughly three-quarters
+  of AI citations that point somewhere other than a brand's own site.
+- **GEO alerts** — keywords where Living Systems ranks in the organic top-10
+  but the AI Overview cites other sources instead. This is the single most
+  actionable AI-visibility signal: the page already ranks, so reformatting it
+  for answer extraction (see Section 5b) is cheaper and faster than writing
+  anything new.
+
+**Why it matters:** Google rank and AI citation are separate scores. A page
+can rank #3 and be invisible in the AI answer, and a page that doesn't rank
+top-10 can be cited. The divergence lists in Section 4 make that gap visible
+per keyword instead of leaving it to intuition. Which entity types count as
+outreach surfaces is configurable in `config.yml` under
+`geo.outreach_entity_types`.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

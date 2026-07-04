@@ -990,11 +990,15 @@ def parse_data(keyword, results, query_metadata):
                                    })
 
     if "discussions_and_forums" in primary_results:
+        # Per-thread detail (forum name, date) feeds the brief's outreach
+        # surface analysis (Spec: seo_geo_review_20260704.md T.6).
         for item in primary_results["discussions_and_forums"]:
             expansion_list.append({**common_fields,
                                    "Type": "Discussion/Forum",
                                    "Term": item.get("title"),
-                                   "Link": item.get("link")
+                                   "Link": item.get("link"),
+                                   "Forum": item.get("source"),
+                                   "Date": item.get("date")
                                    })
 
     if "filters" in primary_results:

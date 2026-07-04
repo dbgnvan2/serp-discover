@@ -479,6 +479,8 @@ def list_recommendations(data, args):
     intent_thresholds = serp_intent_cfg.get("thresholds")
     client_cfg = config.get("client", {}) if isinstance(config, dict) else {}
     preferred_intents = client_cfg.get("preferred_intents", [])
+    geo_cfg = config.get("geo", {}) if isinstance(config, dict) else {}
+    outreach_entity_types = geo_cfg.get("outreach_entity_types")
     extracted = extract_analysis_data_from_json(
         data,
         client_domain=context["client_domain"],
@@ -487,6 +489,7 @@ def list_recommendations(data, args):
         known_brands=known_brands,
         serp_intent_thresholds=intent_thresholds,
         preferred_intents=preferred_intents,
+        outreach_entity_types=outreach_entity_types,
     )
     warnings = validate_extraction(extracted)
     progress(

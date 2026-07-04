@@ -83,3 +83,13 @@ report_thresholds:
     counselling_directory_combined: 0.4
     education: 0.15
     government: 0.2
+geo:
+  # Entity types treated as outreach (brand-placement) surfaces in the AIO
+  # citation analysis, as opposed to competitor counselling sites.
+  outreach_entity_types:
+  - directory
+  - media
+  - nonprofit
+  - professional_association
+  - education
+  - government

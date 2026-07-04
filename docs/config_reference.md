@@ -12,6 +12,7 @@
 - `client.preferred_intents` — intents the client can produce content for; drives `mixed_intent_strategy`
 - `analysis_report.*` — client context injected into LLM prompts
 - `report_thresholds.entity_dominance.*` — thresholds for interpreting SERP entity type dominance in reports (see RC.6)
+- `geo.outreach_entity_types` — entity types treated as brand-placement (outreach) surfaces in the AI Overview citation analysis, as opposed to competitor counselling sites (see seo_geo_review T.3)
 
 **`domain_overrides.yml`** — manual entity type overrides (e.g., `psychologytoday.com: directory`).
 

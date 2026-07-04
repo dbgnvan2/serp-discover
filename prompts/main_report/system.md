@@ -112,6 +112,30 @@ AI OVERVIEW:
   sources_named_in_text, client_mentioned, client_excerpt,
   key_phrases, opening_excerpt
 - aio_citations_top25, aio_total_citations, aio_unique_sources
+- aio_citation_surfaces: WHERE citations point, entity-classified:
+  - by_entity_type: citation count per entity type (directory,
+    media, counselling, ...)
+  - third_party_sources: non-client cited domains with entity_type,
+    citations, keywords, example_link
+  - outreach_candidates: the subset that are placement surfaces
+    (directories, media, associations) rather than competitor
+    counselling sites. These are pre-computed; do not reclassify.
+- keyword_profiles.aio_divergence: per-keyword rank-vs-citation
+  comparison. has_aio_citations=false means no divergence claims
+  can be made for that keyword. Otherwise:
+  - cited_not_ranking_top10: domains the AIO cites that do NOT
+    rank in the organic top-10 (with citation counts)
+  - ranking_top10_not_cited: top-10 organic domains the AIO ignores
+  - client_in_top10, client_ranks_but_not_cited: booleans. Use them
+    exactly; do not infer divergence the fields don't state.
+- strategic_flags.geo_alerts: keywords where the client ranks
+  top-10 but the AI Overview cites other sources. Each alert is a
+  reformat-for-extraction priority (see Section 5b) and must be
+  reported in Section 4.
+- forum_threads_by_keyword: discussion/forum threads Google surfaces
+  for each keyword (title, link, domain, forum, date). These are
+  community surfaces where the audience already asks questions —
+  cite them by name when discussing off-site presence.
 
 FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
 - bowen_reframe_faqs: PAA questions classified External Locus
@@ -341,6 +365,25 @@ Which queries have AIO at what position. Citation concentration
 (top sources, total vs unique). What content type gets cited.
 Where the client has or lacks AIO presence. Use aio_analysis
 excerpts for language framing, not speculation.
+
+Then cover the citation surface map from aio_citation_surfaces:
+state the entity mix of cited sources (by_entity_type with counts)
+and name the outreach_candidates — third-party surfaces (directory
+profiles, media, associations) the AIO already trusts for these
+keywords, with which keywords cite them. Frame these as placement
+targets (profile completeness, listings, mentions), not as
+competitors. If forum_threads_by_keyword has entries, name the
+actual threads and forums as community surfaces.
+
+Then report rank-vs-citation divergence per keyword from
+keyword_profiles.aio_divergence (skip keywords where
+has_aio_citations is false): how many cited domains do not rank
+top-10, and which top-10 rankers the AIO ignores. If
+strategic_flags.geo_alerts is non-empty, report each alert
+explicitly: the client ranks top-10 for that keyword but is not
+cited — the existing page is a reformat-for-extraction priority
+(cross-reference its Section 5b plan) before any new content is
+considered. If geo_alerts is empty, do not invent one.
 
 ### Section 5: Content Gap Analysis
 Report from paa_analysis. List cross_cluster questions first with

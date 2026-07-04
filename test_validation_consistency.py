@@ -29,6 +29,9 @@ KNOWN_UNVALIDATED = frozenset({
     "schema_signals",   # Section 5b evidence anchor (counts/types of schema
                         # markup on ranking pages); prose claims about markup
                         # gaps have no mechanically checkable shape
+    "aio_divergence",   # Section 4 evidence anchor (rank-vs-citation domain
+                        # lists); the binding boolean surface is
+                        # strategic_flags.geo_alerts, which is pre-computed
 })
 
 

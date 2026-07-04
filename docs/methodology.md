@@ -77,3 +77,9 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 The payload gives the LLM two intent-bucketed PAA lists: `bowen_reframe_faqs` (External Locus questions — the reframe candidates) and `aligned_demand_faqs` (Systemic questions — demand already in the client's vocabulary). For each priority keyword the report recommends up to 3 verbatim PAA questions as literal page headings with answer-first formatting guidance, plus a structured-data line built from `keyword_profiles.schema_signals` (schema.org types and FAQPage presence observed on the enriched top-10 pages). Markup recommendations are restricted to the editorial table in `schema_recommendations.yml`.
 
 *Spec: seo_geo_review_20260704.md T.1 / G.2 / C.2. Implemented 2026-07-04.*
+
+### AI Overview citation surfaces and rank-vs-citation divergence (report Section 4)
+
+Every AI Overview citation domain is entity-classified (same rules as organic results) and aggregated into `aio_citation_surfaces`: the citation mix by entity type, the third-party domains cited, and `outreach_candidates` — placement surfaces (directories, media, associations; the list of qualifying entity types is `config.yml geo.outreach_entity_types`). Per keyword, `keyword_profiles.aio_divergence` compares AIO-cited domains against the organic top-10: domains cited without ranking, rankers the AIO ignores, and the `client_ranks_but_not_cited` alert, which also surfaces as `strategic_flags.geo_alerts`. Discussion/forum threads Google surfaces are captured per-thread (title, link, forum, date) and passed as `forum_threads_by_keyword`.
+
+*Spec: seo_geo_review_20260704.md T.3 / T.4 / T.6. Implemented 2026-07-04.*

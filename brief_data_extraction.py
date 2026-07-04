@@ -12,11 +12,40 @@ import yaml
 
 from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
 from title_patterns import compute_title_patterns
-from classifiers import classify_url_from_patterns
+from classifiers import classify_url_from_patterns, EntityClassifier
 
 
 def progress(message):
     print(message, flush=True)
+
+
+# Entity types treated as brand-placement (outreach) surfaces rather than
+# direct competitors when they appear as AI Overview citation sources.
+# Overridable via config.yml geo.outreach_entity_types (see caller).
+# Spec: seo_geo_review_20260704.md T.3.
+DEFAULT_OUTREACH_ENTITY_TYPES = (
+    "directory",
+    "media",
+    "nonprofit",
+    "professional_association",
+    "education",
+    "government",
+)
+
+
+def _domain_from_link(link):
+    """Registrable host from a URL, lowercased, without a www. prefix."""
+    try:
+        netloc = urlparse(str(link or "")).netloc.lower()
+    except ValueError:
+        return ""
+    return netloc.removeprefix("www.")
+
+
+def _is_client_domain(domain, client_domain_lower):
+    if not domain or not client_domain_lower:
+        return False
+    return domain == client_domain_lower or domain.endswith("." + client_domain_lower)
 
 DEFAULT_CLIENT_CONTEXT = {
     "client_name": "Living Systems Counselling",
@@ -412,6 +441,23 @@ def _compute_strategic_flags(
     else:
         flags["top_cross_cluster_paa"] = None
 
+    # GEO alerts (Spec: seo_geo_review T.4): the client holds a top-10
+    # organic position but the AI Overview cites other sources. That page
+    # is a reformat-for-extraction candidate before any new content.
+    geo_alerts = []
+    for kw in root_keywords:
+        divergence = (keyword_profiles.get(kw, {}) or {}).get("aio_divergence") or {}
+        if divergence.get("client_ranks_but_not_cited"):
+            geo_alerts.append({
+                "keyword": kw,
+                "detail": (
+                    "Client ranks in the organic top-10 but the AI Overview "
+                    "cites other sources — prioritise answer-extraction "
+                    "reformatting of the ranking page."
+                ),
+            })
+    flags["geo_alerts"] = geo_alerts
+
     return flags
 
 
@@ -483,6 +529,108 @@ def _build_schema_signals(kw_rows):
     return signals
 
 
+def _build_aio_citation_surfaces(
+    citation_domains_by_kw,
+    client_domain_lower,
+    entity_of_domain,
+    outreach_entity_types,
+):
+    """Global analysis of WHERE AI Overview citations point.
+
+    Spec: seo_geo_review_20260704.md T.3 — most AI citations point at
+    third-party surfaces (directories, media, forums), so the citation mix
+    is an outreach plan, not just a competitor list.
+
+    Returns:
+    - total_citations / unique_domains
+    - by_entity_type: {entity_type: citation count}
+    - third_party_sources: non-client cited domains, citations desc —
+      {domain, entity_type, citations, keywords, example_link}
+    - outreach_candidates: the subset of third_party_sources whose entity
+      type is in outreach_entity_types (surfaces where a brand can seek
+      placement, as opposed to competitor counselling sites).
+    """
+    per_domain = {}
+    for kw, domains in citation_domains_by_kw.items():
+        for domain, info in domains.items():
+            entry = per_domain.setdefault(domain, {
+                "domain": domain,
+                "entity_type": entity_of_domain.get(domain, "N/A"),
+                "citations": 0,
+                "keywords": [],
+                "example_link": info.get("example_link"),
+            })
+            entry["citations"] += info.get("count", 0)
+            if kw and kw not in entry["keywords"]:
+                entry["keywords"].append(kw)
+
+    by_entity = Counter()
+    third_party = []
+    for domain, entry in per_domain.items():
+        by_entity[entry["entity_type"]] += entry["citations"]
+        if not _is_client_domain(domain, client_domain_lower):
+            third_party.append(entry)
+    third_party.sort(key=lambda e: (-e["citations"], e["domain"]))
+
+    outreach_set = set(outreach_entity_types)
+    return {
+        "total_citations": sum(by_entity.values()),
+        "unique_domains": len(per_domain),
+        "by_entity_type": dict(by_entity.most_common()),
+        "third_party_sources": third_party[:25],
+        "outreach_candidates": [
+            e for e in third_party if e["entity_type"] in outreach_set
+        ][:15],
+    }
+
+
+def _build_aio_divergence(cited_domains, top10_domains, client_domain_lower,
+                          client_cited):
+    """Per-keyword rank-vs-citation divergence.
+
+    Spec: seo_geo_review_20260704.md T.4 — Google rank and AI citation are
+    separate scores. Surfaces domains the AI Overview cites that do NOT rank
+    top-10, top-10 rankers the AIO ignores, and the single most actionable
+    GEO alert: the client ranks top-10 but is not cited.
+
+    cited_domains: {domain: {count, example_link}} for this keyword's AIO.
+    top10_domains: {domain: best_rank} from label-A organic rows, rank <= 10.
+    """
+    if not cited_domains:
+        return {
+            "has_aio_citations": False,
+            "cited_not_ranking_top10": [],
+            "ranking_top10_not_cited": [],
+            "client_in_top10": any(
+                _is_client_domain(d, client_domain_lower) for d in top10_domains
+            ),
+            "client_ranks_but_not_cited": False,
+        }
+
+    cited_not_ranking = [
+        {"domain": domain, "citations": info.get("count", 0)}
+        for domain, info in sorted(
+            cited_domains.items(), key=lambda kv: (-kv[1].get("count", 0), kv[0])
+        )
+        if domain not in top10_domains
+    ]
+    ranking_not_cited = [
+        {"domain": domain, "rank": rank}
+        for domain, rank in sorted(top10_domains.items(), key=lambda kv: kv[1])
+        if domain not in cited_domains
+    ]
+    client_in_top10 = any(
+        _is_client_domain(d, client_domain_lower) for d in top10_domains
+    )
+    return {
+        "has_aio_citations": True,
+        "cited_not_ranking_top10": cited_not_ranking,
+        "ranking_top10_not_cited": ranking_not_cited,
+        "client_in_top10": client_in_top10,
+        "client_ranks_but_not_cited": bool(client_in_top10 and not client_cited),
+    }
+
+
 def _build_feasibility_summary(feasibility_rows):
     """Compact summary of keyword feasibility data for the LLM payload.
 
@@ -538,8 +686,14 @@ def extract_analysis_data_from_json(
     serp_intent_thresholds=None,
     intent_mapping=None,
     preferred_intents=None,
+    outreach_entity_types=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
+
+    outreach_entity_types: entity types treated as outreach surfaces in the
+        AIO citation analysis (Spec: seo_geo_review T.3). Defaults to
+        DEFAULT_OUTREACH_ENTITY_TYPES; overridable via config.yml
+        geo.outreach_entity_types.
 
     New (spec v2):
         known_brands: list of competitor brand domain/name strings — drives
@@ -556,6 +710,7 @@ def extract_analysis_data_from_json(
     client_phrase_patterns = _client_match_patterns(client_name_patterns)
     known_brands = list(known_brands or [])
     preferred_intents = list(preferred_intents or [])
+    outreach_entity_types = list(outreach_entity_types or DEFAULT_OUTREACH_ENTITY_TYPES)
 
     # Load intent mapping once. Cached at the call site if the caller supplies
     # one; otherwise loaded fresh here. Failure to load is a HARD error — the
@@ -637,6 +792,9 @@ def extract_analysis_data_from_json(
     entity_na = 0
     client_organic = []
     top_sources_by_kw_counter = defaultdict(lambda: defaultdict(lambda: {"appearances": 0, "best_rank": 999, "entity_types": Counter()}))
+    # {keyword: {domain: best_rank}} for label-A top-10 rows — feeds the
+    # rank-vs-citation divergence analysis (Spec: seo_geo_review T.4).
+    organic_top10_domains_by_kw = defaultdict(dict)
 
     for row in organic:
         source_kw = row.get("Source_Keyword")
@@ -691,6 +849,12 @@ def extract_analysis_data_from_json(
                 entry["appearances"] += 1
                 entry["best_rank"] = min(entry["best_rank"], rank)
                 entry["entity_types"][entity] += 1
+            if rank <= 10:
+                dom = _domain_from_link(link)
+                if dom:
+                    best = organic_top10_domains_by_kw[source_kw].get(dom)
+                    if best is None or rank < best:
+                        organic_top10_domains_by_kw[source_kw][dom] = rank
 
         if client_domain_lower and client_domain_lower in link.lower():
             delta_raw = row.get("Rank_Delta")
@@ -726,6 +890,9 @@ def extract_analysis_data_from_json(
     aio_source_counter = Counter()
     aio_by_kw = defaultdict(Counter)
     client_aio_citations = []
+    # {keyword: {domain: {count, example_link}}} — domain-level citation
+    # records for surface/divergence analysis (Spec: seo_geo_review T.3/T.4).
+    aio_citation_domains_by_kw = defaultdict(dict)
     for row in citations:
         src = row.get("Source")
         source_kw = row.get("Source_Keyword")
@@ -734,6 +901,12 @@ def extract_analysis_data_from_json(
         if src:
             aio_source_counter[src] += 1
             aio_by_kw[source_kw][src] += 1
+        cited_domain = _domain_from_link(link)
+        if cited_domain:
+            rec = aio_citation_domains_by_kw[source_kw].setdefault(
+                cited_domain, {"count": 0, "example_link": link or None}
+            )
+            rec["count"] += 1
         if client_domain_lower and client_domain_lower in link.lower():
             client_aio_citations.append({
                 "source_keyword": source_kw,
@@ -741,6 +914,37 @@ def extract_analysis_data_from_json(
                 "title": title,
                 "link": link,
             })
+
+    # Entity-classify every unique cited domain (domain-level rules only, no
+    # HTML) so the citation mix can be read as a surface map.
+    _aio_entity_classifier = EntityClassifier()
+    aio_entity_of_domain = {}
+    for domains in aio_citation_domains_by_kw.values():
+        for cited_domain in domains:
+            if cited_domain not in aio_entity_of_domain:
+                etype, _conf, _ev = _aio_entity_classifier.classify(cited_domain, None)
+                aio_entity_of_domain[cited_domain] = etype or "N/A"
+    aio_citation_surfaces = _build_aio_citation_surfaces(
+        aio_citation_domains_by_kw,
+        client_domain_lower,
+        aio_entity_of_domain,
+        outreach_entity_types,
+    )
+
+    # Google-surfaced discussion/forum threads per keyword (Spec:
+    # seo_geo_review T.6) — named threads for the outreach plan.
+    forum_threads_by_kw = defaultdict(list)
+    for row in data.get("derived_expansions", []):
+        if row.get("Type") != "Discussion/Forum":
+            continue
+        thread_link = str(row.get("Link") or "")
+        forum_threads_by_kw[row.get("Source_Keyword")].append({
+            "title": row.get("Term"),
+            "link": thread_link,
+            "domain": _domain_from_link(thread_link),
+            "forum": row.get("Forum"),
+            "date": row.get("Date"),
+        })
 
     paa_unique = {}
     for row in paa_rows:
@@ -1051,6 +1255,12 @@ def extract_analysis_data_from_json(
             "serp_intent": serp_intent,
             "title_patterns": title_patterns,
             "schema_signals": _build_schema_signals(kw_rows),
+            "aio_divergence": _build_aio_divergence(
+                aio_citation_domains_by_kw.get(kw, {}),
+                organic_top10_domains_by_kw.get(kw, {}),
+                client_domain_lower,
+                client_cited=bool(kw_client_aio),
+            ),
         }
 
     client_aio_text_mentions = []
@@ -1150,6 +1360,8 @@ def extract_analysis_data_from_json(
         "aio_citations_top25": aio_source_counter.most_common(25),
         "aio_total_citations": sum(aio_source_counter.values()),
         "aio_unique_sources": len(aio_source_counter),
+        "aio_citation_surfaces": aio_citation_surfaces,
+        "forum_threads_by_keyword": dict(forum_threads_by_kw),
         "autocomplete_by_keyword": dict(autocomplete_by_kw),
         "related_searches_by_keyword": dict(related_by_kw),
         "autocomplete_summary": autocomplete_summary,

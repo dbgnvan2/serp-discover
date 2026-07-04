@@ -155,6 +155,7 @@ def build_main_report_payload(extracted_data):
             "client_rank_delta": profile.get("client_rank_delta"),
             "client_aio_cited": profile.get("client_aio_cited"),
             "schema_signals": profile.get("schema_signals"),
+            "aio_divergence": profile.get("aio_divergence"),
         }
 
     competitive_landscape = {}
@@ -192,6 +193,11 @@ def build_main_report_payload(extracted_data):
         "aio_citations_top25": extracted_data.get("aio_citations_top25", [])[:25],
         "aio_total_citations": extracted_data.get("aio_total_citations"),
         "aio_unique_sources": extracted_data.get("aio_unique_sources"),
+        "aio_citation_surfaces": extracted_data.get("aio_citation_surfaces", {}),
+        "forum_threads_by_keyword": {
+            keyword: rows[:5]
+            for keyword, rows in (extracted_data.get("forum_threads_by_keyword", {}) or {}).items()
+        },
         "paa_analysis": extracted_data.get("paa_analysis", {}),
         # External Locus (medical-model framed) questions are the reframe
         # candidates — the ones to answer in Bowen framing. Fixed from the
