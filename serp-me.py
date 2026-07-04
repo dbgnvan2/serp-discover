@@ -334,6 +334,42 @@ class SerpLauncherApp:
         self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
         self.refresh_keyword_file_options()
 
+        # Select the first script by default so the Run button is live the
+        # moment the window opens. Without a default, Run stays disabled
+        # until a script row is clicked — a disabled button gives zero
+        # feedback, which reads as "the Run button does nothing".
+        self.script_listbox.select_set(0)
+        self.on_select(None)
+
+        # Startup banner: prove which code and interpreter this window is
+        # running, so "is the fix actually on this machine?" is answered by
+        # the log pane itself.
+        self.log(f"Launcher started {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        self.log(f"> Code version: {self._git_version()}\n")
+        self.log(f"> Python: {sys.executable}\n")
+        self.log(f"> Working dir: {os.getcwd()}\n")
+        self.log("> Select a script on the left, then click 'Run Selected Script'.\n")
+        self.log("-" * 68 + "\n")
+
+    @staticmethod
+    def _git_version():
+        try:
+            result = subprocess.run(
+                ["git", "log", "-1", "--format=%h %s (%cd)", "--date=short"],
+                capture_output=True, text=True, timeout=5,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+            )
+            branch = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True, text=True, timeout=5,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return f"{branch.stdout.strip() or 'detached'} @ {result.stdout.strip()}"
+        except Exception:
+            pass
+        return "unknown (git not available)"
+
     def _report_callback_exception(self, exc_type, exc_value, exc_tb):
         details = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
         try:
@@ -649,6 +685,10 @@ class SerpLauncherApp:
 
     def run_script(self):
         selection = self.script_listbox.curselection()
+        self.log(
+            f"[click] Run Selected Script — selection="
+            f"{selection[0] if selection else 'NONE'}\n"
+        )
         if not selection:
             # Defensive: should be unreachable now that the listbox keeps its
             # selection (exportselection=False), but never fail silently.
