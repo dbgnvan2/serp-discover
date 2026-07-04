@@ -50,6 +50,8 @@ from urllib.parse import urlparse
 
 import requests
 
+from http_retry import post_with_transient_retry as _post_with_transient_retry
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -162,26 +164,25 @@ class DataForSEOClient:
         or ``{}`` on any error.
         """
         payload = [{"targets": domains, "rank_scale": "one_hundred"}]
-        try:
-            response = requests.post(
-                DFS_ENDPOINT,
-                headers={**self._auth_header, "Content-Type": "application/json"},
-                json=payload,
-                timeout=REQUEST_TIMEOUT,
+        response = _post_with_transient_retry(
+            "DataForSEO",
+            DFS_ENDPOINT,
+            headers={**self._auth_header, "Content-Type": "application/json"},
+            json_payload=payload,
+            batch_desc=f"batch of {len(domains)} domains",
+            timeout=REQUEST_TIMEOUT,
+        )
+        if response is None:
+            return {}
+        if not response.ok:
+            try:
+                body = response.json()
+            except ValueError:
+                body = response.text[:300]
+            logger.warning(
+                "DataForSEO %d error for batch of %d domains: %s",
+                response.status_code, len(domains), body,
             )
-            if not response.ok:
-                try:
-                    body = response.json()
-                except ValueError:
-                    body = response.text[:300]
-                logger.warning(
-                    "DataForSEO %d error for batch of %d domains: %s",
-                    response.status_code, len(domains), body,
-                )
-                return {}
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            logger.warning("DataForSEO request failed for batch of %d domains: %s", len(domains), exc)
             return {}
 
         try:
@@ -232,13 +233,18 @@ class DataForSEOClient:
             return {}, []
         cached: dict[str, dict] = {}
         cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
-        placeholders = ",".join("?" * len(domains))
+        # Batch the IN(...) query — SQLite caps bound variables (999 in
+        # older builds), and large runs can exceed it (seo_geo_review C.7).
+        rows = []
         with sqlite3.connect(self._db_path) as conn:
-            rows = conn.execute(
-                f"SELECT domain, domain_authority, page_authority, fetched_at "
-                f"FROM {CACHE_TABLE} WHERE domain IN ({placeholders})",
-                domains,
-            ).fetchall()
+            for start in range(0, len(domains), 500):
+                chunk = domains[start:start + 500]
+                placeholders = ",".join("?" * len(chunk))
+                rows.extend(conn.execute(
+                    f"SELECT domain, domain_authority, page_authority, fetched_at "
+                    f"FROM {CACHE_TABLE} WHERE domain IN ({placeholders})",
+                    chunk,
+                ).fetchall())
         fresh = set()
         for domain, da, pa, fetched_at in rows:
             if fetched_at and fetched_at >= cutoff:

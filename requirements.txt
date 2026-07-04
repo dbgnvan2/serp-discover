@@ -1,12 +1,17 @@
-pandas
-openpyxl
-requests
-beautifulsoup4
-pyyaml
-textblob
-wordcloud
-matplotlib
-google-search-results
-python-dotenv
-anthropic
-pytest
+# Pinned with compatible ranges (Spec: seo_geo_review_20260704.md C.5).
+# Core pipeline
+pandas>=2.2,<4
+openpyxl>=3.1,<4
+requests>=2.32,<3
+beautifulsoup4>=4.12,<5
+pyyaml>=6.0,<7
+jsonschema>=4.21,<5
+google-search-results>=2.4,<3
+python-dotenv>=1.0,<2
+anthropic>=0.40,<1
+pytest>=8,<10
+# Optional analysis extras — code degrades gracefully when absent
+# (see serp_audit.py ImportError guards), but installed by default.
+textblob>=0.18,<1
+wordcloud>=1.9,<2
+matplotlib>=3.8,<4

@@ -39,8 +39,15 @@ def load_thresholds():
                     tech.get("moderate_feasibility_max_gap", 15),
                     tech.get("score_normaliser", 30.0)
                 )
-        except Exception:
-            pass
+        except Exception as exc:
+            # A malformed shared config silently changing every feasibility
+            # verdict is worse than a loud warning (seo_geo_review C.8).
+            import logging
+            logging.getLogger(__name__).warning(
+                "Failed to read feasibility thresholds from %s (%s) — "
+                "falling back to defaults 5/15/30.",
+                SHARED_CONFIG_PATH, exc,
+            )
     return 5, 15, 30.0
 
 HIGH_FEASIBILITY_MAX_GAP, MODERATE_FEASIBILITY_MAX_GAP, SCORE_NORMALISER = load_thresholds()
@@ -167,8 +174,13 @@ def generate_hyper_local_pivot(
     >>> result["pivot_status"]
     'Pivoting to Hyper-Local'
     """
-    status = feasibility_results.get("status", "")
+    # Accept both key conventions: compute_feasibility returns
+    # feasibility_status/avg_serp_da while callers historically remapped to
+    # status/avg_competitor_da (seo_geo_review C.10).
+    status = feasibility_results.get("status") or feasibility_results.get("feasibility_status", "")
     avg_da = feasibility_results.get("avg_competitor_da")
+    if avg_da is None:
+        avg_da = feasibility_results.get("avg_serp_da")
 
     all_variants = [f"{primary_keyword} {nb}" for nb in neighborhoods] if neighborhoods else []
 

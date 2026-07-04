@@ -6,7 +6,7 @@ import random
 from dotenv import load_dotenv
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import Counter
 import hashlib
 import jsonschema
@@ -328,6 +328,18 @@ def _fetch_serp_api(params):
             results = search.get_dict()
             logging.info(f"API Return Message: {json.dumps(results, indent=2)}")
             if "error" in results:
+                error_text = str(results["error"]).lower()
+                # Quota/auth errors never succeed on retry — fail fast
+                # instead of burning paid attempts (seo_geo_review C.6).
+                non_retryable = (
+                    "invalid api key", "unauthorized", "account",
+                    "run out of searches", "out of searches", "plan limit",
+                )
+                if any(marker in error_text for marker in non_retryable):
+                    logging.error(
+                        f"API Error (non-retryable, aborting): {results['error']}"
+                    )
+                    return None
                 logging.error(f"API Error (attempt {attempt}): {results['error']}")
                 if attempt == RETRY_MAX_ATTEMPTS:
                     return None
@@ -1916,7 +1928,7 @@ def main():
     _handoff_n = int(_at_cfg.get("n", 10))
     _omit_from_audit = list(_at_cfg.get("omit_from_audit", []))
     _client_brand_names = CONFIG.get("analysis_report", {}).get("client_name_patterns", [])
-    _run_ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    _run_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     _slug = _derive_output_slug(INPUT_FILE)
     _ts_short = datetime.now().strftime("%Y%m%d_%H%M")
     _handoff_path = os.path.join(

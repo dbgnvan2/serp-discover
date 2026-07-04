@@ -228,13 +228,13 @@ class TestMozClientErrorHandling(unittest.TestCase):
         urls_batch2 = [f"https://ok{i}.com/" for i in range(5)]
         all_urls = urls_batch1 + urls_batch2
 
-        call_count = [0]
-
         def side_effect(*args, **kwargs):
-            call_count[0] += 1
-            if call_count[0] == 1:
+            # Batch 1 fails terminally (every attempt, including the
+            # transient retry added by seo_geo_review C.6); batch 2 succeeds.
+            targets = kwargs["json"]["targets"]
+            if targets and "fail" in targets[0]:
                 raise requests.RequestException("timeout")
-            return _make_moz_response(kwargs["json"]["targets"], da=33)
+            return _make_moz_response(targets, da=33)
 
         mock_post.side_effect = side_effect
         result = self.client.get_moz_metrics(all_urls)

@@ -47,6 +47,8 @@ from typing import Iterator
 
 import requests
 
+from http_retry import post_with_transient_retry as _post_with_transient_retry
+
 logger = logging.getLogger(__name__)
 
 # Python 3.11+ exposes datetime.UTC; earlier versions need timezone.utc
@@ -157,26 +159,25 @@ class MozClient:
         if the request fails (error is logged as a warning).
         """
         payload = {"targets": urls}
-        try:
-            response = requests.post(
-                MOZ_ENDPOINT,
-                headers={**self._auth_header, "Content-Type": "application/json"},
-                json=payload,
-                timeout=REQUEST_TIMEOUT,
+        response = _post_with_transient_retry(
+            "Moz API",
+            MOZ_ENDPOINT,
+            headers={**self._auth_header, "Content-Type": "application/json"},
+            json_payload=payload,
+            batch_desc=f"batch of {len(urls)} URLs",
+            timeout=REQUEST_TIMEOUT,
+        )
+        if response is None:
+            return {}
+        if not response.ok:
+            try:
+                body = response.json()
+            except ValueError:
+                body = response.text[:300]
+            logger.warning(
+                "Moz API %d error for batch of %d URLs: %s",
+                response.status_code, len(urls), body,
             )
-            if not response.ok:
-                try:
-                    body = response.json()
-                except ValueError:
-                    body = response.text[:300]
-                logger.warning(
-                    "Moz API %d error for batch of %d URLs: %s",
-                    response.status_code, len(urls), body,
-                )
-                return {}
-            response.raise_for_status()
-        except requests.RequestException as exc:
-            logger.warning("Moz API request failed for batch of %d URLs: %s", len(urls), exc)
             return {}
 
         try:
@@ -225,13 +226,18 @@ class MozClient:
         to_fetch: list[str] = []
         cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
 
-        placeholders = ",".join("?" * len(urls))
+        # Batch the IN(...) query — SQLite caps bound variables (999 in
+        # older builds), and large runs can exceed it (seo_geo_review C.7).
+        rows = []
         with sqlite3.connect(self._db_path) as conn:
-            rows = conn.execute(
-                f"SELECT url, domain_authority, page_authority, fetched_at "
-                f"FROM {CACHE_TABLE} WHERE url IN ({placeholders})",
-                urls,
-            ).fetchall()
+            for start in range(0, len(urls), 500):
+                chunk = urls[start:start + 500]
+                placeholders = ",".join("?" * len(chunk))
+                rows.extend(conn.execute(
+                    f"SELECT url, domain_authority, page_authority, fetched_at "
+                    f"FROM {CACHE_TABLE} WHERE url IN ({placeholders})",
+                    chunk,
+                ).fetchall())
 
         fresh_urls = set()
         for url, da, pa, fetched_at in rows:
