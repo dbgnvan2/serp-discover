@@ -161,6 +161,14 @@ AI OVERVIEW:
   for each keyword (title, link, domain, forum, date). These are
   community surfaces where the audience already asks questions —
   cite them by name when discussing off-site presence.
+- bing_visibility: the Bing secondary-index check (ChatGPT search
+  grounds substantially on Bing). Contains by_keyword (checked,
+  client_rank — null means the client did NOT appear in the checked
+  results when checked is true, client_url, top3_domains) and a
+  summary (keywords_checked, client_visible_count). checked=false
+  means the Bing check did not run for that keyword — say the check
+  was disabled; NEVER estimate or guess Bing standing. These are
+  visibility facts only; Bing results are not classified or enriched.
 
 FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
 - bowen_reframe_faqs: PAA questions classified External Locus
@@ -444,6 +452,18 @@ explicitly: the client ranks top-10 for that keyword but is not
 cited — the existing page is a reformat-for-extraction priority
 (cross-reference its Section 5b plan) before any new content is
 considered. If geo_alerts is empty, do not invent one.
+
+Close the section with one paragraph on the Bing secondary index
+from bing_visibility. If summary.keywords_checked is 0, state in a
+single sentence that the Bing check was disabled for this run and
+move on — never guess Bing standing. Otherwise compare Google and
+Bing per checked keyword: the client's Google rank
+(keyword_profiles.client_rank) versus bing client_rank — e.g.
+"visible on Google at #4 but absent from Bing's top-20" or the
+reverse — and note where Bing's top3_domains differ from the Google
+leaders. This matters because ChatGPT search grounds substantially
+on Bing: absence there is an invisible AI-referral gap that Google
+data cannot show.
 
 ### Section 5: Content Gap Analysis
 Report from paa_analysis. List cross_cluster questions first with

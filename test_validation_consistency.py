@@ -42,6 +42,11 @@ KNOWN_UNVALIDATED = frozenset({
                         # credential counts per page); descriptive counts
                         # with no enforceable claim shape
                         # (seo_geo_deferred G.3)
+    "client_rank",      # Section 4 Google-vs-Bing comparison quotes the
+                        # client's pre-computed Google rank next to the
+                        # bing_visibility client_rank; a descriptive
+                        # integer with no enforceable claim shape
+                        # (seo_geo_deferred G.5)
 })
 
 

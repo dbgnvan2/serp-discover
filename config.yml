@@ -42,6 +42,9 @@ situational_probes:
   max_probes_per_run: 6
   probes_per_keyword: 2
   keywords: priority
+bing_check:
+  enabled: false
+  num: 20
 serp_intent:
   thresholds:
     primary_share: 0.6

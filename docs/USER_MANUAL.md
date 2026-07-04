@@ -701,6 +701,28 @@ Low API mode never runs them. Probe results feed only the trigger-rate
 analysis and the AI-citation data — they never distort organic rankings,
 intent verdicts, rank-change history, or the competitor handoff file.
 
+#### The Bing visibility check (report Section 4)
+
+**What it is:** an optional pass that runs each root keyword once against
+Bing (via SerpAPI) and records whether livingsystems.ca appears, at what
+rank, with which domains holding Bing's top three. The report then puts the
+Google and Bing positions side by side per keyword — "visible on Google at
+#4 but absent from Bing's top-20", or the reverse. Bing results are not
+classified or enriched; this is purely a visibility snapshot.
+
+**Why it matters:** ChatGPT's web search grounds substantially on Bing's
+index, so Bing standing is a proxy for a whole AI-referral surface that
+Google data cannot show. A page that ranks well on Google but is invisible
+on Bing is invisible to a growing class of AI-assisted searchers — and
+nobody notices, because almost all reporting is Google-only. If the check
+is off (the default), the report says so explicitly rather than guessing.
+
+**Cost control:** each checked keyword is one paid SerpAPI call, so the
+feature is OFF by default (`bing_check.enabled: false` in `config.yml`).
+Turn it on to add exactly one call per root keyword; `bing_check.num`
+(default 20) controls how deep the Bing results go, and the run log states
+how many Bing calls were made.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

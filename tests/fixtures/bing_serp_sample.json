@@ -1,0 +1,72 @@
+{
+  "search_metadata": {
+    "id": "670000000000000000000000",
+    "status": "Success",
+    "created_at": "2026-07-04 18:00:00 UTC",
+    "processed_at": "2026-07-04 18:00:01 UTC",
+    "bing_url": "https://www.bing.com/search?q=family+counselling+Vancouver%2C+British+Columbia%2C+Canada&count=20",
+    "total_time_taken": 1.42
+  },
+  "search_parameters": {
+    "engine": "bing",
+    "q": "family counselling Vancouver, British Columbia, Canada",
+    "location": "Vancouver, British Columbia, Canada",
+    "count": 20
+  },
+  "search_information": {
+    "total_results": 1370000,
+    "query_displayed": "family counselling Vancouver, British Columbia, Canada"
+  },
+  "organic_results": [
+    {
+      "position": 1,
+      "title": "Find a Family Therapist in Vancouver, BC - Psychology Today",
+      "link": "https://www.psychologytoday.com/ca/therapists/bc/vancouver?category=family-therapy",
+      "displayed_link": "https://www.psychologytoday.com/ca/therapists/bc/vancouver",
+      "snippet": "Browse our extensive directory of family therapists and counsellors in Vancouver, British Columbia."
+    },
+    {
+      "position": 2,
+      "title": "Family Counselling Vancouver | Skylark Clinic",
+      "link": "https://www.skylarkclinic.ca/family-counselling",
+      "displayed_link": "https://www.skylarkclinic.ca/family-counselling",
+      "snippet": "Our registered clinical counsellors help families reconnect and communicate."
+    },
+    {
+      "position": 3,
+      "title": "Counselling BC - Family Therapists Directory",
+      "link": "https://counsellingbc.com/counsellors/family-therapy/vancouver",
+      "displayed_link": "https://counsellingbc.com/counsellors/family-therapy",
+      "snippet": "Directory of registered counsellors offering family therapy across British Columbia."
+    },
+    {
+      "position": 4,
+      "title": "Family Services of Greater Vancouver - Counselling Programs",
+      "link": "https://fsgv.ca/programs/counselling/",
+      "displayed_link": "https://fsgv.ca/programs/counselling",
+      "snippet": "Affordable counselling programs for families, couples and individuals in Greater Vancouver."
+    },
+    {
+      "position": 5,
+      "title": "Family Counselling | Living Systems Counselling, North Vancouver",
+      "link": "https://www.livingsystems.ca/family-counselling/",
+      "displayed_link": "https://www.livingsystems.ca/family-counselling",
+      "snippet": "Bowen Family Systems Theory based counselling for families in North Vancouver since 1971."
+    },
+    {
+      "position": 6,
+      "title": "Vancouver Family Therapy - Well Beings Counselling",
+      "link": "https://wellbeingscounselling.ca/family-therapy-vancouver/",
+      "displayed_link": "https://wellbeingscounselling.ca/family-therapy-vancouver",
+      "snippet": "In-person and online family therapy sessions with registered clinical counsellors."
+    }
+  ],
+  "related_searches": [
+    {"query": "free family counselling vancouver"},
+    {"query": "family counselling north vancouver"}
+  ],
+  "pagination": {
+    "current": 1,
+    "next": "https://www.bing.com/search?q=family+counselling+Vancouver%2C+British+Columbia%2C+Canada&count=20&first=21"
+  }
+}

@@ -892,6 +892,50 @@ def _build_aio_trigger_analysis(overview_rows, probe_rows):
     }
 
 
+def _build_bing_visibility(bing_rows, root_keywords):
+    """Per-keyword Bing visibility block plus a run-level summary.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.5 — ChatGPT search grounds
+    substantially on Bing; this makes the client's Bing standing a
+    measured fact instead of a blind spot. Old analysis JSONs (or runs
+    with bing_check disabled) have no rows: every keyword reports
+    checked=False and data_available is False — the report must then say
+    the check was disabled, never guess.
+
+    Returns:
+    - data_available: True when at least one keyword was actually checked
+    - by_keyword: {kw: {checked, client_rank, client_url, top3_domains}}
+    - summary: {keywords_checked, client_visible_count}
+    """
+    by_keyword = {}
+    for row in bing_rows or []:
+        kw = row.get("Source_Keyword")
+        if not kw:
+            continue
+        by_keyword[kw] = {
+            "checked": bool(row.get("Checked")),
+            "client_rank": row.get("Client_Rank"),
+            "client_url": row.get("Client_URL"),
+            "top3_domains": row.get("Top3_Domains") or [],
+        }
+    for kw in root_keywords:
+        by_keyword.setdefault(kw, {
+            "checked": False, "client_rank": None,
+            "client_url": None, "top3_domains": [],
+        })
+
+    checked = [entry for entry in by_keyword.values() if entry["checked"]]
+    return {
+        "data_available": bool(checked),
+        "by_keyword": by_keyword,
+        "summary": {
+            "keywords_checked": len(checked),
+            "client_visible_count": sum(
+                1 for entry in checked if entry["client_rank"] is not None),
+        },
+    }
+
+
 def _build_feasibility_summary(feasibility_rows):
     """Compact summary of keyword feasibility data for the LLM payload.
 
@@ -998,6 +1042,9 @@ def extract_analysis_data_from_json(
     # "S"-label situational probe rows (Spec: seo_geo_deferred_spec_v1.md
     # #T.5). Absent from old analysis JSONs / disabled runs — empty list.
     situational_probes = data.get("situational_probes", [])
+    # Bing visibility rows (Spec: seo_geo_deferred_spec_v1.md#G.5).
+    # Absent from old analysis JSONs / disabled runs — empty list.
+    bing_rows = data.get("bing_visibility", [])
 
     if overview:
         first = overview[0]
@@ -1662,6 +1709,7 @@ def extract_analysis_data_from_json(
         "aio_unique_sources": len(aio_source_counter),
         "aio_citation_surfaces": aio_citation_surfaces,
         "aio_trigger_analysis": _build_aio_trigger_analysis(overview, situational_probes),
+        "bing_visibility": _build_bing_visibility(bing_rows, root_keywords),
         "forum_threads_by_keyword": dict(forum_threads_by_kw),
         "autocomplete_by_keyword": dict(autocomplete_by_kw),
         "related_searches_by_keyword": dict(related_by_kw),

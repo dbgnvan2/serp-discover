@@ -14,6 +14,7 @@ import generate_insight_report
 import generate_content_brief
 import pattern_matching
 import query_variants
+import bing_check
 import handoff_writer
 import yaml
 import metrics
@@ -175,6 +176,13 @@ SITUATIONAL_KEYWORDS_MODE = str(_sit_cfg.get("keywords", "priority"))
 # A probe query must be this long to count as "situational" (the whole
 # point is measuring 6+-word conversational queries).
 SITUATIONAL_MIN_WORDS = 6
+
+# --- BING SECONDARY-INDEX CHECK (Spec: seo_geo_deferred_spec_v1.md#G.5) ---
+# One SerpAPI engine=bing call per root keyword when enabled. Default OFF
+# (decision gate D-4); logic lives in bing_check.py.
+_bing_cfg = CONFIG.get("bing_check", {}) or {}
+BING_CHECK_ENABLED = bool(_bing_cfg.get("enabled", False))
+BING_CHECK_NUM = max(1, int(_bing_cfg.get("num", 20)))
 
 # Load Omitted Domains from external file (Single Source of Truth)
 OMITTED_DOMAINS = set()
@@ -1822,6 +1830,22 @@ def main():
     if _probe_citations:
         all_ai_citations.extend(_probe_citations)
 
+    # --- BING SECONDARY-INDEX CHECK (Spec: seo_geo_deferred_spec_v1.md#G.5) ---
+    # One engine=bing visibility call per root keyword; default OFF (D-4).
+    # No enrichment/classification of Bing results — visibility only.
+    all_bing_rows = bing_check.run_bing_checks(
+        keywords, run_id,
+        enabled=BING_CHECK_ENABLED,
+        num=BING_CHECK_NUM,
+        location=LOCATION,
+        force_local=FORCE_LOCAL_INTENT,
+        fetch_fn=_fetch_serp_api,
+        apply_no_cache=_apply_no_cache,
+        api_key=API_KEY,
+        client_domain=CLIENT_DOMAIN,
+        request_delay=REQUEST_DELAY_SECONDS,
+    )
+
     # --- N-GRAM ANALYSIS (SERP Language Patterns) ---
     print("Running N-Gram Analysis (SERP Language Patterns)...")
 
@@ -1932,6 +1956,7 @@ def main():
         "help_guide": help_rows,
         "keyword_feasibility": all_feasibility,
         "situational_probes": all_situational_probes,
+        "bing_visibility": all_bing_rows,
     }
 
     # --- BUILD KEYWORD_PROFILES ---
@@ -2075,6 +2100,9 @@ def main():
             if all_situational_probes:
                 pd.DataFrame(all_situational_probes).to_excel(
                     writer, sheet_name="Situational_Probes", index=False)
+            if all_bing_rows:
+                pd.DataFrame(all_bing_rows).to_excel(
+                    writer, sheet_name="Bing_Visibility", index=False)
             if _serp_intent_detail_rows:
                 pd.DataFrame(_serp_intent_detail_rows).to_excel(
                     writer, sheet_name="SERP_Intent_Detail", index=False)
