@@ -152,14 +152,15 @@ FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
 CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.get("analysis_report", {}).get("client_domain", ""))
 MOZ_CACHE_TTL_DAYS       = int(CONFIG.get("moz", {}).get("cache_ttl_days", 30))
 
-STOP_WORDS = set(SHARED_CONFIG.get("stop_words", [
-    "the", "and", "to", "of", "a", "in", "is", "for", "on", "with", "as", "at", "by", "an", "be", "or", "are", "from", "that",
-    "this", "it", "we", "our", "us", "can", "will", "your", "you", "my", "me", "not", "have", "has", "but", "so", "if", "their", "they",
-    "vancouver", "bc", "british", "columbia", "canada", "north", "west", "counselling", "counseling", "therapy", "therapist",
-    "counsellor", "counselor", "service", "services", "clinic", "centre", "center", "help", "support",
-    "highlytrained"
-]))
+# Editorial vocabulary lives in serp_vocab.yml (Spec: seo_geo_review C.4).
+# shared_config.json "stop_words" still wins when present (cross-tool
+# single source of truth); serp_vocab.yml is the in-repo editorial source.
+SERP_VOCAB = pattern_matching.SERP_VOCAB
+STOP_WORDS = set(SHARED_CONFIG.get("stop_words") or SERP_VOCAB["stop_words"])
 pattern_matching.STOP_WORDS = STOP_WORDS  # sync config-driven stop words
+PAA_CATEGORY_TRIGGERS = SERP_VOCAB["paa_category_triggers"]
+SERVICE_LIKE_TOKENS = tuple(SERP_VOCAB["service_like_tokens"])
+AI_ALTERNATIVE_TEMPLATES = SERP_VOCAB["ai_alternative_templates"]
 
 # Load Omitted Domains from external file (Single Source of Truth)
 OMITTED_DOMAINS = set()
@@ -912,12 +913,8 @@ def parse_data(keyword, results, query_metadata):
     # --- 2. PAA INTELLIGENCE (Questions) ---
     paa_list = []
 
-    # Bridge Strategy Triggers
-    trigger_map = {
-        "Commercial": ["cost", "price", "how much", "fees"],
-        "Distress": ["survive", "divorce", "infidelity", "leave", "separation"],
-        "Reactivity": ["narcissist", "toxic", "signs", "mean", "angry", "cut off", "hate"]
-    }
+    # Bridge Strategy Triggers — editorial list in serp_vocab.yml (C.4)
+    trigger_map = PAA_CATEGORY_TRIGGERS
 
     metrics["Has_PAA_AI_Overview"] = False
 
@@ -1170,24 +1167,21 @@ def _ai_query_alternatives(base_keyword):
     if not base:
         return []
 
-    service_like_tokens = (
-        "counselling", "counseling", "counsellor", "counselor",
-        "therapist", "therapy", "psychologist", "mental health"
-    )
-    if any(tok in base_lower for tok in service_like_tokens):
-        alt1 = f"how to choose the right {base}?"
-        alt2 = f"how much does {base} cost in {city}?"
+    # Token list and question templates are editorial → serp_vocab.yml (C.4).
+    if any(tok in base_lower for tok in SERVICE_LIKE_TOKENS):
+        templates = AI_ALTERNATIVE_TEMPLATES["service"]
+        topic = base
     elif base_lower.startswith("help with "):
+        templates = AI_ALTERNATIVE_TEMPLATES["help_with"]
         topic = base[10:].strip()
-        alt1 = f"what are effective ways to manage {topic}?"
-        alt2 = f"where to get help for {topic} in {city}?"
     else:
-        alt1 = f"what are the best options for {base}?"
-        alt2 = f"how much does {base} cost in {city}?"
+        templates = AI_ALTERNATIVE_TEMPLATES["default"]
+        topic = base
+    alternatives = [t.format(base=base, topic=topic, city=city) for t in templates]
 
     out = []
     seen = set()
-    for candidate in (alt1, alt2):
+    for candidate in alternatives:
         normalized = candidate.strip()
         key = normalized.lower()
         if normalized and key != q.lower() and key not in seen:

@@ -1,0 +1,127 @@
+# serp_vocab.yml — editorial vocabulary for the SERP audit pipeline.
+#
+# Spec: seo_geo_review_20260704.md C.4 (externalise hardcoded editorial
+# vocab from serp_audit.py / pattern_matching.py per the CLAUDE.md rule
+# that trigger lists and vocabularies live in config files, not Python).
+#
+# EDITORIAL FILE — a non-developer may edit any list here.
+# Values below are the exact lists previously hardcoded in Python.
+#
+# Precedence note: if the out-of-repo shared_config.json defines
+# "stop_words", that still overrides the stop_words list here (single
+# source of truth for cross-tool settings). Everything else is owned by
+# this file.
+
+# Words excluded from the n-gram corpus before Bowen pattern matching.
+# Includes geographic and clinical filler so location/topic words don't
+# dominate the bigram/trigram counts.
+stop_words:
+  - the
+  - and
+  - to
+  - of
+  - a
+  - in
+  - is
+  - for
+  - "on"    # quoted — bare `on` is YAML 1.1 boolean true
+  - with
+  - as
+  - at
+  - by
+  - an
+  - be
+  - or
+  - are
+  - from
+  - that
+  - this
+  - it
+  - we
+  - our
+  - us
+  - can
+  - will
+  - your
+  - you
+  - my
+  - me
+  - not
+  - have
+  - has
+  - but
+  - so
+  - if
+  - their
+  - they
+  - vancouver
+  - bc
+  - british
+  - columbia
+  - canada
+  - north
+  - west
+  - counselling
+  - counseling
+  - therapy
+  - therapist
+  - counsellor
+  - counselor
+  - service
+  - services
+  - clinic
+  - centre
+  - center
+  - help
+  - support
+  - highlytrained
+
+# PAA question categorisation triggers ("Bridge Strategy"). A question
+# containing any trigger (substring match, lowercased) gets that category
+# and a score of 10; first matching category wins, in this order.
+paa_category_triggers:
+  Commercial:
+    - cost
+    - price
+    - how much
+    - fees
+  Distress:
+    - survive
+    - divorce
+    - infidelity
+    - leave
+    - separation
+  Reactivity:
+    - narcissist
+    - toxic
+    - signs
+    - mean
+    - angry
+    - cut off
+    - hate
+
+# Tokens that mark a keyword as service-like when generating AI-likely
+# query alternatives (substring match on the de-localised keyword).
+service_like_tokens:
+  - counselling
+  - counseling
+  - counsellor
+  - counselor
+  - therapist
+  - therapy
+  - psychologist
+  - mental health
+
+# Templates for the two AI-likely informational alternatives generated per
+# keyword. Placeholders: {base} = de-localised keyword, {topic} = the
+# subject after "help with ", {city} = configured SERP city.
+ai_alternative_templates:
+  service:
+    - "how to choose the right {base}?"
+    - "how much does {base} cost in {city}?"
+  help_with:
+    - "what are effective ways to manage {topic}?"
+    - "where to get help for {topic} in {city}?"
+  default:
+    - "what are the best options for {base}?"
+    - "how much does {base} cost in {city}?"
