@@ -1378,7 +1378,8 @@ def main():
     # Initialize Enrichment Modules
     if ENRICHMENT_ENABLED:
         enricher = UrlEnricher(user_agent=CONFIG.get("enrichment", {}).get("user_agent", "MarketIntelligenceBot/1.0"),
-                               timeout=CONFIG.get("enrichment", {}).get("timeout_seconds", 10))
+                               timeout=CONFIG.get("enrichment", {}).get("timeout_seconds", 10),
+                               eeat_scan_chars=int(CONFIG.get("enrichment", {}).get("eeat_scan_chars", 8000)))
         content_classifier = ContentClassifier()
         entity_classifier = EntityClassifier(override_file=CONFIG.get(
             "files", {}).get("domain_overrides", "domain_overrides.yml"))
@@ -1584,6 +1585,14 @@ def main():
                                     'published_time')
                                 item['Modified_Time'] = features.get(
                                     'modified_time')
+                                # E-E-A-T author signals (Spec:
+                                # seo_geo_deferred_spec_v1.md#G.3).
+                                item['Author_Present'] = features.get(
+                                    'author_present', False)
+                                item['Credential_Hits'] = features.get(
+                                    'credential_hits', [])
+                                item['Review_Marker_Present'] = features.get(
+                                    'review_marker_present', False)
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:

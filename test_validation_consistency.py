@@ -38,6 +38,10 @@ KNOWN_UNVALIDATED = frozenset({
     "freshness",        # Section 2 evidence anchor (page ages vs the run's
                         # collection date); descriptive ages with no
                         # enforceable claim shape (seo_geo_deferred G.6)
+    "eeat_signals",     # Section 5b/7 evidence anchor (author byline and
+                        # credential counts per page); descriptive counts
+                        # with no enforceable claim shape
+                        # (seo_geo_deferred G.3)
 })
 
 

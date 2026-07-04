@@ -174,6 +174,17 @@ FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
   is_cited_in_aio, is_client), cited_avg_question_headings,
   uncited_avg_question_headings, client_page. These are computed
   facts; quote them, do not recompute.
+- keyword_profiles.eeat_signals: E-E-A-T author-signal audit of the
+  enriched top-10 pages (therapy is YMYL — visible credentials are
+  weighted by Google and AI engines). data_available=false means no
+  author-signal data was captured — skip these claims for that
+  keyword. Otherwise: pages (rank, source, author_present,
+  credential_hits — professional designations found on the page,
+  review_marker_present), credentialed_page_count, client_page.
+  Use these to state whether credentialed authorship is table-stakes
+  on that SERP (e.g. "7 of 8 enriched pages show credentials; the
+  client page shows none"). Quote counts exactly; never infer
+  credentials the data does not show.
 
 PAA ANALYSIS (primary data source for Section 5):
 - paa_analysis: pre-computed cross-cluster analysis.
@@ -456,6 +467,15 @@ when present. If the client page has a long intro_text_length
 relative to cited pages, say the answer is buried and recommend
 restructuring before new content.
 
+Where keyword_profiles.eeat_signals.data_available is true, state
+whether credentialed authorship is table-stakes on that SERP
+(credentialed_page_count of the enriched pages) and, when client_page
+is present, whether the client's page shows a credentialed byline. If
+most ranking pages carry credentials and the client's page does not,
+recommend adding a visible credentialed byline (and clinical-review
+line where review_marker_present is common) before or alongside the
+formatting work. Skip these claims when data_available is false.
+
 Do not fabricate answers to the questions — this section plans the
 page structure; the client writes the clinical content.
 
@@ -480,6 +500,10 @@ keyword with action != skip, state:
   gap or a client differentiation hypothesis
 - What success looks like (rank improvement, AIO citation gain)
 - What to avoid (audience mismatch, competing with legal firms)
+- Where keyword_profiles.eeat_signals.data_available is true for the
+  keyword, note whether credentialed authorship is table-stakes on
+  that SERP and fold a byline/credential requirement into the
+  recommendation when the data supports it
 Do not recommend content for skip keywords. Limit to 5
 recommendations maximum.
 

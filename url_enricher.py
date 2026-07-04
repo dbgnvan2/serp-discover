@@ -4,6 +4,7 @@ Handles URL fetching, HTML parsing, and feature extraction.
 """
 import requests
 from bs4 import BeautifulSoup
+import re
 import time
 import json
 import logging
@@ -22,10 +23,52 @@ def _is_question_shaped(text):
     return any(regex.search(text) for regex in _QUESTION_REGEXES)
 
 
+# Byline containers: a node whose class or itemprop marks it as an author
+# credit (E-E-A-T signal, Spec: seo_geo_deferred_spec_v1.md#G.3).
+_AUTHOR_CLASS_RE = re.compile(r"(author|byline)", re.IGNORECASE)
+
+
+def match_credential_tokens(text, tokens):
+    """Return the distinct credential tokens found in *text*, vocab order.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.3 — word-boundary matching for
+    single tokens (an "RP" inside another word like "harp" must not
+    fire), substring matching for multi-word phrases; case-insensitive.
+    Mirrors intent_classifier.py's matching approach.
+    """
+    text_lower = (text or "").lower()
+    hits = []
+    for token in tokens:
+        needle = str(token).strip().lower()
+        if not needle:
+            continue
+        if " " in needle:
+            matched = needle in text_lower
+        else:
+            matched = re.search(
+                r"\b" + re.escape(needle) + r"\b", text_lower) is not None
+        if matched and token not in hits:
+            hits.append(token)
+    return hits
+
+
 class UrlEnricher:
-    def __init__(self, user_agent="MarketIntelligenceBot/1.0", timeout=10):
+    def __init__(self, user_agent="MarketIntelligenceBot/1.0", timeout=10,
+                 eeat_vocab=None, eeat_scan_chars=8000):
         self.headers = {'User-Agent': user_agent}
         self.timeout = timeout
+        # E-E-A-T vocabulary is editorial and lives in serp_vocab.yml
+        # (eeat_signals section); injectable for tests.
+        if eeat_vocab is None:
+            from pattern_matching import SERP_VOCAB
+            eeat_vocab = SERP_VOCAB["eeat_signals"]
+        self._credential_tokens = list(eeat_vocab.get("credential_tokens") or [])
+        self._review_markers = [
+            str(m).lower() for m in (eeat_vocab.get("review_markers") or [])
+        ]
+        # How many leading body-text chars are scanned for credentials and
+        # review markers (config.yml enrichment.eeat_scan_chars).
+        self.eeat_scan_chars = int(eeat_scan_chars)
 
     def fetch_url(self, url):
         """
@@ -87,7 +130,10 @@ class UrlEnricher:
                 'question_headings': [],
                 'intro_text_length': 0,
                 'published_time': None,
-                'modified_time': None
+                'modified_time': None,
+                'author_present': False,
+                'credential_hits': [],
+                'review_marker_present': False
             }
 
         if not fetch_result.get('content'):
@@ -156,6 +202,12 @@ class UrlEnricher:
         published_time, modified_time = self._extract_dates(
             soup, json_ld_blocks)
 
+        # E-E-A-T author signals (Spec: seo_geo_deferred_spec_v1.md#G.3):
+        # therapy is YMYL, and visible author credentials are weighted by
+        # both Google and AI answer engines.
+        author_present, credential_hits, review_marker_present = \
+            self._extract_author_signals(soup, text, json_ld_blocks)
+
         # FAQ Heuristic
         faq_present = False
         if "FAQPage" in schema_types:
@@ -178,8 +230,78 @@ class UrlEnricher:
             'question_headings': question_headings[:10],
             'intro_text_length': intro_text_length,
             'published_time': published_time,
-            'modified_time': modified_time
+            'modified_time': modified_time,
+            'author_present': author_present,
+            'credential_hits': credential_hits,
+            'review_marker_present': review_marker_present
         }
+
+    def _extract_author_signals(self, soup, text, json_ld_blocks):
+        """Return (author_present, credential_hits, review_marker_present).
+
+        Spec: seo_geo_deferred_spec_v1.md#G.3. author_present fires on a
+        JSON-LD author/Person, a rel=author link, or a class/itemprop
+        author byline node. credential_hits are the distinct credential
+        tokens found in the first eeat_scan_chars of body text or in
+        JSON-LD author fields.
+        """
+        author_texts = []
+        author_present = False
+        for data in json_ld_blocks:
+            if self._collect_jsonld_authors(data, author_texts):
+                author_present = True
+
+        if not author_present:
+            for link in soup.find_all('a'):
+                rel = link.get('rel') or []
+                if any(str(r).lower() == 'author' for r in rel):
+                    author_present = True
+                    break
+
+        if not author_present:
+            if soup.find(attrs={'itemprop': 'author'}) is not None:
+                author_present = True
+            elif soup.find(class_=_AUTHOR_CLASS_RE) is not None:
+                author_present = True
+
+        scan_text = text[:self.eeat_scan_chars]
+        credential_corpus = scan_text + " " + " ".join(author_texts)
+        credential_hits = match_credential_tokens(
+            credential_corpus, self._credential_tokens)
+        scan_lower = scan_text.lower()
+        review_marker_present = any(
+            marker in scan_lower for marker in self._review_markers)
+        return author_present, credential_hits, review_marker_present
+
+    def _collect_jsonld_authors(self, data, out_texts):
+        """Walk parsed JSON-LD; collect author/Person text, return found flag."""
+        found = False
+        if isinstance(data, dict):
+            declared_type = data.get('@type')
+            types = declared_type if isinstance(declared_type, list) else [declared_type]
+            if 'Person' in types:
+                found = True
+                self._collect_string_leaves(data, out_texts)
+            if 'author' in data:
+                found = True
+                self._collect_string_leaves(data['author'], out_texts)
+            for value in data.values():
+                found = self._collect_jsonld_authors(value, out_texts) or found
+        elif isinstance(data, list):
+            for item in data:
+                found = self._collect_jsonld_authors(item, out_texts) or found
+        return found
+
+    def _collect_string_leaves(self, data, out_texts):
+        if isinstance(data, str):
+            if data.strip():
+                out_texts.append(data.strip())
+        elif isinstance(data, dict):
+            for value in data.values():
+                self._collect_string_leaves(value, out_texts)
+        elif isinstance(data, list):
+            for item in data:
+                self._collect_string_leaves(item, out_texts)
 
     def _extract_dates(self, soup, json_ld_blocks):
         """Return (published_time, modified_time) as raw strings or None.

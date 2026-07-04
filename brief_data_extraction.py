@@ -596,6 +596,45 @@ def _build_extractability(kw_rows, cited_domains, paa_questions,
     }
 
 
+def _build_eeat_signals(kw_rows, client_domain_lower):
+    """E-E-A-T author-signal audit of the enriched top-10 organic pages.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.3 — therapy is YMYL; both Google
+    and AI engines weight visible author credentials on health content.
+    Lets the brief say "N of M enriched pages carry credentialed bylines;
+    the client's page shows none/some".
+
+    Returns data_available=False when no row carries author-signal data
+    (analysis JSON predates capture, or enrichment disabled).
+    """
+    pages = []
+    for row in kw_rows[:10]:
+        if "author_present" not in row:
+            continue
+        pages.append({
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "author_present": bool(row.get("author_present")),
+            "credential_hits": row.get("credential_hits") or [],
+            "review_marker_present": bool(row.get("review_marker_present")),
+            "is_client": _is_client_domain(
+                row.get("domain") or "", client_domain_lower),
+        })
+
+    if not pages:
+        return {"data_available": False, "pages": [],
+                "credentialed_page_count": 0, "client_page": None}
+
+    client_pages = [p for p in pages if p["is_client"]]
+    return {
+        "data_available": True,
+        "pages": pages,
+        "credentialed_page_count": sum(
+            1 for p in pages if p["credential_hits"]),
+        "client_page": client_pages[0] if client_pages else None,
+    }
+
+
 def _parse_iso_datetime(value):
     """Parse an ISO-ish timestamp into a naive UTC datetime, or None.
 
@@ -1005,6 +1044,15 @@ def extract_analysis_data_from_json(
             if "Published_Time" in row or "Modified_Time" in row:
                 row_profile["published_time"] = row.get("Published_Time")
                 row_profile["modified_time"] = row.get("Modified_Time")
+                row_profile.setdefault("domain", _domain_from_link(link))
+            # E-E-A-T author signals (Spec: seo_geo_deferred_spec_v1.md
+            # #G.3). Older analysis JSONs carry no Author_Present key,
+            # which _build_eeat_signals treats as "no data captured".
+            if "Author_Present" in row:
+                row_profile["author_present"] = bool(row.get("Author_Present"))
+                row_profile["credential_hits"] = row.get("Credential_Hits") or []
+                row_profile["review_marker_present"] = bool(
+                    row.get("Review_Marker_Present"))
                 row_profile.setdefault("domain", _domain_from_link(link))
             organic_rows_by_kw[source_kw].append(row_profile)
             if src:
@@ -1435,6 +1483,7 @@ def extract_analysis_data_from_json(
                 metadata.get("created_at"),
                 client_domain_lower,
             ),
+            "eeat_signals": _build_eeat_signals(kw_rows, client_domain_lower),
         }
 
     client_aio_text_mentions = []

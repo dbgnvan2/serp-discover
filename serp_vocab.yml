@@ -112,6 +112,35 @@ service_like_tokens:
   - psychologist
   - mental health
 
+# E-E-A-T author-signal vocabulary (Spec: seo_geo_deferred_spec_v1.md#G.3).
+# Therapy is YMYL content: visible author credentials on ranking pages are
+# a signal both Google and AI answer engines weight.
+# - credential_tokens: professional designations that mark a byline as
+#   credentialed. Single tokens match on whole-word boundaries,
+#   case-insensitive ("RP" never fires inside "harp"); multi-word phrases
+#   match as substrings — same approach as intent_classifier_triggers.yml.
+# - review_markers: phrases indicating clinical/medical review of the page.
+eeat_signals:
+  credential_tokens:
+    - RCC
+    - CCC
+    - MSW
+    - RSW
+    - PhD
+    - PsyD
+    - RP
+    - RCT
+    - registered clinical counsellor
+    - registered psychologist
+    - registered social worker
+    - registered psychotherapist
+    - marriage and family therapist
+    - canadian certified counsellor
+  review_markers:
+    - medically reviewed
+    - clinically reviewed
+    - reviewed by
+
 # Templates for the two AI-likely informational alternatives generated per
 # keyword. Placeholders: {base} = de-localised keyword, {topic} = the
 # subject after "help with ", {city} = configured SERP city.

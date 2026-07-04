@@ -158,6 +158,7 @@ def build_main_report_payload(extracted_data):
             "aio_divergence": profile.get("aio_divergence"),
             "extractability": profile.get("extractability"),
             "freshness": profile.get("freshness"),
+            "eeat_signals": profile.get("eeat_signals"),
         }
 
     competitive_landscape = {}

@@ -647,6 +647,28 @@ count is honest signal too: service pages often carry no dates, and the tool
 reports that rather than pretending undated pages are new — an undated page
 is never counted as age zero.
 
+#### The E-E-A-T author-signal audit (evidence behind Sections 5b and 7)
+
+**What it is:** for every competitor page the tool fetches, it detects
+whether the page shows a named author (a byline, an author link, or author
+markup in the page's structured data), which professional credentials appear
+near the byline or in the opening text (RCC, MSW, PhD, "registered clinical
+counsellor", and so on), and whether the page carries a "medically reviewed"
+/ "clinically reviewed" line. The report then states, per keyword, how many
+of the analyzed ranking pages carry credentialed bylines and whether Living
+Systems' own page does.
+
+**Why it matters:** therapy content is YMYL, and both Google and AI answer
+engines weight visible author expertise on health content. If seven of eight
+ranking pages show credentialed authors and the client's page shows none,
+adding a visible credentialed byline is likely a prerequisite — cheaper than
+new content and invisible to generic SEO checklists. The credential and
+review vocabularies are editorial: edit the `eeat_signals` section of
+`serp_vocab.yml` (not Python) to add designations the tool should recognize.
+Short tokens match whole words only ("RP" never matches inside "harp"). How
+much of each page's opening text is scanned is configurable via
+`enrichment.eeat_scan_chars` in `config.yml` (default 8000 characters).
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market
