@@ -121,5 +121,55 @@ class TestSerpLauncherResolution(unittest.TestCase):
                 os.chdir(cwd)
 
 
+class TestRunButtonSelectionRegression(unittest.TestCase):
+    """Regression: the Run button silently did nothing.
+
+    Tkinter Listbox defaults to exportselection=1, so clicking any other
+    selection-exporting widget (keyword-file combobox, model combobox,
+    new-keywords entry) cleared the script selection WITHOUT firing
+    <<ListboxSelect>>. The Run button stayed enabled while run_script()
+    saw an empty curselection() and returned silently.
+
+    Source-inspection tests (no tkinter required) per the CLAUDE.md GUI
+    testing convention.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        with open(MODULE_PATH, encoding="utf-8") as fh:
+            cls.source = fh.read()
+
+    def _extract_call(self, anchor):
+        start = self.source.index(anchor)
+        depth = 0
+        for i in range(start + len(anchor) - 1, len(self.source)):
+            if self.source[i] == "(":
+                depth += 1
+            elif self.source[i] == ")":
+                depth -= 1
+                if depth == 0:
+                    return self.source[start:i + 1]
+        raise AssertionError(f"Unbalanced call for anchor {anchor!r}")
+
+    def test_script_listbox_disables_exportselection(self):
+        call = self._extract_call("self.script_listbox = tk.Listbox(")
+        self.assertIn(
+            "exportselection=False", call,
+            "script_listbox must set exportselection=False or the selection "
+            "is silently cleared when another widget takes the X selection",
+        )
+
+    def test_run_script_never_fails_silently_on_empty_selection(self):
+        start = self.source.index("def run_script(self):")
+        end = self.source.index("\n    def ", start)
+        body = self.source[start:end]
+        guard = body.split("if not selection:", 1)[1].split("return", 1)[0]
+        self.assertIn(
+            "messagebox.", guard,
+            "run_script's empty-selection guard must inform the user, "
+            "not return silently",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

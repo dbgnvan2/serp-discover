@@ -106,8 +106,16 @@ class SerpLauncherApp:
         list_frame = ttk.LabelFrame(content_frame, text="Available Scripts")
         list_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
+        # exportselection=False is load-bearing: with Tkinter's default
+        # (True), clicking into any other selection-exporting widget — the
+        # keyword-file combobox, the model combobox, the new-keywords entry —
+        # silently clears the listbox selection WITHOUT firing
+        # <<ListboxSelect>>. The Run button then stays enabled while
+        # run_script() sees an empty curselection() and returns, i.e. the
+        # button "does nothing".
         self.script_listbox = tk.Listbox(
-            list_frame, height=10, font=("Courier", 12), activestyle="none")
+            list_frame, height=10, font=("Courier", 12), activestyle="none",
+            exportselection=False)
         self.script_listbox.pack(
             side="left", fill="both", expand=True, padx=5, pady=5)
         self.script_listbox.bind('<<ListboxSelect>>', self.on_select)
@@ -621,6 +629,13 @@ class SerpLauncherApp:
     def run_script(self):
         selection = self.script_listbox.curselection()
         if not selection:
+            # Defensive: should be unreachable now that the listbox keeps its
+            # selection (exportselection=False), but never fail silently.
+            messagebox.showinfo(
+                "Run Script",
+                "Select a script from the list first, then click Run."
+            )
+            self.run_btn.config(state="disabled")
             return
 
         script_info = self.scripts[selection[0]]
