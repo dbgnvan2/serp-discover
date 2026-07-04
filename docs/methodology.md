@@ -95,3 +95,9 @@ Every AI Overview citation domain is entity-classified (same rules as organic re
 During enrichment, `url_enricher.py` measures how liftable each ranking page's answers are: the number of question-shaped H2/H3 headings (question detection reuses the `title_patterns.py` regexes), the body-text length before the first H2 (a long intro buries the answer), and FAQ presence. `brief_data_extraction._build_extractability` compares those signals on AIO-cited vs uncited pages per keyword (`keyword_profiles.extractability`) and locates the client's own page, so Section 5b formatting advice is grounded in measured differences rather than generic best practice.
 
 *Spec: seo_geo_review_20260704.md T.2. Implemented 2026-07-04.*
+
+### Content freshness / decay tracking (report Section 2 evidence)
+
+During enrichment, `url_enricher.py` extracts a best-effort `published_time` and `modified_time` per page — from `article:published_time` / `article:modified_time` meta tags, then JSON-LD `datePublished` / `dateModified`, then the first `<time datetime=…>` element (published only); no NLP date guessing from body text. `serp_audit.py` copies both onto enriched organic rows (`Published_Time`, `Modified_Time`), and `brief_data_extraction._build_freshness` computes `keyword_profiles.freshness`: per-page `age_days` anchored to the run's `Created_At` (not wall-clock, so re-extracting an old analysis JSON is stable), `median_age_days` over dated pages only, `dated_page_count`, and the client's page when present. Undated pages are reported as undated, never as age 0. Section 2 may state the median age and the client page's age when `data_available` is true.
+
+*Spec: seo_geo_deferred_spec_v1.md#G.6. Implemented 2026-07-04.*

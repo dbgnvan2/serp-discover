@@ -35,6 +35,9 @@ KNOWN_UNVALIDATED = frozenset({
     "extractability",   # Section 5b evidence anchor (question-heading and
                         # intro-length measurements per page); descriptive
                         # counts with no enforceable claim shape
+    "freshness",        # Section 2 evidence anchor (page ages vs the run's
+                        # collection date); descriptive ages with no
+                        # enforceable claim shape (seo_geo_deferred G.6)
 })
 
 

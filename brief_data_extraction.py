@@ -7,6 +7,7 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 import yaml
 
@@ -595,6 +596,87 @@ def _build_extractability(kw_rows, cited_domains, paa_questions,
     }
 
 
+def _parse_iso_datetime(value):
+    """Parse an ISO-ish timestamp into a naive UTC datetime, or None.
+
+    Trims a trailing ``Z``; unparseable strings return None (counted as
+    undated), never raise. Spec: seo_geo_deferred_spec_v1.md#G.6.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1]
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def _build_freshness(kw_rows, run_created_at, client_domain_lower):
+    """Content freshness/decay audit of the enriched top-10 organic pages.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.6 — AI answer surfaces and Google
+    both prefer fresh YMYL content. Page ages are computed against the
+    run's Created_At (NOT wall-clock) so re-extracting an old analysis
+    JSON yields stable numbers.
+
+    Returns data_available=False when no row carries freshness data
+    (analysis JSON predates capture, or enrichment disabled). Undated
+    pages are reported honestly via dated_page_count — an absent date is
+    never treated as age 0.
+    """
+    run_dt = _parse_iso_datetime(run_created_at)
+
+    pages = []
+    for row in kw_rows[:10]:
+        if "published_time" not in row and "modified_time" not in row:
+            continue
+        published = row.get("published_time")
+        modified = row.get("modified_time")
+        # Age from the most recent signal: modified when parseable,
+        # else published. Undated (neither parseable) -> age_days None.
+        page_dt = _parse_iso_datetime(modified) or _parse_iso_datetime(published)
+        age_days = None
+        if page_dt is not None and run_dt is not None:
+            age_days = (run_dt - page_dt).days
+        pages.append({
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "published_time": published,
+            "modified_time": modified,
+            "age_days": age_days,
+            "is_client": _is_client_domain(row.get("domain") or "", client_domain_lower),
+        })
+
+    if not pages:
+        return {"data_available": False, "pages": [],
+                "median_age_days": None, "dated_page_count": 0,
+                "client_page": None}
+
+    ages = sorted(p["age_days"] for p in pages if p["age_days"] is not None)
+    if ages:
+        mid = len(ages) // 2
+        if len(ages) % 2:
+            median_age = ages[mid]
+        else:
+            median_age = round((ages[mid - 1] + ages[mid]) / 2, 1)
+    else:
+        median_age = None
+
+    client_pages = [p for p in pages if p["is_client"]]
+    return {
+        "data_available": True,
+        "pages": pages,
+        "median_age_days": median_age,
+        "dated_page_count": len(ages),
+        "client_page": client_pages[0] if client_pages else None,
+    }
+
+
 def _build_aio_citation_surfaces(
     citation_domains_by_kw,
     client_domain_lower,
@@ -917,6 +999,13 @@ def extract_analysis_data_from_json(
                 row_profile["intro_text_length"] = _safe_int(
                     row.get("Intro_Text_Length"), 0)
                 row_profile["domain"] = _domain_from_link(link)
+            # Content freshness signals (Spec: seo_geo_deferred_spec_v1.md
+            # #G.6). Older analysis JSONs carry neither key, which
+            # _build_freshness treats as "no freshness data captured".
+            if "Published_Time" in row or "Modified_Time" in row:
+                row_profile["published_time"] = row.get("Published_Time")
+                row_profile["modified_time"] = row.get("Modified_Time")
+                row_profile.setdefault("domain", _domain_from_link(link))
             organic_rows_by_kw[source_kw].append(row_profile)
             if src:
                 entry = top_sources_by_kw_counter[source_kw][src]
@@ -1339,6 +1428,11 @@ def extract_analysis_data_from_json(
                 kw_rows,
                 aio_citation_domains_by_kw.get(kw, {}),
                 paa_for_kw,
+                client_domain_lower,
+            ),
+            "freshness": _build_freshness(
+                kw_rows,
+                metadata.get("created_at"),
                 client_domain_lower,
             ),
         }

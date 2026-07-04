@@ -85,7 +85,9 @@ class UrlEnricher:
                 'faq_present': False,
                 'question_heading_count': 0,
                 'question_headings': [],
-                'intro_text_length': 0
+                'intro_text_length': 0,
+                'published_time': None,
+                'modified_time': None
             }
 
         if not fetch_result.get('content'):
@@ -132,16 +134,27 @@ class UrlEnricher:
         meta_desc = meta_desc_tag['content'].strip(
         ) if meta_desc_tag and meta_desc_tag.get('content') else ""
 
-        # Schema Extraction
+        # Schema Extraction — parse each JSON-LD block once, then feed the
+        # parsed data to type extraction and date extraction.
         schema_types = set()
+        json_ld_blocks = []
         scripts = soup.find_all('script', type='application/ld+json')
         for script in scripts:
             if script.string:
                 try:
                     data = json.loads(script.string)
-                    self._extract_schema_types(data, schema_types)
                 except json.JSONDecodeError:
-                    pass
+                    continue
+                json_ld_blocks.append(data)
+                self._extract_schema_types(data, schema_types)
+
+        # Content freshness (Spec: seo_geo_deferred_spec_v1.md#G.6):
+        # best-effort published/modified timestamps, raw ISO strings or
+        # None. Priority per field: article:* meta tags, then JSON-LD
+        # datePublished/dateModified, then the first <time datetime=...>
+        # (published only). No NLP date guessing from body text.
+        published_time, modified_time = self._extract_dates(
+            soup, json_ld_blocks)
 
         # FAQ Heuristic
         faq_present = False
@@ -163,8 +176,64 @@ class UrlEnricher:
             'faq_present': faq_present,
             'question_heading_count': len(question_headings),
             'question_headings': question_headings[:10],
-            'intro_text_length': intro_text_length
+            'intro_text_length': intro_text_length,
+            'published_time': published_time,
+            'modified_time': modified_time
         }
+
+    def _extract_dates(self, soup, json_ld_blocks):
+        """Return (published_time, modified_time) as raw strings or None.
+
+        Spec: seo_geo_deferred_spec_v1.md#G.6. Sources, in priority order
+        per field: ``article:published_time`` / ``article:modified_time``
+        meta tags, JSON-LD ``datePublished`` / ``dateModified``, then the
+        first ``<time datetime=...>`` element (published_time only).
+        Values are returned verbatim; parsing/validation happens
+        downstream in brief_data_extraction (unparseable -> undated).
+        """
+        published = None
+        modified = None
+
+        for prop, current in (("article:published_time", "published"),
+                              ("article:modified_time", "modified")):
+            tag = soup.find('meta', attrs={'property': prop})
+            content = (tag.get('content') or "").strip() if tag else ""
+            if content:
+                if current == "published":
+                    published = content
+                else:
+                    modified = content
+
+        if published is None or modified is None:
+            dates = {}
+            for data in json_ld_blocks:
+                self._extract_schema_dates(data, dates)
+            if published is None:
+                published = dates.get("datePublished")
+            if modified is None:
+                modified = dates.get("dateModified")
+
+        if published is None:
+            time_tag = soup.find('time', attrs={'datetime': True})
+            if time_tag:
+                datetime_attr = (time_tag.get('datetime') or "").strip()
+                if datetime_attr:
+                    published = datetime_attr
+
+        return published, modified
+
+    def _extract_schema_dates(self, data, dates):
+        """Walk parsed JSON-LD collecting the first datePublished/dateModified."""
+        if isinstance(data, dict):
+            for key in ("datePublished", "dateModified"):
+                value = data.get(key)
+                if key not in dates and isinstance(value, str) and value.strip():
+                    dates[key] = value.strip()
+            for v in data.values():
+                self._extract_schema_dates(v, dates)
+        elif isinstance(data, list):
+            for item in data:
+                self._extract_schema_dates(item, dates)
 
     def _extract_schema_types(self, data, type_set):
         if isinstance(data, dict):

@@ -629,6 +629,24 @@ the client's page has none — or the client's answer starts 2,000 characters
 into the page — the report can say exactly what to restructure and why, before
 recommending any new content.
 
+#### The content freshness audit (evidence behind Section 2)
+
+**What it is:** for every competitor page the tool fetches, it now captures
+the page's published and last-modified dates (from the page's own metadata —
+never guessed from body text) and computes each page's age as of the day the
+SERP data was collected. Per keyword, the report can state the median age of
+the dated ranking pages, how many ranking pages carry no date at all, and how
+old Living Systems' own page is.
+
+**Why it matters:** therapy content is YMYL ("Your Money or Your Life"), and
+both Google and AI answer surfaces prefer fresh YMYL content. "The top-10 for
+this keyword is young" means new content must launch current and be
+maintained; "the client's page is two years older than the median" is a
+concrete refresh trigger that costs far less than new content. The undated
+count is honest signal too: service pages often carry no dates, and the tool
+reports that rather than pretending undated pages are new — an undated page
+is never counted as age zero.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market

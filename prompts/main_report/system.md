@@ -71,6 +71,15 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
   listicle_numeric, brand_only, question, other), dominant_pattern (set
   only when one pattern reaches ≥4 of 10 — never "other"), and examples.
   May be null if no titles were available.
+- keyword_profiles.freshness: content-age audit of the enriched top-10
+  pages, computed against the run's collection date.
+  data_available=false means no freshness data was captured — skip age
+  claims for that keyword. Otherwise: pages (rank, source,
+  published_time, modified_time, age_days — null age_days means the
+  page carries no parseable date, NOT age zero), median_age_days
+  (dated pages only; null when no page is dated), dated_page_count,
+  client_page. These are computed facts; quote them, never recompute
+  or estimate ages.
 
 COMPETITIVE LANDSCAPE:
 - competitive_landscape: per-keyword summaries with entity breakdown
@@ -354,7 +363,11 @@ has_ai_overview and aio_citation_count, even if the values look
 unusual. State whether the client is visible, at what rank, and
 with what stability. List SERP modules present. List PAA questions
 for this keyword (or state none were captured). Note if
-total_results < 500.
+total_results < 500. Where freshness.data_available is true, you may
+state the median page age (median_age_days over dated_page_count
+dated pages) and the client page's age when client_page is present;
+if dated_page_count is low, say most ranking pages are undated
+rather than inferring anything about their age.
 
 After all 6 subsections, write one synthesis paragraph grouping
 keywords that share entity mixes and intent patterns. This

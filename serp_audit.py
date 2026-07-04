@@ -1578,6 +1578,12 @@ def main():
                                     'question_headings', [])
                                 item['Intro_Text_Length'] = features.get(
                                     'intro_text_length', 0)
+                                # Content freshness signals (Spec:
+                                # seo_geo_deferred_spec_v1.md#G.6).
+                                item['Published_Time'] = features.get(
+                                    'published_time')
+                                item['Modified_Time'] = features.get(
+                                    'modified_time')
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:
