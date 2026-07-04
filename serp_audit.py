@@ -1559,6 +1559,13 @@ def main():
                                     'schema_types', [])
                                 item['FAQ_Present'] = features.get(
                                     'faq_present', False)
+                                # Answer-extractability signals (T.2).
+                                item['Question_Heading_Count'] = features.get(
+                                    'question_heading_count', 0)
+                                item['Question_Headings'] = features.get(
+                                    'question_headings', [])
+                                item['Intro_Text_Length'] = features.get(
+                                    'intro_text_length', 0)
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:

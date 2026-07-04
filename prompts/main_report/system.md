@@ -157,6 +157,14 @@ FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
   and only where the recommended content genuinely matches the
   context (e.g. FAQPage only alongside a recommended FAQ block).
   If the list is empty, omit markup recommendations.
+- keyword_profiles.extractability: answer-extraction audit of the
+  enriched top-10 pages. data_available=false means no
+  extractability data was captured — skip these claims for that
+  keyword. Otherwise: pages (rank, source, question_heading_count,
+  headings_matching_paa, intro_text_length, faq_present,
+  is_cited_in_aio, is_client), cited_avg_question_headings,
+  uncited_avg_question_headings, client_page. These are computed
+  facts; quote them, do not recompute.
 
 PAA ANALYSIS (primary data source for Section 5):
 - paa_analysis: pre-computed cross-cluster analysis.
@@ -425,6 +433,15 @@ is defend, strengthen, or enter (skip keywords get nothing):
     schema_recommendations, naming the schema_types and
     key_properties (an FAQ block recommendation always pairs with
     the faq_block entry).
+
+Where keyword_profiles.extractability.data_available is true, ground
+the formatting advice in it: state the question-heading averages for
+AIO-cited vs uncited pages (cited_avg_question_headings vs
+uncited_avg_question_headings), and describe the client_page signals
+(question headings, PAA-matching headings, intro length, FAQ block)
+when present. If the client page has a long intro_text_length
+relative to cited pages, say the answer is buried and recommend
+restructuring before new content.
 
 Do not fabricate answers to the questions — this section plans the
 page structure; the client writes the clinical content.

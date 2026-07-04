@@ -32,6 +32,9 @@ KNOWN_UNVALIDATED = frozenset({
     "aio_divergence",   # Section 4 evidence anchor (rank-vs-citation domain
                         # lists); the binding boolean surface is
                         # strategic_flags.geo_alerts, which is pre-computed
+    "extractability",   # Section 5b evidence anchor (question-heading and
+                        # intro-length measurements per page); descriptive
+                        # counts with no enforceable claim shape
 })
 
 

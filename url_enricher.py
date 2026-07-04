@@ -8,6 +8,19 @@ import time
 import json
 import logging
 
+from title_patterns import PATTERNS as _TITLE_PATTERNS
+
+# Question-shaped heading detection reuses the shared title-pattern regexes
+# so the definition of "question" is single-sourced (Spec: seo_geo_review T.2).
+_QUESTION_PATTERN_NAMES = {"question", "how_to", "what_is"}
+_QUESTION_REGEXES = [
+    regex for name, regex in _TITLE_PATTERNS if name in _QUESTION_PATTERN_NAMES
+]
+
+
+def _is_question_shaped(text):
+    return any(regex.search(text) for regex in _QUESTION_REGEXES)
+
 
 class UrlEnricher:
     def __init__(self, user_agent="MarketIntelligenceBot/1.0", timeout=10):
@@ -69,7 +82,10 @@ class UrlEnricher:
                 'title_length': 0,
                 'meta_desc_length': 0,
                 'schema_types': [],
-                'faq_present': False
+                'faq_present': False,
+                'question_heading_count': 0,
+                'question_headings': [],
+                'intro_text_length': 0
             }
 
         if not fetch_result.get('content'):
@@ -87,6 +103,28 @@ class UrlEnricher:
         # Headings
         h1_count = len(soup.find_all('h1'))
         h2_count = len(soup.find_all('h2'))
+
+        # Answer-extractability signals (Spec: seo_geo_review_20260704.md
+        # T.2): AI answer engines favor pages whose section headings are the
+        # question in the searcher's words and whose answer starts
+        # immediately. Question-shape detection reuses the title_patterns
+        # regexes (question / how_to / what_is) so "what counts as a
+        # question" has one definition in the codebase.
+        question_headings = []
+        for heading in soup.find_all(['h2', 'h3']):
+            heading_text = heading.get_text(" ", strip=True)
+            if heading_text and _is_question_shaped(heading_text):
+                question_headings.append(heading_text)
+        # Length of body text before the first H2 — a long intro means any
+        # answer is buried below warm-up prose.
+        first_h2 = soup.find('h2')
+        if first_h2 is not None:
+            intro_text_length = sum(
+                len(p.get_text(" ", strip=True))
+                for p in first_h2.find_all_previous('p')
+            )
+        else:
+            intro_text_length = len(text)
 
         # Meta
         title = soup.title.string.strip() if soup.title and soup.title.string else ""
@@ -122,7 +160,10 @@ class UrlEnricher:
             'title_length': len(title),
             'meta_desc_length': len(meta_desc),
             'schema_types': list(schema_types),
-            'faq_present': faq_present
+            'faq_present': faq_present,
+            'question_heading_count': len(question_headings),
+            'question_headings': question_headings[:10],
+            'intro_text_length': intro_text_length
         }
 
     def _extract_schema_types(self, data, type_set):

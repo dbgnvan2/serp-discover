@@ -529,6 +529,72 @@ def _build_schema_signals(kw_rows):
     return signals
 
 
+def _normalize_question(text):
+    return re.sub(r"[^a-z0-9 ]+", "", str(text or "").lower()).strip()
+
+
+def _build_extractability(kw_rows, cited_domains, paa_questions,
+                          client_domain_lower):
+    """Answer-extractability audit of enriched top-10 organic pages.
+
+    Spec: seo_geo_review_20260704.md T.2 — AI answer engines select pages
+    they can lift a complete answer from: question-shaped headings in the
+    searcher's words, answer at the top, FAQ block present. This compares
+    those signals on pages the AI Overview cites vs pages that merely rank,
+    and shows where the client's own page sits.
+
+    Returns data_available=False when no row carries extractability data
+    (analysis JSON predates capture, or enrichment disabled).
+    """
+    normalized_paa = [_normalize_question(q) for q in (paa_questions or [])]
+    normalized_paa = [q for q in normalized_paa if q]
+
+    pages = []
+    for row in kw_rows[:10]:
+        if "question_heading_count" not in row:
+            continue
+        headings = [_normalize_question(h) for h in row.get("question_headings") or []]
+        paa_matches = sum(
+            1 for h in headings if h and any(
+                h in q or q in h for q in normalized_paa
+            )
+        )
+        domain = row.get("domain") or ""
+        pages.append({
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "question_heading_count": row.get("question_heading_count", 0),
+            "headings_matching_paa": paa_matches,
+            "intro_text_length": row.get("intro_text_length", 0),
+            "faq_present": bool(row.get("faq_present")),
+            "is_cited_in_aio": domain in cited_domains,
+            "is_client": _is_client_domain(domain, client_domain_lower),
+        })
+
+    if not pages:
+        return {"data_available": False, "pages": [],
+                "cited_avg_question_headings": None,
+                "uncited_avg_question_headings": None,
+                "client_page": None}
+
+    def _avg(rows):
+        return (
+            round(sum(r["question_heading_count"] for r in rows) / len(rows), 1)
+            if rows else None
+        )
+
+    cited_pages = [p for p in pages if p["is_cited_in_aio"]]
+    uncited_pages = [p for p in pages if not p["is_cited_in_aio"]]
+    client_pages = [p for p in pages if p["is_client"]]
+    return {
+        "data_available": True,
+        "pages": pages,
+        "cited_avg_question_headings": _avg(cited_pages),
+        "uncited_avg_question_headings": _avg(uncited_pages),
+        "client_page": client_pages[0] if client_pages else None,
+    }
+
+
 def _build_aio_citation_surfaces(
     citation_domains_by_kw,
     client_domain_lower,
@@ -843,6 +909,14 @@ def extract_analysis_data_from_json(
             if "Schema_Types" in row or "FAQ_Present" in row:
                 row_profile["schema_types"] = row.get("Schema_Types") or []
                 row_profile["faq_present"] = bool(row.get("FAQ_Present"))
+            # Answer-extractability signals (Spec: seo_geo_review T.2).
+            if "Question_Heading_Count" in row:
+                row_profile["question_heading_count"] = _safe_int(
+                    row.get("Question_Heading_Count"), 0)
+                row_profile["question_headings"] = row.get("Question_Headings") or []
+                row_profile["intro_text_length"] = _safe_int(
+                    row.get("Intro_Text_Length"), 0)
+                row_profile["domain"] = _domain_from_link(link)
             organic_rows_by_kw[source_kw].append(row_profile)
             if src:
                 entry = top_sources_by_kw_counter[source_kw][src]
@@ -1260,6 +1334,12 @@ def extract_analysis_data_from_json(
                 organic_top10_domains_by_kw.get(kw, {}),
                 client_domain_lower,
                 client_cited=bool(kw_client_aio),
+            ),
+            "extractability": _build_extractability(
+                kw_rows,
+                aio_citation_domains_by_kw.get(kw, {}),
+                paa_for_kw,
+                client_domain_lower,
             ),
         }
 

@@ -156,6 +156,7 @@ def build_main_report_payload(extracted_data):
             "client_aio_cited": profile.get("client_aio_cited"),
             "schema_signals": profile.get("schema_signals"),
             "aio_divergence": profile.get("aio_divergence"),
+            "extractability": profile.get("extractability"),
         }
 
     competitive_landscape = {}

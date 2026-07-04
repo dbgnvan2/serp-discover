@@ -592,6 +592,22 @@ per keyword instead of leaving it to intuition. Which entity types count as
 outreach surfaces is configurable in `config.yml` under
 `geo.outreach_entity_types`.
 
+#### The answer-extractability audit (evidence behind Section 5b)
+
+**What it is:** for every competitor page the tool fetches, it now measures
+three things AI answer engines respond to: how many section headings are
+phrased as questions (in the searcher's own words), how much warm-up text sits
+before the first section heading (a long intro buries the answer), and whether
+the page has an FAQ block. The report compares these numbers on pages the AI
+Overview actually cites versus pages that merely rank, and shows where Living
+Systems' own page sits.
+
+**Why it matters:** "format your page for AI" is usually generic advice. This
+turns it into a measurement: if cited pages average four question headings and
+the client's page has none — or the client's answer starts 2,000 characters
+into the page — the report can say exactly what to restructure and why, before
+recommending any new content.
+
 #### advisory_briefing_*.md
 Executive framing:
 - **Key findings**: What the data reveals about the market
