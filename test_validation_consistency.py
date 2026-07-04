@@ -25,7 +25,28 @@ USER_TEMPLATE = os.path.join(os.path.dirname(__file__), "prompts", "main_report"
 # mechanically rule-checked by regex.  Add new entries here only when the
 # field is legitimately not checkable; add a brief reason in the comment.
 KNOWN_UNVALIDATED = frozenset({
-    "top5_organic",   # used as evidence anchor; no enforceable claim shape
+    "top5_organic",     # used as evidence anchor; no enforceable claim shape
+    "schema_signals",   # Section 5b evidence anchor (counts/types of schema
+                        # markup on ranking pages); prose claims about markup
+                        # gaps have no mechanically checkable shape
+    "aio_divergence",   # Section 4 evidence anchor (rank-vs-citation domain
+                        # lists); the binding boolean surface is
+                        # strategic_flags.geo_alerts, which is pre-computed
+    "extractability",   # Section 5b evidence anchor (question-heading and
+                        # intro-length measurements per page); descriptive
+                        # counts with no enforceable claim shape
+    "freshness",        # Section 2 evidence anchor (page ages vs the run's
+                        # collection date); descriptive ages with no
+                        # enforceable claim shape (seo_geo_deferred G.6)
+    "eeat_signals",     # Section 5b/7 evidence anchor (author byline and
+                        # credential counts per page); descriptive counts
+                        # with no enforceable claim shape
+                        # (seo_geo_deferred G.3)
+    "client_rank",      # Section 4 Google-vs-Bing comparison quotes the
+                        # client's pre-computed Google rank next to the
+                        # bing_visibility client_rank; a descriptive
+                        # integer with no enforceable claim shape
+                        # (seo_geo_deferred G.5)
 })
 
 

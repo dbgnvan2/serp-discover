@@ -13,6 +13,41 @@ def progress(message):
 
 MAIN_REPORT_PROMPT_DEFAULT = os.path.join("prompts", "main_report")
 
+SCHEMA_RECOMMENDATIONS_DEFAULT = "schema_recommendations.yml"
+
+
+def load_schema_recommendations(path=SCHEMA_RECOMMENDATIONS_DEFAULT):
+    """Load the editorial schema.org recommendation table for the brief.
+
+    Spec: seo_geo_review_20260704.md G.2.
+
+    Returns a list of recommendation dicts, or [] when the file is absent
+    (the brief then omits markup recommendations rather than failing).
+    Raises ValueError on a malformed file so editorial mistakes surface
+    loudly instead of silently dropping recommendations.
+    """
+    if not os.path.exists(path):
+        progress(f"[warn] {path} not found — brief will omit schema markup recommendations.")
+        return []
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    entries = data.get("recommendations")
+    if not isinstance(entries, list):
+        raise ValueError(f"{path}: expected a top-level 'recommendations' list.")
+    required = {"context", "label", "schema_types", "rationale"}
+    for i, entry in enumerate(entries):
+        if not isinstance(entry, dict) or not required.issubset(entry):
+            missing = required - set(entry or {})
+            raise ValueError(
+                f"{path}: recommendations[{i}] missing required field(s): "
+                f"{', '.join(sorted(missing))}"
+            )
+        if not isinstance(entry["schema_types"], list) or not entry["schema_types"]:
+            raise ValueError(
+                f"{path}: recommendations[{i}].schema_types must be a non-empty list."
+            )
+    return entries
+
 ADVISORY_PROMPT_DEFAULT = os.path.join("prompts", "advisory")
 
 CORRECTION_PROMPT_DEFAULT = os.path.join("prompts", "correction", "user_template.md")
@@ -119,6 +154,11 @@ def build_main_report_payload(extracted_data):
             "client_rank": profile.get("client_rank"),
             "client_rank_delta": profile.get("client_rank_delta"),
             "client_aio_cited": profile.get("client_aio_cited"),
+            "schema_signals": profile.get("schema_signals"),
+            "aio_divergence": profile.get("aio_divergence"),
+            "extractability": profile.get("extractability"),
+            "freshness": profile.get("freshness"),
+            "eeat_signals": profile.get("eeat_signals"),
         }
 
     competitive_landscape = {}
@@ -156,8 +196,25 @@ def build_main_report_payload(extracted_data):
         "aio_citations_top25": extracted_data.get("aio_citations_top25", [])[:25],
         "aio_total_citations": extracted_data.get("aio_total_citations"),
         "aio_unique_sources": extracted_data.get("aio_unique_sources"),
+        "aio_citation_surfaces": extracted_data.get("aio_citation_surfaces", {}),
+        "aio_trigger_analysis": extracted_data.get("aio_trigger_analysis", {}),
+        "bing_visibility": extracted_data.get("bing_visibility", {}),
+        # Client-private GSC data (Spec: seo_geo_deferred_spec_v1.md#G.4).
+        # None unless config gsc.feed_strategic_flags is true and a
+        # run_gsc_analysis sidecar exists.
+        "gsc_summary": extracted_data.get("gsc_summary"),
+        "forum_threads_by_keyword": {
+            keyword: rows[:5]
+            for keyword, rows in (extracted_data.get("forum_threads_by_keyword", {}) or {}).items()
+        },
         "paa_analysis": extracted_data.get("paa_analysis", {}),
-        "bowen_reframe_faqs": (extracted_data.get("paa_by_intent") or {}).get("Systemic", [])[:10],
+        # External Locus (medical-model framed) questions are the reframe
+        # candidates — the ones to answer in Bowen framing. Fixed from the
+        # Systemic bucket, which is demand already aligned with the client's
+        # framework (Spec: seo_geo_review_20260704.md C.2).
+        "bowen_reframe_faqs": (extracted_data.get("paa_by_intent") or {}).get("External Locus", [])[:10],
+        "aligned_demand_faqs": (extracted_data.get("paa_by_intent") or {}).get("Systemic", [])[:10],
+        "schema_recommendations": load_schema_recommendations(),
         "feasibility_summary": extracted_data.get("feasibility_summary"),
         "tool_recommendations_verified": extracted_data.get("tool_recommendations_verified", []),
         "autocomplete_by_keyword": {

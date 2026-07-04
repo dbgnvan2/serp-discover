@@ -141,8 +141,13 @@ class TestGenerateContentBrief(unittest.TestCase):
             "dominated_by_nonprofit",
         )
         full_size = len(gcb.json.dumps(extracted, separators=(",", ":"), default=str))
-        payload_size = len(gcb.json.dumps(payload, separators=(",", ":"), default=str))
+        # schema_recommendations is an additive editorial table (loaded from
+        # schema_recommendations.yml, not derived from extracted data), so the
+        # compactness invariant applies to the payload without it.
+        payload_wo_editorial = {k: v for k, v in payload.items() if k != "schema_recommendations"}
+        payload_size = len(gcb.json.dumps(payload_wo_editorial, separators=(",", ":"), default=str))
         self.assertLess(payload_size, full_size)
+        self.assertIn("schema_recommendations", payload)
 
     def test_generate_local_report_contains_sections(self):
         extracted = gcb.extract_analysis_data_from_json(

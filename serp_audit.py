@@ -6,13 +6,15 @@ import random
 from dotenv import load_dotenv
 import logging
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import Counter
 import hashlib
 import jsonschema
 import generate_insight_report
 import generate_content_brief
 import pattern_matching
+import query_variants
+import bing_check
 import handoff_writer
 import yaml
 import metrics
@@ -61,14 +63,14 @@ if os.path.exists("config.yml"):
     with open("config.yml", "r") as f:
         CONFIG = yaml.safe_load(f) or {}
 
-SHARED_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "shared_config.json")
-SHARED_CONFIG = {}
-if os.path.exists(SHARED_CONFIG_PATH):
-    try:
-        with open(SHARED_CONFIG_PATH, "r") as f:
-            SHARED_CONFIG = json.load(f)
-    except Exception as e:
-        print(f"Warning: Could not load shared config: {e}")
+# Cross-tool shared config (out-of-repo). Path resolution, the
+# SERP_SHARED_CONFIG env override, and malformed-file handling live in
+# shared_config.py — the single owner of that contract (Spec:
+# seo_geo_deferred_spec_v1.md#C.9).
+from shared_config import load_shared_config, shared_config_path
+
+SHARED_CONFIG_PATH = shared_config_path()
+SHARED_CONFIG = load_shared_config()
 
 INPUT_FILE = CONFIG.get("files", {}).get("input_csv", "keywords.csv")
 
@@ -152,14 +154,35 @@ FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
 CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.get("analysis_report", {}).get("client_domain", ""))
 MOZ_CACHE_TTL_DAYS       = int(CONFIG.get("moz", {}).get("cache_ttl_days", 30))
 
-STOP_WORDS = set(SHARED_CONFIG.get("stop_words", [
-    "the", "and", "to", "of", "a", "in", "is", "for", "on", "with", "as", "at", "by", "an", "be", "or", "are", "from", "that",
-    "this", "it", "we", "our", "us", "can", "will", "your", "you", "my", "me", "not", "have", "has", "but", "so", "if", "their", "they",
-    "vancouver", "bc", "british", "columbia", "canada", "north", "west", "counselling", "counseling", "therapy", "therapist",
-    "counsellor", "counselor", "service", "services", "clinic", "centre", "center", "help", "support",
-    "highlytrained"
-]))
+# Editorial vocabulary lives in serp_vocab.yml (Spec: seo_geo_review C.4).
+# The shared cross-tool config's "stop_words" still wins when present
+# (single source of truth); serp_vocab.yml is the in-repo editorial source.
+SERP_VOCAB = pattern_matching.SERP_VOCAB
+STOP_WORDS = set(SHARED_CONFIG.get("stop_words") or SERP_VOCAB["stop_words"])
 pattern_matching.STOP_WORDS = STOP_WORDS  # sync config-driven stop words
+PAA_CATEGORY_TRIGGERS = SERP_VOCAB["paa_category_triggers"]
+SERVICE_LIKE_TOKENS = tuple(SERP_VOCAB["service_like_tokens"])
+AI_ALTERNATIVE_TEMPLATES = SERP_VOCAB["ai_alternative_templates"]
+SITUATIONAL_TEMPLATES = list(SERP_VOCAB["situational_templates"])
+
+# --- SITUATIONAL PROBES (Spec: seo_geo_deferred_spec_v1.md#T.5) ---
+# "S"-label conversational query probes. Paid feature, off by default;
+# capped at 6 extra SerpAPI calls per run (decision gate D-1).
+_sit_cfg = CONFIG.get("situational_probes", {}) or {}
+SITUATIONAL_PROBES_ENABLED = bool(_sit_cfg.get("enabled", False))
+SITUATIONAL_MAX_PROBES_PER_RUN = max(0, int(_sit_cfg.get("max_probes_per_run", 6)))
+SITUATIONAL_PROBES_PER_KEYWORD = max(0, int(_sit_cfg.get("probes_per_keyword", 2)))
+SITUATIONAL_KEYWORDS_MODE = str(_sit_cfg.get("keywords", "priority"))
+# A probe query must be this long to count as "situational" (the whole
+# point is measuring 6+-word conversational queries).
+SITUATIONAL_MIN_WORDS = 6
+
+# --- BING SECONDARY-INDEX CHECK (Spec: seo_geo_deferred_spec_v1.md#G.5) ---
+# One SerpAPI engine=bing call per root keyword when enabled. Default OFF
+# (decision gate D-4); logic lives in bing_check.py.
+_bing_cfg = CONFIG.get("bing_check", {}) or {}
+BING_CHECK_ENABLED = bool(_bing_cfg.get("enabled", False))
+BING_CHECK_NUM = max(1, int(_bing_cfg.get("num", 20)))
 
 # Load Omitted Domains from external file (Single Source of Truth)
 OMITTED_DOMAINS = set()
@@ -242,7 +265,7 @@ def configure_runtime_mode():
     global AI_QUERY_ALTERNATIVES_ENABLED, RELATED_QUESTIONS_AI_FOLLOWUP
     global RELATED_QUESTIONS_AI_MAX_CALLS, GOOGLE_MAX_PAGES, MAPS_MAX_PAGES
     global AI_FALLBACK_WITHOUT_LOCATION, NO_CACHE_ENABLED
-    global DEEP_RESEARCH_MODE, BALANCED_MODE
+    global DEEP_RESEARCH_MODE, BALANCED_MODE, SITUATIONAL_PROBES_ENABLED
 
     if LOW_API_MODE:
         BALANCED_MODE = False
@@ -254,9 +277,14 @@ def configure_runtime_mode():
         AI_FALLBACK_WITHOUT_LOCATION = False
         RELATED_QUESTIONS_AI_FOLLOWUP = False
         NO_CACHE_ENABLED = False
+        # Low API mode never runs situational probes (T.5).
+        SITUATIONAL_PROBES_ENABLED = False
         return
 
     if DEEP_RESEARCH_MODE:
+        # Deep Research mode enables situational probes (T.5); the per-run
+        # call cap (max_probes_per_run, gate D-1) still applies.
+        SITUATIONAL_PROBES_ENABLED = True
         return
 
     if BALANCED_MODE:
@@ -327,6 +355,18 @@ def _fetch_serp_api(params):
             results = search.get_dict()
             logging.info(f"API Return Message: {json.dumps(results, indent=2)}")
             if "error" in results:
+                error_text = str(results["error"]).lower()
+                # Quota/auth errors never succeed on retry — fail fast
+                # instead of burning paid attempts (seo_geo_review C.6).
+                non_retryable = (
+                    "invalid api key", "unauthorized", "account",
+                    "run out of searches", "out of searches", "plan limit",
+                )
+                if any(marker in error_text for marker in non_retryable):
+                    logging.error(
+                        f"API Error (non-retryable, aborting): {results['error']}"
+                    )
+                    return None
                 logging.error(f"API Error (attempt {attempt}): {results['error']}")
                 if attempt == RETRY_MAX_ATTEMPTS:
                     return None
@@ -912,12 +952,8 @@ def parse_data(keyword, results, query_metadata):
     # --- 2. PAA INTELLIGENCE (Questions) ---
     paa_list = []
 
-    # Bridge Strategy Triggers
-    trigger_map = {
-        "Commercial": ["cost", "price", "how much", "fees"],
-        "Distress": ["survive", "divorce", "infidelity", "leave", "separation"],
-        "Reactivity": ["narcissist", "toxic", "signs", "mean", "angry", "cut off", "hate"]
-    }
+    # Bridge Strategy Triggers — editorial list in serp_vocab.yml (C.4)
+    trigger_map = PAA_CATEGORY_TRIGGERS
 
     metrics["Has_PAA_AI_Overview"] = False
 
@@ -990,11 +1026,15 @@ def parse_data(keyword, results, query_metadata):
                                    })
 
     if "discussions_and_forums" in primary_results:
+        # Per-thread detail (forum name, date) feeds the brief's outreach
+        # surface analysis (Spec: seo_geo_review_20260704.md T.6).
         for item in primary_results["discussions_and_forums"]:
             expansion_list.append({**common_fields,
                                    "Type": "Discussion/Forum",
                                    "Term": item.get("title"),
-                                   "Link": item.get("link")
+                                   "Link": item.get("link"),
+                                   "Forum": item.get("source"),
+                                   "Date": item.get("date")
                                    })
 
     if "filters" in primary_results:
@@ -1102,94 +1142,27 @@ _validate_strategic_patterns = pattern_matching._validate_strategic_patterns
 _load_strategic_patterns = pattern_matching._load_strategic_patterns
 analyze_strategic_opportunities = pattern_matching.analyze_strategic_opportunities
 
+# Query variant generation lives in query_variants.py (extracted alongside
+# the T.5 situational probes to keep this module under the I.6.3 size cap).
+# These binders supply the config-derived arguments.
+
+def _serp_city():
+    return LOCATION.split(",")[0].strip()
+
+
 def _autocomplete_query_variants(keyword):
     """Build fallback autocomplete queries for long/local phrases."""
-    q = (keyword or "").strip()
-    variants = [q]
-
-    city = LOCATION.split(",")[0].strip().lower()
-    lowered = q.lower()
-    if city:
-        for suffix in (f" in {city}", f" {city}"):
-            if lowered.endswith(suffix):
-                trimmed = q[:len(q) - len(suffix)].strip()
-                if trimmed:
-                    variants.append(trimmed)
-
-    for prefix in ("help with ", "help for ", "need help with "):
-        if lowered.startswith(prefix):
-            core = q[len(prefix):].strip()
-            if core:
-                variants.append(core)
-                variants.append(f"{core} help")
-            break
-
-    deduped = []
-    seen = set()
-    for item in variants:
-        key = item.lower()
-        if item and key not in seen:
-            seen.add(key)
-            deduped.append(item)
-    return deduped
+    return query_variants.autocomplete_query_variants(keyword, _serp_city())
 
 
 def _ai_query_alternatives(base_keyword):
-    """Generate two AI-likely informational alternatives for a base query."""
-    q = (base_keyword or "").strip()
-    if not q:
-        return []
+    """Generate two AI-likely informational alternatives for a base query.
 
-    city = LOCATION.split(",")[0].strip()
-    city_lower = city.lower()
-    base = q
-    base_lower = base.lower()
-
-    # Remove obvious local suffixes (often suppress AI overviews).
-    directional_city_pattern = rf"\s+in\s+(north|south|east|west)\s+{re.escape(city_lower)}$"
-    if re.search(directional_city_pattern, base_lower):
-        base = re.sub(directional_city_pattern, "", base, flags=re.I).strip()
-        base_lower = base.lower()
-    directional_city_pattern_2 = rf"\s+(north|south|east|west)\s+{re.escape(city_lower)}$"
-    if re.search(directional_city_pattern_2, base_lower):
-        base = re.sub(directional_city_pattern_2, "", base, flags=re.I).strip()
-        base_lower = base.lower()
-
-    for suffix in (f" in {city_lower}", f" near {city_lower}", f" {city_lower}"):
-        if base_lower.endswith(suffix):
-            base = base[:len(base) - len(suffix)].strip()
-            base_lower = base.lower()
-            break
-
-    base = re.sub(r"^(best|top)\s+", "", base, flags=re.I).strip()
-    base_lower = base.lower()
-    if not base:
-        return []
-
-    service_like_tokens = (
-        "counselling", "counseling", "counsellor", "counselor",
-        "therapist", "therapy", "psychologist", "mental health"
+    Token list and question templates are editorial → serp_vocab.yml (C.4).
+    """
+    return query_variants.ai_query_alternatives(
+        base_keyword, _serp_city(), SERVICE_LIKE_TOKENS, AI_ALTERNATIVE_TEMPLATES
     )
-    if any(tok in base_lower for tok in service_like_tokens):
-        alt1 = f"how to choose the right {base}?"
-        alt2 = f"how much does {base} cost in {city}?"
-    elif base_lower.startswith("help with "):
-        topic = base[10:].strip()
-        alt1 = f"what are effective ways to manage {topic}?"
-        alt2 = f"where to get help for {topic} in {city}?"
-    else:
-        alt1 = f"what are the best options for {base}?"
-        alt2 = f"how much does {base} cost in {city}?"
-
-    out = []
-    seen = set()
-    for candidate in (alt1, alt2):
-        normalized = candidate.strip()
-        key = normalized.lower()
-        if normalized and key != q.lower() and key not in seen:
-            out.append(normalized)
-            seen.add(key)
-    return out
 
 
 def load_priority_keywords_from_analysis(path):
@@ -1241,6 +1214,68 @@ def expand_keywords_for_ai(keywords):
         for idx, alt in enumerate(ai_alts, start=1):
             expanded.append((alt, base, f"A.{idx}"))
     return expanded
+
+
+# --- SITUATIONAL (CONVERSATIONAL) QUERY PROBES ---
+# Spec: seo_geo_deferred_spec_v1.md#T.5. "S"-label 6+-word situation-style
+# queries measuring the AIO trigger rate by query length. Generation and
+# execution logic live in query_variants.py; these binders supply config.
+
+def fetch_situational_probe(query, run_id, probe_index):
+    """Single-page SerpAPI fetch for one "S"-label probe.
+
+    Exactly one paid call per probe (gate D-1): no pagination, no maps
+    call, no enrichment, and no AI Overview token follow-up. Routed
+    through the standard retry wrapper (_fetch_serp_api). Raw response is
+    saved under raw/{run_id}/ (gitignored).
+    Spec: seo_geo_deferred_spec_v1.md#T.5.
+    """
+    params = {
+        "engine": GOOGLE_ENGINE,
+        "q": query,
+        "location": LOCATION,
+        "hl": GOOGLE_HL,
+        "gl": GOOGLE_GL,
+        "device": GOOGLE_DEVICE,
+        "num": 10,
+        "api_key": API_KEY,
+    }
+    _apply_no_cache(params)
+    results = _fetch_serp_api(params)
+    if results:
+        save_raw_json(run_id, f"situational_probe_{probe_index}", results)
+    return results
+
+
+def run_situational_probes(root_keywords, paa_rows, run_id):
+    """Execute the situational probe pass; returns (probe_rows, citation_rows).
+
+    Probe rows (Query_Label "S") feed ONLY the AIO trigger-rate analysis
+    and the AI Overview citation rows — no organic rows, no SQLite writes
+    (volatility unaffected), no maps calls, no enrichment (T.5.3). With
+    the feature disabled this makes zero SerpAPI calls (T.5.1).
+    Spec: seo_geo_deferred_spec_v1.md#T.5.
+    """
+    if not SITUATIONAL_PROBES_ENABLED or SITUATIONAL_MAX_PROBES_PER_RUN <= 0:
+        print(f"Situational probes: 0 SerpAPI calls (cap {SITUATIONAL_MAX_PROBES_PER_RUN}; disabled)")
+        return [], []
+
+    ordered = query_variants.situational_keyword_order(
+        list(root_keywords), SITUATIONAL_KEYWORDS_MODE,
+        CONFIG.get("files", {}).get("output_json", ""))
+    jobs = query_variants.generate_situational_probes(
+        ordered, paa_rows,
+        max_total=SITUATIONAL_MAX_PROBES_PER_RUN,
+        per_keyword=SITUATIONAL_PROBES_PER_KEYWORD,
+        templates=SITUATIONAL_TEMPLATES,
+        city=_serp_city(),
+        min_words=SITUATIONAL_MIN_WORDS)
+    probe_rows, citation_rows = query_variants.execute_situational_probes(
+        jobs, run_id, fetch_probe=fetch_situational_probe,
+        client_domain=CLIENT_DOMAIN, request_delay=REQUEST_DELAY_SECONDS)
+
+    print(f"Situational probes: {len(jobs)} SerpAPI calls (cap {SITUATIONAL_MAX_PROBES_PER_RUN})")
+    return probe_rows, citation_rows
 
 
 def fetch_autocomplete(keyword):
@@ -1368,7 +1403,8 @@ def main():
     # Initialize Enrichment Modules
     if ENRICHMENT_ENABLED:
         enricher = UrlEnricher(user_agent=CONFIG.get("enrichment", {}).get("user_agent", "MarketIntelligenceBot/1.0"),
-                               timeout=CONFIG.get("enrichment", {}).get("timeout_seconds", 10))
+                               timeout=CONFIG.get("enrichment", {}).get("timeout_seconds", 10),
+                               eeat_scan_chars=int(CONFIG.get("enrichment", {}).get("eeat_scan_chars", 8000)))
         content_classifier = ContentClassifier()
         entity_classifier = EntityClassifier(override_file=CONFIG.get(
             "files", {}).get("domain_overrides", "domain_overrides.yml"))
@@ -1413,6 +1449,8 @@ def main():
     print(f"--- BALANCED MODE: {BALANCED_MODE} ---")
     print(f"--- DEEP RESEARCH MODE: {DEEP_RESEARCH_MODE} ---")
     print(f"--- AI query alternatives enabled: {AI_QUERY_ALTERNATIVES_ENABLED} ---")
+    print(f"--- Situational probes enabled: {SITUATIONAL_PROBES_ENABLED} "
+          f"(cap {SITUATIONAL_MAX_PROBES_PER_RUN}/run) ---")
     print(f"--- no_cache enabled: {NO_CACHE_ENABLED} ---")
     print(f"--- Google max pages: {GOOGLE_MAX_PAGES} | Maps max pages: {MAPS_MAX_PAGES} ---")
     print(f"--- Related-questions AI follow-up: {RELATED_QUESTIONS_AI_FOLLOWUP} ---")
@@ -1554,6 +1592,34 @@ def main():
                                 item['Entity_Type'] = e_type
                                 item['Word_Count'] = features.get(
                                     'word_count_est', "N/A")
+                                # Schema/FAQ signals feed the brief's
+                                # FAQ / Answer-Extraction Plan (Spec:
+                                # seo_geo_review_20260704.md T.1/G.2).
+                                item['Schema_Types'] = features.get(
+                                    'schema_types', [])
+                                item['FAQ_Present'] = features.get(
+                                    'faq_present', False)
+                                # Answer-extractability signals (T.2).
+                                item['Question_Heading_Count'] = features.get(
+                                    'question_heading_count', 0)
+                                item['Question_Headings'] = features.get(
+                                    'question_headings', [])
+                                item['Intro_Text_Length'] = features.get(
+                                    'intro_text_length', 0)
+                                # Content freshness signals (Spec:
+                                # seo_geo_deferred_spec_v1.md#G.6).
+                                item['Published_Time'] = features.get(
+                                    'published_time')
+                                item['Modified_Time'] = features.get(
+                                    'modified_time')
+                                # E-E-A-T author signals (Spec:
+                                # seo_geo_deferred_spec_v1.md#G.3).
+                                item['Author_Present'] = features.get(
+                                    'author_present', False)
+                                item['Credential_Hits'] = features.get(
+                                    'credential_hits', [])
+                                item['Review_Marker_Present'] = features.get(
+                                    'review_marker_present', False)
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:
@@ -1753,6 +1819,33 @@ def main():
 
         time.sleep(1.2)
 
+    # --- SITUATIONAL QUERY PROBES (Spec: seo_geo_deferred_spec_v1.md#T.5) ---
+    # Run after the main loop so the probes can reuse this run's PAA
+    # questions. Probe AIO citations join ai_overview_citations (labeled
+    # "S"); probe rows land in their own situational_probes list — they
+    # never enter organic rows, intent verdicts, volatility, or the
+    # competitor handoff (T.5.3).
+    all_situational_probes, _probe_citations = run_situational_probes(
+        keywords, all_paa, run_id)
+    if _probe_citations:
+        all_ai_citations.extend(_probe_citations)
+
+    # --- BING SECONDARY-INDEX CHECK (Spec: seo_geo_deferred_spec_v1.md#G.5) ---
+    # One engine=bing visibility call per root keyword; default OFF (D-4).
+    # No enrichment/classification of Bing results — visibility only.
+    all_bing_rows = bing_check.run_bing_checks(
+        keywords, run_id,
+        enabled=BING_CHECK_ENABLED,
+        num=BING_CHECK_NUM,
+        location=LOCATION,
+        force_local=FORCE_LOCAL_INTENT,
+        fetch_fn=_fetch_serp_api,
+        apply_no_cache=_apply_no_cache,
+        api_key=API_KEY,
+        client_domain=CLIENT_DOMAIN,
+        request_delay=REQUEST_DELAY_SECONDS,
+    )
+
     # --- N-GRAM ANALYSIS (SERP Language Patterns) ---
     print("Running N-Gram Analysis (SERP Language Patterns)...")
 
@@ -1862,6 +1955,8 @@ def main():
         "autocomplete_suggestions": all_autocomplete,
         "help_guide": help_rows,
         "keyword_feasibility": all_feasibility,
+        "situational_probes": all_situational_probes,
+        "bing_visibility": all_bing_rows,
     }
 
     # --- BUILD KEYWORD_PROFILES ---
@@ -1904,7 +1999,7 @@ def main():
     _handoff_n = int(_at_cfg.get("n", 10))
     _omit_from_audit = list(_at_cfg.get("omit_from_audit", []))
     _client_brand_names = CONFIG.get("analysis_report", {}).get("client_name_patterns", [])
-    _run_ts = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    _run_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     _slug = _derive_output_slug(INPUT_FILE)
     _ts_short = datetime.now().strftime("%Y%m%d_%H%M")
     _handoff_path = os.path.join(
@@ -2002,6 +2097,12 @@ def main():
             if all_feasibility:
                 pd.DataFrame(all_feasibility).to_excel(
                     writer, sheet_name="Keyword_Feasibility", index=False)
+            if all_situational_probes:
+                pd.DataFrame(all_situational_probes).to_excel(
+                    writer, sheet_name="Situational_Probes", index=False)
+            if all_bing_rows:
+                pd.DataFrame(all_bing_rows).to_excel(
+                    writer, sheet_name="Bing_Visibility", index=False)
             if _serp_intent_detail_rows:
                 pd.DataFrame(_serp_intent_detail_rows).to_excel(
                     writer, sheet_name="SERP_Intent_Detail", index=False)

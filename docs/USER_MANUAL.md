@@ -435,6 +435,27 @@ analysis_report:
   location: "North Vancouver, BC, Canada"
 ```
 
+### **shared_config.json** — Cross-Tool Shared Settings (optional, out-of-repo)
+
+**What it is:** one optional JSON file, stored one directory ABOVE this repo
+(`../shared_config.json`), that both this tool and Tool 2 (the competitor
+audit tool) read. It carries the settings that must agree across tools:
+the client's Domain Authority, domain, and location; the stop-word list;
+the feasibility thresholds; and the omitted-domains file path.
+
+**Why it exists:** if the two tools disagreed about who the client is or
+what "feasible" means, their outputs could not be compared. Putting those
+values in one shared file outside either repo makes them a single source of
+truth. When the file is present, its values override the same settings in
+`config.yml` and `serp_vocab.yml`; when it is absent, the in-repo defaults
+apply and the run log says so. A broken (malformed) file never crashes a
+run — the tool logs one warning naming the file and falls back to defaults,
+so you always know which settings were actually in effect.
+
+**Relocating it:** set the `SERP_SHARED_CONFIG` environment variable to the
+file's full path if your deployment doesn't keep it one directory up.
+The full key list is in `docs/config_reference.md` ("Shared config").
+
 ### **intent_mapping.yml** — SERP Intent Rules
 
 Defines how `(content_type, entity_type, local_pack, domain_role)` maps to intent. First-match-wins — order matters.
@@ -539,6 +560,257 @@ Per-keyword content roadmap. For each keyword:
 - **Confidence**: High (clear intent) / Medium (some ambiguity) / Low (mixed intent)
 
 **How to use:** Content team uses this to build the publishing roadmap. Start with high-feasibility, high-confidence keywords.
+
+#### The FAQ / Answer-Extraction Plan (report Section 5b)
+
+**What it is:** For each priority keyword, the report recommends up to three real
+People Also Ask questions — quoted word-for-word from the SERP — to be used as
+literal headings on the client's page, each with answer-first formatting
+guidance and a structured-data (schema.org markup) recommendation.
+
+**Why it matters:** AI answer surfaces (Google's AI Overviews and AI assistants)
+don't read a page the way a person does. They scan for a complete, confident
+answer they can lift directly. A page that opens each section with the exact
+question a searcher asks, followed immediately by a 1–3 sentence direct answer,
+is far more likely to be cited than one that buries the answer after warm-up
+prose. This is also why the plan distinguishes two kinds of questions:
+
+- **Reframe candidates** (medical-model framing, e.g. "How is anxiety
+  diagnosed?"): the searcher is inside the framing Living Systems
+  differentiates from. Answering these in Bowen terms is the differentiation
+  play — the report states the reframe angle for each.
+- **Aligned demand** (already in systems language, e.g. "How does family of
+  origin affect relationships?"): demand Living Systems is naturally
+  positioned to answer; no reframe needed.
+
+**The structured-data line:** for each keyword the report states how many of
+the analyzed top-10 pages carry FAQ markup (FAQPage) and which schema.org
+types dominate, then recommends markup for the client's page. Recommendations
+come from the editorial table in `schema_recommendations.yml` — edit that file
+(not Python) to change what markup the tool may recommend.
+
+#### The citation surface map and GEO alerts (report Section 4)
+
+**What it is:** the report classifies every source the AI Overview cites
+(directory, media, counselling competitor, …) and reports two things most
+SEO tools miss:
+
+- **Outreach candidates** — third-party surfaces (Psychology Today-style
+  directories, media outlets, associations, named Reddit/forum threads) that
+  the AI Overview already trusts for your keywords. Being listed, complete,
+  and mentioned on those surfaces is how you occupy the roughly three-quarters
+  of AI citations that point somewhere other than a brand's own site.
+- **GEO alerts** — keywords where Living Systems ranks in the organic top-10
+  but the AI Overview cites other sources instead. This is the single most
+  actionable AI-visibility signal: the page already ranks, so reformatting it
+  for answer extraction (see Section 5b) is cheaper and faster than writing
+  anything new.
+
+**Why it matters:** Google rank and AI citation are separate scores. A page
+can rank #3 and be invisible in the AI answer, and a page that doesn't rank
+top-10 can be cited. The divergence lists in Section 4 make that gap visible
+per keyword instead of leaving it to intuition. Which entity types count as
+outreach surfaces is configurable in `config.yml` under
+`geo.outreach_entity_types`.
+
+#### The answer-extractability audit (evidence behind Section 5b)
+
+**What it is:** for every competitor page the tool fetches, it now measures
+three things AI answer engines respond to: how many section headings are
+phrased as questions (in the searcher's own words), how much warm-up text sits
+before the first section heading (a long intro buries the answer), and whether
+the page has an FAQ block. The report compares these numbers on pages the AI
+Overview actually cites versus pages that merely rank, and shows where Living
+Systems' own page sits.
+
+**Why it matters:** "format your page for AI" is usually generic advice. This
+turns it into a measurement: if cited pages average four question headings and
+the client's page has none — or the client's answer starts 2,000 characters
+into the page — the report can say exactly what to restructure and why, before
+recommending any new content.
+
+#### The content freshness audit (evidence behind Section 2)
+
+**What it is:** for every competitor page the tool fetches, it now captures
+the page's published and last-modified dates (from the page's own metadata —
+never guessed from body text) and computes each page's age as of the day the
+SERP data was collected. Per keyword, the report can state the median age of
+the dated ranking pages, how many ranking pages carry no date at all, and how
+old Living Systems' own page is.
+
+**Why it matters:** therapy content is YMYL ("Your Money or Your Life"), and
+both Google and AI answer surfaces prefer fresh YMYL content. "The top-10 for
+this keyword is young" means new content must launch current and be
+maintained; "the client's page is two years older than the median" is a
+concrete refresh trigger that costs far less than new content. The undated
+count is honest signal too: service pages often carry no dates, and the tool
+reports that rather than pretending undated pages are new — an undated page
+is never counted as age zero.
+
+#### The E-E-A-T author-signal audit (evidence behind Sections 5b and 7)
+
+**What it is:** for every competitor page the tool fetches, it detects
+whether the page shows a named author (a byline, an author link, or author
+markup in the page's structured data), which professional credentials appear
+near the byline or in the opening text (RCC, MSW, PhD, "registered clinical
+counsellor", and so on), and whether the page carries a "medically reviewed"
+/ "clinically reviewed" line. The report then states, per keyword, how many
+of the analyzed ranking pages carry credentialed bylines and whether Living
+Systems' own page does.
+
+**Why it matters:** therapy content is YMYL, and both Google and AI answer
+engines weight visible author expertise on health content. If seven of eight
+ranking pages show credentialed authors and the client's page shows none,
+adding a visible credentialed byline is likely a prerequisite — cheaper than
+new content and invisible to generic SEO checklists. The credential and
+review vocabularies are editorial: edit the `eeat_signals` section of
+`serp_vocab.yml` (not Python) to add designations the tool should recognize.
+Short tokens match whole words only ("RP" never matches inside "harp"). How
+much of each page's opening text is scanned is configurable via
+`enrichment.eeat_scan_chars` in `config.yml` (default 8000 characters).
+
+#### The situational query probes and AI-answer trigger rate (report Section 4)
+
+**What it is:** an optional probe pass that searches Google the way people
+actually talk to AI assistants. Instead of a keyword like "couples
+counselling north vancouver", each probe is a full situation — "why does my
+partner refuse to go to counselling" — taken verbatim from the keyword's own
+People-Also-Ask questions (6+ words, medical-model-framed ones first) or,
+when a keyword has no long questions, from editorial templates you can edit
+in `serp_vocab.yml` (`situational_templates`). The report then states the
+measured AI Overview trigger rate by query length — how often 1–3-word,
+4–5-word, and 6+-word queries produced an AI answer in THIS run — and names
+any probe where Living Systems was cited in the AI answer.
+
+**Why it matters:** the claim driving this feature is that short keywords
+trigger an AI answer roughly 23% of the time while six-plus-word,
+situation-style queries trigger one about 77% of the time — and that nobody
+types keywords into ChatGPT; they describe their whole situation. If that
+holds on this market, the future search surface for these keywords is the AI
+answer, not the ten blue links, and answer-extraction formatting (Section 5b)
+becomes the priority. Rather than assuming the industry figure, the probes
+measure it on the client's own keywords, in the client's own city, so
+strategy rests on local evidence.
+
+**Cost control:** every probe is a paid SerpAPI call, so the feature is OFF
+by default (`situational_probes.enabled: false` in `config.yml`). When
+enabled it is hard-capped at `max_probes_per_run` calls (default 6 — two
+probes for each of the top three priority keywords), and the run log prints
+exactly how many probe calls were made. Deep Research mode turns probes on;
+Low API mode never runs them. Probe results feed only the trigger-rate
+analysis and the AI-citation data — they never distort organic rankings,
+intent verdicts, rank-change history, or the competitor handoff file.
+
+#### The Bing visibility check (report Section 4)
+
+**What it is:** an optional pass that runs each root keyword once against
+Bing (via SerpAPI) and records whether livingsystems.ca appears, at what
+rank, with which domains holding Bing's top three. The report then puts the
+Google and Bing positions side by side per keyword — "visible on Google at
+#4 but absent from Bing's top-20", or the reverse. Bing results are not
+classified or enriched; this is purely a visibility snapshot.
+
+**Why it matters:** ChatGPT's web search grounds substantially on Bing's
+index, so Bing standing is a proxy for a whole AI-referral surface that
+Google data cannot show. A page that ranks well on Google but is invisible
+on Bing is invisible to a growing class of AI-assisted searchers — and
+nobody notices, because almost all reporting is Google-only. If the check
+is off (the default), the report says so explicitly rather than guessing.
+
+**Cost control:** each checked keyword is one paid SerpAPI call, so the
+feature is OFF by default (`bing_check.enabled: false` in `config.yml`).
+Turn it on to add exactly one call per root keyword; `bing_check.num`
+(default 20) controls how deep the Bing results go, and the run log states
+how many Bing calls were made.
+
+#### The AI-engine visibility probe (standalone: ai_visibility_*.md)
+
+**What it is:** a standalone script (`python probe_ai_visibility.py --yes`)
+that asks real AI assistants — Claude and Google Gemini, each with web
+search/grounding turned on — the same situation-style questions a
+therapy-seeker would type ("my partner refuses to try counselling what can
+I do", prefixed with "I'm in North Vancouver, BC."), and records per engine
+whether the answer **mentioned** Living Systems by name, **cited**
+livingsystems.ca as a source, and which **competitors** were cited instead.
+Questions come from the run's own situational probes when available, then
+long People-Also-Ask questions, then the editorial templates in
+`serp_vocab.yml`. Every run is stored in the local database, and the report
+shows this run's mention/citation rate per engine next to the same rates
+from previous runs.
+
+**Why it matters — and why it's a trend, not a snapshot:** AI answers are a
+growing referral surface: people increasingly ask an assistant instead of
+searching, and whether the assistant names or links Living Systems decides
+whether those people ever reach the site. But assistant behaviour swings
+between model versions — the same question can produce a citation one month
+and silence the next. A single measurement is therefore nearly meaningless;
+the signal is the direction across runs ("cited in 2 of the last 5 runs,
+up from 0"). That's why the tool records every run per engine and the report
+always carries a caveat that single-run values are snapshots.
+
+**Choosing engines:** `config.yml ai_visibility.engines` (default both
+`claude` and `gemini`) controls which assistants run; `--engines claude`
+overrides for one run. Claude uses your existing `ANTHROPIC_API_KEY`;
+Gemini needs the optional `GEMINI_API_KEY` — if it's not set the engine is
+skipped with a warning and the rest of the run completes.
+
+**Cost control:** each question is one paid API call per engine (default
+cap: 20 questions × 2 engines = 40 calls). The script always prints that
+math first and makes **zero** calls unless you pass `--yes` (or set
+`ai_visibility.assume_yes: true`).
+
+#### The Search Console sponge analysis (standalone: gsc_analysis_*.md)
+
+**What it is:** a standalone script (`python run_gsc_analysis.py`) that
+joins Google Search Console — the client's own free, first-party
+clicks/impressions data — onto the keywords and question-style queries
+from the latest market analysis. For every query it shows clicks,
+impressions, click-through rate (CTR), average position, and whether
+Google showed an AI Overview for it in this run. It writes a markdown
+report plus a JSON sidecar the content brief can optionally consume.
+
+**Why it matters — the "sponge" effect:** the SERP tool sees rank but
+never clicks. A page can hold position #3 and still starve, because an AI
+Overview above it answers the question and soaks up the click. That loss
+is invisible in ranking reports; it only shows in the client's own CTR.
+
+**How to read the sponge table:** the table compares the *median CTR at
+comparable position* — e.g. among queries where the client ranks 1–3,
+what's the typical CTR when an AI Overview is present vs when it isn't?
+- A **lower AIO median at the same position band** is the sponge effect
+  measured on the client's own traffic: rankings intact, clicks absorbed.
+- Each band is only compared when **both** buckets hold at least 3
+  queries; otherwise the row says "insufficient data" — the tool never
+  extrapolates from one or two queries.
+- The **reformat candidates** list below it names the queries that rank
+  well (top 10) but earn a CTR below the no-AIO median for their band —
+  the pages losing clicks despite good positions. Rows flagged ⚑ also
+  carry a GEO alert (the client ranks but the AI Overview cites other
+  sources): reformat those pages for answer extraction FIRST, because
+  fixing them can win back both the citation and the click.
+- Queries with "no GSC data" had no recorded impressions in the window —
+  reported as absent, never invented as zero.
+
+**Setup (one-time, service account):**
+1. In Google Cloud Console, create (or reuse) a project, enable the
+   **Search Console API**, and create a **service account**. Download its
+   JSON key file.
+2. In **Search Console → Settings → Users and permissions**, add the
+   service account's email address (`...@...iam.gserviceaccount.com`) as
+   a user (Full or Restricted) on the `livingsystems.ca` property. This
+   grant is what lets the headless key read the data — without it every
+   call returns a permission error.
+3. In `.env`, set `GSC_CREDENTIALS_PATH=/path/to/key.json`, and in
+   `config.yml` set `gsc.enabled: true` (check `gsc.property` matches the
+   Search Console property, e.g. `sc-domain:livingsystems.ca`).
+
+GSC is free — there is no API spend to guard — but the integration stays
+off (`gsc.enabled: false`) until the grant exists, and when disabled or
+unconfigured the script exits with a clear message and zero API calls.
+Results are cached locally for 7 days. If `gsc.feed_strategic_flags` is
+turned on, the content brief will quote these numbers, but only ever
+about the client's own pages — they are private data, never presented as
+market-wide facts.
 
 #### advisory_briefing_*.md
 Executive framing:

@@ -1,0 +1,171 @@
+# serp_vocab.yml — editorial vocabulary for the SERP audit pipeline.
+#
+# Spec: seo_geo_review_20260704.md C.4 (externalise hardcoded editorial
+# vocab from serp_audit.py / pattern_matching.py per the CLAUDE.md rule
+# that trigger lists and vocabularies live in config files, not Python).
+#
+# EDITORIAL FILE — a non-developer may edit any list here.
+# Values below are the exact lists previously hardcoded in Python.
+#
+# Precedence note: if the out-of-repo shared_config.json defines
+# "stop_words", that still overrides the stop_words list here (single
+# source of truth for cross-tool settings). Everything else is owned by
+# this file.
+
+# Words excluded from the n-gram corpus before Bowen pattern matching.
+# Includes geographic and clinical filler so location/topic words don't
+# dominate the bigram/trigram counts.
+stop_words:
+  - the
+  - and
+  - to
+  - of
+  - a
+  - in
+  - is
+  - for
+  - "on"    # quoted — bare `on` is YAML 1.1 boolean true
+  - with
+  - as
+  - at
+  - by
+  - an
+  - be
+  - or
+  - are
+  - from
+  - that
+  - this
+  - it
+  - we
+  - our
+  - us
+  - can
+  - will
+  - your
+  - you
+  - my
+  - me
+  - not
+  - have
+  - has
+  - but
+  - so
+  - if
+  - their
+  - they
+  - vancouver
+  - bc
+  - british
+  - columbia
+  - canada
+  - north
+  - west
+  - counselling
+  - counseling
+  - therapy
+  - therapist
+  - counsellor
+  - counselor
+  - service
+  - services
+  - clinic
+  - centre
+  - center
+  - help
+  - support
+  - highlytrained
+
+# PAA question categorisation triggers ("Bridge Strategy"). A question
+# containing any trigger (substring match, lowercased) gets that category
+# and a score of 10; first matching category wins, in this order.
+paa_category_triggers:
+  Commercial:
+    - cost
+    - price
+    - how much
+    - fees
+  Distress:
+    - survive
+    - divorce
+    - infidelity
+    - leave
+    - separation
+  Reactivity:
+    - narcissist
+    - toxic
+    - signs
+    - mean
+    - angry
+    - cut off
+    - hate
+
+# Tokens that mark a keyword as service-like when generating AI-likely
+# query alternatives (substring match on the de-localised keyword).
+service_like_tokens:
+  - counselling
+  - counseling
+  - counsellor
+  - counselor
+  - therapist
+  - therapy
+  - psychologist
+  - mental health
+
+# E-E-A-T author-signal vocabulary (Spec: seo_geo_deferred_spec_v1.md#G.3).
+# Therapy is YMYL content: visible author credentials on ranking pages are
+# a signal both Google and AI answer engines weight.
+# - credential_tokens: professional designations that mark a byline as
+#   credentialed. Single tokens match on whole-word boundaries,
+#   case-insensitive ("RP" never fires inside "harp"); multi-word phrases
+#   match as substrings — same approach as intent_classifier_triggers.yml.
+# - review_markers: phrases indicating clinical/medical review of the page.
+eeat_signals:
+  credential_tokens:
+    - RCC
+    - CCC
+    - MSW
+    - RSW
+    - PhD
+    - PsyD
+    - RP
+    - RCT
+    - registered clinical counsellor
+    - registered psychologist
+    - registered social worker
+    - registered psychotherapist
+    - marriage and family therapist
+    - canadian certified counsellor
+  review_markers:
+    - medically reviewed
+    - clinically reviewed
+    - reviewed by
+
+# Situational (conversational) probe templates (Spec:
+# seo_geo_deferred_spec_v1.md#T.5). Fallback source for the "S"-label
+# query probes: a keyword's own 6+-word PAA questions are used first
+# (verbatim); these templates fill the remaining probes_per_keyword slots.
+# Placeholders: {base} = de-localised keyword, {topic} = the subject after
+# "help with " (otherwise same as {base}), {city} = configured SERP city.
+# Keep every template 6+ words — the probes exist to measure how often
+# long, situation-style queries trigger an AI answer versus short keywords.
+situational_templates:
+  - "my partner refuses to try {base} what can I do"
+  - "how do I know if we actually need {base} or if it is too late"
+  - "what should I expect from a first {base} session in {city}"
+  - "I feel stuck dealing with {topic} on my own where do I start"
+  - "my family keeps having the same fight over and over will {base} help"
+
+# Templates for the two AI-likely informational alternatives generated per
+# keyword. Placeholders: {base} = de-localised keyword, {topic} = the
+# subject after "help with ", {city} = configured SERP city.
+ai_alternative_templates:
+  service:
+    - "how to choose the right {base}?"
+    - "how much does {base} cost in {city}?"
+  help_with:
+    - "what are effective ways to manage {topic}?"
+    - "where to get help for {topic} in {city}?"
+  default:
+    - "what are the best options for {base}?"
+    - "how much does {base} cost in {city}?"

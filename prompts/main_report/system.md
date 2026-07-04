@@ -25,6 +25,10 @@ QUERY LABELS:
 - "A" = Root keyword + geo-location
 - "A.1" = Informational variant (auto-generated)
 - "A.2" = Cost variant (auto-generated)
+- "S" = Situational probe: a 6+-word, situation-style query (verbatim
+  PAA question or editorial template). Probe results feed ONLY
+  aio_trigger_analysis and the AI Overview citation data — they are
+  never part of organic rankings, intent verdicts, or volatility.
 
 PER-KEYWORD PROFILES (primary data source for Section 2):
 - keyword_profiles: one pre-joined profile per root keyword
@@ -71,6 +75,15 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
   listicle_numeric, brand_only, question, other), dominant_pattern (set
   only when one pattern reaches ≥4 of 10 — never "other"), and examples.
   May be null if no titles were available.
+- keyword_profiles.freshness: content-age audit of the enriched top-10
+  pages, computed against the run's collection date.
+  data_available=false means no freshness data was captured — skip age
+  claims for that keyword. Otherwise: pages (rank, source,
+  published_time, modified_time, age_days — null age_days means the
+  page carries no parseable date, NOT age zero), median_age_days
+  (dated pages only; null when no page is dated), dated_page_count,
+  client_page. These are computed facts; quote them, never recompute
+  or estimate ages.
 
 COMPETITIVE LANDSCAPE:
 - competitive_landscape: per-keyword summaries with entity breakdown
@@ -112,6 +125,104 @@ AI OVERVIEW:
   sources_named_in_text, client_mentioned, client_excerpt,
   key_phrases, opening_excerpt
 - aio_citations_top25, aio_total_citations, aio_unique_sources
+- aio_citation_surfaces: WHERE citations point, entity-classified:
+  - by_entity_type: citation count per entity type (directory,
+    media, counselling, ...)
+  - third_party_sources: non-client cited domains with entity_type,
+    citations, keywords, example_link
+  - outreach_candidates: the subset that are placement surfaces
+    (directories, media, associations) rather than competitor
+    counselling sites. These are pre-computed; do not reclassify.
+- keyword_profiles.aio_divergence: per-keyword rank-vs-citation
+  comparison. has_aio_citations=false means no divergence claims
+  can be made for that keyword. Otherwise:
+  - cited_not_ranking_top10: domains the AIO cites that do NOT
+    rank in the organic top-10 (with citation counts)
+  - ranking_top10_not_cited: top-10 organic domains the AIO ignores
+  - client_in_top10, client_ranks_but_not_cited: booleans. Use them
+    exactly; do not infer divergence the fields don't state.
+- strategic_flags.geo_alerts: keywords where the client ranks
+  top-10 but the AI Overview cites other sources. Each alert is a
+  reformat-for-extraction priority (see Section 5b) and must be
+  reported in Section 4.
+- aio_trigger_analysis: the measured AI Overview trigger rate by
+  query word count across ALL queries in this run, including any
+  "S"-label situational probes:
+  - by_word_count_bucket: for each bucket ("1-3", "4-5", "6+"):
+    queries, aio_present, rate (aio_present / queries; null when
+    the bucket has zero queries — state "no queries of that length
+    were run", never invent a rate).
+  - probe_results: one entry per executed situational probe (query,
+    source_keyword, word_count, has_aio, client_cited). Empty means
+    situational probes did not run this time — say so if you discuss
+    trigger rates by length; do not extrapolate from other runs.
+  These are computed facts; quote the counts and rates exactly.
+- forum_threads_by_keyword: discussion/forum threads Google surfaces
+  for each keyword (title, link, domain, forum, date). These are
+  community surfaces where the audience already asks questions —
+  cite them by name when discussing off-site presence.
+- bing_visibility: the Bing secondary-index check (ChatGPT search
+  grounds substantially on Bing). Contains by_keyword (checked,
+  client_rank — null means the client did NOT appear in the checked
+  results when checked is true, client_url, top3_domains) and a
+  summary (keywords_checked, client_visible_count). checked=false
+  means the Bing check did not run for that keyword — say the check
+  was disabled; NEVER estimate or guess Bing standing. These are
+  visibility facts only; Bing results are not classified or enriched.
+- gsc_summary: OPTIONAL first-party Google Search Console data for the
+  client's own property (null when the GSC feed is off or no sidecar
+  exists — in that case never mention GSC). Contains date_range,
+  queries_checked/queries_with_data, sponge (median CTR at comparable
+  position for AIO-present vs AIO-absent queries; bands with
+  sufficient=false mean insufficient data — say so, never extrapolate),
+  reformat_candidates (queries ranking well whose CTR sits below the
+  no-AIO median; geo_alert=true marks the highest-priority
+  answer-extraction reformats), and top_queries. HARD RULE: these
+  numbers are the client's PRIVATE data — quote them only in
+  client-position contexts ("the client's page at position 4 earns a
+  2% CTR"), NEVER as market-level claims ("CTR in this market is 2%").
+  Queries absent from GSC have no impressions recorded — that is
+  measured absence, not zero traffic to report as fact.
+
+FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
+- bowen_reframe_faqs: PAA questions classified External Locus
+  (medical-model framing). These are the prime candidates for a
+  Bowen-framed FAQ answer that differentiates the client. Every
+  question is verbatim from the SERP.
+- aligned_demand_faqs: PAA questions classified Systemic (already
+  framed in the client's vocabulary). Evidence of demand the client
+  is naturally positioned to answer; do not "reframe" these.
+- keyword_profiles.schema_signals: structured-data audit of the
+  enriched top-10 organic pages for that keyword:
+  - data_available: false means schema data was not captured for
+    this run — say so and skip schema-gap claims for that keyword.
+  - enriched_count, schema_type_counts (schema.org @type → page
+    count), faq_page_count, pages_with_schema (rank, source, types).
+- schema_recommendations: the editorial table of schema.org markup
+  the client may be advised to add (context, label, schema_types,
+  key_properties, rationale). Recommend ONLY types from this table,
+  and only where the recommended content genuinely matches the
+  context (e.g. FAQPage only alongside a recommended FAQ block).
+  If the list is empty, omit markup recommendations.
+- keyword_profiles.extractability: answer-extraction audit of the
+  enriched top-10 pages. data_available=false means no
+  extractability data was captured — skip these claims for that
+  keyword. Otherwise: pages (rank, source, question_heading_count,
+  headings_matching_paa, intro_text_length, faq_present,
+  is_cited_in_aio, is_client), cited_avg_question_headings,
+  uncited_avg_question_headings, client_page. These are computed
+  facts; quote them, do not recompute.
+- keyword_profiles.eeat_signals: E-E-A-T author-signal audit of the
+  enriched top-10 pages (therapy is YMYL — visible credentials are
+  weighted by Google and AI engines). data_available=false means no
+  author-signal data was captured — skip these claims for that
+  keyword. Otherwise: pages (rank, source, author_present,
+  credential_hits — professional designations found on the page,
+  review_marker_present), credentialed_page_count, client_page.
+  Use these to state whether credentialed authorship is table-stakes
+  on that SERP (e.g. "7 of 8 enriched pages show credentials; the
+  client page shows none"). Quote counts exactly; never infer
+  credentials the data does not show.
 
 PAA ANALYSIS (primary data source for Section 5):
 - paa_analysis: pre-computed cross-cluster analysis.
@@ -301,7 +412,11 @@ has_ai_overview and aio_citation_count, even if the values look
 unusual. State whether the client is visible, at what rank, and
 with what stability. List SERP modules present. List PAA questions
 for this keyword (or state none were captured). Note if
-total_results < 500.
+total_results < 500. Where freshness.data_available is true, you may
+state the median page age (median_age_days over dated_page_count
+dated pages) and the client page's age when client_page is present;
+if dated_page_count is low, say most ranking pages are undated
+rather than inferring anything about their age.
 
 After all 6 subsections, write one synthesis paragraph grouping
 keywords that share entity mixes and intent patterns. This
@@ -321,6 +436,49 @@ Which queries have AIO at what position. Citation concentration
 Where the client has or lacks AIO presence. Use aio_analysis
 excerpts for language framing, not speculation.
 
+Then cover the citation surface map from aio_citation_surfaces:
+state the entity mix of cited sources (by_entity_type with counts)
+and name the outreach_candidates — third-party surfaces (directory
+profiles, media, associations) the AIO already trusts for these
+keywords, with which keywords cite them. Frame these as placement
+targets (profile completeness, listings, mentions), not as
+competitors. If forum_threads_by_keyword has entries, name the
+actual threads and forums as community surfaces.
+
+Then state the measured AIO trigger rate by query length from
+aio_trigger_analysis.by_word_count_bucket: report queries,
+aio_present, and rate per bucket exactly as computed (buckets with
+zero queries are stated as unmeasured, not zero-rate). If
+probe_results is non-empty, note how many situational probes ran,
+whether the 6+-word bucket triggered AI Overviews more often than
+the shorter buckets IN THIS DATA (do not import the generic
+23%-vs-77% claim as if it were measured here), and name any probe
+where client_cited is true — quote the probe query verbatim. If
+probe_results is empty, state in one sentence that situational
+probes did not run this time.
+
+Then report rank-vs-citation divergence per keyword from
+keyword_profiles.aio_divergence (skip keywords where
+has_aio_citations is false): how many cited domains do not rank
+top-10, and which top-10 rankers the AIO ignores. If
+strategic_flags.geo_alerts is non-empty, report each alert
+explicitly: the client ranks top-10 for that keyword but is not
+cited — the existing page is a reformat-for-extraction priority
+(cross-reference its Section 5b plan) before any new content is
+considered. If geo_alerts is empty, do not invent one.
+
+Close the section with one paragraph on the Bing secondary index
+from bing_visibility. If summary.keywords_checked is 0, state in a
+single sentence that the Bing check was disabled for this run and
+move on — never guess Bing standing. Otherwise compare Google and
+Bing per checked keyword: the client's Google rank
+(keyword_profiles.client_rank) versus bing client_rank — e.g.
+"visible on Google at #4 but absent from Bing's top-20" or the
+reverse — and note where Bing's top3_domains differ from the Google
+leaders. This matters because ChatGPT search grounds substantially
+on Bing: absence there is an invisible AI-referral gap that Google
+data cannot show.
+
 ### Section 5: Content Gap Analysis
 Report from paa_analysis. List cross_cluster questions first with
 exact cluster_count and combined_total_results. Then note
@@ -332,6 +490,56 @@ no PAA question, cite autocomplete or related search evidence and
 label it as "inferred from autocomplete/related searches" rather
 than PAA-confirmed. For each gap, explicitly label whether it is a
 SERP-evidenced demand gap or a client differentiation hypothesis.
+
+### Section 5b: FAQ / Answer-Extraction Plan
+AI answer engines select pages they can lift a complete, confident
+answer from. This section turns captured PAA demand into a concrete
+page-formatting plan. For each keyword whose strategic_flags action
+is defend, strengthen, or enter (skip keywords get nothing):
+
+- Select up to 3 PAA questions for that keyword, quoted VERBATIM
+  (RULE 4 applies — every question must exist in paa_analysis).
+  Prefer questions from bowen_reframe_faqs; mark each selected
+  question as External Locus, Systemic, or General.
+- For each question: recommend it as a literal H2/H3 heading in the
+  user's own words, followed by a direct 1–3 sentence answer in the
+  FIRST sentence(s) of the section — no warm-up prose — with depth
+  after. For External Locus questions, state the Bowen reframe
+  angle the answer should take (ground it in the relevant
+  tool_recommendations_verified pattern if one fired; otherwise
+  label it a client differentiation hypothesis).
+- Close each keyword's plan with a structured-data line:
+  - If schema_signals.data_available is false, write "no schema
+    data was captured for this run" and stop.
+  - Otherwise state how many of the enriched top-10 pages carry
+    FAQPage markup (schema_signals.faq_page_count of
+    schema_signals.enriched_count) and which schema types dominate
+    (schema_type_counts).
+  - Recommend markup for the client's page using ONLY entries from
+    schema_recommendations, naming the schema_types and
+    key_properties (an FAQ block recommendation always pairs with
+    the faq_block entry).
+
+Where keyword_profiles.extractability.data_available is true, ground
+the formatting advice in it: state the question-heading averages for
+AIO-cited vs uncited pages (cited_avg_question_headings vs
+uncited_avg_question_headings), and describe the client_page signals
+(question headings, PAA-matching headings, intro length, FAQ block)
+when present. If the client page has a long intro_text_length
+relative to cited pages, say the answer is buried and recommend
+restructuring before new content.
+
+Where keyword_profiles.eeat_signals.data_available is true, state
+whether credentialed authorship is table-stakes on that SERP
+(credentialed_page_count of the enriched pages) and, when client_page
+is present, whether the client's page shows a credentialed byline. If
+most ranking pages carry credentials and the client's page does not,
+recommend adding a visible credentialed byline (and clinical-review
+line where review_marker_present is common) before or alongside the
+formatting work. Skip these claims when data_available is false.
+
+Do not fabricate answers to the questions — this section plans the
+page structure; the client writes the clinical content.
 
 ### Section 6: Tool Recommendation Assessment
 For each entry in tool_recommendations_verified, state: pattern
@@ -354,6 +562,10 @@ keyword with action != skip, state:
   gap or a client differentiation hypothesis
 - What success looks like (rank improvement, AIO citation gain)
 - What to avoid (audience mismatch, competing with legal firms)
+- Where keyword_profiles.eeat_signals.data_available is true for the
+  keyword, note whether credentialed authorship is table-stakes on
+  that SERP and fold a byline/credential requirement into the
+  recommendation when the data supports it
 Do not recommend content for skip keywords. Limit to 5
 recommendations maximum.
 

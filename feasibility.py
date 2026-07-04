@@ -14,8 +14,9 @@ Two public functions:
         When a keyword is "Low Feasibility", suggest a hyper-local neighbourhood
         variant that is likely to have a smaller DA gap.
 
-This module is intentionally free of I/O and project-specific imports so it
-can be tested in isolation and reused without side effects.
+This module is intentionally free of I/O beyond the shared cross-tool
+config read (owned by ``shared_config.py``) so it can be tested in
+isolation and reused without side effects.
 """
 
 from __future__ import annotations
@@ -23,25 +24,25 @@ from __future__ import annotations
 import random as _random
 from typing import Literal
 
-import json
-import os
+from shared_config import load_shared_config
 
-SHARED_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "shared_config.json")
 
 def load_thresholds():
-    if os.path.exists(SHARED_CONFIG_PATH):
-        try:
-            with open(SHARED_CONFIG_PATH, 'r') as f:
-                config = json.load(f)
-                tech = config.get("technical", {})
-                return (
-                    tech.get("feasibility_threshold", 5),
-                    tech.get("moderate_feasibility_max_gap", 15),
-                    tech.get("score_normaliser", 30.0)
-                )
-        except Exception:
-            pass
-    return 5, 15, 30.0
+    """Read feasibility thresholds from the shared cross-tool config.
+
+    Path resolution, the SERP_SHARED_CONFIG env override, and
+    malformed-file handling (warn + defaults) are owned by
+    ``shared_config.load_shared_config`` — do not duplicate them here.
+    Spec: seo_geo_deferred_spec_v1.md#C.9.
+    """
+    tech = load_shared_config().get("technical", {})
+    if not isinstance(tech, dict):
+        tech = {}
+    return (
+        tech.get("feasibility_threshold", 5),
+        tech.get("moderate_feasibility_max_gap", 15),
+        tech.get("score_normaliser", 30.0),
+    )
 
 HIGH_FEASIBILITY_MAX_GAP, MODERATE_FEASIBILITY_MAX_GAP, SCORE_NORMALISER = load_thresholds()
 
@@ -167,8 +168,13 @@ def generate_hyper_local_pivot(
     >>> result["pivot_status"]
     'Pivoting to Hyper-Local'
     """
-    status = feasibility_results.get("status", "")
+    # Accept both key conventions: compute_feasibility returns
+    # feasibility_status/avg_serp_da while callers historically remapped to
+    # status/avg_competitor_da (seo_geo_review C.10).
+    status = feasibility_results.get("status") or feasibility_results.get("feasibility_status", "")
     avg_da = feasibility_results.get("avg_competitor_da")
+    if avg_da is None:
+        avg_da = feasibility_results.get("avg_serp_da")
 
     all_variants = [f"{primary_keyword} {nb}" for nb in neighborhoods] if neighborhoods else []
 

@@ -7,16 +7,46 @@ import os
 import re
 import sys
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 import yaml
 
 from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
 from title_patterns import compute_title_patterns
-from classifiers import classify_url_from_patterns
+from classifiers import classify_url_from_patterns, EntityClassifier
 
 
 def progress(message):
     print(message, flush=True)
+
+
+# Entity types treated as brand-placement (outreach) surfaces rather than
+# direct competitors when they appear as AI Overview citation sources.
+# Overridable via config.yml geo.outreach_entity_types (see caller).
+# Spec: seo_geo_review_20260704.md T.3.
+DEFAULT_OUTREACH_ENTITY_TYPES = (
+    "directory",
+    "media",
+    "nonprofit",
+    "professional_association",
+    "education",
+    "government",
+)
+
+
+def _domain_from_link(link):
+    """Registrable host from a URL, lowercased, without a www. prefix."""
+    try:
+        netloc = urlparse(str(link or "")).netloc.lower()
+    except ValueError:
+        return ""
+    return netloc.removeprefix("www.")
+
+
+def _is_client_domain(domain, client_domain_lower):
+    if not domain or not client_domain_lower:
+        return False
+    return domain == client_domain_lower or domain.endswith("." + client_domain_lower)
 
 DEFAULT_CLIENT_CONTEXT = {
     "client_name": "Living Systems Counselling",
@@ -412,6 +442,23 @@ def _compute_strategic_flags(
     else:
         flags["top_cross_cluster_paa"] = None
 
+    # GEO alerts (Spec: seo_geo_review T.4): the client holds a top-10
+    # organic position but the AI Overview cites other sources. That page
+    # is a reformat-for-extraction candidate before any new content.
+    geo_alerts = []
+    for kw in root_keywords:
+        divergence = (keyword_profiles.get(kw, {}) or {}).get("aio_divergence") or {}
+        if divergence.get("client_ranks_but_not_cited"):
+            geo_alerts.append({
+                "keyword": kw,
+                "detail": (
+                    "Client ranks in the organic top-10 but the AI Overview "
+                    "cites other sources — prioritise answer-extraction "
+                    "reformatting of the ranking page."
+                ),
+            })
+    flags["geo_alerts"] = geo_alerts
+
     return flags
 
 
@@ -435,6 +482,518 @@ def _classify_paa_intent(paa_rows):
         else:
             buckets["General"].append(question)
     return buckets
+
+
+def _build_schema_signals(kw_rows):
+    """Summarise structured-data signals from enriched top-10 organic rows.
+
+    Feeds the brief's FAQ / Answer-Extraction Plan and schema-gap lines.
+    Spec: seo_geo_review_20260704.md T.1/G.2.
+
+    Returns a dict with:
+    - ``data_available``: False when no row carries schema enrichment data
+      (e.g. analysis JSON predates schema capture, or enrichment disabled).
+      All other fields are zero/empty in that case.
+    - ``enriched_count``: rows that were enriched with schema data.
+    - ``schema_type_counts``: {schema.org @type: page count} across rows.
+    - ``faq_page_count``: rows with an FAQ block (FAQPage schema or FAQ
+      heading heuristic).
+    - ``pages_with_schema``: [{rank, source, schema_types, faq_present}]
+      for rows carrying at least one schema type, rank order.
+    """
+    signals = {
+        "data_available": False,
+        "enriched_count": 0,
+        "schema_type_counts": {},
+        "faq_page_count": 0,
+        "pages_with_schema": [],
+    }
+    type_counts = Counter()
+    for row in kw_rows[:10]:
+        if "schema_types" not in row and "faq_present" not in row:
+            continue
+        signals["data_available"] = True
+        signals["enriched_count"] += 1
+        schema_types = row.get("schema_types") or []
+        for schema_type in set(schema_types):
+            type_counts[str(schema_type)] += 1
+        if row.get("faq_present"):
+            signals["faq_page_count"] += 1
+        if schema_types:
+            signals["pages_with_schema"].append({
+                "rank": row.get("rank"),
+                "source": row.get("source"),
+                "schema_types": sorted(str(t) for t in set(schema_types)),
+                "faq_present": bool(row.get("faq_present")),
+            })
+    signals["schema_type_counts"] = dict(type_counts.most_common())
+    return signals
+
+
+def _normalize_question(text):
+    return re.sub(r"[^a-z0-9 ]+", "", str(text or "").lower()).strip()
+
+
+def _build_extractability(kw_rows, cited_domains, paa_questions,
+                          client_domain_lower):
+    """Answer-extractability audit of enriched top-10 organic pages.
+
+    Spec: seo_geo_review_20260704.md T.2 — AI answer engines select pages
+    they can lift a complete answer from: question-shaped headings in the
+    searcher's words, answer at the top, FAQ block present. This compares
+    those signals on pages the AI Overview cites vs pages that merely rank,
+    and shows where the client's own page sits.
+
+    Returns data_available=False when no row carries extractability data
+    (analysis JSON predates capture, or enrichment disabled).
+    """
+    normalized_paa = [_normalize_question(q) for q in (paa_questions or [])]
+    normalized_paa = [q for q in normalized_paa if q]
+
+    pages = []
+    for row in kw_rows[:10]:
+        if "question_heading_count" not in row:
+            continue
+        headings = [_normalize_question(h) for h in row.get("question_headings") or []]
+        paa_matches = sum(
+            1 for h in headings if h and any(
+                h in q or q in h for q in normalized_paa
+            )
+        )
+        domain = row.get("domain") or ""
+        pages.append({
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "question_heading_count": row.get("question_heading_count", 0),
+            "headings_matching_paa": paa_matches,
+            "intro_text_length": row.get("intro_text_length", 0),
+            "faq_present": bool(row.get("faq_present")),
+            "is_cited_in_aio": domain in cited_domains,
+            "is_client": _is_client_domain(domain, client_domain_lower),
+        })
+
+    if not pages:
+        return {"data_available": False, "pages": [],
+                "cited_avg_question_headings": None,
+                "uncited_avg_question_headings": None,
+                "client_page": None}
+
+    def _avg(rows):
+        return (
+            round(sum(r["question_heading_count"] for r in rows) / len(rows), 1)
+            if rows else None
+        )
+
+    cited_pages = [p for p in pages if p["is_cited_in_aio"]]
+    uncited_pages = [p for p in pages if not p["is_cited_in_aio"]]
+    client_pages = [p for p in pages if p["is_client"]]
+    return {
+        "data_available": True,
+        "pages": pages,
+        "cited_avg_question_headings": _avg(cited_pages),
+        "uncited_avg_question_headings": _avg(uncited_pages),
+        "client_page": client_pages[0] if client_pages else None,
+    }
+
+
+def _build_eeat_signals(kw_rows, client_domain_lower):
+    """E-E-A-T author-signal audit of the enriched top-10 organic pages.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.3 — therapy is YMYL; both Google
+    and AI engines weight visible author credentials on health content.
+    Lets the brief say "N of M enriched pages carry credentialed bylines;
+    the client's page shows none/some".
+
+    Returns data_available=False when no row carries author-signal data
+    (analysis JSON predates capture, or enrichment disabled).
+    """
+    pages = []
+    for row in kw_rows[:10]:
+        if "author_present" not in row:
+            continue
+        pages.append({
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "author_present": bool(row.get("author_present")),
+            "credential_hits": row.get("credential_hits") or [],
+            "review_marker_present": bool(row.get("review_marker_present")),
+            "is_client": _is_client_domain(
+                row.get("domain") or "", client_domain_lower),
+        })
+
+    if not pages:
+        return {"data_available": False, "pages": [],
+                "credentialed_page_count": 0, "client_page": None}
+
+    client_pages = [p for p in pages if p["is_client"]]
+    return {
+        "data_available": True,
+        "pages": pages,
+        "credentialed_page_count": sum(
+            1 for p in pages if p["credential_hits"]),
+        "client_page": client_pages[0] if client_pages else None,
+    }
+
+
+def _parse_iso_datetime(value):
+    """Parse an ISO-ish timestamp into a naive UTC datetime, or None.
+
+    Trims a trailing ``Z``; unparseable strings return None (counted as
+    undated), never raise. Spec: seo_geo_deferred_spec_v1.md#G.6.
+    """
+    text = str(value or "").strip()
+    if not text:
+        return None
+    if text.endswith("Z"):
+        text = text[:-1]
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is not None:
+        parsed = parsed.astimezone(timezone.utc).replace(tzinfo=None)
+    return parsed
+
+
+def _build_freshness(kw_rows, run_created_at, client_domain_lower):
+    """Content freshness/decay audit of the enriched top-10 organic pages.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.6 — AI answer surfaces and Google
+    both prefer fresh YMYL content. Page ages are computed against the
+    run's Created_At (NOT wall-clock) so re-extracting an old analysis
+    JSON yields stable numbers.
+
+    Returns data_available=False when no row carries freshness data
+    (analysis JSON predates capture, or enrichment disabled). Undated
+    pages are reported honestly via dated_page_count — an absent date is
+    never treated as age 0.
+    """
+    run_dt = _parse_iso_datetime(run_created_at)
+
+    pages = []
+    for row in kw_rows[:10]:
+        if "published_time" not in row and "modified_time" not in row:
+            continue
+        published = row.get("published_time")
+        modified = row.get("modified_time")
+        # Age from the most recent signal: modified when parseable,
+        # else published. Undated (neither parseable) -> age_days None.
+        page_dt = _parse_iso_datetime(modified) or _parse_iso_datetime(published)
+        age_days = None
+        if page_dt is not None and run_dt is not None:
+            age_days = (run_dt - page_dt).days
+        pages.append({
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "published_time": published,
+            "modified_time": modified,
+            "age_days": age_days,
+            "is_client": _is_client_domain(row.get("domain") or "", client_domain_lower),
+        })
+
+    if not pages:
+        return {"data_available": False, "pages": [],
+                "median_age_days": None, "dated_page_count": 0,
+                "client_page": None}
+
+    ages = sorted(p["age_days"] for p in pages if p["age_days"] is not None)
+    if ages:
+        mid = len(ages) // 2
+        if len(ages) % 2:
+            median_age = ages[mid]
+        else:
+            median_age = round((ages[mid - 1] + ages[mid]) / 2, 1)
+    else:
+        median_age = None
+
+    client_pages = [p for p in pages if p["is_client"]]
+    return {
+        "data_available": True,
+        "pages": pages,
+        "median_age_days": median_age,
+        "dated_page_count": len(ages),
+        "client_page": client_pages[0] if client_pages else None,
+    }
+
+
+def _build_aio_citation_surfaces(
+    citation_domains_by_kw,
+    client_domain_lower,
+    entity_of_domain,
+    outreach_entity_types,
+):
+    """Global analysis of WHERE AI Overview citations point.
+
+    Spec: seo_geo_review_20260704.md T.3 — most AI citations point at
+    third-party surfaces (directories, media, forums), so the citation mix
+    is an outreach plan, not just a competitor list.
+
+    Returns:
+    - total_citations / unique_domains
+    - by_entity_type: {entity_type: citation count}
+    - third_party_sources: non-client cited domains, citations desc —
+      {domain, entity_type, citations, keywords, example_link}
+    - outreach_candidates: the subset of third_party_sources whose entity
+      type is in outreach_entity_types (surfaces where a brand can seek
+      placement, as opposed to competitor counselling sites).
+    """
+    per_domain = {}
+    for kw, domains in citation_domains_by_kw.items():
+        for domain, info in domains.items():
+            entry = per_domain.setdefault(domain, {
+                "domain": domain,
+                "entity_type": entity_of_domain.get(domain, "N/A"),
+                "citations": 0,
+                "keywords": [],
+                "example_link": info.get("example_link"),
+            })
+            entry["citations"] += info.get("count", 0)
+            if kw and kw not in entry["keywords"]:
+                entry["keywords"].append(kw)
+
+    by_entity = Counter()
+    third_party = []
+    for domain, entry in per_domain.items():
+        by_entity[entry["entity_type"]] += entry["citations"]
+        if not _is_client_domain(domain, client_domain_lower):
+            third_party.append(entry)
+    third_party.sort(key=lambda e: (-e["citations"], e["domain"]))
+
+    outreach_set = set(outreach_entity_types)
+    return {
+        "total_citations": sum(by_entity.values()),
+        "unique_domains": len(per_domain),
+        "by_entity_type": dict(by_entity.most_common()),
+        "third_party_sources": third_party[:25],
+        "outreach_candidates": [
+            e for e in third_party if e["entity_type"] in outreach_set
+        ][:15],
+    }
+
+
+def _build_aio_divergence(cited_domains, top10_domains, client_domain_lower,
+                          client_cited):
+    """Per-keyword rank-vs-citation divergence.
+
+    Spec: seo_geo_review_20260704.md T.4 — Google rank and AI citation are
+    separate scores. Surfaces domains the AI Overview cites that do NOT rank
+    top-10, top-10 rankers the AIO ignores, and the single most actionable
+    GEO alert: the client ranks top-10 but is not cited.
+
+    cited_domains: {domain: {count, example_link}} for this keyword's AIO.
+    top10_domains: {domain: best_rank} from label-A organic rows, rank <= 10.
+    """
+    if not cited_domains:
+        return {
+            "has_aio_citations": False,
+            "cited_not_ranking_top10": [],
+            "ranking_top10_not_cited": [],
+            "client_in_top10": any(
+                _is_client_domain(d, client_domain_lower) for d in top10_domains
+            ),
+            "client_ranks_but_not_cited": False,
+        }
+
+    cited_not_ranking = [
+        {"domain": domain, "citations": info.get("count", 0)}
+        for domain, info in sorted(
+            cited_domains.items(), key=lambda kv: (-kv[1].get("count", 0), kv[0])
+        )
+        if domain not in top10_domains
+    ]
+    ranking_not_cited = [
+        {"domain": domain, "rank": rank}
+        for domain, rank in sorted(top10_domains.items(), key=lambda kv: kv[1])
+        if domain not in cited_domains
+    ]
+    client_in_top10 = any(
+        _is_client_domain(d, client_domain_lower) for d in top10_domains
+    )
+    return {
+        "has_aio_citations": True,
+        "cited_not_ranking_top10": cited_not_ranking,
+        "ranking_top10_not_cited": ranking_not_cited,
+        "client_in_top10": client_in_top10,
+        "client_ranks_but_not_cited": bool(client_in_top10 and not client_cited),
+    }
+
+
+_WORD_COUNT_BUCKETS = ("1-3", "4-5", "6+")
+
+
+def _word_count_bucket(word_count):
+    if word_count >= 6:
+        return "6+"
+    if word_count >= 4:
+        return "4-5"
+    return "1-3"
+
+
+def _build_aio_trigger_analysis(overview_rows, probe_rows):
+    """AI Overview trigger rate by query word count, run-wide.
+
+    Spec: seo_geo_deferred_spec_v1.md#T.5 (T.5.4) — measures, on the
+    client's own market, the claim that 6+-word situation-style queries
+    trigger AI answers far more often than short keywords (the 23%-vs-77%
+    figure from the source transcript). Computed across ALL queries in the
+    run: every executed query in the overview (labels A / A.1 / A.2 / …)
+    plus the "S"-label situational probes.
+
+    Word counts use the logical query text (Executed_Query), not the
+    location-suffixed string sent to Google — the forced-local suffix is a
+    tool artifact, not part of how the searcher phrased the query. AIO
+    presence is the main-response flag (Has_Main_AI_Overview for overview
+    rows; probes never make fallback or token follow-up calls).
+
+    Returns data_available=False for old analysis JSONs with no query
+    rows; probe_results is empty when probes did not run.
+    """
+    entries = []
+    for row in overview_rows or []:
+        query = str(row.get("Executed_Query") or row.get("Source_Keyword") or "").strip()
+        if not query:
+            continue
+        entries.append((len(query.split()), bool(row.get("Has_Main_AI_Overview"))))
+
+    probe_results = []
+    for row in probe_rows or []:
+        query = str(row.get("Executed_Query") or "").strip()
+        if not query:
+            continue
+        word_count = _safe_int(row.get("Word_Count"), len(query.split()))
+        has_aio = bool(row.get("Has_AI_Overview"))
+        entries.append((word_count, has_aio))
+        probe_results.append({
+            "query": query,
+            "source_keyword": row.get("Source_Keyword"),
+            "word_count": word_count,
+            "has_aio": has_aio,
+            "client_cited": bool(row.get("Client_Cited")),
+        })
+
+    buckets = {
+        bucket: {"queries": 0, "aio_present": 0, "rate": None}
+        for bucket in _WORD_COUNT_BUCKETS
+    }
+    for word_count, has_aio in entries:
+        bucket = buckets[_word_count_bucket(word_count)]
+        bucket["queries"] += 1
+        if has_aio:
+            bucket["aio_present"] += 1
+    for bucket in buckets.values():
+        if bucket["queries"]:
+            bucket["rate"] = round(bucket["aio_present"] / bucket["queries"], 2)
+
+    return {
+        "data_available": bool(entries),
+        "by_word_count_bucket": buckets,
+        "probe_count": len(probe_results),
+        "probe_results": probe_results,
+    }
+
+
+def _build_bing_visibility(bing_rows, root_keywords):
+    """Per-keyword Bing visibility block plus a run-level summary.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.5 — ChatGPT search grounds
+    substantially on Bing; this makes the client's Bing standing a
+    measured fact instead of a blind spot. Old analysis JSONs (or runs
+    with bing_check disabled) have no rows: every keyword reports
+    checked=False and data_available is False — the report must then say
+    the check was disabled, never guess.
+
+    Returns:
+    - data_available: True when at least one keyword was actually checked
+    - by_keyword: {kw: {checked, client_rank, client_url, top3_domains}}
+    - summary: {keywords_checked, client_visible_count}
+    """
+    by_keyword = {}
+    for row in bing_rows or []:
+        kw = row.get("Source_Keyword")
+        if not kw:
+            continue
+        by_keyword[kw] = {
+            "checked": bool(row.get("Checked")),
+            "client_rank": row.get("Client_Rank"),
+            "client_url": row.get("Client_URL"),
+            "top3_domains": row.get("Top3_Domains") or [],
+        }
+    for kw in root_keywords:
+        by_keyword.setdefault(kw, {
+            "checked": False, "client_rank": None,
+            "client_url": None, "top3_domains": [],
+        })
+
+    checked = [entry for entry in by_keyword.values() if entry["checked"]]
+    return {
+        "data_available": bool(checked),
+        "by_keyword": by_keyword,
+        "summary": {
+            "keywords_checked": len(checked),
+            "client_visible_count": sum(
+                1 for entry in checked if entry["client_rank"] is not None),
+        },
+    }
+
+
+def find_latest_gsc_sidecar(directory="."):
+    """Newest ``gsc_analysis_*.json`` sidecar written by run_gsc_analysis.py.
+
+    Returns (path, data) or (None, None). Reads only a local JSON file —
+    no gsc_client import, no network — so the pipeline stays decoupled
+    from the GSC integration (G.4.4).
+    Spec: seo_geo_deferred_spec_v1.md#G.4.
+    """
+    import glob as _glob
+    candidates = _glob.glob(os.path.join(directory, "gsc_analysis_*.json"))
+    if not candidates:
+        return None, None
+    path = max(candidates, key=os.path.getmtime)
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return path, json.load(f)
+    except (OSError, ValueError) as exc:
+        progress(f"[warn] Could not read GSC sidecar {path}: {exc}")
+        return None, None
+
+
+def _build_gsc_summary(sidecar):
+    """Compact ``gsc_summary`` payload block from a run_gsc_analysis sidecar.
+
+    Only attached when config gsc.feed_strategic_flags is true and a
+    sidecar exists (see brief_rendering.list_recommendations). GSC numbers
+    are the client's PRIVATE first-party data: the prompt restricts them
+    to client-position statements, never market-level claims.
+    Spec: seo_geo_deferred_spec_v1.md#G.4.
+    """
+    if not sidecar:
+        return None
+    top_queries = sorted(
+        [r for r in sidecar.get("per_query", []) if r.get("found")],
+        key=lambda r: -(r.get("impressions") or 0),
+    )[:10]
+    return {
+        "generated_at": sidecar.get("generated_at"),
+        "source_analysis": sidecar.get("source_analysis"),
+        "lookback_days": sidecar.get("lookback_days"),
+        "date_range": sidecar.get("date_range"),
+        "queries_checked": sidecar.get("queries_checked"),
+        "queries_with_data": sidecar.get("queries_with_data"),
+        "sponge": sidecar.get("sponge"),
+        "reformat_candidates": (sidecar.get("reformat_candidates") or [])[:10],
+        "top_queries": [
+            {
+                "query": r.get("query"),
+                "query_label": r.get("query_label"),
+                "clicks": r.get("clicks"),
+                "impressions": r.get("impressions"),
+                "ctr": r.get("ctr"),
+                "position": r.get("position"),
+                "has_ai_overview": r.get("has_ai_overview"),
+            }
+            for r in top_queries
+        ],
+    }
 
 
 def _build_feasibility_summary(feasibility_rows):
@@ -492,8 +1051,14 @@ def extract_analysis_data_from_json(
     serp_intent_thresholds=None,
     intent_mapping=None,
     preferred_intents=None,
+    outreach_entity_types=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
+
+    outreach_entity_types: entity types treated as outreach surfaces in the
+        AIO citation analysis (Spec: seo_geo_review T.3). Defaults to
+        DEFAULT_OUTREACH_ENTITY_TYPES; overridable via config.yml
+        geo.outreach_entity_types.
 
     New (spec v2):
         known_brands: list of competitor brand domain/name strings — drives
@@ -510,6 +1075,7 @@ def extract_analysis_data_from_json(
     client_phrase_patterns = _client_match_patterns(client_name_patterns)
     known_brands = list(known_brands or [])
     preferred_intents = list(preferred_intents or [])
+    outreach_entity_types = list(outreach_entity_types or DEFAULT_OUTREACH_ENTITY_TYPES)
 
     # Load intent mapping once. Cached at the call site if the caller supplies
     # one; otherwise loaded fresh here. Failure to load is a HARD error — the
@@ -533,6 +1099,12 @@ def extract_analysis_data_from_json(
     bigrams_trigrams = data.get("serp_language_patterns", [])
     recs = data.get("strategic_recommendations", [])
     ads = data.get("competitors_ads", [])
+    # "S"-label situational probe rows (Spec: seo_geo_deferred_spec_v1.md
+    # #T.5). Absent from old analysis JSONs / disabled runs — empty list.
+    situational_probes = data.get("situational_probes", [])
+    # Bing visibility rows (Spec: seo_geo_deferred_spec_v1.md#G.5).
+    # Absent from old analysis JSONs / disabled runs — empty list.
+    bing_rows = data.get("bing_visibility", [])
 
     if overview:
         first = overview[0]
@@ -591,6 +1163,9 @@ def extract_analysis_data_from_json(
     entity_na = 0
     client_organic = []
     top_sources_by_kw_counter = defaultdict(lambda: defaultdict(lambda: {"appearances": 0, "best_rank": 999, "entity_types": Counter()}))
+    # {keyword: {domain: best_rank}} for label-A top-10 rows — feeds the
+    # rank-vs-citation divergence analysis (Spec: seo_geo_review T.4).
+    organic_top10_domains_by_kw = defaultdict(dict)
 
     for row in organic:
         source_kw = row.get("Source_Keyword")
@@ -632,12 +1207,49 @@ def extract_analysis_data_from_json(
                 "entity_type": entity,
                 "content_type": effective_ct,
             }
+            # Schema/FAQ enrichment signals (Spec: seo_geo_review T.1/G.2).
+            # Only enriched rows carry these; older analysis JSONs have
+            # neither key, which _build_schema_signals treats as
+            # "no schema data captured".
+            if "Schema_Types" in row or "FAQ_Present" in row:
+                row_profile["schema_types"] = row.get("Schema_Types") or []
+                row_profile["faq_present"] = bool(row.get("FAQ_Present"))
+            # Answer-extractability signals (Spec: seo_geo_review T.2).
+            if "Question_Heading_Count" in row:
+                row_profile["question_heading_count"] = _safe_int(
+                    row.get("Question_Heading_Count"), 0)
+                row_profile["question_headings"] = row.get("Question_Headings") or []
+                row_profile["intro_text_length"] = _safe_int(
+                    row.get("Intro_Text_Length"), 0)
+                row_profile["domain"] = _domain_from_link(link)
+            # Content freshness signals (Spec: seo_geo_deferred_spec_v1.md
+            # #G.6). Older analysis JSONs carry neither key, which
+            # _build_freshness treats as "no freshness data captured".
+            if "Published_Time" in row or "Modified_Time" in row:
+                row_profile["published_time"] = row.get("Published_Time")
+                row_profile["modified_time"] = row.get("Modified_Time")
+                row_profile.setdefault("domain", _domain_from_link(link))
+            # E-E-A-T author signals (Spec: seo_geo_deferred_spec_v1.md
+            # #G.3). Older analysis JSONs carry no Author_Present key,
+            # which _build_eeat_signals treats as "no data captured".
+            if "Author_Present" in row:
+                row_profile["author_present"] = bool(row.get("Author_Present"))
+                row_profile["credential_hits"] = row.get("Credential_Hits") or []
+                row_profile["review_marker_present"] = bool(
+                    row.get("Review_Marker_Present"))
+                row_profile.setdefault("domain", _domain_from_link(link))
             organic_rows_by_kw[source_kw].append(row_profile)
             if src:
                 entry = top_sources_by_kw_counter[source_kw][src]
                 entry["appearances"] += 1
                 entry["best_rank"] = min(entry["best_rank"], rank)
                 entry["entity_types"][entity] += 1
+            if rank <= 10:
+                dom = _domain_from_link(link)
+                if dom:
+                    best = organic_top10_domains_by_kw[source_kw].get(dom)
+                    if best is None or rank < best:
+                        organic_top10_domains_by_kw[source_kw][dom] = rank
 
         if client_domain_lower and client_domain_lower in link.lower():
             delta_raw = row.get("Rank_Delta")
@@ -673,6 +1285,9 @@ def extract_analysis_data_from_json(
     aio_source_counter = Counter()
     aio_by_kw = defaultdict(Counter)
     client_aio_citations = []
+    # {keyword: {domain: {count, example_link}}} — domain-level citation
+    # records for surface/divergence analysis (Spec: seo_geo_review T.3/T.4).
+    aio_citation_domains_by_kw = defaultdict(dict)
     for row in citations:
         src = row.get("Source")
         source_kw = row.get("Source_Keyword")
@@ -681,6 +1296,12 @@ def extract_analysis_data_from_json(
         if src:
             aio_source_counter[src] += 1
             aio_by_kw[source_kw][src] += 1
+        cited_domain = _domain_from_link(link)
+        if cited_domain:
+            rec = aio_citation_domains_by_kw[source_kw].setdefault(
+                cited_domain, {"count": 0, "example_link": link or None}
+            )
+            rec["count"] += 1
         if client_domain_lower and client_domain_lower in link.lower():
             client_aio_citations.append({
                 "source_keyword": source_kw,
@@ -688,6 +1309,37 @@ def extract_analysis_data_from_json(
                 "title": title,
                 "link": link,
             })
+
+    # Entity-classify every unique cited domain (domain-level rules only, no
+    # HTML) so the citation mix can be read as a surface map.
+    _aio_entity_classifier = EntityClassifier()
+    aio_entity_of_domain = {}
+    for domains in aio_citation_domains_by_kw.values():
+        for cited_domain in domains:
+            if cited_domain not in aio_entity_of_domain:
+                etype, _conf, _ev = _aio_entity_classifier.classify(cited_domain, None)
+                aio_entity_of_domain[cited_domain] = etype or "N/A"
+    aio_citation_surfaces = _build_aio_citation_surfaces(
+        aio_citation_domains_by_kw,
+        client_domain_lower,
+        aio_entity_of_domain,
+        outreach_entity_types,
+    )
+
+    # Google-surfaced discussion/forum threads per keyword (Spec:
+    # seo_geo_review T.6) — named threads for the outreach plan.
+    forum_threads_by_kw = defaultdict(list)
+    for row in data.get("derived_expansions", []):
+        if row.get("Type") != "Discussion/Forum":
+            continue
+        thread_link = str(row.get("Link") or "")
+        forum_threads_by_kw[row.get("Source_Keyword")].append({
+            "title": row.get("Term"),
+            "link": thread_link,
+            "domain": _domain_from_link(thread_link),
+            "forum": row.get("Forum"),
+            "date": row.get("Date"),
+        })
 
     paa_unique = {}
     for row in paa_rows:
@@ -997,6 +1649,25 @@ def extract_analysis_data_from_json(
             "client_aio_cited": bool(kw_client_aio),
             "serp_intent": serp_intent,
             "title_patterns": title_patterns,
+            "schema_signals": _build_schema_signals(kw_rows),
+            "aio_divergence": _build_aio_divergence(
+                aio_citation_domains_by_kw.get(kw, {}),
+                organic_top10_domains_by_kw.get(kw, {}),
+                client_domain_lower,
+                client_cited=bool(kw_client_aio),
+            ),
+            "extractability": _build_extractability(
+                kw_rows,
+                aio_citation_domains_by_kw.get(kw, {}),
+                paa_for_kw,
+                client_domain_lower,
+            ),
+            "freshness": _build_freshness(
+                kw_rows,
+                metadata.get("created_at"),
+                client_domain_lower,
+            ),
+            "eeat_signals": _build_eeat_signals(kw_rows, client_domain_lower),
         }
 
     client_aio_text_mentions = []
@@ -1096,6 +1767,10 @@ def extract_analysis_data_from_json(
         "aio_citations_top25": aio_source_counter.most_common(25),
         "aio_total_citations": sum(aio_source_counter.values()),
         "aio_unique_sources": len(aio_source_counter),
+        "aio_citation_surfaces": aio_citation_surfaces,
+        "aio_trigger_analysis": _build_aio_trigger_analysis(overview, situational_probes),
+        "bing_visibility": _build_bing_visibility(bing_rows, root_keywords),
+        "forum_threads_by_keyword": dict(forum_threads_by_kw),
         "autocomplete_by_keyword": dict(autocomplete_by_kw),
         "related_searches_by_keyword": dict(related_by_kw),
         "autocomplete_summary": autocomplete_summary,

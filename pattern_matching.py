@@ -13,13 +13,46 @@ except ImportError:
     TextBlob = None
     TEXTBLOB_AVAILABLE = False
 
-STOP_WORDS = {
-    "the", "and", "to", "of", "a", "in", "is", "for", "on", "with", "as", "at", "by", "an", "be", "or", "are", "from", "that",
-    "this", "it", "we", "our", "us", "can", "will", "your", "you", "my", "me", "not", "have", "has", "but", "so", "if", "their", "they",
-    "vancouver", "bc", "british", "columbia", "canada", "north", "west", "counselling", "counseling", "therapy", "therapist",
-    "counsellor", "counselor", "service", "services", "clinic", "centre", "center", "help", "support",
-    "highlytrained",
+_SERP_VOCAB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "serp_vocab.yml")
+
+_VOCAB_REQUIRED_KEYS = {
+    "stop_words",
+    "paa_category_triggers",
+    "service_like_tokens",
+    "ai_alternative_templates",
+    "eeat_signals",
+    "situational_templates",
 }
+
+
+def load_serp_vocab(path=_SERP_VOCAB_PATH):
+    """Load the editorial SERP vocabulary (stop words, PAA category
+    triggers, service tokens, AI-alternative templates, E-E-A-T
+    credential/review vocab, situational probe templates).
+
+    Spec: seo_geo_review_20260704.md C.4 — these lists are editorial and
+    live in serp_vocab.yml, not in Python. Missing file or missing keys
+    raise so configuration mistakes surface loudly. The eeat_signals
+    section is required per seo_geo_deferred_spec_v1.md#G.3; the
+    situational_templates section per seo_geo_deferred_spec_v1.md#T.5.
+    """
+    if not os.path.exists(path):
+        raise FileNotFoundError(
+            f"serp_vocab.yml not found at {path} — the editorial SERP "
+            "vocabulary file is required (see CLAUDE.md, editorial content)."
+        )
+    with open(path, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+    missing = _VOCAB_REQUIRED_KEYS - set(data)
+    if missing:
+        raise ValueError(
+            f"serp_vocab.yml is missing required key(s): {', '.join(sorted(missing))}"
+        )
+    return data
+
+
+SERP_VOCAB = load_serp_vocab()
+STOP_WORDS = set(SERP_VOCAB["stop_words"])
 
 _STRATEGIC_PATTERNS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "strategic_patterns.yml")
 

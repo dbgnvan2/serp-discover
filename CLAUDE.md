@@ -58,6 +58,11 @@ keyword feasibility via Domain Authority gap analysis.
 - `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` — primary DA provider
   (pay-per-use).
 - `MOZ_TOKEN` — fallback DA provider (free tier: 50 rows/month).
+- `GEMINI_API_KEY` — **optional**; enables the Gemini engine in
+  `probe_ai_visibility.py` (G.1). Missing key = engine skipped with a
+  warning, never an abort.
+- `GSC_CREDENTIALS_PATH` — **optional**; path to the Google Search Console
+  service-account JSON key used by `run_gsc_analysis.py` (G.4).
 
 Tests do not require API keys — all external calls are mocked.
 
@@ -108,6 +113,8 @@ Editorial content currently lives in:
 - `clinical_dictionary.json` — Bowen vs medical vocabulary tiers
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
+- `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
+- `serp_vocab.yml` — SERP audit vocabulary: stop words, PAA category triggers, service tokens, AI-alternative query templates (added seo_geo_review C.4); `eeat_signals` credential tokens and review markers (added seo_geo_deferred G.3); `situational_templates` probe query templates (added seo_geo_deferred T.5)
 - `config.yml` — operational settings
 
 When in doubt, ask the user before adding new editorial content to a `.py` file.

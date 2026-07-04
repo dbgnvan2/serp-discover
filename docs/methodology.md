@@ -20,6 +20,12 @@ How SERP Intelligence Tool 1 produces its outputs.
 
 **Output:** `market_analysis_{topic}_{datetime}.json` — the data contract for Part 2.
 
+### Cross-tool shared config
+
+Both `serp_audit.py` (stop words, client DA/domain/location, omitted-domains path) and `feasibility.py` (gap thresholds, score normaliser) read the optional out-of-repo `shared_config.json` through one module, `shared_config.py`. It owns path resolution (default `../shared_config.json`, overridable via the `SERP_SHARED_CONFIG` env var), malformed-file handling (one warning naming the file, then in-repo defaults), and logs which keys were consumed. Precedence: shared config > `config.yml` > `serp_vocab.yml` / code defaults. Schema in `docs/config_reference.md` ("Shared config"). Tool 2 reads the same file, so its authority must not be removed.
+
+*Spec: seo_geo_deferred_spec_v1.md#C.9. Implemented 2026-07-04.*
+
 ---
 
 ## Part 2 — Report generation
@@ -71,3 +77,67 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 **Input:** `market_analysis_*.json` + `strategic_recommendations`.
 
 `generate_content_brief.py` selects relevant PAA questions and competitors for each pattern using routing rules from `brief_pattern_routing.yml` (`paa_themes`, `paa_categories`, `keyword_hints`). An LLM (Anthropic API) generates the main report and advisory briefing. Outputs are validated before writing; hard validation failures abort, soft failures retry once.
+
+### FAQ / Answer-Extraction Plan (report Section 5b)
+
+The payload gives the LLM two intent-bucketed PAA lists: `bowen_reframe_faqs` (External Locus questions — the reframe candidates) and `aligned_demand_faqs` (Systemic questions — demand already in the client's vocabulary). For each priority keyword the report recommends up to 3 verbatim PAA questions as literal page headings with answer-first formatting guidance, plus a structured-data line built from `keyword_profiles.schema_signals` (schema.org types and FAQPage presence observed on the enriched top-10 pages). Markup recommendations are restricted to the editorial table in `schema_recommendations.yml`.
+
+*Spec: seo_geo_review_20260704.md T.1 / G.2 / C.2. Implemented 2026-07-04.*
+
+### AI Overview citation surfaces and rank-vs-citation divergence (report Section 4)
+
+Every AI Overview citation domain is entity-classified (same rules as organic results) and aggregated into `aio_citation_surfaces`: the citation mix by entity type, the third-party domains cited, and `outreach_candidates` — placement surfaces (directories, media, associations; the list of qualifying entity types is `config.yml geo.outreach_entity_types`). Per keyword, `keyword_profiles.aio_divergence` compares AIO-cited domains against the organic top-10: domains cited without ranking, rankers the AIO ignores, and the `client_ranks_but_not_cited` alert, which also surfaces as `strategic_flags.geo_alerts`. Discussion/forum threads Google surfaces are captured per-thread (title, link, forum, date) and passed as `forum_threads_by_keyword`.
+
+*Spec: seo_geo_review_20260704.md T.3 / T.4 / T.6. Implemented 2026-07-04.*
+
+### Answer-extractability audit (report Section 5b evidence)
+
+During enrichment, `url_enricher.py` measures how liftable each ranking page's answers are: the number of question-shaped H2/H3 headings (question detection reuses the `title_patterns.py` regexes), the body-text length before the first H2 (a long intro buries the answer), and FAQ presence. `brief_data_extraction._build_extractability` compares those signals on AIO-cited vs uncited pages per keyword (`keyword_profiles.extractability`) and locates the client's own page, so Section 5b formatting advice is grounded in measured differences rather than generic best practice.
+
+*Spec: seo_geo_review_20260704.md T.2. Implemented 2026-07-04.*
+
+### Content freshness / decay tracking (report Section 2 evidence)
+
+During enrichment, `url_enricher.py` extracts a best-effort `published_time` and `modified_time` per page — from `article:published_time` / `article:modified_time` meta tags, then JSON-LD `datePublished` / `dateModified`, then the first `<time datetime=…>` element (published only); no NLP date guessing from body text. `serp_audit.py` copies both onto enriched organic rows (`Published_Time`, `Modified_Time`), and `brief_data_extraction._build_freshness` computes `keyword_profiles.freshness`: per-page `age_days` anchored to the run's `Created_At` (not wall-clock, so re-extracting an old analysis JSON is stable), `median_age_days` over dated pages only, `dated_page_count`, and the client's page when present. Undated pages are reported as undated, never as age 0. Section 2 may state the median age and the client page's age when `data_available` is true.
+
+*Spec: seo_geo_deferred_spec_v1.md#G.6. Implemented 2026-07-04.*
+
+### Situational query probes and AIO trigger rate by query length (report Section 4)
+
+When `config.yml situational_probes.enabled` is true (or Deep Research mode is on — Low API mode always disables it), `serp_audit.py` runs a probe pass after the main keyword loop: up to `max_probes_per_run` (default 6, decision gate D-1) extra single-page SerpAPI fetches of **"S"-label** situation-style queries, `probes_per_keyword` (default 2) per root keyword. Keywords are probed in `strategic_flags.content_priorities` order from the most recent analysis JSON (`keywords: priority`; `all` keeps CSV order). Probe queries come from, in priority order: the keyword's own 6+-word PAA questions verbatim (External Locus first — they are already conversational), then the editorial `situational_templates` in `serp_vocab.yml` (`{base}`/`{topic}`/`{city}` placeholders). Generation and execution live in `query_variants.py` (which also owns the A.1/A.2 alternative and autocomplete-variant generation, extracted from `serp_audit.py`); the run log prints "Situational probes: N SerpAPI calls (cap M)".
+
+Probe results feed exactly two surfaces: the probe rows land in the analysis JSON's `situational_probes` list, and probe AIO citations join `ai_overview_citations` labeled "S". They never enter organic ranking metrics, `serp_intent` inputs, volatility (no SQLite writes), or the competitor handoff (`handoff_writer.py` filters label "S" defensively). `brief_data_extraction._build_aio_trigger_analysis` then computes the top-level `aio_trigger_analysis` block: the AI Overview trigger rate per query word-count bucket ("1-3", "4-5", "6+") across ALL queries in the run including probes, plus per-probe results (query, word count, has_aio, client_cited). Report Section 4 states the measured rates and any probe where the client was cited — testing the transcript's 23%-vs-77% trigger-rate-by-length claim on the client's own market instead of assuming it.
+
+*Spec: seo_geo_deferred_spec_v1.md#T.5. Implemented 2026-07-04.*
+
+### Bing secondary-index check (report Section 4)
+
+When `config.yml bing_check.enabled` is true (default OFF — decision gate D-4), `serp_audit.py` makes exactly one SerpAPI `engine=bing` call per root keyword after the main loop (`bing_check.run_bing_checks`, bound to the standard `_fetch_serp_api` retry wrapper). The query text mirrors the label-"A" Google query (forced-local suffix included) so ranks are comparable; `bing_check.num` (default 20) sets the result count requested. Raw responses are stored under `raw/{run_id}/bing_{kw}.json` (gitignored); Bing results are not enriched or classified — this is a visibility check, not a second market analysis. The run log states the paid call count.
+
+`bing_check.parse_bing_visibility` reads Bing's `organic_results` (position/link/title — shape pinned by `tests/fixtures/bing_serp_sample.json`) into per-keyword rows (client rank/URL via the same `_domain_from_link`/`_is_client_domain` matching as the Google analysis, plus the top-3 Bing domains), which land in the analysis JSON's `bing_visibility` list. `brief_data_extraction._build_bing_visibility` summarises them into the top-level `bing_visibility` block: `by_keyword` records (`checked`, `client_rank` — null with `checked: true` means measured absence, `client_url`, `top3_domains`) and a run summary (`keywords_checked`, `client_visible_count`). Report Section 4 closes with a Google-vs-Bing client-rank comparison per checked keyword; when nothing was checked the report states the check was disabled — it never guesses Bing standing. Rationale: ChatGPT search grounds substantially on Bing, so a Google-only view can miss an entire AI referral surface.
+
+*Spec: seo_geo_deferred_spec_v1.md#G.5. Implemented 2026-07-04.*
+
+### AI-engine mention probing (standalone `probe_ai_visibility.py`)
+
+`probe_ai_visibility.py` is a standalone script (run_feasibility.py pattern — reads config plus the latest `market_analysis_*.json`, runs any time, never imported by the pipeline) that asks AI assistants realistic therapy-seeker questions and measures whether the client appears. Engines are provider-pluggable behind one protocol (`ask(question) → {answer_text, source_urls, model_id}`): **ClaudeProbe** (Anthropic API with the web search tool enabled; model id from `config.yml ai_visibility.claude_model`) and **GeminiProbe** (Gemini REST via `requests` + the shared `http_retry` wrapper with Google Search grounding; model id from `ai_visibility.gemini_model`; the optional `GEMINI_API_KEY` env var — a missing key skips that engine with a logged warning, never an abort, decision gate D-2). The engine list is `ai_visibility.engines` (default `[claude, gemini]`), overridable per run with `--engines`.
+
+Questions come from, in priority order: the run's T.5 `situational_probes` (verbatim), else 6+-word PAA questions, else the editorial `situational_templates` in `serp_vocab.yml` — capped at `ai_visibility.max_questions` (default 20) **per engine**. Every question is prefixed with the geo context (`ai_visibility.geo_context`, default "I'm in North Vancouver, BC."). Detection is engine-agnostic and deterministic: `mentioned` (any `analysis_report.client_name_patterns` string in the answer text, case-insensitive), `cited` (client domain in any returned source URL), `competitors_cited` (source domains matched against `known_brands` plus the most frequent top-10 organic competitor domains from the analysis JSON). Paid calls are gated: the script prints the planned spend (questions × engines) and exits without calling anything unless `--yes` or `ai_visibility.assume_yes` is set.
+
+Results persist per question in the SQLite table `ai_visibility_probes` (`run_ts` in UTC, `engine`, `model`, `question`, `mentioned`, `cited`, `competitor_domains_json`, `answer_excerpt`) so trends are per-engine. The report `ai_visibility_<topic>_<ts>.md` (gitignored) shows this run's mention/citation rate per engine, the per-engine trend over the previous `ai_visibility.history_runs` runs with the model ids used, and a mandatory caveat that single-run values are snapshots — AI answers swing between model versions, which is exactly why the feature stores history instead of reporting a point value.
+
+*Spec: seo_geo_deferred_spec_v1.md#G.1. Implemented 2026-07-04.*
+
+### Google Search Console sponge-effect analysis (standalone `run_gsc_analysis.py`)
+
+`run_gsc_analysis.py` is a standalone script (run_feasibility.py pattern; the main pipeline never imports it or `gsc_client.py` — G.4.4) that joins the client's first-party Search Console data onto the run's queries. `gsc_client.GscClient` authenticates headlessly with a service account (gate D-3: JSON key path from the optional `GSC_CREDENTIALS_PATH` env var; the service-account email must be granted on the Search Console property), pulls query-dimension Search Analytics rows through the shared `http_retry` wrapper (paginated 25 000-row pulls), and caches results for `gsc.cache_ttl_days` (default 7) in the SQLite `gsc_cache` table — DA-client cache pattern including batched IN(...) lookups (500 bound variables per chunk, C.7). Queries GSC has no row for are cached as measured absence (`found = 0`) and omitted from results — never reported as fabricated zeros.
+
+The query set is the run's root keywords plus their A.1/A.2 informational variants, the "S"-label situational probes, and the top PAA phrasings, each carrying `has_ai_overview` joined from the analysis JSON (PAA phrasings: unknown, never guessed). Two deterministic computations follow: the **sponge comparison** — median CTR at comparable position (bands 1–3 / 4–10 / 11–20) for AIO-present vs AIO-absent queries, reported per band only when both buckets hold ≥3 queries, otherwise stated as insufficient data — and **reformat_candidates** — queries ranking in the top 10 whose CTR sits below the no-AIO median for their band, cross-referenced against `strategic_flags.geo_alerts` so pages the AI Overview already ignores (T.4) sort first. Outputs: `gsc_analysis_<topic>_<ts>.md` plus a JSON sidecar (both gitignored). When `config.yml gsc.feed_strategic_flags` is true, `brief_data_extraction._build_gsc_summary` attaches the latest sidecar to the LLM payload as `gsc_summary` — with the HARD prompt rule that GSC numbers are the client's private data, quotable only in client-position contexts, never as market-level claims.
+
+*Spec: seo_geo_deferred_spec_v1.md#G.4. Implemented 2026-07-04.*
+
+### E-E-A-T author-signal detection (report Sections 5b/7 evidence)
+
+During enrichment, `url_enricher.py` detects author signals on each ranking page: `author_present` (JSON-LD `author`/`Person`, a `rel=author` link, or a class/itemprop byline node), `credential_hits` (distinct professional-designation tokens found in the first `enrichment.eeat_scan_chars` characters of body text or in JSON-LD author fields), and `review_marker_present` ("medically reviewed"-style phrases). The credential and review vocabularies are editorial and live in `serp_vocab.yml` (`eeat_signals` section, loader-required); matching mirrors `intent_classifier.py` — word boundaries for single tokens (so "RP" never fires inside "harp"), substring for multi-word phrases, case-insensitive. `brief_data_extraction._build_eeat_signals` summarises the signals per keyword (`keyword_profiles.eeat_signals`: pages, `credentialed_page_count`, `client_page`) so Sections 5b and 7 can state whether credentialed authorship is table-stakes on that SERP and whether the client's page carries a credentialed byline.
+
+*Spec: seo_geo_deferred_spec_v1.md#G.3. Implemented 2026-07-04.*

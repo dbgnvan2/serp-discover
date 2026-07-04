@@ -88,7 +88,7 @@ def _load_config(config_path: str = "config.yml") -> dict:
 
 def _extract_domain(url: str) -> str:
     try:
-        return urlparse(url).netloc.lower().lstrip("www.")
+        return urlparse(url).netloc.lower().removeprefix("www.")
     except Exception:
         return ""
 

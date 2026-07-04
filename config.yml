@@ -37,6 +37,40 @@ app:
   - enter_cautiously
 moz:
   cache_ttl_days: 30
+situational_probes:
+  enabled: false
+  max_probes_per_run: 6
+  probes_per_keyword: 2
+  keywords: priority
+bing_check:
+  enabled: false
+  num: 20
+ai_visibility:
+  # AI-engine mention probing (probe_ai_visibility.py). Paid feature: every
+  # question is one API call per engine; the script's cost guard requires
+  # --yes (or assume_yes: true) before any call is made.
+  engines:
+  - claude
+  - gemini
+  claude_model: claude-sonnet-4-6
+  claude_web_search_tool: web_search_20260209
+  gemini_model: gemini-2.5-flash
+  max_questions: 20
+  assume_yes: false
+  history_runs: 5
+  geo_context: I'm in North Vancouver, BC.
+gsc:
+  # Google Search Console integration (run_gsc_analysis.py). Free
+  # first-party data, but off by default until the service-account grant
+  # (gate D-3) is in place: set GSC_CREDENTIALS_PATH and add the
+  # service-account email to the Search Console property.
+  enabled: false
+  property: sc-domain:livingsystems.ca
+  lookback_days: 90
+  cache_ttl_days: 7
+  # When true, generate_content_brief attaches the latest gsc_analysis_*
+  # sidecar as gsc_summary to the LLM payload (client-private data).
+  feed_strategic_flags: false
 serp_intent:
   thresholds:
     primary_share: 0.6
@@ -86,3 +120,13 @@ report_thresholds:
     counselling_directory_combined: 0.4
     education: 0.15
     government: 0.2
+geo:
+  # Entity types treated as outreach (brand-placement) surfaces in the AIO
+  # citation analysis, as opposed to competitor counselling sites.
+  outreach_entity_types:
+  - directory
+  - media
+  - nonprofit
+  - professional_association
+  - education
+  - government

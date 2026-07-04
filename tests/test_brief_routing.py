@@ -187,21 +187,32 @@ class TestI15PipelineOutputUnchanged(unittest.TestCase):
         recs = data.get("strategic_recommendations", [])
         cls.briefs = [gcb.generate_brief(data, rec_index=i) for i in range(len(recs))]
 
+    @staticmethod
+    def _normalize_dates(text: str) -> str:
+        # The brief embeds the generation date (brief_rendering uses
+        # datetime.now()); baselines were recorded on a fixed day. Dates are
+        # not part of the structural contract these tests protect.
+        import re as _re
+        return _re.sub(r"\d{4}-\d{2}-\d{2}", "<DATE>", text)
+
     def _load_baseline(self, index: int) -> str:
         path = os.path.join(BASELINE_DIR, f"brief_baseline_couples_therapy_r{index}.md")
         with open(path, encoding="utf-8") as f:
             return f.read()
 
     def test_i15_rec0_output_unchanged(self):
-        self.assertEqual(self.briefs[0], self._load_baseline(0),
+        self.assertEqual(self._normalize_dates(self.briefs[0]),
+                         self._normalize_dates(self._load_baseline(0)),
                          "Brief for rec 0 changed after routing externalisation")
 
     def test_i15_rec1_output_unchanged(self):
-        self.assertEqual(self.briefs[1], self._load_baseline(1),
+        self.assertEqual(self._normalize_dates(self.briefs[1]),
+                         self._normalize_dates(self._load_baseline(1)),
                          "Brief for rec 1 changed after routing externalisation")
 
     def test_i15_rec2_output_unchanged(self):
-        self.assertEqual(self.briefs[2], self._load_baseline(2),
+        self.assertEqual(self._normalize_dates(self.briefs[2]),
+                         self._normalize_dates(self._load_baseline(2)),
                          "Brief for rec 2 changed after routing externalisation")
 
 

@@ -3,6 +3,7 @@ from tkinter import ttk, scrolledtext, messagebox
 import subprocess
 import sys
 import threading
+import traceback
 import os
 import json
 import re
@@ -70,6 +71,11 @@ class SerpLauncherApp:
 
     def __init__(self, root):
         self.root = root
+        # Surface ANY exception raised inside a Tkinter callback. By default
+        # Tkinter prints callback tracebacks to stderr only — invisible when
+        # the app is launched without a terminal — so a failing button
+        # handler looks like the button "does nothing".
+        self.root.report_callback_exception = self._report_callback_exception
         self.root.title("SERP Intelligence Launcher")
         self.root.geometry("800x650")
         self.domain_review_window = None
@@ -108,8 +114,16 @@ class SerpLauncherApp:
         list_frame = ttk.LabelFrame(content_frame, text="Available Scripts")
         list_frame.pack(side="left", fill="both", expand=True, padx=(0, 10))
 
+        # exportselection=False is load-bearing: with Tkinter's default
+        # (True), clicking into any other selection-exporting widget — the
+        # keyword-file combobox, the model combobox, the new-keywords entry —
+        # silently clears the listbox selection WITHOUT firing
+        # <<ListboxSelect>>. The Run button then stays enabled while
+        # run_script() sees an empty curselection() and returns, i.e. the
+        # button "does nothing".
         self.script_listbox = tk.Listbox(
-            list_frame, height=10, font=("Courier", 12), activestyle="none")
+            list_frame, height=10, font=("Courier", 12), activestyle="none",
+            exportselection=False)
         self.script_listbox.pack(
             side="left", fill="both", expand=True, padx=5, pady=5)
         self.script_listbox.bind('<<ListboxSelect>>', self.on_select)
@@ -349,6 +363,57 @@ class SerpLauncherApp:
             log_frame, height=12, state="disabled", bg="#1e1e1e", fg="#00ff00", font=("Consolas", 10))
         self.log_text.pack(fill="both", expand=True, padx=5, pady=5)
         self.refresh_keyword_file_options()
+
+        # Select the first script by default so the Run button is live the
+        # moment the window opens. Without a default, Run stays disabled
+        # until a script row is clicked — a disabled button gives zero
+        # feedback, which reads as "the Run button does nothing".
+        self.script_listbox.select_set(0)
+        self.on_select(None)
+
+        # Startup banner: prove which code and interpreter this window is
+        # running, so "is the fix actually on this machine?" is answered by
+        # the log pane itself.
+        self.log(f"Launcher started {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+        self.log(f"> Code version: {self._git_version()}\n")
+        self.log(f"> Python: {sys.executable}\n")
+        self.log(f"> Working dir: {os.getcwd()}\n")
+        self.log("> Select a script on the left, then click 'Run Selected Script'.\n")
+        self.log("-" * 68 + "\n")
+
+    @staticmethod
+    def _git_version():
+        try:
+            result = subprocess.run(
+                ["git", "log", "-1", "--format=%h %s (%cd)", "--date=short"],
+                capture_output=True, text=True, timeout=5,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+            )
+            branch = subprocess.run(
+                ["git", "branch", "--show-current"],
+                capture_output=True, text=True, timeout=5,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                return f"{branch.stdout.strip() or 'detached'} @ {result.stdout.strip()}"
+        except Exception:
+            pass
+        return "unknown (git not available)"
+
+    def _report_callback_exception(self, exc_type, exc_value, exc_tb):
+        details = "".join(traceback.format_exception(exc_type, exc_value, exc_tb))
+        try:
+            self.log("\n[ERROR] GUI action failed:\n" + details + "\n")
+        except Exception:
+            pass
+        try:
+            messagebox.showerror(
+                "Action failed",
+                f"{exc_type.__name__}: {exc_value}\n\n"
+                "The full traceback is in the log pane."
+            )
+        except Exception:
+            print(details, file=sys.stderr)
 
     def on_select(self, event):
         selection = self.script_listbox.curselection()
@@ -656,7 +721,18 @@ class SerpLauncherApp:
 
     def run_script(self):
         selection = self.script_listbox.curselection()
+        self.log(
+            f"[click] Run Selected Script — selection="
+            f"{selection[0] if selection else 'NONE'}\n"
+        )
         if not selection:
+            # Defensive: should be unreachable now that the listbox keeps its
+            # selection (exportselection=False), but never fail silently.
+            messagebox.showinfo(
+                "Run Script",
+                "Select a script from the list first, then click Run."
+            )
+            self.run_btn.config(state="disabled")
             return
 
         listbox_idx = selection[0]
