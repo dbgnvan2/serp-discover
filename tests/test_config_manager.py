@@ -687,7 +687,12 @@ class TestTabInitializationOrder:
             tab = DomainOverridesTab(root)
             assert hasattr(tab, 'tree')
             assert hasattr(tab, 'entity_type_var')
-            assert tab.tree is None
+            # render_ui() runs inside __init__ (via super().__init__) when
+            # tkinter is available, so tree is populated to a Treeview by the
+            # time construction returns. The init-order contract this test
+            # guards is that the attribute EXISTS before render_ui() touches it
+            # (asserted via hasattr + the AttributeError guard below).
+            assert tab.tree is not None
             assert tab.entity_type_var is None
             root.destroy()
         except AttributeError as e:
@@ -701,7 +706,12 @@ class TestTabInitializationOrder:
         try:
             tab = IntentMappingTab(root)
             assert hasattr(tab, 'tree')
-            assert tab.tree is None
+            # render_ui() runs inside __init__ (via super().__init__) when
+            # tkinter is available, so tree is populated to a Treeview by the
+            # time construction returns. The init-order contract this test
+            # guards is that the attribute EXISTS before render_ui() touches it
+            # (asserted via hasattr + the AttributeError guard below).
+            assert tab.tree is not None
             root.destroy()
         except AttributeError as e:
             root.destroy()
@@ -729,7 +739,12 @@ class TestTabInitializationOrder:
         try:
             tab = UrlPatternRulesTab(root)
             assert hasattr(tab, 'tree')
-            assert tab.tree is None
+            # render_ui() runs inside __init__ (via super().__init__) when
+            # tkinter is available, so tree is populated to a Treeview by the
+            # time construction returns. The init-order contract this test
+            # guards is that the attribute EXISTS before render_ui() touches it
+            # (asserted via hasattr + the AttributeError guard below).
+            assert tab.tree is not None
             root.destroy()
         except AttributeError as e:
             root.destroy()
