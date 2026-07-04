@@ -262,5 +262,54 @@ class TestDataForSEOClientErrorHandling(unittest.TestCase):
         self.assertEqual(result, {})
 
 
+class TestDomainNormalization(unittest.TestCase):
+    """Regression tests for the lstrip("www.") bug (seo_geo_review C.1).
+
+    str.lstrip("www.") strips the character set {w, .}, not the literal
+    prefix, so domains beginning with "w" were corrupted (e.g.
+    "wellspringcounselling.ca" -> "ellspringcounselling.ca"), producing
+    wrong DA cache keys and lookups.
+    """
+
+    def test_dfs_extract_domain_preserves_w_domains(self):
+        from dataforseo_client import DataForSEOClient
+        cases = {
+            "https://www.wellspringcounselling.ca/services": "wellspringcounselling.ca",
+            "https://wix.com/page": "wix.com",
+            "https://www.example.com/": "example.com",
+            "https://wwwest.org/": "wwwest.org",
+        }
+        for url, expected in cases.items():
+            self.assertEqual(DataForSEOClient._extract_domain(url), expected)
+
+    def test_run_feasibility_extract_domain_preserves_w_domains(self):
+        from run_feasibility import _extract_domain
+        self.assertEqual(
+            _extract_domain("https://www.wellspringcounselling.ca/x"),
+            "wellspringcounselling.ca",
+        )
+        self.assertEqual(_extract_domain("https://wix.com/a"), "wix.com")
+
+    def test_response_parsing_preserves_w_leading_targets(self):
+        with patch.dict(os.environ, DFS_ENV):
+            from dataforseo_client import DataForSEOClient
+            with tempfile.TemporaryDirectory() as tmp:
+                client = DataForSEOClient(db_path=os.path.join(tmp, "t.db"))
+                with patch("dataforseo_client.requests.post") as mock_post:
+                    mock_post.return_value = _make_dfs_response(
+                        ["www.wellspringcounselling.ca", "wix.com"]
+                    )
+                    result = client.get_domain_metrics(
+                        ["https://www.wellspringcounselling.ca/", "https://wix.com/"]
+                    )
+        # Results are keyed by input URL after matching the response target
+        # back to the request domain. Under the old lstrip bug the request
+        # domain was corrupted ("ellspringcounselling.ca"), the match failed,
+        # and w-domain URLs were silently absent from the result.
+        self.assertIn("https://www.wellspringcounselling.ca/", result)
+        self.assertIn("https://wix.com/", result)
+        self.assertEqual(result["https://www.wellspringcounselling.ca/"]["da"], 40)
+
+
 if __name__ == "__main__":
     unittest.main()

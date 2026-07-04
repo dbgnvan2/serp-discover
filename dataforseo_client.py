@@ -199,7 +199,7 @@ class DataForSEOClient:
             # Response structure: result[0].items[{target, rank}]
             for result_block in (task.get("result") or []):
                 for item in (result_block.get("items") or []):
-                    domain = item.get("target", "").lstrip("www.")
+                    domain = item.get("target", "").removeprefix("www.")
                     if not domain:
                         continue
                     rank = int(item.get("rank") or 0)
@@ -267,7 +267,7 @@ class DataForSEOClient:
     @staticmethod
     def _extract_domain(url: str) -> str:
         try:
-            return urlparse(url).netloc.lower().lstrip("www.")
+            return urlparse(url).netloc.lower().removeprefix("www.")
         except Exception:
             return ""
 
