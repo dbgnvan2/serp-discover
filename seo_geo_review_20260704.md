@@ -1,5 +1,14 @@
 # SEO / GEO Review & Recommendations — 2026-07-04
 
+> **Implementation status (2026-07-04):** Implemented on this branch —
+> C.1, C.2, C.3, C.4, C.5, C.6, C.7, C.8, C.10, T.1, T.2, T.3, T.4, T.6,
+> G.2 (see commit history; each commit carries its Spec reference).
+> Deferred pending account/API decisions: T.5 (situational query probes —
+> SerpAPI spend), G.1 (AI-engine mention probing), G.3 (E-E-A-T author
+> signals), G.4 (Google Search Console OAuth), G.5 (Bing check), G.6
+> (freshness tracking), and C.9 (out-of-repo shared_config.json contract —
+> documented, not changed).
+
 Scope: full-repo review of `serp-discover` (Tool 1) against (a) the Neil Patel
 "Keywords are dead" transcript (micro-moments / AI-citation / GEO themes) and
 (b) an independent SEO/AI-search expert assessment. Covers both **feature
