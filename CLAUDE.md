@@ -1,5 +1,20 @@
 # SERP Intelligence Tool
 
+## Global standards
+
+Read the relevant file from `~/.claude/standards/` before starting work:
+
+| Standard | When |
+|---|---|
+| `learnings.md` | Any data-path, fetch, scoring, or report code — P1–P10 checklist |
+| `external-api.md` | Any call to SerpAPI, DataForSEO, Moz, Anthropic, or other HTTP endpoints |
+| `llm-integration.md` | Any change to prompt building, LLM validation logic, or model selection |
+| `security.md` | Secrets in `.env`, input validation, HTTPS |
+| `file-maintainability.md` | Any new module or significant refactor |
+| `ui-regression.md` | Any change to the tkinter GUI |
+
+
+
 Market intelligence tool for Living Systems Counselling (livingsystems.ca),
 a Bowen Family Systems Theory nonprofit in North Vancouver, BC. Scrapes
 Google SERPs via SerpAPI, generates content briefs via Anthropic API, scores

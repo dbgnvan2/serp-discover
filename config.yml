@@ -17,9 +17,9 @@ serpapi:
   related_questions_ai_max_calls: 5
 files:
   input_csv: keywords_leila.csv
-  output_xlsx: output/market_analysis_leila_20260504_2020.xlsx
-  output_json: output/market_analysis_leila_20260504_2020.json
-  output_md: output/market_analysis_leila_20260504_2020.md
+  output_xlsx: output/market_analysis_leila_20260505_1435.xlsx
+  output_json: output/market_analysis_leila_20260505_1435.json
+  output_md: output/market_analysis_leila_20260505_1435.md
   domain_overrides: domain_overrides.yml
 enrichment:
   enabled: true
@@ -56,6 +56,8 @@ feasibility:
   non_profit_location: North Vancouver
   pivot_serp_fetch: true
   neighborhoods:
+  - West Vancouver
+  - North Vancouver
   - Lonsdale
   - Edgemont Village
   - Lynn Valley
@@ -72,7 +74,8 @@ analysis_report:
   org_type: Small nonprofit counselling organization, established 1971
   location: North Vancouver, BC, Canada
   framework_description: Bowen Family Systems Theory. Core concepts include differentiation
-    of self, emotional cutoff, triangles, and multigenerational transmission.
+    of self, emotional cutoff, sibling position, child projection, triangles, and
+    multigenerational transmission.
   content_focus: Counselling services, Bowen Theory training programs, conferences,
     and educational content.
   additional_context: Budget is limited. Prioritize practical recommendations that

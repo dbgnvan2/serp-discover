@@ -205,21 +205,28 @@ HELP_BY_FIELD = {
 class BaseConfigTab(ttk.Frame):
     """Abstract base class for all configuration tabs."""
 
-    def __init__(self, parent, file_name: str, file_type: str):
+    def __init__(self, parent, file_name: str, file_type: str, client_dir: str = None):
         """
         Args:
             parent: Parent widget
             file_name: Name of config file (e.g., 'intent_mapping.yml')
             file_type: 'yaml' or 'json'
+            client_dir: Optional client config directory. If None, uses current working directory.
         """
         super().__init__(parent)
         self.file_name = file_name
         self.file_type = file_type
-        self.file_path = os.path.join(os.getcwd(), file_name)
+        self.client_dir = client_dir or os.getcwd()
+        self.file_path = os.path.join(self.client_dir, file_name)
         self.current_data = None
         self.edited_data = None
         self.load_current_data()
         self.render_ui()
+
+    def set_client_dir(self, client_dir: str):
+        """Change the client directory (for switching clients)."""
+        self.client_dir = client_dir
+        self.file_path = os.path.join(self.client_dir, self.file_name)
 
     def load_current_data(self):
         """Load file from disk. Subclasses should override if custom loading needed."""
@@ -296,10 +303,10 @@ class BaseConfigTab(ttk.Frame):
 class DomainOverridesTab(BaseConfigTab):
     """Tab for domain_overrides.yml with full CRUD operations."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.tree = None
         self.entity_type_var = None
-        super().__init__(parent, "domain_overrides.yml", "yaml")
+        super().__init__(parent, "domain_overrides.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render domain overrides editor with treeview and buttons."""
@@ -460,10 +467,10 @@ class DomainOverridesTab(BaseConfigTab):
 class ClassificationRulesTab(BaseConfigTab):
     """Tab for classification_rules.json with entity types and descriptions management."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.entity_types_tree = None
         self.descriptions_tree = None
-        super().__init__(parent, "classification_rules.json", "json")
+        super().__init__(parent, "classification_rules.json", "json", client_dir=client_dir)
 
     def render_ui(self):
         """Render classification rules editor with two sections: entity types and descriptions."""
@@ -728,9 +735,9 @@ class ClassificationRulesTab(BaseConfigTab):
 class IntentMappingTab(BaseConfigTab):
     """Tab for intent_mapping.yml with CRUD and reordering support."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.tree = None
-        super().__init__(parent, "intent_mapping.yml", "yaml")
+        super().__init__(parent, "intent_mapping.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render intent mapping editor with treeview and CRUD buttons."""
@@ -1016,9 +1023,9 @@ class IntentMappingTab(BaseConfigTab):
 class StrategicPatternsTab(BaseConfigTab):
     """Tab for strategic_patterns.yml with pattern editing support."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.tree = None
-        super().__init__(parent, "strategic_patterns.yml", "yaml")
+        super().__init__(parent, "strategic_patterns.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render strategic patterns editor with treeview and CRUD buttons."""
@@ -1245,10 +1252,10 @@ class StrategicPatternsTab(BaseConfigTab):
 class BriefPatternRoutingTab(BaseConfigTab):
     """Tab for brief_pattern_routing.yml with pattern routing management."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.tree = None
         self.intent_descriptions = {}
-        super().__init__(parent, "brief_pattern_routing.yml", "yaml")
+        super().__init__(parent, "brief_pattern_routing.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render brief pattern routing editor with patterns and intent descriptions."""
@@ -1502,12 +1509,12 @@ class BriefPatternRoutingTab(BaseConfigTab):
 class IntentClassifierTriggersTab(BaseConfigTab):
     """Tab for intent_classifier_triggers.yml with medical and systemic trigger management."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.medical_mw_text = None
         self.medical_sw_text = None
         self.systemic_mw_text = None
         self.systemic_sw_text = None
-        super().__init__(parent, "intent_classifier_triggers.yml", "yaml")
+        super().__init__(parent, "intent_classifier_triggers.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render intent classifier triggers editor with two sections: medical and systemic."""
@@ -1614,10 +1621,10 @@ class IntentClassifierTriggersTab(BaseConfigTab):
 class ConfigSettingsTab(BaseConfigTab):
     """Tab for config.yml with nested section editing."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.section_widgets = {}  # Maps section_name -> dict of field_name -> widget
         self.section_frames = {}  # Maps section_name -> LabelFrame for collapsing
-        super().__init__(parent, "config.yml", "yaml")
+        super().__init__(parent, "config.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render config.yml editor with collapsible sections and type-aware widgets."""
@@ -1823,9 +1830,9 @@ class ConfigSettingsTab(BaseConfigTab):
 class UrlPatternRulesTab(BaseConfigTab):
     """Tab for url_pattern_rules.yml with regex pattern editor."""
 
-    def __init__(self, parent):
+    def __init__(self, parent, client_dir=None):
         self.tree = None
-        super().__init__(parent, "url_pattern_rules.yml", "yaml")
+        super().__init__(parent, "url_pattern_rules.yml", "yaml", client_dir=client_dir)
 
     def render_ui(self):
         """Render URL pattern rules editor with treeview and buttons."""
@@ -2163,11 +2170,12 @@ class UrlPatternRulesTab(BaseConfigTab):
 class ConfigManagerWindow:
     """Main Configuration Manager window with tabbed interface."""
 
-    def __init__(self, root, log_func=None):
+    def __init__(self, root, log_func=None, client_dir=None):
         """
         Args:
             root: Parent Tkinter window
             log_func: Optional function to log messages to main window
+            client_dir: Optional path to client config directory (for multi-client setup)
         """
         self.root = root
         self.log = log_func or (lambda msg: print(msg))
@@ -2176,7 +2184,13 @@ class ConfigManagerWindow:
         self.window.geometry("1000x700")
         self.window.transient(root)
 
-        # Header
+        # Determine initial client directory
+        self.client_dir = client_dir or self._select_client_directory()
+        if not self.client_dir:
+            self.window.destroy()
+            return
+
+        # Header with client info
         header_frame = ttk.Frame(self.window)
         header_frame.pack(fill="x", padx=15, pady=15)
 
@@ -2185,6 +2199,15 @@ class ConfigManagerWindow:
             text="Configuration Manager",
             font=("Helvetica", 14, "bold")
         ).pack(anchor="w")
+
+        # Client info line
+        client_name = os.path.basename(self.client_dir)
+        ttk.Label(
+            header_frame,
+            text=f"Client: {client_name}  |  Path: {self.client_dir}",
+            foreground="darkblue",
+            font=("Helvetica", 10, "bold")
+        ).pack(anchor="w", pady=(5, 0))
 
         ttk.Label(
             header_frame,
@@ -2197,14 +2220,14 @@ class ConfigManagerWindow:
         notebook.pack(fill="both", expand=True, padx=15, pady=(0, 15))
 
         self.tabs = [
-            DomainOverridesTab(notebook),
-            ClassificationRulesTab(notebook),
-            IntentMappingTab(notebook),
-            StrategicPatternsTab(notebook),
-            BriefPatternRoutingTab(notebook),
-            IntentClassifierTriggersTab(notebook),
-            ConfigSettingsTab(notebook),
-            UrlPatternRulesTab(notebook),
+            DomainOverridesTab(notebook, client_dir=self.client_dir),
+            ClassificationRulesTab(notebook, client_dir=self.client_dir),
+            IntentMappingTab(notebook, client_dir=self.client_dir),
+            StrategicPatternsTab(notebook, client_dir=self.client_dir),
+            BriefPatternRoutingTab(notebook, client_dir=self.client_dir),
+            IntentClassifierTriggersTab(notebook, client_dir=self.client_dir),
+            ConfigSettingsTab(notebook, client_dir=self.client_dir),
+            UrlPatternRulesTab(notebook, client_dir=self.client_dir),
         ]
 
         # Add tabs to notebook
@@ -2214,6 +2237,12 @@ class ConfigManagerWindow:
         # Footer buttons
         footer_frame = ttk.Frame(self.window)
         footer_frame.pack(fill="x", padx=15, pady=(0, 15))
+
+        ttk.Button(
+            footer_frame,
+            text="Switch Client",
+            command=self.switch_client
+        ).pack(side="left", padx=(0, 10))
 
         ttk.Button(
             footer_frame,
@@ -2239,7 +2268,7 @@ class ConfigManagerWindow:
             command=self.close_window
         ).pack(side="left")
 
-        self.log("[Config Manager] Window opened\n")
+        self.log(f"[Config Manager] Window opened for client: {client_name}\n")
 
     def validate_all(self):
         """Validate all tabs."""
@@ -2294,6 +2323,116 @@ class ConfigManagerWindow:
                 tab.revert_to_disk()
             messagebox.showinfo("Success", "All changes discarded.")
             self.log("[Config Manager] Changes discarded, data reloaded from disk\n")
+
+    def switch_client(self):
+        """Switch to a different client configuration."""
+        new_client_dir = self._select_client_directory()
+        if not new_client_dir or new_client_dir == self.client_dir:
+            return  # User cancelled or selected same client
+
+        # Check for unsaved changes
+        has_changes = any(tab.has_unsaved_changes() for tab in self.tabs)
+        if has_changes:
+            confirm = messagebox.askyesnocancel(
+                "Unsaved Changes",
+                "You have unsaved changes. Save before switching clients?"
+            )
+            if confirm is None:
+                return  # Cancel
+            elif confirm:
+                self.save_all()
+
+        # Reload all tabs with new client directory
+        self.client_dir = new_client_dir
+        for tab in self.tabs:
+            tab.set_client_dir(new_client_dir)
+            tab.load_current_data()
+            tab.render_ui()
+
+        # Update header
+        client_name = os.path.basename(self.client_dir)
+        self.log(f"[Config Manager] Switched to client: {client_name}\n")
+        messagebox.showinfo("Success", f"Switched to client: {client_name}")
+
+    def _select_client_directory(self):
+        """
+        Show client selector dialog.
+        Auto-discovers clients/ directory and lets user pick one.
+        """
+        if not TKINTER_AVAILABLE:
+            return os.getcwd()
+
+        dialog = tk.Toplevel(self.window if hasattr(self, 'window') else self.root)
+        dialog.title("Select Client Configuration")
+        dialog.geometry("500x400")
+        dialog.transient(self.root)
+
+        # Find available clients
+        clients_dir = os.path.join(os.getcwd(), "clients")
+        available_clients = []
+
+        if os.path.isdir(clients_dir):
+            for item in sorted(os.listdir(clients_dir)):
+                item_path = os.path.join(clients_dir, item)
+                if os.path.isdir(item_path) and item != "_template":
+                    available_clients.append((item, item_path))
+
+        # Info text
+        ttk.Label(
+            dialog,
+            text="Select a client or browse for a custom directory.",
+            wraplength=450,
+            justify="left"
+        ).pack(padx=20, pady=(20, 10), anchor="w")
+
+        # Available clients listbox
+        if available_clients:
+            ttk.Label(dialog, text="Available Clients:", font=("Helvetica", 10, "bold")).pack(padx=20, anchor="w")
+
+            list_frame = ttk.Frame(dialog)
+            list_frame.pack(fill="both", expand=True, padx=20, pady=10)
+
+            scrollbar = ttk.Scrollbar(list_frame)
+            scrollbar.pack(side="right", fill="y")
+
+            listbox = tk.Listbox(list_frame, yscrollcommand=scrollbar.set)
+            listbox.pack(side="left", fill="both", expand=True)
+            scrollbar.config(command=listbox.yview)
+
+            selected_client = [None]  # Use list to allow modification in nested function
+
+            for name, path in available_clients:
+                listbox.insert("end", name)
+
+            def on_select():
+                sel = listbox.curselection()
+                if sel:
+                    selected_client[0] = available_clients[sel[0]][1]
+                    dialog.destroy()
+
+            ttk.Button(dialog, text="Select", command=on_select).pack(padx=20, pady=(0, 10))
+
+        # Browse button
+        def on_browse():
+            path = filedialog.askdirectory(
+                title="Select Client Configuration Directory",
+                initialdir=clients_dir if os.path.isdir(clients_dir) else os.getcwd()
+            )
+            if path:
+                selected_client[0] = path
+                dialog.destroy()
+
+        ttk.Button(dialog, text="Browse for Custom Directory", command=on_browse).pack(padx=20, pady=10)
+
+        # Use current directory option
+        def on_current():
+            selected_client[0] = os.getcwd()
+            dialog.destroy()
+
+        ttk.Button(dialog, text="Use Current Directory", command=on_current).pack(padx=20, pady=(0, 20))
+
+        dialog.wait_window()
+        return selected_client[0]
 
     def close_window(self):
         """Close the configuration manager window."""
