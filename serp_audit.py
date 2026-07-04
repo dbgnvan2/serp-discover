@@ -61,14 +61,14 @@ if os.path.exists("config.yml"):
     with open("config.yml", "r") as f:
         CONFIG = yaml.safe_load(f) or {}
 
-SHARED_CONFIG_PATH = os.path.join(os.path.dirname(__file__), "..", "shared_config.json")
-SHARED_CONFIG = {}
-if os.path.exists(SHARED_CONFIG_PATH):
-    try:
-        with open(SHARED_CONFIG_PATH, "r") as f:
-            SHARED_CONFIG = json.load(f)
-    except Exception as e:
-        print(f"Warning: Could not load shared config: {e}")
+# Cross-tool shared config (out-of-repo). Path resolution, the
+# SERP_SHARED_CONFIG env override, and malformed-file handling live in
+# shared_config.py — the single owner of that contract (Spec:
+# seo_geo_deferred_spec_v1.md#C.9).
+from shared_config import load_shared_config, shared_config_path
+
+SHARED_CONFIG_PATH = shared_config_path()
+SHARED_CONFIG = load_shared_config()
 
 INPUT_FILE = CONFIG.get("files", {}).get("input_csv", "keywords.csv")
 
@@ -153,8 +153,8 @@ CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.
 MOZ_CACHE_TTL_DAYS       = int(CONFIG.get("moz", {}).get("cache_ttl_days", 30))
 
 # Editorial vocabulary lives in serp_vocab.yml (Spec: seo_geo_review C.4).
-# shared_config.json "stop_words" still wins when present (cross-tool
-# single source of truth); serp_vocab.yml is the in-repo editorial source.
+# The shared cross-tool config's "stop_words" still wins when present
+# (single source of truth); serp_vocab.yml is the in-repo editorial source.
 SERP_VOCAB = pattern_matching.SERP_VOCAB
 STOP_WORDS = set(SHARED_CONFIG.get("stop_words") or SERP_VOCAB["stop_words"])
 pattern_matching.STOP_WORDS = STOP_WORDS  # sync config-driven stop words

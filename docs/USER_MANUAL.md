@@ -435,6 +435,27 @@ analysis_report:
   location: "North Vancouver, BC, Canada"
 ```
 
+### **shared_config.json** — Cross-Tool Shared Settings (optional, out-of-repo)
+
+**What it is:** one optional JSON file, stored one directory ABOVE this repo
+(`../shared_config.json`), that both this tool and Tool 2 (the competitor
+audit tool) read. It carries the settings that must agree across tools:
+the client's Domain Authority, domain, and location; the stop-word list;
+the feasibility thresholds; and the omitted-domains file path.
+
+**Why it exists:** if the two tools disagreed about who the client is or
+what "feasible" means, their outputs could not be compared. Putting those
+values in one shared file outside either repo makes them a single source of
+truth. When the file is present, its values override the same settings in
+`config.yml` and `serp_vocab.yml`; when it is absent, the in-repo defaults
+apply and the run log says so. A broken (malformed) file never crashes a
+run — the tool logs one warning naming the file and falls back to defaults,
+so you always know which settings were actually in effect.
+
+**Relocating it:** set the `SERP_SHARED_CONFIG` environment variable to the
+file's full path if your deployment doesn't keep it one directory up.
+The full key list is in `docs/config_reference.md` ("Shared config").
+
 ### **intent_mapping.yml** — SERP Intent Rules
 
 Defines how `(content_type, entity_type, local_pack, domain_role)` maps to intent. First-match-wins — order matters.

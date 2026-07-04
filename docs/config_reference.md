@@ -20,9 +20,51 @@
 
 **`url_pattern_rules.yml`** — URL-path fallback rules for pages the HTML enricher couldn't classify. Edit to improve classification rates without touching Python.
 
-**`serp_vocab.yml`** — editorial SERP-audit vocabulary: n-gram stop words, PAA category triggers (Commercial/Distress/Reactivity), service-like tokens, and the AI-alternative query templates. Note: `shared_config.json` `stop_words` (out-of-repo) still overrides the stop-word list when present.
+**`serp_vocab.yml`** — editorial SERP-audit vocabulary: n-gram stop words, PAA category triggers (Commercial/Distress/Reactivity), service-like tokens, and the AI-alternative query templates. Note: the shared config's `stop_words` (out-of-repo, see "Shared config" below) still overrides the stop-word list when present.
 
 **`strategic_patterns.yml`** — Bowen theory strategic pattern definitions. Each entry has `Pattern_Name`, `Triggers` (list), `Status_Quo_Message`, `Bowen_Bridge_Reframe`, and `Content_Angle`. A pattern fires when any trigger word appears as a whole word in the run's SERP ngram corpus. Add new patterns by appending entries; no Python changes required.
+
+---
+
+## Shared config (`shared_config.json`, out-of-repo)
+
+*Spec: seo_geo_deferred_spec_v1.md#C.9.*
+
+One optional JSON file shared with Tool 2 (the competitor audit tool) so both tools agree on client identity, stop words, and feasibility thresholds. It lives **outside this repo** — by default one directory above it (`../shared_config.json`). The env var **`SERP_SHARED_CONFIG`** overrides that path (absolute path to the file). All loading goes through `shared_config.py` (`load_shared_config()`); a malformed file logs one warning naming the file and falls back to in-repo defaults; an absent file is logged at INFO and is not an error.
+
+**Schema (all keys optional):**
+
+```json
+{
+  "stop_words": ["the", "and", "..."],
+  "client": {
+    "da": 30,
+    "domain": "livingsystems.ca",
+    "location": "North Vancouver"
+  },
+  "technical": {
+    "feasibility_threshold": 5,
+    "moderate_feasibility_max_gap": 15,
+    "score_normaliser": 30.0
+  },
+  "filtering": {
+    "omitted_domains_path": "omitted_domains.txt"
+  }
+}
+```
+
+| Key | Consumed by | Overrides |
+|-----|-------------|-----------|
+| `stop_words` | `serp_audit.py` n-gram corpus | `serp_vocab.yml stop_words` |
+| `client.da` | feasibility scoring | `config.yml feasibility.client_da` |
+| `client.domain` | client visibility detection | `config.yml analysis_report.client_domain` |
+| `client.location` | hyper-local pivot text | `config.yml feasibility.non_profit_location` |
+| `technical.feasibility_threshold` | `feasibility.py` High/Moderate cut | code default 5 |
+| `technical.moderate_feasibility_max_gap` | `feasibility.py` Moderate/Low cut | code default 15 |
+| `technical.score_normaliser` | `feasibility.py` score scaling | code default 30.0 |
+| `filtering.omitted_domains_path` | domain exclusion list (path relative to the shared config's directory) | code default `omitted_domains.txt` |
+
+**Precedence:** shared config > `config.yml` > `serp_vocab.yml` defaults (stop words) / code defaults (thresholds). Do not remove the file's authority — Tool 2 reads the same file (decision gate D-5).
 
 ---
 

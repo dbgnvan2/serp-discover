@@ -20,6 +20,12 @@ How SERP Intelligence Tool 1 produces its outputs.
 
 **Output:** `market_analysis_{topic}_{datetime}.json` — the data contract for Part 2.
 
+### Cross-tool shared config
+
+Both `serp_audit.py` (stop words, client DA/domain/location, omitted-domains path) and `feasibility.py` (gap thresholds, score normaliser) read the optional out-of-repo `shared_config.json` through one module, `shared_config.py`. It owns path resolution (default `../shared_config.json`, overridable via the `SERP_SHARED_CONFIG` env var), malformed-file handling (one warning naming the file, then in-repo defaults), and logs which keys were consumed. Precedence: shared config > `config.yml` > `serp_vocab.yml` / code defaults. Schema in `docs/config_reference.md` ("Shared config"). Tool 2 reads the same file, so its authority must not be removed.
+
+*Spec: seo_geo_deferred_spec_v1.md#C.9. Implemented 2026-07-04.*
+
 ---
 
 ## Part 2 — Report generation
