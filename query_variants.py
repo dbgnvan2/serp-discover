@@ -60,6 +60,30 @@ def delocalise_keyword(base_keyword, city):
     return re.sub(r"^(best|top)\s+", "", base, flags=re.I).strip()
 
 
+def is_service_like(keyword, service_tokens, city=None):
+    """Return True when the (de-localised) keyword names a therapy service.
+
+    Single source of the "service-like" definition, shared by
+    ``ai_query_alternatives`` (AI-likely alternatives) and the hyper-local
+    pivot gate in ``feasibility.generate_hyper_local_pivot``. The token list
+    is editorial → serp_vocab.yml ``service_like_tokens``; never hardcode a
+    parallel list. Substring match on the de-localised keyword, mirroring the
+    original inline check.
+
+    Geographic (neighbourhood) pivots only substitute proximity for authority
+    on service-intent queries; informational queries ("how does birth order
+    affect personality") must not be gated as service-like.
+
+    Spec: seo_geo_review_20260704.md (chip B, B.1.a).
+    """
+    q = (keyword or "").strip()
+    if not q:
+        return False
+    base = delocalise_keyword(q, city) if city else q
+    base_lower = base.lower()
+    return any(tok in base_lower for tok in service_tokens)
+
+
 def ai_query_alternatives(base_keyword, city, service_tokens, templates_map):
     """Generate two AI-likely informational alternatives for a base query.
 
@@ -76,7 +100,7 @@ def ai_query_alternatives(base_keyword, city, service_tokens, templates_map):
     if not base:
         return []
 
-    if any(tok in base_lower for tok in service_tokens):
+    if is_service_like(base, service_tokens):
         templates = templates_map["service"]
         topic = base
     elif base_lower.startswith("help with "):

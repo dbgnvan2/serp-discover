@@ -70,6 +70,14 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 
 *Spec: serp_tool1_improvements_spec.md#I.3. Implemented 2026-05-01.*
 
+### Feasibility scoring and hyper-local pivot gating
+
+`feasibility.py` scores each keyword by the Domain Authority gap (avg competitor DA − client DA) into High / Moderate / Low Feasibility (thresholds in `docs/feasibility.md`). For **Low Feasibility** keywords `generate_hyper_local_pivot` may suggest a neighbourhood variant — but only when the keyword is **service-intent**. Whether a keyword is service-like is decided by the shared `query_variants.is_service_like` predicate, which matches the editorial `service_like_tokens` list in `serp_vocab.yml` against the de-localised keyword. Informational keywords (e.g. "how does birth order affect personality") get **no** pivot and **no** neighbourhood variants: a geographic variant is meaningless for them, and their play is content extractability, not proximity (the report flags them for the extraction play instead).
+
+When `feasibility.pivot_serp_fetch` is on, a secondary SerpAPI Maps/organic fetch validates each pivot. That fetch is treated honestly: a **failed** validation fetch is recorded as *could not measure* (local pack `None`, pivot status **Not Measured**), never as a real "not in local pack" or a false "Low Feasibility". Any request URL written to a log is scrubbed of the SerpAPI key first.
+
+*Spec: seo_geo_review_20260704.md (chip B). Implemented 2026-07-04.*
+
 ---
 
 ## Part 3 — Content brief generation

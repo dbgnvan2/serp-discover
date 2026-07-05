@@ -253,5 +253,55 @@ class TestCleanupC2PatternIntentContext(unittest.TestCase):
                                  f"Pattern '{name}' must not render literal '{placeholder}'")
 
 
+class TestFeasibilityLocalPackHonesty(unittest.TestCase):
+    """Chip B, B.2 — generate_insight_report renders the local-pack signal
+    honestly. It consumes the same keyword_feasibility rows run_feasibility
+    writes back (which now carry Client_In_Local_Pack=None on fetch failure),
+    so a failed validation must NEVER render as "✗ not in local pack" here
+    either (P5/P11: fix the whole class through the read-back layer).
+    """
+
+    def _report(self, client_in_local_pack, pivot_status="Not Measured"):
+        data = {
+            "keyword_feasibility": [
+                {"Keyword": "couples counselling", "Query_Label": "A", "client_da": 20,
+                 "avg_serp_da": 90.0, "gap": 70.0, "feasibility_score": 0.0,
+                 "feasibility_status": "Low Feasibility",
+                 "pivot_status": "Pivoting to Hyper-Local",
+                 "suggested_keyword": "couples counselling Lonsdale",
+                 "all_variants": ["couples counselling Lonsdale"]},
+                {"Keyword": "couples counselling Lonsdale", "Query_Label": "P",
+                 "Source_Keyword": "couples counselling", "client_da": 20,
+                 "avg_serp_da": None, "gap": None, "feasibility_score": None,
+                 "feasibility_status": pivot_status,
+                 "Client_In_Local_Pack": client_in_local_pack},
+            ]
+        }
+        return generate_insight_report.generate_report(data)
+
+    def test_b2_failed_fetch_renders_not_measured(self):
+        report = self._report(None)
+        self.assertIn("not measured", report.lower())
+        self.assertNotIn("✗ not in local pack", report)
+
+    def test_b2_measured_absence_still_renders_x(self):
+        report = self._report(0, pivot_status="Low Feasibility")
+        self.assertIn("✗ not in local pack", report)
+
+    def test_b2_informational_keyword_renders_extraction_seam(self):
+        data = {
+            "keyword_feasibility": [
+                {"Keyword": "how does birth order affect personality", "Query_Label": "A",
+                 "client_da": 20, "avg_serp_da": 90.0, "gap": 70.0, "feasibility_score": 0.0,
+                 "feasibility_status": "Low Feasibility",
+                 "pivot_status": "No pivot — informational",
+                 "suggested_keyword": None, "all_variants": []},
+            ]
+        }
+        report = generate_insight_report.generate_report(data)
+        self.assertIn("informational", report.lower())
+        self.assertNotIn("✗ not in local pack", report)
+
+
 if __name__ == "__main__":
     unittest.main()

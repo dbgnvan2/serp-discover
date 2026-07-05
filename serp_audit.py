@@ -1652,6 +1652,10 @@ def main():
                             feas = feasibility_module.compute_feasibility(
                                 FEASIBILITY_CLIENT_DA, competitor_das
                             )
+                            # Gate the pivot on service intent — informational
+                            # keywords get no neighbourhood variant (B.1.d).
+                            kw_service_like = query_variants.is_service_like(
+                                source_keyword, SERVICE_LIKE_TOKENS, FEASIBILITY_LOCATION)
                             pivot_result = feasibility_module.generate_hyper_local_pivot(
                                 primary_keyword=source_keyword,
                                 non_profit_location=FEASIBILITY_LOCATION,
@@ -1660,6 +1664,7 @@ def main():
                                     "avg_competitor_da": feas["avg_serp_da"],
                                 },
                                 neighborhoods=FEASIBILITY_NEIGHBORHOODS,
+                                is_service_like=kw_service_like,
                             )
 
                             if ENRICHMENT_ENABLED:
@@ -1780,9 +1785,9 @@ def main():
         if pivot_das:
             pivot_feas = feasibility_module.compute_feasibility(FEASIBILITY_CLIENT_DA, pivot_das)
         else:
-            pivot_feas = {"avg_serp_da": None, "client_da": FEASIBILITY_CLIENT_DA,
-                          "gap": None, "feasibility_score": None,
-                          "feasibility_status": "Low Feasibility"}
+            # No competitor DA measured — honest, never a false "Low Feasibility" (B.2, P1/P14).
+            pivot_feas = {"avg_serp_da": None, "client_da": FEASIBILITY_CLIENT_DA, "gap": None,
+                          "feasibility_score": None, "feasibility_status": "Not Measured"}
 
         if ENRICHMENT_ENABLED:
             storage.save_keyword_feasibility(

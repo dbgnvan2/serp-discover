@@ -671,7 +671,16 @@ def generate_report(data):
             "High Feasibility":     "✅ High",
             "Moderate Feasibility": "⚠️ Moderate",
             "Low Feasibility":      "🔴 Low",
+            "Not Measured":         "⚠️ Not measured",
         }
+
+        def _local_pack_phrase(pack):
+            # Honest rendering (B.2, same class as run_feasibility): None = the
+            # validation fetch failed (could not measure) — never a false
+            # "✗ not in local pack". 0 = measured-absent. Truthy = present.
+            if pack is None:
+                return " — local pack not measured (validation fetch failed)"
+            return " ✓ in local pack" if pack else " ✗ not in local pack"
 
         for row in primary_rows:
             kw       = row.get("Keyword") or row.get("original_keyword", "—")
@@ -683,13 +692,15 @@ def generate_report(data):
             gap_str    = f"{gap:+.0f}" if gap is not None else "—"
 
             pivot_cell = "*(stay the course)*"
-            if row.get("pivot_status") == "Pivoting to Hyper-Local":
+            if row.get("pivot_status") == "No pivot — informational":
+                # SEAM (chip C): the extraction-play recommendation renders here.
+                pivot_cell = "*(informational — extraction play)*"
+            elif row.get("pivot_status") == "Pivoting to Hyper-Local":
                 suggested = row.get("suggested_keyword", "")
                 # Check if we have a pivot result with local pack data
                 pivot_result = pivot_rows.get(kw)
                 if pivot_result:
-                    pack = pivot_result.get("Client_In_Local_Pack")
-                    pack_str = " ✓ in local pack" if pack else " ✗ not in local pack"
+                    pack_str = _local_pack_phrase(pivot_result.get("Client_In_Local_Pack"))
                     pivot_feas = pivot_result.get("feasibility_status", "")
                     p_icon = STATUS_ICONS.get(pivot_feas, pivot_feas)
                     pivot_cell = f"**{suggested}** — {p_icon}{pack_str}"
