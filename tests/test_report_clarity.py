@@ -581,10 +581,14 @@ def mock_report_data_with_play():
                 "entity_distribution": {"counselling": 8, "directory": 2},
                 "recommended_play": {
                     "play": "extraction_play",
-                    "label": "Extraction Play",
+                    "label": "Extraction play (GEO)",
                     "strategy_text": "Reformat the page answer-first for AIO extraction.",
-                    "evidence": ["AIO present"],
-                    "data_available": True,
+                    "evidence": {"matched_rule": {"index": 4, "match": {}},
+                                 "inputs_used": {}},
+                    "data_available": {"feasibility": True, "serp_intent": True,
+                                       "aio": True},
+                    "confidence": "high",
+                    "note": None,
                 },
             },
         },
@@ -605,7 +609,7 @@ class TestRecommendedPlayLines:
     def test_rpc2_play_line_in_intent_section(self, mock_report_data_with_play):
         report = generate_report(mock_report_data_with_play)
         assert "**Recommended play:**" in report
-        assert "Extraction Play" in report
+        assert "Extraction play (GEO)" in report
         # The one-line strategy is narrated verbatim.
         assert "answer-first" in report
         # Play-specific success metric from play_routing.yml surfaces.
@@ -619,7 +623,7 @@ class TestRecommendedPlayLines:
         # carries the 🔴 Low status icon and the play cell), not only a pivot.
         row = next(l for l in report.splitlines()
                    if l.startswith("| birth order and personality |") and "🔴 Low" in l)
-        assert "Extraction Play" in row
+        assert "Extraction play (GEO)" in row
 
 
 class TestRecommendedPlayDocs:
@@ -646,4 +650,4 @@ class TestRecommendedPlayDocs:
     def test_rpc7_config_reference_documents_play_routing(self):
         text = self._doc("config_reference.md")
         assert "play_routing.yml" in text
-        assert "play_labels" in text
+        assert "success_metric" in text  # the chip-C consumer key added to plays

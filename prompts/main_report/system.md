@@ -87,16 +87,19 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
 - keyword_profiles.recommended_play: the pre-computed "Recommended Play"
   verdict — the single strategic move for this keyword under the
   two-score, rank-vs-citation model (Google rank and AI-Overview citation
-  are SEPARATE scores). Contains: play (machine token — rank_play,
-  extraction_play, local_pivot_play, or avoid_play), label (the human
-  name you MUST use verbatim, e.g. "Extraction Play"), strategy_text
-  (one-line move), evidence (the signals it rests on), and
-  data_available (false = inputs were missing; say so honestly and do
-  NOT invent a play). This is a DETERMINISTIC verdict. You may NARRATE
-  and justify it, but you must NOT assign a different play than the one
-  given — a rank_play keyword is a ranking target, an extraction_play
-  keyword is an AIO-citation target. Contradicting the pre-computed play
-  is a hard validation failure.
+  are SEPARATE scores). Contains: play (machine token — one of rank_play,
+  extraction_play, reformat_play, local_pivot_play, deprioritize), label
+  (the human name you MUST use verbatim, e.g. "Extraction play (GEO)"),
+  strategy_text (one-line move you may quote), evidence (the matched rule
+  and the normalised signals it routed on), data_available (a map of which
+  inputs were present: {feasibility, serp_intent, aio}), confidence
+  ("high" | "low"), and note (an honesty caveat when an input was missing —
+  when present, say so; do NOT invent the missing data). This is a
+  DETERMINISTIC verdict. You may NARRATE and justify it, but you must NOT
+  assign a different play than the one given — rank_play is a ranking
+  target; extraction_play and reformat_play are AIO-citation targets;
+  local_pivot_play is a hyper-local target; deprioritize means do not
+  invest. Contradicting the pre-computed play is a hard validation failure.
 
 COMPETITIVE LANDSCAPE:
 - competitive_landscape: per-keyword summaries with entity breakdown
@@ -576,10 +579,11 @@ keyword with action != skip, state:
 - STATE the keyword's keyword_profiles.recommended_play.label verbatim and
   FOLLOW it — the recommendation must pursue that exact play, never a
   different one. Choose the success metric BY the play: a rank_play target
-  is measured by organic rank improvement; an extraction_play target is
-  measured by AI Overview (AIO) citation gain; a local_pivot_play target
-  by local-pack / hyper-local rank. When recommended_play.data_available
-  is false, say the play inputs were missing rather than inventing one.
+  is measured by organic rank improvement; extraction_play and reformat_play
+  targets are measured by AI Overview (AIO) citation gain; a local_pivot_play
+  target by local-pack / hyper-local rank; deprioritize means recommend no
+  dedicated investment. When recommended_play.note is present (an input was
+  missing), say so rather than inventing the missing data.
 - What to avoid (audience mismatch, competing with legal firms)
 - Where keyword_profiles.eeat_signals.data_available is true for the
   keyword, note whether credentialed authorship is table-stakes on

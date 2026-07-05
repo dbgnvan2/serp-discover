@@ -32,28 +32,23 @@ class TestFormatPlayCell(unittest.TestCase):
         })
         self.assertNotIn("\n", cell)
 
-    def test_data_available_false_is_honest(self):
+    def test_honesty_note_rendered(self):
+        """When the producer sets a note (an input was missing), the cell states it
+        honestly — alongside the strategy, which chip A always provides."""
         cell = pr.format_play_cell({
-            "play": "extraction_play", "label": "Extraction Play",
-            "strategy_text": "should not appear", "data_available": False,
+            "play": "extraction_play", "label": "Extraction play (GEO)",
+            "strategy_text": "restructure answer-first",
+            "note": "feasibility/DA data unavailable — routed on intent + AI-Overview only",
+            "confidence": "low",
         })
         self.assertIn("inputs missing", cell.lower())
-        self.assertNotIn("should not appear", cell)
+        self.assertIn("feasibility/DA data unavailable", cell)
+        self.assertIn("restructure answer-first", cell)
 
-    def test_data_available_falsy_zero_is_honest(self):
-        """Renderer and validator both treat a present-but-falsy value as
-        'not available' — they must not disagree for the same record."""
+    def test_no_note_no_caveat(self):
         cell = pr.format_play_cell({
-            "play": "extraction_play", "label": "Extraction Play",
-            "strategy_text": "should not appear", "data_available": 0,
-        })
-        self.assertIn("inputs missing", cell.lower())
-        self.assertNotIn("should not appear", cell)
-
-    def test_missing_data_available_key_defaults_to_available(self):
-        cell = pr.format_play_cell({
-            "play": "rank_play", "label": "Rank Play",
-            "strategy_text": "do the thing",
+            "play": "rank_play", "label": "Rank play",
+            "strategy_text": "do the thing", "note": None,
         })
         self.assertIn("do the thing", cell)
         self.assertNotIn("inputs missing", cell.lower())

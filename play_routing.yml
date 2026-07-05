@@ -1,45 +1,159 @@
-# play_routing.yml — Recommended Play taxonomy + routing
+# play_routing.yml
 #
-# Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation "two separate scores").
+# Maps a keyword's pre-computed SERP/feasibility signals → one of five
+# "Recommended Play" verdicts, used by play_routing.py to compute
+# keyword_profiles[<kw>].recommended_play.
 #
-# OWNERSHIP
-#   - chip A owns the ROUTING rules (which play a keyword receives) under `routing:`
-#     and the pre-computed keyword_profiles[kw].recommended_play field.
-#   - chip C (CONSUMER) reads the VOCABULARY block below (`play_labels`,
-#     `play_claim_phrases`) for report rendering and LLM-output validation. It never
-#     hardcodes the play taxonomy in Python.
+# Spec: seo_geo_review_20260704.md — Part 4 priority summary; T.4
+# ("rank-vs-citation divergence": Google rank and AI-Overview citation are two
+# SEPARATE scores). This file is the "Recommended Play" decision table
+# (foundation chip A; the report/LLM/validator consumers are chip C).
 #
-# RECONCILIATION NOTE (2026-07-04): chip A had not landed when chip C shipped, so
-# chip C created this file with the vocabulary block it needs. When chip A merges
-# its routing rules, they are ADDITIVE — keep the tokens in `play_labels` in sync
-# with whatever chip A emits into recommended_play["play"]. If chip A already
-# defines `play_labels`, do not fork; reconcile to a single block.
+# DOMAIN JUDGMENT LIVES HERE. Deterministic Python (play_routing.py) only
+# normalises raw signals into the primitives below; THIS table makes every
+# routing call. Edit this file to change how plays are chosen — do not push
+# routing exceptions into Python.
+#
+# ─── Schema ──────────────────────────────────────────────────────────────────
+#
+# plays: map of play-id → {label, strategy_text, success_metric}. strategy_text
+#   is a single line the report/LLM may quote verbatim. success_metric (added by
+#   chip C) is the metric the brief's Section 7 uses for that play — a rank_play
+#   is measured by ranking, an extraction/reformat play by AIO citation. Every
+#   play referenced by a rule MUST be defined here.
+#
+# rules: ordered list. FIRST MATCHING RULE WINS (top of file = highest
+#   priority). Each rule is {play, match}. A rule matches when EVERY key in its
+#   `match` block matches the keyword's normalised signal. Any signal not named
+#   in `match` is treated as "any" (ignored). A match value may be:
+#     - a scalar        → equals the signal
+#     - a list          → signal ∈ list
+#     - "any"           → always matches (same as omitting the key)
+#
+# Matchable signals (all primitives; produced by play_routing.py):
+#   feasibility:                high | moderate | low | unknown
+#                                 (unknown = no DA/feasibility row was available)
+#   primary_intent:             informational | commercial_investigation |
+#                                 transactional | navigational | local |
+#                                 mixed | unknown
+#   is_mixed:                   true | false
+#   mixed_intent_strategy:      compete_on_dominant | backdoor | avoid | none
+#   has_ai_overview:            true | false
+#   client_ranks_but_not_cited: true | false   (client holds a top-10 organic
+#                                 slot but the AI Overview cites other sources —
+#                                 the per-keyword source of strategic_flags.geo_alerts)
+#   is_service_like:            true | false    (keyword text contains a
+#                                 serp_vocab.yml → service_like_tokens entry)
+#   has_local_pack:             true | false
+#
+# ─── Rationale (encode the strategy, don't just document it) ──────────────────
+#
+# Google rank and AI citation are two separate scores. A high-DA-gap
+# informational keyword is usually UNWINNABLE by ranking but WINNABLE by
+# AI-Overview citation (AI cites clean answers from pages far outside the top
+# 10). Geographic pivots only work for SERVICE-intent queries where proximity
+# substitutes for authority. This table routes each keyword to the play its
+# signals actually support.
+#
+# ─── Rule ordering is LOAD-BEARING ───────────────────────────────────────────
+#
+#   1. reformat_play  — MUST win over extraction_play. If the client already
+#      ranks top-10 but is not AIO-cited, reformat that existing page BEFORE
+#      writing anything new; feasibility/intent are moot (they already rank).
+#   2. rank_play      — High/Moderate feasibility → winnable by ranking.
+#   3–4. local_pivot_play — ONLY ever fires for service-like keywords with a
+#      local/transactional (or intent-indeterminate + local-pack) SERP.
+#   5–6. extraction_play — Low/unknown feasibility + informational/commercial
+#      (or mixed) intent + an AI Overview present → GEO play.
+#   7. deprioritize   — nothing above applies (e.g. Low + navigational).
+#
+# feasibility "unknown" is grouped with "low" for the Low-feasibility plays:
+# a keyword whose DA data could not be fetched still routes on intent + AIO
+# rather than being silently dropped to deprioritize. The verdict then carries
+# an honesty note (see play_routing.py: confidence/data_available).
 
-# ── Vocabulary (consumed by chip C) ─────────────────────────────────────────
-# Machine token -> human label rendered in feasibility_*.md / market_analysis_*.md
-# and echoed by the LLM brief. The validator enforces that the brief does not
-# assign a different label than the pre-computed one.
-play_labels:
-  rank_play: "Rank Play"                # chase the organic ranking (feasible DA gap)
-  extraction_play: "Extraction Play"    # reformat for AIO citation (rank infeasible / AIO-dominated / cited-but-not-ranking)
-  local_pivot_play: "Local Pivot Play"  # service keyword — pursue the hyper-local variant
-  avoid_play: "Avoid Play"              # neither rank nor extraction is worth the effort
+version: 1
 
-# Success-metric family per play — surfaces in the brief's Section 7 so a
-# rank target gets a ranking metric and an extraction target gets a citation metric.
-play_success_metric:
-  rank_play: "organic rank improvement"
-  extraction_play: "AI Overview (AIO) citation gain"
-  local_pivot_play: "local-pack / hyper-local rank"
-  avoid_play: "n/a — deprioritized"
+plays:
+  rank_play:
+    label: "Rank play"
+    success_metric: "organic rank improvement"
+    strategy_text: >-
+      Feasibility is High/Moderate — this keyword is winnable by ranking.
+      Build the strongest page and still apply answer-first formatting
+      (lead with a direct answer, PAA-style question headings) as insurance
+      for AI-Overview citation.
+  extraction_play:
+    label: "Extraction play (GEO)"
+    success_metric: "AI Overview (AIO) citation gain"
+    strategy_text: >-
+      Ranking is unlikely (high DA gap) but AI-Overview citation is winnable —
+      restructure the page answer-first, add PAA question headings and FAQPage
+      markup. Success metric is AIO citation, not organic rank.
+  reformat_play:
+    label: "Reformat play (GEO)"
+    success_metric: "AI Overview (AIO) citation gain"
+    strategy_text: >-
+      The client already ranks in the organic top-10 but the AI Overview cites
+      other sources. Reformat the EXISTING ranking page for answer extraction
+      before investing in any new content.
+  local_pivot_play:
+    label: "Local pivot play"
+    success_metric: "local-pack / hyper-local rank"
+    strategy_text: >-
+      A service-intent keyword with a high DA gap — pivot to a hyper-local
+      neighbourhood variant where proximity substitutes for authority instead
+      of competing head-on for the broad term.
+  deprioritize:
+    label: "Deprioritise"
+    success_metric: "n/a — deprioritised"
+    strategy_text: >-
+      Signals do not support a rank, extraction, reformat, or local-pivot play
+      (e.g. navigational intent or no AI-Overview opportunity). Deprioritise
+      dedicated content investment for this keyword.
 
-# NOTE: brief play-parity is enforced by anchoring on the canonical
-# "Recommended play: <label>" verdict statement the prompt tells the LLM to emit
-# (see brief_validation._play_assignment_phrase). Loose per-play claim phrases were
-# intentionally NOT added here: they false-positive on prose that merely discusses
-# a different play. Add extra detection phrases only with a matching adversarial
-# no-false-positive test.
+rules:
+  # 1. Reformat wins over everything: client ranks top-10 but is not AIO-cited.
+  - play: reformat_play
+    match:
+      client_ranks_but_not_cited: true
 
-# ── Routing rules (owned by chip A; placeholder until chip A lands) ──────────
-# routing:
-#   ...  # chip A populates: how each keyword's play is decided.
+  # 2. Winnable by ranking.
+  - play: rank_play
+    match:
+      feasibility: [high, moderate]
+
+  # 3. Local pivot — service-like keyword with an explicit local/transactional SERP.
+  - play: local_pivot_play
+    match:
+      feasibility: [low, unknown]
+      is_service_like: true
+      primary_intent: [local, transactional]
+
+  # 4. Local pivot — service-like keyword, intent indeterminate, but a local
+  #    pack is present (has_local_pack only triggers a pivot when intent is
+  #    unknown; it never overrides a clear informational/commercial intent).
+  - play: local_pivot_play
+    match:
+      feasibility: [low, unknown]
+      is_service_like: true
+      primary_intent: unknown
+      has_local_pack: true
+
+  # 5. Extraction — Low/unknown feasibility, informational/commercial intent, AIO present.
+  - play: extraction_play
+    match:
+      feasibility: [low, unknown]
+      primary_intent: [informational, commercial_investigation]
+      has_ai_overview: true
+
+  # 6. Extraction — mixed-intent SERP is still a citation opportunity when an AIO is present.
+  - play: extraction_play
+    match:
+      feasibility: [low, unknown]
+      is_mixed: true
+      has_ai_overview: true
+
+  # 7. Catch-all.
+  - play: deprioritize
+    match: {}

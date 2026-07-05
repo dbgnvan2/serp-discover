@@ -355,10 +355,12 @@ def validate_llm_report(report_text, extracted_data):
         # Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation two-score model).
         rp = profile.get("recommended_play") or {}
         pre_play = rp.get("play")
-        # Enforce only when the verdict rests on real inputs. When data_available
-        # is False the brief is expected to state inputs were missing, so we grant
-        # interpretive latitude rather than enforce a possibly-fallback verdict.
-        if pre_play and rp.get("data_available", True):
+        # The play is a DETERMINISTIC verdict (chip A), so parity is enforced
+        # whenever one is present — even a low-confidence / noted verdict is still
+        # the play the brief must follow. Detection is anchored to the canonical
+        # "Recommended play: <label>" statement, so the brief can freely add
+        # honesty caveats in prose without tripping a false contradiction.
+        if pre_play:
             play_vocab = _load_play_vocab()
             pre_label = play_vocab.get("play_labels", {}).get(pre_play) or rp.get("label")
             for other_play, other_label in play_vocab.get("play_labels", {}).items():

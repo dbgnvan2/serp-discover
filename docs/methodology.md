@@ -72,28 +72,36 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 
 ### Recommended Play (feasibility + market-analysis reports)
 
-Each keyword carries a pre-computed `keyword_profiles[kw].recommended_play` verdict
-— `{play, label, strategy_text, evidence, data_available}` — expressing the single
-strategic move under the **two-score, rank-vs-citation** model (a keyword's Google
-rank and its AI-Overview citation are separate scores; T.4). The play is one of
-`rank_play` (winnable DA gap → chase the ranking), `extraction_play` (rank out of
-reach / AIO-dominated → reformat answer-first to be cited), `local_pivot_play`
-(service keyword → hyper-local variant), or `avoid_play`.
+Each keyword carries a pre-computed `keyword_profiles[kw].recommended_play` verdict —
+`{play, label, strategy_text, evidence, data_available, confidence, note}` — computed
+by `play_routing.py::compute_recommended_play` (foundation chip A) from the keyword's
+feasibility, `serp_intent`, `has_ai_overview`, `aio_divergence`, service-like tokens,
+and local-pack signals, using the ordered decision table in `play_routing.yml`
+(first-match-wins). It expresses the single strategic move under the **two-score,
+rank-vs-citation** model (a keyword's Google rank and its AI-Overview citation are
+separate scores; T.4). The play is one of `rank_play` (winnable DA gap → chase the
+ranking), `extraction_play` (rank out of reach + AIO present → restructure
+answer-first to be cited), `reformat_play` (client already ranks top-10 but is not
+AIO-cited → reformat that existing page first; wins over extraction), `local_pivot_play`
+(service keyword → hyper-local variant), or `deprioritize`. When a routing input was
+missing the verdict carries a `note` and `confidence: low` (honesty, never faked).
 
-Consumers render it verbatim through the shared `play_rendering.py` helpers:
-`run_feasibility.py` adds a **Recommended Play** column to `feasibility_*.md` (the
-new home for non-service guidance, replacing the pivot suggestion those keywords no
-longer receive), and `generate_insight_report.py` adds a per-keyword play line to
-`market_analysis_*.md` (Sections 5b and 5c). When `data_available` is false the cell
-states the inputs were missing rather than fabricating a verdict. The play taxonomy
-(labels, success metrics, claim phrases) lives in `play_routing.yml`, not in Python.
+Consumers (chip C) render it through the shared `play_rendering.py` helpers, which
+read labels + success metrics from chip A's `plays:` map (single source of truth):
+`run_feasibility.py` adds a **Recommended Play** column to `feasibility_*.md` (the new
+home for non-service guidance, replacing the pivot suggestion those keywords no longer
+receive), and `generate_insight_report.py` adds a per-keyword play line to
+`market_analysis_*.md` (Sections 5b and 5c). When the verdict carries a `note` the
+cell states "inputs missing: …" rather than implying full grounding.
 
 The content-brief prompt documents the field and Section 7 must **state and follow**
 each keyword's play, choosing the success metric by play (rank → rank improvement;
-extraction → AIO citation gain). `brief_validation.py::validate_llm_report` enforces
-parity: a report that assigns a *different* play than the pre-computed one is a
-**hard** validation failure (no retry; written to `*.validation.md`). The
-`test_validation_consistency.py` canary requires the field to have a matching rule.
+extraction/reformat → AIO citation gain). `brief_validation.py::validate_llm_report`
+enforces parity: a report that assigns a *different* play than the pre-computed one —
+detected by anchoring on the canonical `Recommended play: <label>` statement, so
+prose caveats don't false-positive — is a **hard** validation failure (no retry;
+written to `*.validation.md`). The `test_validation_consistency.py` canary requires
+the field to have a matching rule.
 
 *Spec: seo_geo_review_20260704.md T.4. Implemented 2026-07-04.*
 

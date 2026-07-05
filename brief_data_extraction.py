@@ -3,6 +3,7 @@
 Spec: serp_tool1_improvements_spec.md#I.5
 """
 import json
+import logging
 import os
 import re
 import sys
@@ -14,6 +15,7 @@ import yaml
 from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
 from title_patterns import compute_title_patterns
 from classifiers import classify_url_from_patterns, EntityClassifier
+from play_routing import compute_recommended_play, load_play_routing
 
 
 def progress(message):
@@ -32,6 +34,28 @@ DEFAULT_OUTREACH_ENTITY_TYPES = (
     "education",
     "government",
 )
+
+SERP_VOCAB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "serp_vocab.yml")
+
+
+def load_service_like_tokens(path=None):
+    """Load service_like_tokens from serp_vocab.yml (editorial C.4).
+
+    Used by the Recommended-Play engine to detect service-intent keywords.
+    Returns () if the file/key is absent — a missing token list means "no
+    keyword is service-like", never a crash.
+    """
+    path = path or SERP_VOCAB_PATH
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            vocab = yaml.safe_load(fh) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        # Surface, never silently drop: a missing/malformed vocab file would
+        # otherwise silently make every keyword non-service-like, disabling
+        # local_pivot routing with no signal.
+        logging.warning("Could not load service_like_tokens from %s: %s", path, exc)
+        return ()
+    return tuple(vocab.get("service_like_tokens", []) or [])
 
 
 def _domain_from_link(link):
@@ -1052,6 +1076,8 @@ def extract_analysis_data_from_json(
     intent_mapping=None,
     preferred_intents=None,
     outreach_entity_types=None,
+    play_routing=None,
+    service_like_tokens=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
 
@@ -1082,6 +1108,15 @@ def extract_analysis_data_from_json(
     # rest of the pipeline assumes serp_intent is computable.
     if intent_mapping is None:
         intent_mapping = load_intent_mapping()
+
+    # Recommended-Play routing table + service-token vocabulary. Loaded once
+    # here (like intent_mapping) unless the caller supplies them. A malformed
+    # play_routing.yml is a HARD error — fail loudly rather than silently
+    # skipping the verdict for every keyword.
+    if play_routing is None:
+        play_routing = load_play_routing()
+    if service_like_tokens is None:
+        service_like_tokens = load_service_like_tokens()
 
     # For title_patterns brand_only detection, combine the client's own brand
     # patterns with the operator-supplied known_brands so client URLs that
@@ -1734,6 +1769,26 @@ def extract_analysis_data_from_json(
         paa_analysis=paa_analysis,
         preferred_intents=preferred_intents,
     )
+
+    # Recommended-Play verdict per keyword. Computed AFTER strategic_flags so
+    # each profile already carries mixed_intent_strategy. Deterministic Python
+    # only normalises signals; play_routing.yml makes the call.
+    # Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation divergence).
+    feasibility_by_kw = {}
+    for row in feasibility_rows:
+        if row.get("Query_Label") == "P" or row.get("query_label") == "P":
+            continue  # pivot rows are not the primary keyword's verdict
+        kw = row.get("Keyword") or row.get("keyword_text") or ""
+        if kw and kw not in feasibility_by_kw:
+            feasibility_by_kw[kw] = row
+    for kw, profile in keyword_profiles.items():
+        profile["recommended_play"] = compute_recommended_play(
+            profile,
+            feasibility_row=feasibility_by_kw.get(kw),
+            keyword=kw,
+            service_like_tokens=service_like_tokens,
+            routing=play_routing,
+        )
 
     ads_out = []
     for row in ads:

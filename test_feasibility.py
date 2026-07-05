@@ -256,24 +256,29 @@ class TestRecommendedPlayColumn(unittest.TestCase):
             "Source_Keyword": kw,
         }
 
+    def _play(self, play, label, strategy_text, note=None, confidence="high"):
+        """A recommended_play verdict in chip A's shape."""
+        return {
+            "play": play, "label": label, "strategy_text": strategy_text,
+            "evidence": {"matched_rule": {"index": 4, "match": {}}, "inputs_used": {}},
+            "data_available": {"feasibility": True, "serp_intent": True, "aio": True},
+            "confidence": confidence, "note": note,
+        }
+
     def test_rpc1_recommended_play_column_extraction_not_pivot(self):
         from run_feasibility import generate_feasibility_report
         kw = "birth order and personality"
         rows = [self._row(kw)]  # non-service informational: chip B emits no pivot
-        kp = {kw: {"recommended_play": {
-            "play": "extraction_play",
-            "label": "Extraction Play",
-            "strategy_text": "Reformat the page answer-first for AIO extraction.",
-            "evidence": ["AIO present", "cited-but-not-ranking competitors"],
-            "data_available": True,
-        }}}
+        kp = {kw: {"recommended_play": self._play(
+            "extraction_play", "Extraction play (GEO)",
+            "Reformat the page answer-first for AIO extraction.")}}
         report = generate_feasibility_report(rows, self.CONFIG, "market_analysis_x.json",
                                              keyword_profiles=kp)
         # Header carries the new column.
         self.assertIn("Recommended Play", report)
         # The keyword's row shows the extraction play + strategy, NOT a hyper-local pivot.
         row_line = next(l for l in report.splitlines() if l.startswith(f"| {kw} |"))
-        self.assertIn("Extraction Play", row_line)
+        self.assertIn("Extraction play (GEO)", row_line)
         self.assertIn("answer-first", row_line)
         self.assertNotIn("Pivoting to Hyper-Local", row_line)
         # No fabricated pivot suggestion for this non-service keyword.
@@ -283,13 +288,11 @@ class TestRecommendedPlayColumn(unittest.TestCase):
         from run_feasibility import generate_feasibility_report
         kw = "estrangement counselling"
         rows = [self._row(kw)]
-        kp = {kw: {"recommended_play": {
-            "play": "extraction_play",
-            "label": "Extraction Play",
-            "strategy_text": "",
-            "evidence": [],
-            "data_available": False,
-        }}}
+        kp = {kw: {"recommended_play": self._play(
+            "extraction_play", "Extraction play (GEO)",
+            "Reformat the page answer-first for AIO extraction.",
+            note="feasibility/DA data unavailable — routed on intent + AI-Overview only",
+            confidence="low")}}
         report = generate_feasibility_report(rows, self.CONFIG, "market_analysis_x.json",
                                              keyword_profiles=kp)
         row_line = next(l for l in report.splitlines() if l.startswith(f"| {kw} |"))

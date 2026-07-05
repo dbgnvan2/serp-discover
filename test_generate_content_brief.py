@@ -548,8 +548,10 @@ If you don't act now, you'll lose your rank #3 position entirely.
 
     # ─── RP-C: Recommended Play parity + passthrough ────────────────────────
 
-    def _play_extracted(self, play, label=None, data_available=True):
-        """Minimal extracted dict with a keyword_profiles.recommended_play verdict.
+    def _play_extracted(self, play, label=None, note=None, confidence="high"):
+        """Minimal extracted dict with a keyword_profiles.recommended_play verdict
+        in the shape chip A's play_routing.compute_recommended_play emits
+        (data_available + evidence are dicts; honesty lives in note/confidence).
         Spec: seo_geo_review_20260704.md (T.4)."""
         return {
             "queries": [],
@@ -562,10 +564,14 @@ If you don't act now, you'll lose your rank #3 position entirely.
                     "entity_label": "unclassified",
                     "recommended_play": {
                         "play": play,
-                        "label": label,
+                        "label": label or play,
                         "strategy_text": "Reformat the page answer-first for AIO extraction.",
-                        "evidence": ["AIO present", "cited-but-not-ranking competitors"],
-                        "data_available": data_available,
+                        "evidence": {"matched_rule": {"index": 4, "match": {}},
+                                     "inputs_used": {}},
+                        "data_available": {"feasibility": True, "serp_intent": True,
+                                           "aio": True},
+                        "confidence": confidence,
+                        "note": note,
                     },
                 }
             },
@@ -615,11 +621,14 @@ If you don't act now, you'll lose your rank #3 position entirely.
         play_issues = [i for i in issues if "recommended_play" in i]
         self.assertEqual(play_issues, [], f"false positive on contrastive prose: {play_issues}")
 
-    def test_rpc4_play_not_enforced_when_data_unavailable(self):
-        """RP-C.1/RP-C.4 honesty: when data_available is false the verdict is not
-        enforced — the brief is expected to state inputs were missing."""
+    def test_rpc4_enforced_even_for_noted_low_confidence_verdict(self):
+        """RP-C.4: the play is a deterministic verdict, so parity is enforced even
+        when the producer flagged missing inputs (note + confidence=low). The brief
+        may caveat the play in prose, but must not ASSIGN a different one."""
         extracted = self._play_extracted(
-            play="extraction_play", label="Extraction Play", data_available=False
+            play="extraction_play", label="Extraction play (GEO)",
+            note="feasibility/DA data unavailable — routed on intent + AI-Overview only",
+            confidence="low",
         )
         report = (
             "**birth order and personality (12,000 total results)**\n"
@@ -627,7 +636,8 @@ If you don't act now, you'll lose your rank #3 position entirely.
         )
         issues = gcb.validate_llm_report(report, extracted)
         play_issues = [i for i in issues if "recommended_play" in i]
-        self.assertEqual(len(play_issues), 0)
+        self.assertGreaterEqual(len(play_issues), 1)
+        self.assertTrue(gcb.has_hard_validation_failures(play_issues))
 
     def test_rpc6_payload_includes_recommended_play(self):
         """RP-C.6: build_main_report_payload passes recommended_play through so the
@@ -649,7 +659,7 @@ If you don't act now, you'll lose your rank #3 position entirely.
         self.assertIn("keyword_profiles.recommended_play", text)
         # It must be framed as a deterministic verdict the LLM may not contradict.
         self.assertIn("hard validation failure", text.lower())
-        self.assertRegex(text, r"(?i)not assign a different play")
+        self.assertRegex(text, r"(?is)not\s+assign a different\s+play")
 
     def test_rpc3_section7_states_and_follows_play(self):
         """RP-C.3: Section 7 must STATE and FOLLOW the play, choosing the success
