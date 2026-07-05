@@ -3,6 +3,7 @@ import tempfile
 from pathlib import Path
 
 import generate_content_brief as gcb
+from brief_prompts import build_main_report_payload
 
 
 class TestGenerateContentBrief(unittest.TestCase):
@@ -544,6 +545,132 @@ If you don't act now, you'll lose your rank #3 position entirely.
         blocking, notes = gcb.partition_validation_issues(pattern_issues)
         self.assertGreaterEqual(len(blocking), 1)
         self.assertEqual(len(notes), 0)
+
+    # ─── RP-C: Recommended Play parity + passthrough ────────────────────────
+
+    def _play_extracted(self, play, label=None, note=None, confidence="high"):
+        """Minimal extracted dict with a keyword_profiles.recommended_play verdict
+        in the shape chip A's play_routing.compute_recommended_play emits
+        (data_available + evidence are dicts; honesty lives in note/confidence).
+        Spec: seo_geo_review_20260704.md (T.4)."""
+        return {
+            "queries": [],
+            "autocomplete_summary": {"trigger_word_hits": {}},
+            "tool_recommendations_verified": [],
+            "paa_analysis": {"cross_cluster": []},
+            "keyword_profiles": {
+                "birth order and personality": {
+                    "entity_distribution": {},
+                    "entity_label": "unclassified",
+                    "recommended_play": {
+                        "play": play,
+                        "label": label or play,
+                        "strategy_text": "Reformat the page answer-first for AIO extraction.",
+                        "evidence": {"matched_rule": {"index": 4, "match": {}},
+                                     "inputs_used": {}},
+                        "data_available": {"feasibility": True, "serp_intent": True,
+                                           "aio": True},
+                        "confidence": confidence,
+                        "note": note,
+                    },
+                }
+            },
+        }
+
+    def test_rpc4_play_mismatch_is_hard_fail(self):
+        """RP-C.4: report assigns Rank Play where the pre-computed play is
+        extraction_play → HARD-FAIL, blocking, no retry."""
+        extracted = self._play_extracted(play="extraction_play", label="Extraction Play")
+        report = (
+            "**birth order and personality (12,000 total results)**\n"
+            "Recommended play: Rank Play — go chase the organic ranking here.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        play_issues = [i for i in issues
+                       if "recommended_play" in i and "birth order and personality" in i]
+        self.assertGreaterEqual(len(play_issues), 1)
+        # HARD: must trip the fail-fast gate and partition to blocking (not notes).
+        self.assertTrue(gcb.has_hard_validation_failures(play_issues))
+        blocking, notes = gcb.partition_validation_issues(play_issues)
+        self.assertGreaterEqual(len(blocking), 1)
+        self.assertEqual(len(notes), 0)
+
+    def test_rpc4_matching_play_passes(self):
+        """RP-C.4: report that echoes the pre-computed play emits no play issue."""
+        extracted = self._play_extracted(play="extraction_play", label="Extraction Play")
+        report = (
+            "**birth order and personality (12,000 total results)**\n"
+            "Recommended play: Extraction Play — reformat for AIO citation.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        play_issues = [i for i in issues if "recommended_play" in i]
+        self.assertEqual(len(play_issues), 0)
+
+    def test_rpc4_no_false_positive_on_contrastive_prose(self):
+        """RP-C.4 (adversarial, P7): a brief that correctly states the play and then
+        explains it by CONTRASTING with another play must NOT be flagged. Only the
+        canonical 'Recommended play: <label>' verdict counts as an assignment."""
+        extracted = self._play_extracted(play="extraction_play", label="Extraction Play")
+        report = (
+            "**birth order and personality (12,000 total results)**\n"
+            "Recommended play: Extraction Play — reformat for AIO citation. "
+            "While a rank play would normally chase the organic ranking, that path "
+            "is out of reach here given the domain-authority gap.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        play_issues = [i for i in issues if "recommended_play" in i]
+        self.assertEqual(play_issues, [], f"false positive on contrastive prose: {play_issues}")
+
+    def test_rpc4_enforced_even_for_noted_low_confidence_verdict(self):
+        """RP-C.4: the play is a deterministic verdict, so parity is enforced even
+        when the producer flagged missing inputs (note + confidence=low). The brief
+        may caveat the play in prose, but must not ASSIGN a different one."""
+        extracted = self._play_extracted(
+            play="extraction_play", label="Extraction play (GEO)",
+            note="feasibility/DA data unavailable — routed on intent + AI-Overview only",
+            confidence="low",
+        )
+        report = (
+            "**birth order and personality (12,000 total results)**\n"
+            "Recommended play: Rank Play — chase the organic ranking.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        play_issues = [i for i in issues if "recommended_play" in i]
+        self.assertGreaterEqual(len(play_issues), 1)
+        self.assertTrue(gcb.has_hard_validation_failures(play_issues))
+
+    def test_rpc6_payload_includes_recommended_play(self):
+        """RP-C.6: build_main_report_payload passes recommended_play through so the
+        LLM can narrate it."""
+        extracted = self._play_extracted(play="rank_play", label="Rank Play")
+        payload = build_main_report_payload(extracted)
+        profile = payload["keyword_profiles"]["birth order and personality"]
+        self.assertIn("recommended_play", profile)
+        self.assertEqual(profile["recommended_play"]["play"], "rank_play")
+        self.assertEqual(profile["recommended_play"]["label"], "Rank Play")
+
+    def _system_prompt_text(self):
+        return Path("prompts/main_report/system.md").read_text(encoding="utf-8")
+
+    def test_rpc3_prompt_documents_recommended_play(self):
+        """RP-C.3: the main-report prompt documents keyword_profiles.recommended_play
+        (so the canary picks it up and the LLM knows the field)."""
+        text = self._system_prompt_text()
+        self.assertIn("keyword_profiles.recommended_play", text)
+        # It must be framed as a deterministic verdict the LLM may not contradict.
+        self.assertIn("hard validation failure", text.lower())
+        self.assertRegex(text, r"(?is)not\s+assign a different\s+play")
+
+    def test_rpc3_section7_states_and_follows_play(self):
+        """RP-C.3: Section 7 must STATE and FOLLOW the play, choosing the success
+        metric by play (rank -> ranking; extraction -> AIO citation)."""
+        text = self._system_prompt_text()
+        section7 = text.split("### Section 7")[1].split("### Section 8")[0]
+        self.assertIn("recommended_play", section7)
+        self.assertIn("FOLLOW", section7)
+        self.assertIn("rank_play", section7)
+        self.assertIn("extraction_play", section7)
+        self.assertIn("AIO", section7)
 
     def test_mixed_intent_strategy_compete_on_dominant(self):
         """A mixed SERP whose dominant intent matches an intent the client

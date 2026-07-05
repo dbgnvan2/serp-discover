@@ -562,3 +562,92 @@ class TestRC8BriefSequencing:
         report = mock_report_no_feasibility
         # When feasibility absent, ranking falls back to intent
         assert "cannot be determined" in report.lower() or "## 0." in report
+
+
+# ─── RP-C.2: Recommended Play lines in market_analysis_*.md ──────────────────
+
+@pytest.fixture
+def mock_report_data_with_play():
+    """Mock data with a pre-computed recommended_play verdict per keyword.
+    Spec: seo_geo_review_20260704.md (T.4)."""
+    return {
+        "overview": [
+            {"Root_Keyword": "birth order and personality", "Run_ID": "t",
+             "Created_At": "2026-07-04T00:00:00"},
+        ],
+        "keyword_profiles": {
+            "birth order and personality": {
+                "serp_intent": {"primary_intent": "informational", "confidence": "high"},
+                "entity_distribution": {"counselling": 8, "directory": 2},
+                "recommended_play": {
+                    "play": "extraction_play",
+                    "label": "Extraction play (GEO)",
+                    "strategy_text": "Reformat the page answer-first for AIO extraction.",
+                    "evidence": {"matched_rule": {"index": 4, "match": {}},
+                                 "inputs_used": {}},
+                    "data_available": {"feasibility": True, "serp_intent": True,
+                                       "aio": True},
+                    "confidence": "high",
+                    "note": None,
+                },
+            },
+        },
+        "keyword_feasibility": [
+            {"Keyword": "birth order and personality",
+             "feasibility_status": "Low Feasibility",
+             "client_da": 35, "avg_serp_da": 60, "gap": 25,
+             "pivot_status": "Stay the course"},
+        ],
+        "organic_results": [],
+        "paa_questions": [],
+    }
+
+
+class TestRecommendedPlayLines:
+    """RP-C.2 — per-keyword play line in the intent + feasibility sections."""
+
+    def test_rpc2_play_line_in_intent_section(self, mock_report_data_with_play):
+        report = generate_report(mock_report_data_with_play)
+        assert "**Recommended play:**" in report
+        assert "Extraction play (GEO)" in report
+        # The one-line strategy is narrated verbatim.
+        assert "answer-first" in report
+        # Play-specific success metric from play_routing.yml surfaces.
+        assert "AI Overview (AIO) citation gain" in report
+
+    def test_rpc2_play_line_in_feasibility_section(self, mock_report_data_with_play):
+        report = generate_report(mock_report_data_with_play)
+        # The feasibility table header now carries the Recommended Play column.
+        assert "Recommended Play | Recommended Pivot" in report
+        # The DA-gap table row for this keyword shows the extraction play (the row
+        # carries the 🔴 Low status icon and the play cell), not only a pivot.
+        row = next(l for l in report.splitlines()
+                   if l.startswith("| birth order and personality |") and "🔴 Low" in l)
+        assert "Extraction play (GEO)" in row
+
+
+class TestRecommendedPlayDocs:
+    """RP-C.7 — methodology (a contract), user manual, and config reference must
+    document the Recommended Play in the same change."""
+
+    _ROOT = os.path.dirname(os.path.dirname(__file__))
+
+    def _doc(self, name):
+        with open(os.path.join(self._ROOT, "docs", name), encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_rpc7_methodology_documents_recommended_play(self):
+        text = self._doc("methodology.md")
+        assert "recommended_play" in text
+        assert "rank-vs-citation" in text
+
+    def test_rpc7_user_manual_explains_two_score_model_with_example(self):
+        text = self._doc("USER_MANUAL.md")
+        assert "Recommended Play" in text
+        assert "two separate scores" in text
+        assert "birth order and personality" in text  # the worked example
+
+    def test_rpc7_config_reference_documents_play_routing(self):
+        text = self._doc("config_reference.md")
+        assert "play_routing.yml" in text
+        assert "success_metric" in text  # the chip-C consumer key added to plays

@@ -117,6 +117,58 @@ Serp-Discover answers these questions by:
 
 ---
 
+#### 5. **Recommended Play** (the rank-vs-citation two-score model)
+
+**What it does:** For every keyword, the tool prints a single strategic verdict —
+the **Recommended Play** — in a dedicated column of `feasibility_<topic>.md` and a
+per-keyword line in `market_analysis_<topic>.md`. The play is one of:
+
+- **Rank play** (`rank_play`) — the DA gap is winnable, so *chase the organic
+  ranking*. Success is measured by **organic rank improvement**.
+- **Extraction play (GEO)** (`extraction_play`) — ranking is out of reach and an AI
+  Overview is present, so *restructure the page answer-first to be cited by the AI
+  Overview* even if you never crack the top 10. Success is measured by **AI Overview
+  (AIO) citation gain**, not rank.
+- **Reformat play (GEO)** (`reformat_play`) — the client *already* ranks in the
+  top-10 but the AI Overview cites other sources. Reformat that **existing** page for
+  answer extraction before writing anything new. This play wins over extraction — no
+  point drafting new content for a page you already rank with. Also measured by AIO
+  citation gain.
+- **Local pivot play** (`local_pivot_play`) — a service keyword where geographic
+  relevance can substitute for domain strength; pursue the hyper-local variant
+  (the classic pivot, still shown in the Recommended Pivot column).
+- **Deprioritise** (`deprioritize`) — signals support none of the above (e.g.
+  navigational intent, or no AI-Overview opportunity); recommend no dedicated
+  content investment.
+
+**Why the two-score model matters:** Your Google rank and your AI-Overview
+visibility are **two separate scores**. The source analysis that motivated this
+feature found that ~90% of pages an AI Overview cites rank *21 or lower* — so a
+page can be invisible in the classic top-10 yet be the one the AI quotes. Chasing
+rank on a keyword the AI has already "sponged" wastes effort; the winning move
+there is to be *extractable*, not to be #1.
+
+**Example — "birth order and personality":** This is an informational keyword, not
+a service, so there is no hyper-local pivot to fall back on. Its DA gap is wide
+(incumbent psychology sites have high authority), and the SERP shows an AI Overview
+citing pages that don't even rank in the top 10. The Recommended Play is therefore
+**Extraction Play**: rewrite the Living Systems page answer-first (a crisp,
+quotable definition up top, question-shaped headings) so the AI Overview cites it —
+and measure success by *citation gain*, not by rank. A **Rank Play** keyword like a
+low-competition local service term would instead be measured by rank improvement.
+
+**Honesty:** when an input needed to route a play is missing (e.g. no DA/feasibility
+data), the verdict still routes on the signals it has, but carries a `note` and a
+`confidence: low` flag — and the report cell states "inputs missing: …" rather than
+implying the verdict is fully grounded. Nothing is invented. The content brief
+(Section 7) must *state and follow* each keyword's play and may never assign a
+different one than the pre-computed verdict — a mismatch is a hard validation
+failure. The play decision table (which play each keyword gets) and the labels live
+in `play_routing.yml`, computed by `play_routing.py`; the report/brief consumers
+never hardcode the taxonomy.
+
+---
+
 ### Data Flow
 
 ```

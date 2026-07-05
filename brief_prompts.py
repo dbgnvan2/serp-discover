@@ -159,6 +159,10 @@ def build_main_report_payload(extracted_data):
             "extractability": profile.get("extractability"),
             "freshness": profile.get("freshness"),
             "eeat_signals": profile.get("eeat_signals"),
+            # RP-C.6 — pass the pre-computed Recommended Play verdict through so the
+            # brief can narrate it. The LLM may only echo it, never contradict it
+            # (enforced by validate_llm_report). Spec: seo_geo_review_20260704.md (T.4).
+            "recommended_play": profile.get("recommended_play"),
         }
 
     competitive_landscape = {}

@@ -5,6 +5,21 @@ Spec: serp_tool1_improvements_spec.md#I.5
 import re
 
 from brief_data_extraction import _normalize_text
+# recommended_play vocabulary is shared with the report renderers (single source
+# of truth in play_routing.yml). Spec: seo_geo_review_20260704.md (T.4).
+from play_rendering import load_play_vocab as _load_play_vocab
+
+
+def _play_assignment_phrase(label):
+    """Return the regex that matches the report ASSIGNING a play via its canonical
+    verdict statement — "Recommended play: <label>". This anchored form is what the
+    prompt instructs the LLM to emit, so it detects a genuinely different *verdict*
+    without false-positiving on ordinary prose that merely *discusses* another play
+    (e.g. "a rank play would normally chase the ranking, but that is out of reach").
+    Returns None when there is no label to anchor on."""
+    if not label:
+        return None
+    return rf"recommended play[:\-\s]+{re.escape(label.lower())}"
 
 
 def _mixed_keyword_dominance_profiles(extracted_data):
@@ -333,6 +348,33 @@ def validate_llm_report(report_text, extracted_data):
                         )
                         break
 
+        # ── recommended_play parity (RP-C.4, HARD-FAIL) ──────────────────────
+        # The brief may only NARRATE the pre-computed play; asserting a DIFFERENT
+        # play than keyword_profiles.recommended_play is a mechanically checkable
+        # contradiction → HARD fail (see has_hard_validation_failures).
+        # Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation two-score model).
+        rp = profile.get("recommended_play") or {}
+        pre_play = rp.get("play")
+        # The play is a DETERMINISTIC verdict (chip A), so parity is enforced
+        # whenever one is present — even a low-confidence / noted verdict is still
+        # the play the brief must follow. Detection is anchored to the canonical
+        # "Recommended play: <label>" statement, so the brief can freely add
+        # honesty caveats in prose without tripping a false contradiction.
+        if pre_play:
+            play_vocab = _load_play_vocab()
+            pre_label = play_vocab.get("play_labels", {}).get(pre_play) or rp.get("label")
+            for other_play, other_label in play_vocab.get("play_labels", {}).items():
+                if other_play == pre_play:
+                    continue
+                phrase = _play_assignment_phrase(other_label)
+                if phrase and re.search(phrase, section_l):
+                    issues.append(
+                        f"Report assigns a different play to '{keyword}' "
+                        f"({other_label}), but keyword_profiles.recommended_play "
+                        f"shows play='{pre_play}' (label='{pre_label}')."
+                    )
+                    break
+
         # ── confidence upgrade contradiction (SOFT-FAIL) ─────────────────────
         # LLM may downplay confidence but not upgrade it.
         HIGH_CONFIDENCE_PHRASES = [
@@ -467,6 +509,8 @@ def has_hard_validation_failures(validation_issues):
         if "despite zero verified trigger evidence" in normalized:
             return True
         if "but keyword_profiles shows" in normalized:
+            return True
+        if "but keyword_profiles.recommended_play shows" in normalized:
             return True
         if "contradicts keyword_profiles.title_patterns" in normalized:
             return True

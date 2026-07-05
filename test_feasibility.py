@@ -278,5 +278,80 @@ class TestGenerateHyperLocalPivot(unittest.TestCase):
         self.assertEqual(result["pivot_status"], "Pivoting to Hyper-Local")
 
 
+class TestRecommendedPlayColumn(unittest.TestCase):
+    """RP-C.1 — feasibility_*.md renders a Recommended Play column that carries the
+    pre-computed verdict for non-service keywords instead of a pivot.
+    Spec: seo_geo_review_20260704.md (T.4)."""
+
+    CONFIG = {"analysis_report": {"client_name": "Living Systems"},
+              "feasibility": {"client_da": 35}}
+
+    def _row(self, kw, status="Low Feasibility", pivot_status="Stay the course"):
+        return {
+            "Keyword": kw,
+            "Query_Label": "A",
+            "client_da": 35,
+            "avg_serp_da": 60,
+            "gap": 25,
+            "feasibility_status": status,
+            "pivot_status": pivot_status,
+            "suggested_keyword": "",
+            "Source_Keyword": kw,
+        }
+
+    def _play(self, play, label, strategy_text, note=None, confidence="high"):
+        """A recommended_play verdict in chip A's shape."""
+        return {
+            "play": play, "label": label, "strategy_text": strategy_text,
+            "evidence": {"matched_rule": {"index": 4, "match": {}}, "inputs_used": {}},
+            "data_available": {"feasibility": True, "serp_intent": True, "aio": True},
+            "confidence": confidence, "note": note,
+        }
+
+    def test_rpc1_recommended_play_column_extraction_not_pivot(self):
+        from run_feasibility import generate_feasibility_report
+        kw = "birth order and personality"
+        rows = [self._row(kw)]  # non-service informational: chip B emits no pivot
+        kp = {kw: {"recommended_play": self._play(
+            "extraction_play", "Extraction play (GEO)",
+            "Reformat the page answer-first for AIO extraction.")}}
+        report = generate_feasibility_report(rows, self.CONFIG, "market_analysis_x.json",
+                                             keyword_profiles=kp)
+        # Header carries the new column.
+        self.assertIn("Recommended Play", report)
+        # The keyword's row shows the extraction play + strategy, NOT a hyper-local pivot.
+        row_line = next(l for l in report.splitlines() if l.startswith(f"| {kw} |"))
+        self.assertIn("Extraction play (GEO)", row_line)
+        self.assertIn("answer-first", row_line)
+        self.assertNotIn("Pivoting to Hyper-Local", row_line)
+        # No fabricated pivot suggestion for this non-service keyword.
+        self.assertIn("*(stay the course)*", row_line)
+
+    def test_rpc1_recommended_play_honest_when_data_missing(self):
+        from run_feasibility import generate_feasibility_report
+        kw = "estrangement counselling"
+        rows = [self._row(kw)]
+        kp = {kw: {"recommended_play": self._play(
+            "extraction_play", "Extraction play (GEO)",
+            "Reformat the page answer-first for AIO extraction.",
+            note="feasibility/DA data unavailable — routed on intent + AI-Overview only",
+            confidence="low")}}
+        report = generate_feasibility_report(rows, self.CONFIG, "market_analysis_x.json",
+                                             keyword_profiles=kp)
+        row_line = next(l for l in report.splitlines() if l.startswith(f"| {kw} |"))
+        self.assertIn("inputs missing", row_line.lower())
+
+    def test_rpc1_no_verdict_renders_dash(self):
+        from run_feasibility import generate_feasibility_report
+        kw = "no play keyword"
+        rows = [self._row(kw)]
+        report = generate_feasibility_report(rows, self.CONFIG, "market_analysis_x.json",
+                                             keyword_profiles={})  # no profile at all
+        row_line = next(l for l in report.splitlines() if l.startswith(f"| {kw} |"))
+        # Play cell is an em dash, not a crash or a fabricated verdict.
+        cells = [c.strip() for c in row_line.split("|")]
+        self.assertIn("—", cells)
+
+
 if __name__ == "__main__":
     unittest.main()

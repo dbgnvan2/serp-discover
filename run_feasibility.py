@@ -37,6 +37,8 @@ from urllib.parse import urlparse
 
 import yaml
 
+from play_rendering import format_play_cell
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -455,9 +457,23 @@ def _local_pack_phrase(pack: object) -> str:
     return " ✗ not in local pack"
 
 
-def generate_feasibility_report(feasibility_rows: list[dict], config: dict, source_json: str) -> str:
+def generate_feasibility_report(
+    feasibility_rows: list[dict],
+    config: dict,
+    source_json: str,
+    keyword_profiles: dict | None = None,
+) -> str:
     lines: list[str] = []
     now = datetime.now().strftime("%Y-%m-%d %H:%M")
+    # RP-C.1 — the Recommended Play column joins on keyword_profiles[kw].recommended_play.
+    # When not passed in (standalone/test), read it from the source JSON so the
+    # function stays self-sufficient. Spec: seo_geo_review_20260704.md (T.4).
+    if keyword_profiles is None:
+        try:
+            with open(source_json, "r", encoding="utf-8") as _f:
+                keyword_profiles = (json.load(_f) or {}).get("keyword_profiles", {}) or {}
+        except Exception:
+            keyword_profiles = {}
     client_name = config.get("analysis_report", {}).get("client_name", "Client")
     client_da = (feasibility_rows[0].get("client_da") if feasibility_rows else
                  config.get("feasibility", {}).get("client_da", 35))
@@ -493,12 +509,14 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
     # Main table
     lines.append("## Keyword Feasibility Table")
     lines.append(
-        "Domain Authority gap analysis. "
-        "Low Feasibility keywords include a hyper-local pivot suggestion "
-        "where geographic relevance can substitute for domain strength.\n"
+        "Domain Authority gap analysis. The **Recommended Play** column carries the "
+        "pre-computed verdict under the two-score, rank-vs-citation model (a rank_play "
+        "keyword is a ranking target; an extraction_play keyword is an AI-Overview "
+        "citation target). Service keywords whose ranking is out of reach still show a "
+        "hyper-local **Recommended Pivot**; a `—` play cell means no verdict was computed.\n"
     )
-    lines.append("| Keyword | Client DA | Avg Comp DA | Gap | Status | Recommended Pivot |")
-    lines.append("|---------|-----------|-------------|-----|--------|-------------------|")
+    lines.append("| Keyword | Client DA | Avg Comp DA | Gap | Status | Recommended Play | Recommended Pivot |")
+    lines.append("|---------|-----------|-------------|-----|--------|------------------|-------------------|")
 
     for row in primary:
         kw = row.get("Keyword", "—")
@@ -507,6 +525,12 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
         status = STATUS_ICONS.get(row.get("feasibility_status", ""), row.get("feasibility_status", "—"))
         avg_da_str = f"{avg_da:.0f}" if avg_da is not None else "—"
         gap_str    = f"{gap:+.0f}" if gap is not None else "—"
+
+        # RP-C.1 — Recommended Play from the pre-computed verdict. This is the new
+        # home for non-service guidance (chip B stops emitting pivots for those,
+        # leaving the Pivot cell blank). Honest "—" / "inputs missing" when absent.
+        play_obj = (keyword_profiles.get(kw) or {}).get("recommended_play")
+        play_cell = format_play_cell(play_obj)
 
         pivot_cell = "*(stay the course)*"
         if row.get("pivot_status") == "No pivot — informational":
@@ -523,7 +547,7 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
             else:
                 pivot_cell = f"**{suggested}**"
 
-        lines.append(f"| {kw} | {client_da} | {avg_da_str} | {gap_str} | {status} | {pivot_cell} |")
+        lines.append(f"| {kw} | {client_da} | {avg_da_str} | {gap_str} | {status} | {play_cell} | {pivot_cell} |")
 
     lines.append("")
 
@@ -650,7 +674,10 @@ def main() -> None:
         sys.exit(1)
 
     out_path = args.out or _derive_output_path(args.json)
-    report = generate_feasibility_report(feasibility_rows, config, args.json)
+    report = generate_feasibility_report(
+        feasibility_rows, config, args.json,
+        keyword_profiles=data.get("keyword_profiles", {}),
+    )
 
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(report)

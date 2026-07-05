@@ -29,6 +29,8 @@ from datetime import datetime
 
 import yaml
 
+from play_rendering import format_play_cell, format_play_line
+
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 _PATTERN_INTENT_CLASS_CACHE: dict | None = None
 _KEYWORD_HINTS_CACHE: dict | None = None
@@ -653,9 +655,11 @@ def generate_report(data):
     feasibility_rows = data.get("keyword_feasibility", [])
     if feasibility_rows:
         report.append(
-            "Domain Authority gap analysis for each keyword. "
-            "Low Feasibility keywords include a hyper-local pivot suggestion "
-            "where geographic relevance can substitute for domain strength.\n"
+            "Domain Authority gap analysis for each keyword. The **Recommended Play** "
+            "column carries the pre-computed verdict under the two-score, "
+            "rank-vs-citation model (rank_play = ranking target; extraction_play = "
+            "AI-Overview citation target). Service keywords out of ranking reach still "
+            "show a hyper-local **Recommended Pivot**.\n"
         )
 
         # Split primary and pivot rows
@@ -664,8 +668,8 @@ def generate_report(data):
                         for r in feasibility_rows if r.get("Query_Label") == "P"}
 
         # Table header
-        report.append("| Keyword | Client DA | Avg Comp DA | Gap | Status | Recommended Pivot |")
-        report.append("|---------|-----------|-------------|-----|--------|-------------------|")
+        report.append("| Keyword | Client DA | Avg Comp DA | Gap | Status | Recommended Play | Recommended Pivot |")
+        report.append("|---------|-----------|-------------|-----|--------|------------------|-------------------|")
 
         STATUS_ICONS = {
             "High Feasibility":     "✅ High",
@@ -682,6 +686,9 @@ def generate_report(data):
                 return " — local pack not measured (validation fetch failed)"
             return " ✓ in local pack" if pack else " ✗ not in local pack"
 
+        # RP-C.2 — Recommended Play column joins on the pre-computed verdict.
+        feas_kw_profiles = data.get("keyword_profiles", {}) or {}
+
         for row in primary_rows:
             kw       = row.get("Keyword") or row.get("original_keyword", "—")
             client_da = row.get("client_da", "—")
@@ -690,6 +697,8 @@ def generate_report(data):
             status   = STATUS_ICONS.get(row.get("feasibility_status", ""), row.get("feasibility_status", "—"))
             avg_da_str = f"{avg_da:.0f}" if avg_da is not None else "—"
             gap_str    = f"{gap:+.0f}" if gap is not None else "—"
+
+            play_cell = format_play_cell((feas_kw_profiles.get(kw) or {}).get("recommended_play"))
 
             pivot_cell = "*(stay the course)*"
             if row.get("pivot_status") == "No pivot — informational":
@@ -707,7 +716,7 @@ def generate_report(data):
                 else:
                     pivot_cell = f"**{suggested}**"
 
-            report.append(f"| {kw} | {client_da} | {avg_da_str} | {gap_str} | {status} | {pivot_cell} |")
+            report.append(f"| {kw} | {client_da} | {avg_da_str} | {gap_str} | {status} | {play_cell} | {pivot_cell} |")
 
         report.append("")
 
@@ -957,6 +966,13 @@ def _render_serp_intent_section(keyword_profiles: dict) -> list:
 
         if local_pack:
             lines.append("- **Local pack present:** yes")
+
+        # RP-C.2 — per-keyword Recommended Play line (two-score rank-vs-citation
+        # verdict). Rendered verbatim from the pre-computed field; honest note when
+        # inputs were missing. Spec: seo_geo_review_20260704.md (T.4).
+        play_body = format_play_line(profile.get("recommended_play"))
+        if play_body:
+            lines.append(f"- **Recommended play:** {play_body}")
 
         lines.append("")
 
