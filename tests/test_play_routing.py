@@ -23,6 +23,7 @@ from play_routing import (
     compute_recommended_play,
     load_play_routing,
 )
+from brief_data_extraction import extract_analysis_data_from_json
 
 
 # Real service_like_tokens from serp_vocab.yml (kept literal so the test is
@@ -352,6 +353,65 @@ class TestRp7Honesty(unittest.TestCase):
         inputs = v["evidence"]["inputs_used"]
         for key in play_routing.MATCHABLE_FIELDS:
             self.assertIn(key, inputs)
+
+
+# ─── RP.6 — payload passthrough via the real extraction layer ────────────────
+
+class TestRp6Passthrough(unittest.TestCase):
+
+    def _data(self):
+        return {
+            "overview": [{
+                "Run_ID": "run_1",
+                "Created_At": "2026-03-10T10:00:00",
+                "Source_Keyword": "family counselling north vancouver",
+                "Query_Label": "A",
+                "Executed_Query": "family counselling north vancouver",
+                "Total_Results": 5000,
+                "Has_Main_AI_Overview": True,
+            }],
+            "organic_results": [{
+                "Source_Keyword": "family counselling north vancouver",
+                "Query_Label": "A",
+                "Rank": 4,
+                "Title": "A therapist directory",
+                "Link": "https://example.com/a",
+                "Source": "example.com",
+                "Content_Type": "service",
+                "Entity_Type": "directory",
+            }],
+            "ai_overview_citations": [],
+            "paa_questions": [],
+            "autocomplete_suggestions": [],
+            "related_searches": [],
+            "serp_modules": [],
+            "local_pack_and_maps": [],
+            "serp_language_patterns": [],
+            "strategic_recommendations": [],
+            "competitors_ads": [],
+            "keyword_feasibility": [{
+                "Keyword": "family counselling north vancouver",
+                "Query_Label": "A",
+                "feasibility_status": "Low Feasibility",
+                "gap": 22.0,
+            }],
+        }
+
+    def test_rp6_recommended_play_present_and_shaped(self):
+        extracted = extract_analysis_data_from_json(
+            self._data(), "livingsystems.ca", ["Living Systems"]
+        )
+        profile = extracted["keyword_profiles"]["family counselling north vancouver"]
+        self.assertIn("recommended_play", profile)
+        rp = profile["recommended_play"]
+        for key in ("play", "label", "strategy_text", "evidence",
+                    "data_available", "confidence", "note"):
+            self.assertIn(key, rp)
+        self.assertIn(rp["play"], play_routing.VALID_PLAYS)
+        self.assertIn("matched_rule", rp["evidence"])
+        self.assertIn("inputs_used", rp["evidence"])
+        # Feasibility row was supplied → the honesty flag reflects it.
+        self.assertTrue(rp["data_available"]["feasibility"])
 
 
 if __name__ == "__main__":
