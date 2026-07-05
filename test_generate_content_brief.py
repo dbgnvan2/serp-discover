@@ -624,6 +624,29 @@ If you don't act now, you'll lose your rank #3 position entirely.
         self.assertEqual(profile["recommended_play"]["play"], "rank_play")
         self.assertEqual(profile["recommended_play"]["label"], "Rank Play")
 
+    def _system_prompt_text(self):
+        return Path("prompts/main_report/system.md").read_text(encoding="utf-8")
+
+    def test_rpc3_prompt_documents_recommended_play(self):
+        """RP-C.3: the main-report prompt documents keyword_profiles.recommended_play
+        (so the canary picks it up and the LLM knows the field)."""
+        text = self._system_prompt_text()
+        self.assertIn("keyword_profiles.recommended_play", text)
+        # It must be framed as a deterministic verdict the LLM may not contradict.
+        self.assertIn("hard validation failure", text.lower())
+        self.assertRegex(text, r"(?i)not assign a different play")
+
+    def test_rpc3_section7_states_and_follows_play(self):
+        """RP-C.3: Section 7 must STATE and FOLLOW the play, choosing the success
+        metric by play (rank -> ranking; extraction -> AIO citation)."""
+        text = self._system_prompt_text()
+        section7 = text.split("### Section 7")[1].split("### Section 8")[0]
+        self.assertIn("recommended_play", section7)
+        self.assertIn("FOLLOW", section7)
+        self.assertIn("rank_play", section7)
+        self.assertIn("extraction_play", section7)
+        self.assertIn("AIO", section7)
+
     def test_mixed_intent_strategy_compete_on_dominant(self):
         """A mixed SERP whose dominant intent matches an intent the client
         already ranks for → compete_on_dominant."""

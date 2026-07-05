@@ -620,3 +620,30 @@ class TestRecommendedPlayLines:
         row = next(l for l in report.splitlines()
                    if l.startswith("| birth order and personality |") and "🔴 Low" in l)
         assert "Extraction Play" in row
+
+
+class TestRecommendedPlayDocs:
+    """RP-C.7 — methodology (a contract), user manual, and config reference must
+    document the Recommended Play in the same change."""
+
+    _ROOT = os.path.dirname(os.path.dirname(__file__))
+
+    def _doc(self, name):
+        with open(os.path.join(self._ROOT, "docs", name), encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_rpc7_methodology_documents_recommended_play(self):
+        text = self._doc("methodology.md")
+        assert "recommended_play" in text
+        assert "rank-vs-citation" in text
+
+    def test_rpc7_user_manual_explains_two_score_model_with_example(self):
+        text = self._doc("USER_MANUAL.md")
+        assert "Recommended Play" in text
+        assert "two separate scores" in text
+        assert "birth order and personality" in text  # the worked example
+
+    def test_rpc7_config_reference_documents_play_routing(self):
+        text = self._doc("config_reference.md")
+        assert "play_routing.yml" in text
+        assert "play_labels" in text

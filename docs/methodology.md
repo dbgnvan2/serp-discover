@@ -70,6 +70,33 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 
 *Spec: serp_tool1_improvements_spec.md#I.3. Implemented 2026-05-01.*
 
+### Recommended Play (feasibility + market-analysis reports)
+
+Each keyword carries a pre-computed `keyword_profiles[kw].recommended_play` verdict
+— `{play, label, strategy_text, evidence, data_available}` — expressing the single
+strategic move under the **two-score, rank-vs-citation** model (a keyword's Google
+rank and its AI-Overview citation are separate scores; T.4). The play is one of
+`rank_play` (winnable DA gap → chase the ranking), `extraction_play` (rank out of
+reach / AIO-dominated → reformat answer-first to be cited), `local_pivot_play`
+(service keyword → hyper-local variant), or `avoid_play`.
+
+Consumers render it verbatim through the shared `play_rendering.py` helpers:
+`run_feasibility.py` adds a **Recommended Play** column to `feasibility_*.md` (the
+new home for non-service guidance, replacing the pivot suggestion those keywords no
+longer receive), and `generate_insight_report.py` adds a per-keyword play line to
+`market_analysis_*.md` (Sections 5b and 5c). When `data_available` is false the cell
+states the inputs were missing rather than fabricating a verdict. The play taxonomy
+(labels, success metrics, claim phrases) lives in `play_routing.yml`, not in Python.
+
+The content-brief prompt documents the field and Section 7 must **state and follow**
+each keyword's play, choosing the success metric by play (rank → rank improvement;
+extraction → AIO citation gain). `brief_validation.py::validate_llm_report` enforces
+parity: a report that assigns a *different* play than the pre-computed one is a
+**hard** validation failure (no retry; written to `*.validation.md`). The
+`test_validation_consistency.py` canary requires the field to have a matching rule.
+
+*Spec: seo_geo_review_20260704.md T.4. Implemented 2026-07-04.*
+
 ---
 
 ## Part 3 — Content brief generation

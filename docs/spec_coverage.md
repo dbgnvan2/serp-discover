@@ -9,11 +9,13 @@
 - `cleanup` — `serp_tool1_cleanup_spec.md`
 - `impr` — `serp_tool1_improvements_spec.md`
 - `config_manager` — `config_manager_spec.md`
+- `geo_review` — `seo_geo_review_20260704.md`
 
 **Post-spec changes (not tracked as spec criteria):**
 - 2026-05-01: Bowen strategic pattern definitions extracted from hardcoded Python in `serp_audit.py` to `strategic_patterns.yml`. Trigger matching changed from substring to word-boundary (`re.search r'\b...\b'`). Load-time validation added in `_validate_strategic_patterns`. Tests: `test_serp_audit.py::test_strategic_patterns_loaded_from_yaml`, `::test_custom_pattern_in_yaml_fires`, `::test_trigger_matching_uses_word_boundaries`, `::test_validate_rejects_*`.
 - 2026-05-02: Configuration Manager Phase 5 completed. All 8 tabs functional with comprehensive help text, CRUD operations, validation, and error recovery. Critical bugs fixed: initialization order, Entity Type Descriptions editability, domain_role column visibility, missing Cancel buttons. See `docs/config_manager_phase5_completion_20260502.md` for status report.
 - 2026-05-05: Report Clarity & Decisiveness (RC) specification implemented. 8 spec items (RC.1-RC.8) addressing keyword ranking, misleading labels, PAA ordering, evidence blocks, feasibility section, entity dominance interpretation, volatility handling, and brief sequencing. See RC spec items below.
+- 2026-07-04: Recommended Play consumer (chip C) implemented — a per-keyword rank-vs-citation "two-score" verdict (`keyword_profiles[kw].recommended_play`) rendered in `feasibility_*.md` + `market_analysis_*.md`, narrated (not contradicted) by the brief with a HARD-fail parity validator, taxonomy externalised to `play_routing.yml`. Rows RP-C.1–RP-C.7 below. Depends on the chip-A producer of the field/routing; shipped against the documented schema (see `recommended_play_consumer_plan.md`).
 - 2026-07-04: SEO/GEO review (`seo_geo_review_20260704.md`: C.1–C.8, C.10, T.1–T.4, T.6, G.2) and the deferred-items spec (`seo_geo_deferred_spec_v1.md`: C.9, G.6, G.3, T.5, G.5, G.1, G.4) fully implemented. Those specs carry their own per-criterion coverage: implementation status is marked inline in the review doc, and every deferred-spec acceptance criterion is mapped to its commit hash and test in `docs/seo_geo_deferred_status_2026-07-04.md` — tracked there rather than duplicated as rows in this matrix.
 
 ---
@@ -225,6 +227,14 @@
 | CM.8.2 | config_manager | All 8 tabs tested for load/render/validate/CRUD | `tests/test_config_manager.py` | 50+ tests across ConfigTab tests | done |
 | CM.8.3 | config_manager | All 8 validators tested against valid/invalid/edge-case data | `tests/test_config_validators.py` | 40+ validator tests | done |
 | CM.8.4 | config_manager | Test count: 476 passing, 28 skipped (no failures) | `pytest tests/test_config_manager.py tests/test_config_validators.py -q` | automatic | done |
+
+| RP-C.1 | geo_review | feasibility_*.md Recommended Play column: extraction_play (not pivot) for a non-service informational keyword; honest note when data missing | `run_feasibility.py::generate_feasibility_report`, `play_rendering.py::format_play_cell` | `test_feasibility.py::test_rpc1_recommended_play_column_extraction_not_pivot`, `::test_rpc1_recommended_play_honest_when_data_missing`, `::test_rpc1_no_verdict_renders_dash` | done |
+| RP-C.2 | geo_review | market_analysis_*.md per-keyword play line in the intent (5b) and feasibility (5c) sections | `generate_insight_report.py::_render_serp_intent_section`, `generate_insight_report.py::generate_report` | `tests/test_report_clarity.py::test_rpc2_play_line_in_intent_section`, `::test_rpc2_play_line_in_feasibility_section` | done |
+| RP-C.3 | geo_review | Brief prompt documents keyword_profiles.recommended_play; Section 7 states and follows the play (rank→rank metric, extraction→AIO citation) | `prompts/main_report/system.md` | `test_generate_content_brief.py::test_rpc3_prompt_documents_recommended_play`, `::test_rpc3_section7_states_and_follows_play` | done |
+| RP-C.4 | geo_review | Validator: report assigning a different play than pre-computed is a HARD fail; artifact to *.validation.md | `brief_validation.py::validate_llm_report`, `brief_validation.py::has_hard_validation_failures` | `test_generate_content_brief.py::test_rpc4_play_mismatch_is_hard_fail`, `::test_rpc4_matching_play_passes`, `::test_rpc4_play_not_enforced_when_data_unavailable` | done |
+| RP-C.5 | geo_review | Canary parity: recommended_play referenced in prompt has a matching validator rule (not allowlisted) | `test_validation_consistency.py`, `play_routing.yml` | `test_validation_consistency.py::test_recommended_play_covered`, `::test_all_prompt_fields_covered_by_validator` | done |
+| RP-C.6 | geo_review | Payload passthrough: build_main_report_payload includes recommended_play | `brief_prompts.py::build_main_report_payload` | `test_generate_content_brief.py::test_rpc6_payload_includes_recommended_play` | done |
+| RP-C.7 | geo_review | Docs updated in same change: methodology (contract), user manual (two-score model + birth-order example), config reference (play_routing.yml) | `docs/methodology.md`, `docs/USER_MANUAL.md`, `docs/config_reference.md` | `tests/test_report_clarity.py::test_rpc7_methodology_documents_recommended_play`, `::test_rpc7_user_manual_explains_two_score_model_with_example`, `::test_rpc7_config_reference_documents_play_routing` | done |
 
 ---
 

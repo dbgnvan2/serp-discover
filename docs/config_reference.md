@@ -28,6 +28,8 @@
 
 **`strategic_patterns.yml`** — Bowen theory strategic pattern definitions. Each entry has `Pattern_Name`, `Triggers` (list), `Status_Quo_Message`, `Bowen_Bridge_Reframe`, and `Content_Angle`. A pattern fires when any trigger word appears as a whole word in the run's SERP ngram corpus. Add new patterns by appending entries; no Python changes required.
 
+**`play_routing.yml`** — the **Recommended Play** taxonomy (rank-vs-citation two-score model; seo_geo_review T.4). Vocabulary block consumed by the report renderers and the brief validator: `play_labels` (machine token → human label, e.g. `extraction_play: "Extraction Play"`), `play_success_metric` (token → success metric surfaced in the brief's Section 7), and `play_claim_phrases` (token → extra regexes counted as the brief *asserting* a play, used only for contradiction detection). Edit the labels/metrics here — do not hardcode the play taxonomy in Python. The **routing rules** that decide which play each keyword receives live under `routing:` in the same file (owned by the recommended_play producer). Chip C reads only the vocabulary block; a missing/broken file degrades gracefully to an empty vocab (the play columns render `—`).
+
 ---
 
 ## Shared config (`shared_config.json`, out-of-repo)
