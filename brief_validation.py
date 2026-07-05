@@ -2,47 +2,12 @@
 
 Spec: serp_tool1_improvements_spec.md#I.5
 """
-import os
 import re
 
-import yaml
-
 from brief_data_extraction import _normalize_text
-
-_PLAY_ROUTING_PATH = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)), "play_routing.yml"
-)
-_PLAY_VOCAB_CACHE = None
-
-
-def _load_play_vocab():
-    """Load the Recommended Play vocabulary (labels + claim phrases) from
-    play_routing.yml.
-
-    Purpose: give the play-parity validator its editorial vocabulary from config,
-    not hardcoded Python (chip A owns the taxonomy; chip C reads it).
-    Spec:    seo_geo_review_20260704.md (T.4)
-    Tests:   test_generate_content_brief.py::test_rpc4_play_mismatch_is_hard_fail
-
-    Never raises: a missing/broken file yields empty vocab so the rule no-ops
-    (surface-not-crash), matching the pipeline's honesty ethos.
-    """
-    global _PLAY_VOCAB_CACHE
-    if _PLAY_VOCAB_CACHE is not None:
-        return _PLAY_VOCAB_CACHE
-    vocab = {"play_labels": {}, "play_claim_phrases": {}}
-    try:
-        if os.path.exists(_PLAY_ROUTING_PATH):
-            with open(_PLAY_ROUTING_PATH, "r", encoding="utf-8") as f:
-                loaded = yaml.safe_load(f) or {}
-            vocab["play_labels"] = loaded.get("play_labels", {}) or {}
-            vocab["play_claim_phrases"] = loaded.get("play_claim_phrases", {}) or {}
-    except Exception:
-        # Malformed config → empty vocab; the parity rule becomes a no-op rather
-        # than aborting the whole brief. The canary still guards prompt/rule sync.
-        vocab = {"play_labels": {}, "play_claim_phrases": {}}
-    _PLAY_VOCAB_CACHE = vocab
-    return vocab
+# recommended_play vocabulary is shared with the report renderers (single source
+# of truth in play_routing.yml). Spec: seo_geo_review_20260704.md (T.4).
+from play_rendering import load_play_vocab as _load_play_vocab
 
 
 def _play_claim_phrases_for(play_token, label, vocab):
