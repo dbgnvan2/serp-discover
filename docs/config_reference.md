@@ -28,6 +28,13 @@
 
 **`strategic_patterns.yml`** — Bowen theory strategic pattern definitions. Each entry has `Pattern_Name`, `Triggers` (list), `Status_Quo_Message`, `Bowen_Bridge_Reframe`, and `Content_Angle`. A pattern fires when any trigger word appears as a whole word in the run's SERP ngram corpus. Add new patterns by appending entries; no Python changes required.
 
+**`play_routing.yml`** (seo_geo_review chip A) — the "Recommended Play" decision table. `play_routing.py` normalises each keyword's pre-computed signals into primitives; this file makes the call among five plays. First-match-wins, top of file = highest priority. Two top-level keys:
+
+- `plays`: map of play-id → `{label, strategy_text}`. The five plays are `rank_play` (High/Moderate feasibility → win by ranking), `extraction_play` (Low/unknown feasibility + informational/commercial or mixed intent + AI Overview → win by AIO citation), `reformat_play` (client already ranks top-10 but is not AIO-cited → reformat the existing page first), `local_pivot_play` (Low/unknown feasibility + service-like keyword + local/transactional intent → hyper-local pivot), and `deprioritize` (none of the above). `strategy_text` is a one-line string the report/LLM may quote. Every play a rule references must be defined here.
+- `rules`: ordered list of `{play, match}`. A rule matches when **every** key in its `match` block matches the keyword's normalised signal; any signal not named is treated as `any`. A match value may be a scalar, a list (signal ∈ list), or `any`. Matchable signals: `feasibility` (high/moderate/low/unknown), `primary_intent` (informational/commercial_investigation/transactional/navigational/local/mixed/unknown), `is_mixed`, `mixed_intent_strategy`, `has_ai_overview`, `client_ranks_but_not_cited` (the per-keyword source of `strategic_flags.geo_alerts`), `is_service_like` (keyword contains a `serp_vocab.yml` `service_like_tokens` entry), `has_local_pack`.
+
+Rule ordering is load-bearing: `reformat_play` must precede `extraction_play`, and `local_pivot_play` rules must always require `is_service_like: true`. `feasibility: unknown` is grouped with `low` for the Low-feasibility plays so a keyword whose DA data could not be fetched still routes on intent + AIO rather than being silently dropped — the resulting verdict carries an honesty note (`recommended_play.confidence` / `data_available` / `note`). Edit the table to refine routing — don't push exceptions into `play_routing.py`. A malformed file fails loudly (`ValueError`).
+
 ---
 
 ## Shared config (`shared_config.json`, out-of-repo)
