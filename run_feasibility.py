@@ -68,6 +68,18 @@ except ImportError:
     logger.error("feasibility.py not found — cannot proceed.")
     sys.exit(1)
 
+# Service-intent gate for pivots — reuse the shared predicate + editorial
+# token list (serp_vocab.yml), never hardcode a parallel list (B.1.c).
+try:
+    from query_variants import is_service_like as _is_service_like
+    from pattern_matching import SERP_VOCAB as _SERP_VOCAB
+    SERVICE_LIKE_TOKENS = _SERP_VOCAB.get("service_like_tokens", [])
+    SERVICE_GATE_AVAILABLE = True
+except Exception as _exc:  # pragma: no cover - defensive import guard
+    SERVICE_LIKE_TOKENS = []
+    SERVICE_GATE_AVAILABLE = False
+    logger.warning("Service-intent gate unavailable (%s) — pivots ungated.", _exc)
+
 try:
     import requests as _requests
     REQUESTS_AVAILABLE = True
@@ -93,16 +105,43 @@ def _extract_domain(url: str) -> str:
         return ""
 
 
-def _fetch_pivot_local_pack(keyword: str, config: dict) -> list[dict]:
+# Credential query-param names that must never reach a log line.
+_CREDENTIAL_PARAM_RE = re.compile(
+    r"(?i)\b(api_key|apikey|key|token|secret|password|passwd|login)=([^&\s]+)"
+)
+
+
+def _scrub_secrets(text: object) -> str:
+    """Redact secrets from a string before logging it.
+
+    ``requests`` exceptions carry the full request URL — including
+    ``api_key=<SERPAPI_KEY>`` — so logging ``str(exc)`` naively leaks the key
+    (security standard + learnings P5). Redact both the concrete SERPAPI_KEY
+    value (wherever it appears) and any credential query param by name.
+
+    Spec: seo_geo_review_20260704.md (chip B, B.3).
+    """
+    s = str(text)
+    key = os.environ.get("SERPAPI_KEY", "")
+    if key:
+        s = s.replace(key, "REDACTED")
+    s = _CREDENTIAL_PARAM_RE.sub(r"\1=REDACTED", s)
+    return s
+
+
+def _fetch_pivot_local_pack(keyword: str, config: dict) -> tuple[list[dict], bool]:
     """Fetch Maps/local pack results for a pivot keyword via SerpAPI.
 
-    Returns a list of local result dicts, or empty list on failure.
+    Returns ``(local_results, ok)`` where ``ok`` is ``False`` when the fetch
+    could not be performed (missing deps/key) or failed. A failed fetch must
+    NOT be conflated with a genuine empty pack: the caller records
+    "could not measure", never a false "not in local pack" (B.2, P1/P2/P14).
     """
     if not REQUESTS_AVAILABLE:
-        return []
+        return [], False
     serpapi_key = os.environ.get("SERPAPI_KEY", "")
     if not serpapi_key:
-        return []
+        return [], False
     serpapi_cfg = config.get("serpapi", {})
     params = {
         "api_key": serpapi_key,
@@ -117,19 +156,26 @@ def _fetch_pivot_local_pack(keyword: str, config: dict) -> list[dict]:
         resp = _requests.get("https://serpapi.com/search", params=params, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-        return data.get("local_results", [])
+        return data.get("local_results", []), True
     except Exception as exc:
-        logger.warning("Pivot Maps fetch failed for '%s': %s", keyword, exc)
-        return []
+        logger.warning("Pivot Maps fetch failed for '%s': %s", keyword, _scrub_secrets(exc))
+        return [], False
 
 
-def _fetch_pivot_organic_urls(keyword: str, config: dict, max_urls: int = 10) -> list[str]:
-    """Fetch organic results for a pivot keyword and return URLs."""
+def _fetch_pivot_organic_urls(
+    keyword: str, config: dict, max_urls: int = 10
+) -> tuple[list[str], bool]:
+    """Fetch organic results for a pivot keyword and return ``(urls, ok)``.
+
+    ``ok`` is ``False`` when the fetch could not be performed or failed, so the
+    caller can distinguish a measurement failure from a genuinely empty SERP
+    (B.2). URLs in any raised exception are scrubbed of the API key (B.3).
+    """
     if not REQUESTS_AVAILABLE:
-        return []
+        return [], False
     serpapi_key = os.environ.get("SERPAPI_KEY", "")
     if not serpapi_key:
-        return []
+        return [], False
     serpapi_cfg = config.get("serpapi", {})
     params = {
         "api_key": serpapi_key,
@@ -144,10 +190,10 @@ def _fetch_pivot_organic_urls(keyword: str, config: dict, max_urls: int = 10) ->
         resp = _requests.get("https://serpapi.com/search", params=params, timeout=15)
         resp.raise_for_status()
         data = resp.json()
-        return [r.get("link", "") for r in data.get("organic_results", [])[:max_urls] if r.get("link")]
+        return [r.get("link", "") for r in data.get("organic_results", [])[:max_urls] if r.get("link")], True
     except Exception as exc:
-        logger.warning("Pivot organic fetch failed for '%s': %s", keyword, exc)
-        return []
+        logger.warning("Pivot organic fetch failed for '%s': %s", keyword, _scrub_secrets(exc))
+        return [], False
 
 
 # ---------------------------------------------------------------------------
@@ -267,6 +313,13 @@ def run_feasibility_analysis(
             if _extract_domain(url) in domain_to_da and _extract_domain(url) != client_domain
         ]
 
+        # Gate: only service-intent keywords get a neighbourhood pivot/variants.
+        # Informational keywords ("how does birth order affect personality West
+        # Vancouver") get none — a geo variant is nonsense (B.1.c). Computed once
+        # so BOTH the scored and No-DA branches honour it.
+        kw_service_like = _is_service_like(kw, SERVICE_LIKE_TOKENS, location) \
+            if SERVICE_GATE_AVAILABLE else True
+
         if not da_data_available:
             # No Moz data — report without scores rather than falsely showing all as Low
             feas = {
@@ -278,14 +331,17 @@ def run_feasibility_analysis(
             }
             pivot = {"pivot_status": "Stay the course", "suggested_keyword": None,
                      "strategy": "Moz DA data unavailable — run again once MOZ_TOKEN is set.",
-                     "all_variants": [f"{kw} {nb}" for nb in neighborhoods]}
+                     "all_variants": [f"{kw} {nb}" for nb in neighborhoods] if kw_service_like else []}
         else:
             feas = compute_feasibility(client_da, competitor_das)
             pivot_input = {
                 "status": feas["feasibility_status"],
                 "avg_competitor_da": feas["avg_serp_da"],
             }
-            pivot = generate_hyper_local_pivot(kw, location, pivot_input, neighborhoods)
+            pivot = generate_hyper_local_pivot(
+                kw, location, pivot_input, neighborhoods,
+                is_service_like=kw_service_like,
+            )
 
         row: dict = {
             "Keyword": kw,
@@ -319,20 +375,36 @@ def run_feasibility_analysis(
                 source_kw = job["source_keyword"]
                 logger.info("  Pivot Maps: '%s'", pivot_kw)
 
-                local_rows = _fetch_pivot_local_pack(pivot_kw, config)
-                in_pack = any(
-                    client_domain and client_domain in str(r.get("website") or "").lower()
-                    for r in local_rows
-                )
+                local_rows, local_ok = _fetch_pivot_local_pack(pivot_kw, config)
+                if local_ok:
+                    in_pack = any(
+                        client_domain and client_domain in str(r.get("website") or "").lower()
+                        for r in local_rows
+                    )
+                    # A real measurement: 1 = in pack, 0 = measured-absent.
+                    client_in_local_pack = int(in_pack)
+                else:
+                    # Fetch failed — record "could not measure", never a false 0
+                    # that renders as "✗ not in local pack" (B.2, P1/P2/P14).
+                    client_in_local_pack = None
 
                 pivot_das = []
+                organic_ok = True
                 if da_client:
-                    pivot_urls = _fetch_pivot_organic_urls(pivot_kw, config)
+                    pivot_urls, organic_ok = _fetch_pivot_organic_urls(pivot_kw, config)
                     if pivot_urls:
                         pivot_da_data = _get_metrics(pivot_urls)
                         pivot_das = [v["da"] for v in pivot_da_data.values()]
 
-                pivot_feas = compute_feasibility(client_da, pivot_das)
+                # If the validation SERP fetch failed we cannot score the pivot;
+                # do not present the failure as a real "Low Feasibility" verdict.
+                if not organic_ok:
+                    pivot_feas = {
+                        "avg_serp_da": None, "client_da": client_da, "gap": None,
+                        "feasibility_score": None, "feasibility_status": "Not Measured",
+                    }
+                else:
+                    pivot_feas = compute_feasibility(client_da, pivot_das)
 
                 pivot_row: dict = {
                     "Keyword": pivot_kw,
@@ -343,7 +415,7 @@ def run_feasibility_analysis(
                     "gap": pivot_feas["gap"],
                     "feasibility_score": pivot_feas["feasibility_score"],
                     "feasibility_status": pivot_feas["feasibility_status"],
-                    "Client_In_Local_Pack": int(in_pack),
+                    "Client_In_Local_Pack": client_in_local_pack,
                     "pivot_status": None,
                     "suggested_keyword": None,
                     "strategy": None,
@@ -365,7 +437,22 @@ STATUS_ICONS = {
     "Moderate Feasibility": "⚠️ Moderate",
     "Low Feasibility":      "🔴 Low",
     "No DA Data":           "❓ No DA Data",
+    "Not Measured":         "⚠️ Not measured",
 }
+
+
+def _local_pack_phrase(pack: object) -> str:
+    """Render the local-pack signal honestly (B.2).
+
+    ``None`` = the validation fetch failed (could not measure) — never shown as
+    a real "not in local pack". ``0`` = measured and genuinely absent. Truthy =
+    measured and present.
+    """
+    if pack is None:
+        return " — local pack not measured (validation fetch failed)"
+    if pack:
+        return " ✓ in local pack"
+    return " ✗ not in local pack"
 
 
 def generate_feasibility_report(feasibility_rows: list[dict], config: dict, source_json: str) -> str:
@@ -422,12 +509,14 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
         gap_str    = f"{gap:+.0f}" if gap is not None else "—"
 
         pivot_cell = "*(stay the course)*"
-        if row.get("pivot_status") == "Pivoting to Hyper-Local":
+        if row.get("pivot_status") == "No pivot — informational":
+            # SEAM (chip C): the extraction-play recommendation renders here.
+            pivot_cell = "*(informational — extraction play)*"
+        elif row.get("pivot_status") == "Pivoting to Hyper-Local":
             suggested = row.get("suggested_keyword", "")
             pivot_result = pivot_map.get(kw)
             if pivot_result:
-                pack = pivot_result.get("Client_In_Local_Pack")
-                pack_str = " ✓ in local pack" if pack else " ✗ not in local pack"
+                pack_str = _local_pack_phrase(pivot_result.get("Client_In_Local_Pack"))
                 p_icon = STATUS_ICONS.get(pivot_result.get("feasibility_status", ""),
                                           pivot_result.get("feasibility_status", ""))
                 pivot_cell = f"**{suggested}** — {p_icon}{pack_str}"
@@ -438,15 +527,20 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
 
     lines.append("")
 
+    # A geographic pivot only applies to service-intent keywords. Informational
+    # Low-Feasibility keywords are handled separately (B.1.c) — no geo pivot.
+    pivoting = [r for r in low if r.get("pivot_status") == "Pivoting to Hyper-Local"]
+    informational = [r for r in low if r.get("pivot_status") == "No pivot — informational"]
+
     # Pivot strategy detail
-    if low:
+    if pivoting:
         lines.append("## Pivot Strategy\n")
         lines.append(
             "> **Why this works:** Geographic relevance is the equalizer for non-profits. "
             "A practitioner physically located in a neighbourhood can outrank a national "
             "directory for a user searching in that specific area, regardless of domain authority.\n"
         )
-        for row in low:
+        for row in pivoting:
             strategy = row.get("strategy", "")
             if strategy and strategy != "Current keyword is feasible. No pivot required.":
                 kw = row.get("Keyword", "")
@@ -454,7 +548,7 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
 
         # All neighbourhood variants
         lines.append("## All Neighbourhood Variants\n")
-        for row in low:
+        for row in pivoting:
             kw = row.get("Keyword", "")
             variants = row.get("all_variants", [])
             if variants:
@@ -462,13 +556,27 @@ def generate_feasibility_report(feasibility_rows: list[dict], config: dict, sour
                 for v in variants:
                     pivot_result = pivot_map.get(kw)
                     if pivot_result and pivot_result.get("Keyword") == v:
-                        pack = pivot_result.get("Client_In_Local_Pack")
-                        pack_str = " ✓ local pack" if pack else " ✗ local pack"
+                        pack_str = _local_pack_phrase(pivot_result.get("Client_In_Local_Pack"))
                         feas = STATUS_ICONS.get(pivot_result.get("feasibility_status", ""), "")
                         lines.append(f"- {v} — {feas}{pack_str}")
                     else:
                         lines.append(f"- {v}")
                 lines.append("")
+
+    # Informational Low-Feasibility keywords — no geographic pivot applies.
+    if informational:
+        lines.append("## Informational Keywords (no geo pivot)\n")
+        lines.append(
+            "> These keywords are informational, not service queries — a "
+            "neighbourhood variant is nonsense (nobody searches an informational "
+            "question with a neighbourhood). The play here is content "
+            "**extractability**, not geography.\n"
+        )
+        for row in informational:
+            kw = row.get("Keyword", "")
+            # SEAM (chip C): the extraction-play recommendation attaches here.
+            lines.append(f"- **{kw}** — extraction play (see brief)")
+        lines.append("")
 
     return "\n".join(lines)
 

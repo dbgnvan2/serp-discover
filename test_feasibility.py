@@ -234,6 +234,49 @@ class TestGenerateHyperLocalPivot(unittest.TestCase):
         )
         self.assertEqual(result["avg_competitor_da"], 61)
 
+    # --- B.1.b: pivot gated on service-like intent ---
+
+    def test_b1b_informational_keyword_gets_no_pivot_or_variants(self):
+        """A Low-Feasibility *informational* keyword must NOT get a pivot and
+        must NOT produce neighbourhood variants (Spec: chip B, B.1.b)."""
+        result = generate_hyper_local_pivot(
+            "how does birth order affect personality",
+            "West Vancouver",
+            self._low_feas(),
+            NEIGHBOURHOODS,
+            is_service_like=False,
+        )
+        self.assertNotEqual(result["pivot_status"], "Pivoting to Hyper-Local")
+        self.assertEqual(result["pivot_status"], "No pivot — informational")
+        self.assertIsNone(result["suggested_keyword"])
+        self.assertEqual(result["all_variants"], [])
+
+    def test_b1b_informational_leaves_extraction_play_seam(self):
+        """The informational result carries a seam key for chip C to populate."""
+        result = generate_hyper_local_pivot(
+            "what is differentiation of self", "North Vancouver",
+            self._low_feas(), NEIGHBOURHOODS, is_service_like=False,
+        )
+        self.assertIn("recommended_play", result)
+        self.assertIsNone(result["recommended_play"])
+
+    def test_b1b_service_keyword_still_pivots(self):
+        """A Low-Feasibility *service* keyword still pivots as before."""
+        result = generate_hyper_local_pivot(
+            "Couples Counselling", "North Vancouver",
+            self._low_feas(), NEIGHBOURHOODS, is_service_like=True,
+        )
+        self.assertEqual(result["pivot_status"], "Pivoting to Hyper-Local")
+        self.assertIsNotNone(result["suggested_keyword"])
+        self.assertEqual(len(result["all_variants"]), len(NEIGHBOURHOODS))
+
+    def test_b1b_default_is_service_like_preserves_legacy_behaviour(self):
+        """Omitting is_service_like keeps the historical pivot behaviour."""
+        result = generate_hyper_local_pivot(
+            "Couples Counselling", "North Vancouver", self._low_feas(), NEIGHBOURHOODS
+        )
+        self.assertEqual(result["pivot_status"], "Pivoting to Hyper-Local")
+
 
 if __name__ == "__main__":
     unittest.main()

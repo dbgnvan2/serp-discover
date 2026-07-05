@@ -109,9 +109,11 @@ Serp-Discover answers these questions by:
   - **Low Feasibility:** Gap > 15 (high-authority incumbents, pivot suggested)
 
 - Results are cached 30 days — re-running costs nothing
-- For low-feasibility keywords, suggests neighbourhood pivots (e.g., "Couples Counselling" → "Couples Counselling Lonsdale")
+- For low-feasibility **service** keywords, suggests neighbourhood pivots (e.g., "Couples Counselling" → "Couples Counselling Lonsdale")
+- Informational keywords (e.g. "how does birth order affect personality") get **no** neighbourhood pivot — a geographic variant is meaningless for a question nobody searches with a neighbourhood. They are listed separately for the content extraction play instead.
+- If a pivot's validation SERP fetch fails, the tool says **"not measured"** rather than falsely reporting the client as absent from the local pack.
 
-**Why:** Not all keywords are worth targeting. If competitors have DA 60 and Living Systems has DA 35, ranking is nearly impossible without massive link building. Feasibility scoring helps you focus on winnable keywords.
+**Why:** Not all keywords are worth targeting. If competitors have DA 60 and Living Systems has DA 35, ranking is nearly impossible without massive link building. Feasibility scoring helps you focus on winnable keywords. And a neighbourhood pivot only works when *proximity can substitute for authority* — that is only true for service queries (someone looking for a counsellor near them), never for informational questions, so pivots are gated to service keywords.
 
 ---
 
@@ -297,7 +299,7 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 |-----|--------|-----------------|
 | ≤ 5 | ✅ High Feasibility | Rankable with quality content + on-page SEO alone |
 | 6–15 | ⚠️ Moderate Feasibility | Needs local backlink building + content quality |
-| > 15 | 🔴 Low Feasibility | Dominated by high-authority sites; pivot to neighbourhood keywords |
+| > 15 | 🔴 Low Feasibility | Dominated by high-authority sites; **service** keywords pivot to neighbourhood variants, informational keywords route to the extraction play |
 
 ### SERP Intent
 
@@ -826,11 +828,15 @@ Executive framing:
 DA gap analysis:
 - **High feasibility keywords** (≤5 gap): Can rank with content quality alone. Prioritize these.
 - **Moderate feasibility** (6–15 gap): Need local backlink strategy + content. Secondary tier.
-- **Low feasibility** (>15 gap): Dominated by high-authority sites. Suggests neighbourhood pivots.
+- **Low feasibility** (>15 gap): Dominated by high-authority sites. Service keywords get neighbourhood pivots; informational keywords are listed separately for the extraction play.
 
-**Example pivot:**
+**Example pivot (service keyword):**
 - Keyword: "Couples Counselling" (DA gap: 25, too hard)
 - Pivot: "Couples Counselling Lonsdale" (DA gap: 8, feasible)
+
+**No pivot for informational keywords:** "How does birth order affect personality" is Low Feasibility too, but a neighbourhood variant ("…West Vancouver") is nonsense — nobody searches it that way. These appear under "Informational Keywords (no geo pivot)" and are handled by content extractability, not geography.
+
+**Not-measured honesty:** If the pivot's validation SERP fetch fails, the local-pack column reads "not measured (validation fetch failed)" — a transient fetch error is never rendered as a real "not in local pack" result.
 
 **How to use:** SEO team uses this to decide which keywords are worth targeting + what link-building work is needed.
 
@@ -968,11 +974,12 @@ DA gap analysis:
    - Step 5 (Export History) generates time-series CSVs
    - Analyze rank movement: stable keywords (safe bets) vs volatile (risky)
 
-6. **Pivot to neighbourhood keywords**
+6. **Pivot to neighbourhood keywords (service keywords only)**
    - Run feasibility analysis (Step 7)
-   - For low-feasibility keywords (>15 gap), tool suggests pivots
+   - For low-feasibility **service** keywords (>15 gap), tool suggests pivots
    - Example: "Couples Counselling" (DA 25 gap) → "Couples Counselling Lonsdale" (DA 8 gap)
    - Create content for pivots first (easier wins)
+   - Informational keywords are **not** pivoted — they surface under "Informational Keywords (no geo pivot)" for the content extraction play instead
 
 ---
 
