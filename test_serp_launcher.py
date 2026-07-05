@@ -121,6 +121,71 @@ class TestSerpLauncherResolution(unittest.TestCase):
                 os.chdir(cwd)
 
 
+class TestConfigCommentPreservation(unittest.TestCase):
+    """Regression: save_config wiped every comment in config.yml.
+
+    The GUI re-dumps the whole document on each run of run_pipeline.py just
+    to refresh the four ``files:`` output paths. Under yaml.safe_dump this
+    stripped all comments, including the paid-feature / gating docs under
+    ``ai_visibility:``, ``gsc:`` and ``geo:``. Round-trip YAML must survive
+    a load -> mutate ``files:`` -> save cycle with comments intact.
+
+    No tkinter required: load_config/save_config only touch config_path().
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        cls.mod = load_serp_me()
+
+    def make_config_app(self):
+        app = object.__new__(self.mod.SerpLauncherApp)
+        app.config_path = self.mod.SerpLauncherApp.config_path.__get__(app)
+        app._yaml = self.mod.SerpLauncherApp._yaml.__get__(app)
+        app.load_config = self.mod.SerpLauncherApp.load_config.__get__(app)
+        app.save_config = self.mod.SerpLauncherApp.save_config.__get__(app)
+        return app
+
+    def test_save_config_preserves_comments_on_files_update(self):
+        app = self.make_config_app()
+        original = (
+            "# top-of-file banner comment\n"
+            "files:\n"
+            "  input_csv: old.csv\n"
+            "  output_json: old.json\n"
+            "ai_visibility:\n"
+            "  # Paid feature: cost guard requires --yes before any call.\n"
+            "  assume_yes: false\n"
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            cwd = os.getcwd()
+            try:
+                os.chdir(tmpdir)
+                Path("config.yml").write_text(original, encoding="utf-8")
+
+                # Mimic the run_pipeline.py branch: load, mutate files:, save.
+                config = app.load_config()
+                files_cfg = config.setdefault("files", {})
+                files_cfg["input_csv"] = "new.csv"
+                files_cfg["output_json"] = "new.json"
+                app.save_config(config)
+
+                written = Path("config.yml").read_text(encoding="utf-8")
+            finally:
+                os.chdir(cwd)
+
+        # The mutation landed...
+        self.assertIn("input_csv: new.csv", written)
+        self.assertIn("output_json: new.json", written)
+        # ...and every comment survived the round-trip.
+        self.assertIn("# top-of-file banner comment", written)
+        self.assertIn(
+            "# Paid feature: cost guard requires --yes before any call.",
+            written,
+        )
+        # Untouched keys are still present.
+        self.assertIn("assume_yes: false", written)
+
+
 class TestRunButtonSelectionRegression(unittest.TestCase):
     """Regression: the Run button silently did nothing.
 

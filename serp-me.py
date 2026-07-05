@@ -9,7 +9,7 @@ import json
 import re
 import time
 from datetime import datetime
-import yaml
+from ruamel.yaml import YAML
 
 from apply_domain_override_candidates import merge_overrides, write_overrides
 from classifiers import ENTITY_TYPE_DESCRIPTIONS, ENTITY_TYPES, EntityClassifier
@@ -450,16 +450,24 @@ class SerpLauncherApp:
     def config_path(self):
         return os.path.join(os.getcwd(), "config.yml")
 
+    def _yaml(self):
+        # Round-trip mode preserves comments and key order across a
+        # load/modify/save cycle. safe_dump silently strips every comment,
+        # which wiped the paid-feature/gating docs in config.yml on each run.
+        yaml_rt = YAML()  # typ='rt' by default
+        yaml_rt.preserve_quotes = True
+        return yaml_rt
+
     def load_config(self):
         path = self.config_path()
         if not os.path.exists(path):
             return {}
         with open(path, "r", encoding="utf-8") as f:
-            return yaml.safe_load(f) or {}
+            return self._yaml().load(f) or {}
 
     def save_config(self, config):
         with open(self.config_path(), "w", encoding="utf-8") as f:
-            yaml.safe_dump(config, f, sort_keys=False, allow_unicode=False)
+            self._yaml().dump(config, f)
 
     def read_keyword_file(self, path):
         if not os.path.exists(path):
