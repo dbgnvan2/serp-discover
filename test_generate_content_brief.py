@@ -600,6 +600,21 @@ If you don't act now, you'll lose your rank #3 position entirely.
         play_issues = [i for i in issues if "recommended_play" in i]
         self.assertEqual(len(play_issues), 0)
 
+    def test_rpc4_no_false_positive_on_contrastive_prose(self):
+        """RP-C.4 (adversarial, P7): a brief that correctly states the play and then
+        explains it by CONTRASTING with another play must NOT be flagged. Only the
+        canonical 'Recommended play: <label>' verdict counts as an assignment."""
+        extracted = self._play_extracted(play="extraction_play", label="Extraction Play")
+        report = (
+            "**birth order and personality (12,000 total results)**\n"
+            "Recommended play: Extraction Play — reformat for AIO citation. "
+            "While a rank play would normally chase the organic ranking, that path "
+            "is out of reach here given the domain-authority gap.\n"
+        )
+        issues = gcb.validate_llm_report(report, extracted)
+        play_issues = [i for i in issues if "recommended_play" in i]
+        self.assertEqual(play_issues, [], f"false positive on contrastive prose: {play_issues}")
+
     def test_rpc4_play_not_enforced_when_data_unavailable(self):
         """RP-C.1/RP-C.4 honesty: when data_available is false the verdict is not
         enforced — the brief is expected to state inputs were missing."""

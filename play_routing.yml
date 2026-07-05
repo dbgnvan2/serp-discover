@@ -33,21 +33,12 @@ play_success_metric:
   local_pivot_play: "local-pack / hyper-local rank"
   avoid_play: "n/a — deprioritized"
 
-# Extra phrases (beyond the canonical "Recommended play: <label>") that also count
-# as the brief ASSERTING a given play, used only for contradiction detection.
-# Keep these tight to avoid false positives against ordinary prose.
-play_claim_phrases:
-  rank_play:
-    - "pursue the (?:organic )?ranking play"
-    - "chase the (?:organic )?ranking"
-  extraction_play:
-    - "reformat for (?:aio )?extraction"
-    - "optimi[sz]e for aio citation"
-    - "answer[- ]extraction play"
-  local_pivot_play:
-    - "hyper[- ]local pivot play"
-  avoid_play:
-    - "avoid[- ]play verdict"
+# NOTE: brief play-parity is enforced by anchoring on the canonical
+# "Recommended play: <label>" verdict statement the prompt tells the LLM to emit
+# (see brief_validation._play_assignment_phrase). Loose per-play claim phrases were
+# intentionally NOT added here: they false-positive on prose that merely discusses
+# a different play. Add extra detection phrases only with a matching adversarial
+# no-false-positive test.
 
 # ── Routing rules (owned by chip A; placeholder until chip A lands) ──────────
 # routing:

@@ -11,6 +11,7 @@ Tests:   test_feasibility.py::test_rpc1_recommended_play_column_extraction_not_p
 Ownership: chip A owns the routing rules + the recommended_play field; this module
 is a pure CONSUMER of the vocabulary block in play_routing.yml.
 """
+import copy
 import os
 
 import yaml
@@ -20,26 +21,41 @@ _PLAY_ROUTING_PATH = os.path.join(
 )
 _PLAY_VOCAB_CACHE = None
 
-_EMPTY_VOCAB = {"play_labels": {}, "play_claim_phrases": {}, "play_success_metric": {}}
+_EMPTY_VOCAB = {"play_labels": {}, "play_success_metric": {}}
 
 
 def load_play_vocab():
-    """Load the play vocabulary (labels, claim phrases, success metrics) from
-    play_routing.yml. Never raises: a missing/broken file yields empty vocab so
-    consumers degrade gracefully (surface-not-crash)."""
+    """Load the play vocabulary (labels, success metrics) from play_routing.yml.
+    Never raises: a missing/broken file yields empty vocab so consumers degrade
+    gracefully (surface-not-crash). Returns a deep copy so a caller mutating the
+    result cannot poison the shared cache."""
     global _PLAY_VOCAB_CACHE
-    if _PLAY_VOCAB_CACHE is not None:
-        return _PLAY_VOCAB_CACHE
-    vocab = dict(_EMPTY_VOCAB)
-    try:
-        if os.path.exists(_PLAY_ROUTING_PATH):
-            with open(_PLAY_ROUTING_PATH, "r", encoding="utf-8") as f:
-                loaded = yaml.safe_load(f) or {}
-            vocab = {key: (loaded.get(key) or {}) for key in _EMPTY_VOCAB}
-    except Exception:
-        vocab = dict(_EMPTY_VOCAB)
-    _PLAY_VOCAB_CACHE = vocab
-    return vocab
+    if _PLAY_VOCAB_CACHE is None:
+        vocab = copy.deepcopy(_EMPTY_VOCAB)
+        try:
+            if os.path.exists(_PLAY_ROUTING_PATH):
+                with open(_PLAY_ROUTING_PATH, "r", encoding="utf-8") as f:
+                    loaded = yaml.safe_load(f) or {}
+                vocab = {key: (loaded.get(key) or {}) for key in _EMPTY_VOCAB}
+        except Exception:
+            vocab = copy.deepcopy(_EMPTY_VOCAB)
+        _PLAY_VOCAB_CACHE = vocab
+    return copy.deepcopy(_PLAY_VOCAB_CACHE)
+
+
+def _sanitize_cell(value):
+    """Make free-form text safe inside a Markdown table cell: escape pipes (which
+    would add spurious columns) and collapse newlines to spaces."""
+    text = str(value or "")
+    text = text.replace("\r", " ").replace("\n", " ")
+    text = text.replace("|", r"\|")
+    return text.strip()
+
+
+def _collapse(value):
+    """Collapse newlines to spaces (for inline/bullet contexts where a stray
+    newline would break the bullet, but pipes are harmless)."""
+    return str(value or "").replace("\r", " ").replace("\n", " ").strip()
 
 
 def _resolve_label(play_obj, vocab):
@@ -57,25 +73,36 @@ def _evidence_str(play_obj, limit=2):
     return "; ".join(parts[:limit])
 
 
+def _data_available(play_obj):
+    """True when the verdict rests on real inputs. Treats a MISSING key as
+    available (the producer computed a play) but any present-and-falsy value
+    (False / 0 / "" / None) as NOT available — matching the validator's
+    truthiness gate so renderer and validator never disagree."""
+    return bool(play_obj.get("data_available", True))
+
+
 def format_play_cell(play_obj, vocab=None):
     """Render a recommended_play verdict as ONE Markdown table cell.
 
     - No verdict at all → "—".
-    - data_available is False → honest "inputs missing" note; NEVER a fabricated
+    - data_available falsy → honest "inputs missing" note; NEVER a fabricated
       strategy.
     - Otherwise → **Label** — strategy_text (+ compact evidence).
+
+    Free-form text is pipe/newline-sanitized so a strategy containing "|" cannot
+    add a spurious column and misalign the table row.
     """
     if not play_obj:
         return "—"
     vocab = vocab or load_play_vocab()
-    label = _resolve_label(play_obj, vocab) or "—"
-    if play_obj.get("data_available", True) is False:
+    label = _sanitize_cell(_resolve_label(play_obj, vocab) or "—")
+    if not _data_available(play_obj):
         return f"**{label}** — *play inputs missing; not computed*"
-    strategy = (play_obj.get("strategy_text") or "").strip()
+    strategy = _sanitize_cell(play_obj.get("strategy_text"))
     cell = f"**{label}**"
     if strategy:
         cell += f" — {strategy}"
-    evidence = _evidence_str(play_obj)
+    evidence = _sanitize_cell(_evidence_str(play_obj))
     if evidence:
         cell += f" _(evidence: {evidence})_"
     return cell
@@ -84,14 +111,15 @@ def format_play_cell(play_obj, vocab=None):
 def format_play_line(play_obj, vocab=None):
     """Render a recommended_play verdict as the body of a Markdown bullet line
     (used in market_analysis_*.md intent + feasibility sections). Returns None
-    when there is no verdict, so callers can skip the line entirely."""
+    when there is no verdict, so callers can skip the line entirely. Newlines are
+    collapsed so the verdict stays on one bullet."""
     if not play_obj:
         return None
     vocab = vocab or load_play_vocab()
-    label = _resolve_label(play_obj, vocab) or "—"
-    if play_obj.get("data_available", True) is False:
+    label = _collapse(_resolve_label(play_obj, vocab) or "—")
+    if not _data_available(play_obj):
         return f"{label} — *play inputs missing; not computed*"
-    strategy = (play_obj.get("strategy_text") or "").strip()
+    strategy = _collapse(play_obj.get("strategy_text"))
     body = label
     if strategy:
         body += f" — {strategy}"
