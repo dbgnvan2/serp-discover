@@ -84,6 +84,19 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
   (dated pages only; null when no page is dated), dated_page_count,
   client_page. These are computed facts; quote them, never recompute
   or estimate ages.
+- keyword_profiles.recommended_play: the pre-computed "Recommended Play"
+  verdict — the single strategic move for this keyword under the
+  two-score, rank-vs-citation model (Google rank and AI-Overview citation
+  are SEPARATE scores). Contains: play (machine token — rank_play,
+  extraction_play, local_pivot_play, or avoid_play), label (the human
+  name you MUST use verbatim, e.g. "Extraction Play"), strategy_text
+  (one-line move), evidence (the signals it rests on), and
+  data_available (false = inputs were missing; say so honestly and do
+  NOT invent a play). This is a DETERMINISTIC verdict. You may NARRATE
+  and justify it, but you must NOT assign a different play than the one
+  given — a rank_play keyword is a ranking target, an extraction_play
+  keyword is an AIO-citation target. Contradicting the pre-computed play
+  is a hard validation failure.
 
 COMPETITIVE LANDSCAPE:
 - competitive_landscape: per-keyword summaries with entity breakdown
@@ -560,7 +573,13 @@ keyword with action != skip, state:
   (cite from the keyword's paa_questions list)
 - Whether the recommendation is primarily a SERP-evidenced demand
   gap or a client differentiation hypothesis
-- What success looks like (rank improvement, AIO citation gain)
+- STATE the keyword's keyword_profiles.recommended_play.label verbatim and
+  FOLLOW it — the recommendation must pursue that exact play, never a
+  different one. Choose the success metric BY the play: a rank_play target
+  is measured by organic rank improvement; an extraction_play target is
+  measured by AI Overview (AIO) citation gain; a local_pivot_play target
+  by local-pack / hyper-local rank. When recommended_play.data_available
+  is false, say the play inputs were missing rather than inventing one.
 - What to avoid (audience mismatch, competing with legal firms)
 - Where keyword_profiles.eeat_signals.data_available is true for the
   keyword, note whether credentialed authorship is table-stakes on

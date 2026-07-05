@@ -2,9 +2,58 @@
 
 Spec: serp_tool1_improvements_spec.md#I.5
 """
+import os
 import re
 
+import yaml
+
 from brief_data_extraction import _normalize_text
+
+_PLAY_ROUTING_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "play_routing.yml"
+)
+_PLAY_VOCAB_CACHE = None
+
+
+def _load_play_vocab():
+    """Load the Recommended Play vocabulary (labels + claim phrases) from
+    play_routing.yml.
+
+    Purpose: give the play-parity validator its editorial vocabulary from config,
+    not hardcoded Python (chip A owns the taxonomy; chip C reads it).
+    Spec:    seo_geo_review_20260704.md (T.4)
+    Tests:   test_generate_content_brief.py::test_rpc4_play_mismatch_is_hard_fail
+
+    Never raises: a missing/broken file yields empty vocab so the rule no-ops
+    (surface-not-crash), matching the pipeline's honesty ethos.
+    """
+    global _PLAY_VOCAB_CACHE
+    if _PLAY_VOCAB_CACHE is not None:
+        return _PLAY_VOCAB_CACHE
+    vocab = {"play_labels": {}, "play_claim_phrases": {}}
+    try:
+        if os.path.exists(_PLAY_ROUTING_PATH):
+            with open(_PLAY_ROUTING_PATH, "r", encoding="utf-8") as f:
+                loaded = yaml.safe_load(f) or {}
+            vocab["play_labels"] = loaded.get("play_labels", {}) or {}
+            vocab["play_claim_phrases"] = loaded.get("play_claim_phrases", {}) or {}
+    except Exception:
+        # Malformed config → empty vocab; the parity rule becomes a no-op rather
+        # than aborting the whole brief. The canary still guards prompt/rule sync.
+        vocab = {"play_labels": {}, "play_claim_phrases": {}}
+    _PLAY_VOCAB_CACHE = vocab
+    return vocab
+
+
+def _play_claim_phrases_for(play_token, label, vocab):
+    """Return the regex phrases that count as the report ASSERTING `play_token`:
+    the canonical "Recommended play: <label>" plus any extra phrases from config."""
+    phrases = []
+    if label:
+        phrases.append(rf"recommended play[:\-\s]+{re.escape(label.lower())}")
+    for extra in (vocab.get("play_claim_phrases", {}).get(play_token) or []):
+        phrases.append(extra)
+    return phrases
 
 
 def _mixed_keyword_dominance_profiles(extracted_data):
@@ -333,6 +382,33 @@ def validate_llm_report(report_text, extracted_data):
                         )
                         break
 
+        # ── recommended_play parity (RP-C.4, HARD-FAIL) ──────────────────────
+        # The brief may only NARRATE the pre-computed play; asserting a DIFFERENT
+        # play than keyword_profiles.recommended_play is a mechanically checkable
+        # contradiction → HARD fail (see has_hard_validation_failures).
+        # Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation two-score model).
+        rp = profile.get("recommended_play") or {}
+        pre_play = rp.get("play")
+        # Enforce only when the verdict rests on real inputs. When data_available
+        # is False the brief is expected to state inputs were missing, so we grant
+        # interpretive latitude rather than enforce a possibly-fallback verdict.
+        if pre_play and rp.get("data_available", True):
+            play_vocab = _load_play_vocab()
+            pre_label = play_vocab.get("play_labels", {}).get(pre_play) or rp.get("label")
+            contradiction_found = False
+            for other_play, other_label in play_vocab.get("play_labels", {}).items():
+                if other_play == pre_play or contradiction_found:
+                    continue
+                for phrase in _play_claim_phrases_for(other_play, other_label, play_vocab):
+                    if re.search(phrase, section_l):
+                        issues.append(
+                            f"Report assigns a different play to '{keyword}' "
+                            f"({other_label}), but keyword_profiles.recommended_play "
+                            f"shows play='{pre_play}' (label='{pre_label}')."
+                        )
+                        contradiction_found = True
+                        break
+
         # ── confidence upgrade contradiction (SOFT-FAIL) ─────────────────────
         # LLM may downplay confidence but not upgrade it.
         HIGH_CONFIDENCE_PHRASES = [
@@ -467,6 +543,8 @@ def has_hard_validation_failures(validation_issues):
         if "despite zero verified trigger evidence" in normalized:
             return True
         if "but keyword_profiles shows" in normalized:
+            return True
+        if "but keyword_profiles.recommended_play shows" in normalized:
             return True
         if "contradicts keyword_profiles.title_patterns" in normalized:
             return True

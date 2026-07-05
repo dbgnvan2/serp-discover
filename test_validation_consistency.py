@@ -135,6 +135,17 @@ def test_serp_intent_covered():
         "validate_llm_report has no mention of 'serp_intent' — Rule 12A may be unenforceable"
 
 
+def test_recommended_play_covered():
+    """RP-C.5: recommended_play is referenced in the prompt and must have a
+    matching validator rule (parity, not the KNOWN_UNVALIDATED allowlist)."""
+    assert "recommended_play" in _prompt_referenced_fields(), \
+        "prompt no longer references keyword_profiles.recommended_play"
+    assert "recommended_play" not in KNOWN_UNVALIDATED, \
+        "recommended_play must be enforced by a rule, not allowlisted"
+    assert "recommended_play" in _validator_source(), \
+        "validate_llm_report has no mention of 'recommended_play' — RP-C.4 rule missing"
+
+
 def test_top5_organic_is_in_known_unvalidated():
     """top5_organic is a known data-reference field — confirm it stays in the allowlist."""
     assert "top5_organic" in KNOWN_UNVALIDATED

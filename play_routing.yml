@@ -1,0 +1,54 @@
+# play_routing.yml — Recommended Play taxonomy + routing
+#
+# Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation "two separate scores").
+#
+# OWNERSHIP
+#   - chip A owns the ROUTING rules (which play a keyword receives) under `routing:`
+#     and the pre-computed keyword_profiles[kw].recommended_play field.
+#   - chip C (CONSUMER) reads the VOCABULARY block below (`play_labels`,
+#     `play_claim_phrases`) for report rendering and LLM-output validation. It never
+#     hardcodes the play taxonomy in Python.
+#
+# RECONCILIATION NOTE (2026-07-04): chip A had not landed when chip C shipped, so
+# chip C created this file with the vocabulary block it needs. When chip A merges
+# its routing rules, they are ADDITIVE — keep the tokens in `play_labels` in sync
+# with whatever chip A emits into recommended_play["play"]. If chip A already
+# defines `play_labels`, do not fork; reconcile to a single block.
+
+# ── Vocabulary (consumed by chip C) ─────────────────────────────────────────
+# Machine token -> human label rendered in feasibility_*.md / market_analysis_*.md
+# and echoed by the LLM brief. The validator enforces that the brief does not
+# assign a different label than the pre-computed one.
+play_labels:
+  rank_play: "Rank Play"                # chase the organic ranking (feasible DA gap)
+  extraction_play: "Extraction Play"    # reformat for AIO citation (rank infeasible / AIO-dominated / cited-but-not-ranking)
+  local_pivot_play: "Local Pivot Play"  # service keyword — pursue the hyper-local variant
+  avoid_play: "Avoid Play"              # neither rank nor extraction is worth the effort
+
+# Success-metric family per play — surfaces in the brief's Section 7 so a
+# rank target gets a ranking metric and an extraction target gets a citation metric.
+play_success_metric:
+  rank_play: "organic rank improvement"
+  extraction_play: "AI Overview (AIO) citation gain"
+  local_pivot_play: "local-pack / hyper-local rank"
+  avoid_play: "n/a — deprioritized"
+
+# Extra phrases (beyond the canonical "Recommended play: <label>") that also count
+# as the brief ASSERTING a given play, used only for contradiction detection.
+# Keep these tight to avoid false positives against ordinary prose.
+play_claim_phrases:
+  rank_play:
+    - "pursue the (?:organic )?ranking play"
+    - "chase the (?:organic )?ranking"
+  extraction_play:
+    - "reformat for (?:aio )?extraction"
+    - "optimi[sz]e for aio citation"
+    - "answer[- ]extraction play"
+  local_pivot_play:
+    - "hyper[- ]local pivot play"
+  avoid_play:
+    - "avoid[- ]play verdict"
+
+# ── Routing rules (owned by chip A; placeholder until chip A lands) ──────────
+# routing:
+#   ...  # chip A populates: how each keyword's play is decided.
