@@ -3,6 +3,7 @@
 Spec: serp_tool1_improvements_spec.md#I.5
 """
 import json
+import logging
 import os
 import re
 import sys
@@ -48,7 +49,11 @@ def load_service_like_tokens(path=None):
     try:
         with open(path, "r", encoding="utf-8") as fh:
             vocab = yaml.safe_load(fh) or {}
-    except (OSError, yaml.YAMLError):
+    except (OSError, yaml.YAMLError) as exc:
+        # Surface, never silently drop: a missing/malformed vocab file would
+        # otherwise silently make every keyword non-service-like, disabling
+        # local_pivot routing with no signal.
+        logging.warning("Could not load service_like_tokens from %s: %s", path, exc)
         return ()
     return tuple(vocab.get("service_like_tokens", []) or [])
 
