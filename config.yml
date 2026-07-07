@@ -46,15 +46,24 @@ bing_check:
   enabled: false
   num: 20
 ai_visibility:
-  # AI-engine mention probing (probe_ai_visibility.py). Paid feature: every
-  # question is one API call per engine; the script's cost guard requires
-  # --yes (or assume_yes: true) before any call is made.
+  # Engine defaults (gate Y-D9, user-approved): Gemini + ChatGPT ON (reach +
+  # Google-organic carryover), Perplexity ON (referral-click value), Claude
+  # available-but-not-default. Each engine still runs only if its API key is
+  # present; a missing key skips it with a warning, never an abort.
   engines:
-  - claude
   - gemini
+  - openai
+  - perplexity
   claude_model: claude-sonnet-4-6
   claude_web_search_tool: web_search_20260209
   gemini_model: gemini-2.5-flash
+  # OpenAI / ChatGPT (Y.2): web-search-enabled Responses API.
+  openai_model: gpt-4o
+  openai_endpoint: https://api.openai.com/v1/responses
+  openai_web_search_tool: web_search
+  # Perplexity (Y.3): Sonar search-grounded model, OpenAI-compatible endpoint.
+  perplexity_model: sonar
+  perplexity_endpoint: https://api.perplexity.ai/chat/completions
   max_questions: 20
   max_total_calls: 60
   client_slug: living_systems
