@@ -48,9 +48,21 @@ from urllib.parse import urlparse
 import requests
 import yaml
 
+import aivi as aivi_mod
+import answer_sentiment as sentiment_mod
+import brand_mentions as brand_mentions_mod
+import citation_table as citation_mod
+import engine_recommendations as engine_recs_mod
+import engine_transfer as engine_transfer_mod
+import foundational_score as foundational_mod
 from http_retry import post_with_transient_retry
 from pattern_matching import load_serp_vocab
-from query_variants import situational_template_probes
+from profile_questions import generate as generate_profile_questions
+from profile_questions import load_client_profiles
+from query_variants import (
+    flatten_situational_templates,
+    situational_template_probes,
+)
 
 try:
     from datetime import UTC as _UTC
@@ -76,17 +88,38 @@ logger = logging.getLogger(__name__)
 # Constants
 # ---------------------------------------------------------------------------
 
-VALID_ENGINES = ("claude", "gemini")
+VALID_ENGINES = ("claude", "gemini", "openai", "perplexity")
 
-DEFAULT_ENGINES = ["claude", "gemini"]
+#: Engine defaults for this client (gate Y-D9, user-approved): Gemini + ChatGPT
+#: ON (highest audience reach + Google-organic carryover); Perplexity ON (strong
+#: referral-click value); Claude available-but-not-default (lowest reach for a
+#: small local nonprofit). Every engine still runs only if its API key is
+#: present; a missing key skips it with a logged warning, never an abort.
+#: Spec: yoast_geo_upgrade_spec_v1.md#Y.2 / #Y.3 (gate Y-D9).
+DEFAULT_ENGINES = ["gemini", "openai", "perplexity"]
 DEFAULT_MAX_QUESTIONS = 20          # per engine (gate D-2 budget default)
+#: Hard ceiling on total paid calls across questions × engines (gate Y-D4).
+#: Enforced by the cost guard; over budget aborts with zero calls unless --yes.
+DEFAULT_MAX_TOTAL_CALLS = 60
 DEFAULT_HISTORY_RUNS = 5
+#: Default client slug in client_profiles.yml (Y.5 — one client per deployment).
+DEFAULT_CLIENT_SLUG = "living_systems"
 
 # Model ids come from config (ai_visibility.claude_model / gemini_model);
 # these are only the fallbacks when the config block is absent.
 DEFAULT_CLAUDE_MODEL = "claude-sonnet-4-6"
 DEFAULT_CLAUDE_WEB_SEARCH_TOOL = "web_search_20260209"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
+#: OpenAI web-search-enabled model + Responses endpoint (Y.2). Model id is
+#: read from config (ai_visibility.openai_model); this is only the fallback.
+DEFAULT_OPENAI_MODEL = "gpt-4o"
+DEFAULT_OPENAI_ENDPOINT = "https://api.openai.com/v1/responses"
+DEFAULT_OPENAI_WEB_SEARCH_TOOL = "web_search"
+#: Perplexity Sonar search-grounded model + OpenAI-compatible chat endpoint
+#: (Y.3). Sonar models return citations; model id read from config
+#: (ai_visibility.perplexity_model); this is only the fallback.
+DEFAULT_PERPLEXITY_MODEL = "sonar"
+DEFAULT_PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions"
 
 GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 REQUEST_TIMEOUT = 60
@@ -295,6 +328,173 @@ class GeminiProbe:
         }
 
 
+class ChatGPTProbe:
+    """OpenAI / ChatGPT probe via the Responses API with the web_search server
+    tool enabled — plain REST (requests + http_retry), no openai SDK.
+
+    Answers reflect live retrieval; source URLs are taken from the
+    ``url_citation`` annotations on the assistant message and, when present,
+    the ``web_search_call`` item's ``action.sources`` list. Client-construction
+    conventions follow ClaudeProbe (env API key, model id from config — never
+    hardcoded). A missing OPENAI_API_KEY raises RuntimeError, which
+    build_probes() converts into a logged skip-with-warning (gate Y-D2/Y-D9:
+    never an abort).
+
+    API surface confirmed 2026-07 against OpenAI's live docs: the Responses
+    endpoint (``POST /v1/responses``) exposes web search via the ``web_search``
+    tool and returns inline citations as ``url_citation`` annotations (each
+    carrying ``url`` and ``title``). The endpoint and tool name are
+    parameterised in config so the parser tracks the current surface without a
+    code change.
+    Spec: yoast_geo_upgrade_spec_v1.md#Y.2.
+    """
+
+    def __init__(self, model: str, endpoint: str = DEFAULT_OPENAI_ENDPOINT,
+                 web_search_tool: str = DEFAULT_OPENAI_WEB_SEARCH_TOOL,
+                 max_output_tokens: int = 2048) -> None:
+        api_key = os.getenv("OPENAI_API_KEY", "").strip()
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is not set.")
+        self.model = model
+        self.endpoint = endpoint
+        self.web_search_tool = web_search_tool
+        self.max_output_tokens = max_output_tokens
+        self._api_key = api_key
+
+    def ask(self, question: str) -> dict:
+        payload = {
+            "model": self.model,
+            "input": question,
+            "tools": [{"type": self.web_search_tool}],
+            "max_output_tokens": self.max_output_tokens,
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        response = post_with_transient_retry(
+            "OpenAI", self.endpoint, headers, payload,
+            batch_desc=f"probe question ({self.model})",
+            timeout=REQUEST_TIMEOUT,
+            post=requests.post,
+        )
+        if response is None:
+            raise RuntimeError("OpenAI request failed at the network layer.")
+        if not response.ok:
+            raise RuntimeError(
+                f"OpenAI returned HTTP {response.status_code}: {response.text[:200]}")
+        data = response.json()
+        texts: list[str] = []
+        urls: list[str] = []
+        for item in data.get("output") or []:
+            if not isinstance(item, dict):
+                continue
+            item_type = item.get("type")
+            if item_type == "message":
+                for block in item.get("content") or []:
+                    if not isinstance(block, dict):
+                        continue
+                    text = block.get("text")
+                    if text:
+                        texts.append(text)
+                    for ann in block.get("annotations") or []:
+                        if not isinstance(ann, dict):
+                            continue
+                        if ann.get("type") == "url_citation":
+                            url = ann.get("url")
+                            if url:
+                                urls.append(str(url))
+            elif item_type == "web_search_call":
+                # The complete list of consulted sources (superset of the
+                # inline citations) when the account exposes it.
+                action = item.get("action") or {}
+                for src in action.get("sources") or []:
+                    url = src.get("url") if isinstance(src, dict) else None
+                    if url:
+                        urls.append(str(url))
+        # Fallback for the flat convenience field some responses include.
+        if not texts and data.get("output_text"):
+            texts.append(str(data["output_text"]))
+        return {
+            "answer_text": "\n".join(texts).strip(),
+            "source_urls": list(dict.fromkeys(urls)),
+            "model_id": str(data.get("model") or self.model),
+        }
+
+
+class PerplexityProbe:
+    """Perplexity probe via the OpenAI-compatible chat/completions endpoint
+    with a Sonar (search-grounded) model — plain REST (requests + http_retry).
+
+    Sonar models return explicit citations, making Perplexity a high-signal
+    target for the ``cited`` metric. Citations are mapped into ``source_urls``:
+    the response's top-level ``search_results`` (objects with ``url``) are
+    preferred, with the flat ``citations`` list (URL strings) merged in.
+    Model id from config (ai_visibility.perplexity_model); API key from
+    PERPLEXITY_API_KEY; a missing key raises RuntimeError → logged
+    skip-with-warning (gate Y-D3/Y-D9).
+
+    API surface confirmed 2026-07 against Perplexity's live docs: the
+    OpenAI-compatible ``POST /chat/completions`` endpoint returns the answer in
+    ``choices[0].message.content`` plus a top-level ``search_results`` array and
+    a ``citations`` array of URLs. Endpoint parameterised in config.
+    Spec: yoast_geo_upgrade_spec_v1.md#Y.3.
+    """
+
+    def __init__(self, model: str, endpoint: str = DEFAULT_PERPLEXITY_ENDPOINT,
+                 max_tokens: int = 2048) -> None:
+        api_key = os.getenv("PERPLEXITY_API_KEY", "").strip()
+        if not api_key:
+            raise RuntimeError("PERPLEXITY_API_KEY is not set.")
+        self.model = model
+        self.endpoint = endpoint
+        self.max_tokens = max_tokens
+        self._api_key = api_key
+
+    def ask(self, question: str) -> dict:
+        payload = {
+            "model": self.model,
+            "messages": [{"role": "user", "content": question}],
+            "max_tokens": self.max_tokens,
+        }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        response = post_with_transient_retry(
+            "Perplexity", self.endpoint, headers, payload,
+            batch_desc=f"probe question ({self.model})",
+            timeout=REQUEST_TIMEOUT,
+            post=requests.post,
+        )
+        if response is None:
+            raise RuntimeError("Perplexity request failed at the network layer.")
+        if not response.ok:
+            raise RuntimeError(
+                f"Perplexity returned HTTP {response.status_code}: {response.text[:200]}")
+        data = response.json()
+        choices = data.get("choices") or []
+        message = (choices[0].get("message") or {}) if choices else {}
+        answer = str(message.get("content") or "")
+        urls: list[str] = []
+        # Structured search_results (preferred — carries title + url).
+        for result in data.get("search_results") or []:
+            url = result.get("url") if isinstance(result, dict) else None
+            if url:
+                urls.append(str(url))
+        # Flat citations list (URL strings) — merge in, de-duplicated below.
+        for citation in data.get("citations") or []:
+            if isinstance(citation, str) and citation:
+                urls.append(citation)
+            elif isinstance(citation, dict) and citation.get("url"):
+                urls.append(str(citation["url"]))
+        return {
+            "answer_text": answer.strip(),
+            "source_urls": list(dict.fromkeys(urls)),
+            "model_id": str(data.get("model") or self.model),
+        }
+
+
 def build_probes(engines: list[str], av_config: dict) -> tuple[dict, list[dict]]:
     """Construct one probe per selected engine.
 
@@ -315,6 +515,21 @@ def build_probes(engines: list[str], av_config: dict) -> tuple[dict, list[dict]]
             elif engine == "gemini":
                 probes[engine] = GeminiProbe(
                     model=av_config.get("gemini_model", DEFAULT_GEMINI_MODEL),
+                )
+            elif engine == "openai":
+                probes[engine] = ChatGPTProbe(
+                    model=av_config.get("openai_model", DEFAULT_OPENAI_MODEL),
+                    endpoint=av_config.get(
+                        "openai_endpoint", DEFAULT_OPENAI_ENDPOINT),
+                    web_search_tool=av_config.get(
+                        "openai_web_search_tool", DEFAULT_OPENAI_WEB_SEARCH_TOOL),
+                )
+            elif engine == "perplexity":
+                probes[engine] = PerplexityProbe(
+                    model=av_config.get(
+                        "perplexity_model", DEFAULT_PERPLEXITY_MODEL),
+                    endpoint=av_config.get(
+                        "perplexity_endpoint", DEFAULT_PERPLEXITY_ENDPOINT),
                 )
         except RuntimeError as exc:
             logger.warning("Skipping engine '%s': %s", engine, exc)
@@ -345,25 +560,45 @@ def _root_keywords(data: dict) -> list[str]:
 
 
 def build_question_set(data: dict, templates: list[str], city: str,
-                       max_questions: int, min_words: int = 6) -> list[dict]:
+                       max_questions: int, min_words: int = 6,
+                       profile_questions: list[dict] | None = None) -> list[dict]:
     """Build the probe question list, capped at *max_questions* (per engine).
 
-    Priority order (G.1 / T.5 output): the run's situational_probes when
-    present, else 6+-word PAA questions, else serp_vocab.yml
-    situational_templates filled per root keyword.
+    Priority order (Y.5 precedence, extending G.1 / T.5):
+    **profile questions (Y.1) → T.5 situational probes → 6+-word PAA →
+    serp_vocab.yml situational_templates** filled per root keyword. Profile
+    questions are the highest-priority source and are AUGMENTATIVE (gate
+    Y-D1): when a client profile is present its persona-shaped questions are
+    probed first; when absent (``profile_questions`` empty or ``None``) the
+    precedence collapses to the original G.1 behaviour exactly.
+
+    Each returned dict carries ``query``, ``source``
+    (``profile|situational|paa|template``), and ``persona`` (the profile
+    persona label for profile-sourced rows, else ``None``). The ``source``
+    label is stored per row so the report can show where each probe came from.
+
+    Spec: yoast_geo_upgrade_spec_v1.md#Y.5 (Y.5.1 profile-first precedence +
+    row tagging; regression: no profile ⇒ current G.1 precedence).
     """
     questions: list[dict] = []
     seen: set[str] = set()
 
-    def _add(query: str, source: str) -> None:
+    def _add(query: str, source: str, persona: str | None = None) -> None:
         query = (query or "").strip()
         key = query.lower()
         if query and key not in seen and len(questions) < max_questions:
             seen.add(key)
-            questions.append({"query": query, "source": source})
+            questions.append({"query": query, "source": source,
+                              "persona": persona})
 
-    for row in data.get("situational_probes") or []:
-        _add(str(row.get("Executed_Query") or ""), "situational_probe")
+    # Highest priority: profile-seeded persona questions (Y.1). Each carries
+    # its persona label; source tag is the short "profile".
+    for item in profile_questions or []:
+        _add(str(item.get("question") or ""), "profile",
+             persona=item.get("persona"))
+    if not questions:
+        for row in data.get("situational_probes") or []:
+            _add(str(row.get("Executed_Query") or ""), "situational")
     if not questions:
         for row in data.get("paa_questions") or []:
             question = str(row.get("Question") or "").strip()
@@ -458,6 +693,11 @@ def top_competitor_domains(data: dict, client_domain: str, limit: int = 15) -> l
 # timestamps, CREATE TABLE IF NOT EXISTS (idempotent).
 # ---------------------------------------------------------------------------
 
+#: Columns added by Y.5 via idempotent ALTER TABLE (storage.py convention).
+#: A pre-existing DB is upgraded once; old rows read back as NULL (principle 3).
+_PROBE_MIGRATION_COLUMNS = (("persona", "TEXT"), ("source", "TEXT"))
+
+
 def init_probe_table(db_path: str) -> None:
     with sqlite3.connect(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {PROBE_TABLE} (
@@ -468,8 +708,19 @@ def init_probe_table(db_path: str) -> None:
             mentioned               INTEGER,
             cited                   INTEGER,
             competitor_domains_json TEXT,
-            answer_excerpt          TEXT
+            answer_excerpt          TEXT,
+            persona                 TEXT,
+            source                  TEXT
         )''')
+        # Migration for DBs created before Y.5: add persona/source columns.
+        # ALTER TABLE … ADD COLUMN wrapped in try/except OperationalError so
+        # the DB migrates automatically on first use — storage.py convention.
+        for col, col_type in _PROBE_MIGRATION_COLUMNS:
+            try:
+                conn.execute(
+                    f"ALTER TABLE {PROBE_TABLE} ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass  # Column already exists — safe to ignore (idempotent).
         conn.commit()
 
 
@@ -479,14 +730,15 @@ def save_probe_rows(db_path: str, rows: list[dict]) -> None:
         conn.executemany(
             f"""INSERT INTO {PROBE_TABLE}
                 (run_ts, engine, model, question, mentioned, cited,
-                 competitor_domains_json, answer_excerpt)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                 competitor_domains_json, answer_excerpt, persona, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     row["run_ts"], row["engine"], row["model"], row["question"],
                     int(bool(row["mentioned"])), int(bool(row["cited"])),
                     json.dumps(row.get("competitors_cited", [])),
                     (row.get("answer_excerpt") or "")[:400],
+                    row.get("persona"), row.get("source"),
                 )
                 for row in rows
             ],
@@ -555,6 +807,14 @@ def run_engine_probes(probes: dict, questions: list[dict], geo_context: str,
                 "cited": detection["cited"],
                 "competitors_cited": detection["competitors_cited"],
                 "answer_excerpt": (answer.get("answer_text") or "")[:400],
+                # Y.5: carry the probe's provenance onto the stored row.
+                "persona": item.get("persona"),
+                "source": item.get("source"),
+                # Y.6–Y.9: retain the full answer text + source URLs in memory
+                # (NOT persisted to the probe table) so the read-side enrichment
+                # modules can extract brands, citations, and sentiment.
+                "answer_text": answer.get("answer_text") or "",
+                "source_urls": answer.get("source_urls") or [],
             })
     return rows
 
@@ -565,9 +825,240 @@ def _rate(count: int, total: int) -> str:
     return f"{count}/{total} ({count / total:.0%})"
 
 
+# ---------------------------------------------------------------------------
+# Phase D read-side enrichment (Y.6–Y.9): leaderboard, citations, sentiment,
+# AIVI — computed from the answers already fetched, persisted per engine.
+# ---------------------------------------------------------------------------
+
+def _brand_domain_map(known_brands: list[str], client_domain: str,
+                      client_name: str) -> dict[str, str]:
+    """Map lower-cased domains (and the client's) to display brand names for
+    Y.8 citation brand attribution. Domains in known_brands map to themselves."""
+    mapping: dict[str, str] = {}
+    for brand in known_brands or []:
+        b = str(brand).strip()
+        if "." in b:  # looks like a domain
+            mapping[b.lower()] = b
+    if client_domain:
+        mapping[client_domain.lower().removeprefix("www.")] = client_name or client_domain
+    return mapping
+
+
+def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
+                          analysis_data: dict, run_ts: str, topic: str,
+                          db_path: str, source_json: str | None,
+                          out_dir: str = ".",
+                          brand_llm_runner=None,
+                          sentiment_llm_runner=None,
+                          sentiment_call_budget: int | None = None) -> dict:
+    """Compute + persist the Y.6–Y.9 metrics from the fetched answers.
+
+    Returns a dict the report renderer consumes::
+
+        {"leaderboards": {engine: leaderboard},
+         "citations": {engine: table},
+         "sentiment": {"enabled": bool, "rows": [...], "calls": int,
+                       "client_brand": str, "top_competitor": str|None},
+         "aivi": {"per_engine": {engine: result}, "all_engine_avg": float|None,
+                  "trends": {engine: [...]}},
+         "candidates_file": str|None}
+
+    All LLM runners are injectable and default OFF (brand LLM off unless
+    ``brand_mentions.llm_extraction``; sentiment off unless ``sentiment.enabled``)
+    so a plain run makes zero extra calls (principle 4). Old analysis JSONs
+    without new fields flow through without crashing or fabricating zeros
+    (principle 3).
+    """
+    analysis_cfg = config.get("analysis_report", {}) or {}
+    known_brands = list(config.get("known_brands", []) or [])
+    client_domain = analysis_cfg.get("client_domain", "") or ""
+    client_name = analysis_cfg.get("client_name", "Client")
+    client_patterns = analysis_cfg.get("client_name_patterns", []) or []
+
+    bm_cfg = config.get("brand_mentions", {}) or {}
+    llm_extraction = bool(bm_cfg.get("llm_extraction", False))
+    bm_model = bm_cfg.get("llm_model", "")
+
+    # Seed the gazetteer with the client's own name patterns so the client can
+    # appear on the leaderboard and receive a rank (Y.7 — "client's own rank
+    # computed"); without this the client is only ever "not mentioned".
+    gazetteer = brand_mentions_mod.build_gazetteer(
+        list(client_patterns) + list(known_brands), analysis_data)
+    brand_domains = _brand_domain_map(known_brands, client_domain, client_name)
+
+    leaderboards: dict[str, dict] = {}
+    citations: dict[str, list] = {}
+    all_unknown: list[str] = []
+    unknown_seen: set[str] = set()
+
+    for engine in engines:
+        engine_rows = [r for r in rows if r["engine"] == engine]
+        answers = [
+            {"engine": engine, "answer_text": r.get("answer_text", ""),
+             "source_urls": r.get("source_urls", [])}
+            for r in engine_rows
+        ]
+        # Y.7 leaderboard (gazetteer always; LLM only if enabled).
+        leaderboard = brand_mentions_mod.build_leaderboard(
+            answers, gazetteer, client_patterns, llm_extraction, bm_model,
+            llm_runner=brand_llm_runner)
+        leaderboards[engine] = leaderboard
+        if leaderboard.get("rows"):
+            brand_mentions_mod.save_brand_mentions(db_path, run_ts, engine, leaderboard)
+        for name in leaderboard.get("unknown_candidates", []):
+            key = name.strip().lower()
+            if key and key not in unknown_seen:
+                unknown_seen.add(key)
+                all_unknown.append(name)
+
+        # Y.8 citation table.
+        brand_names = [r["brand"] for r in leaderboard.get("rows", [])]
+        table = citation_mod.build_citation_table(
+            answers, client_domain, brand_domains, brand_names)
+        citations[engine] = table
+        if table:
+            citation_mod.save_citations(db_path, run_ts, engine, table)
+
+    candidates_file = brand_mentions_mod.write_candidates_file(
+        all_unknown, topic, run_ts, source_json, out_dir=out_dir)
+
+    # Y.9 sentiment (gated; zero calls when disabled).
+    sent_cfg = config.get("sentiment", {}) or {}
+    sent_enabled = sentiment_mod.is_enabled(sent_cfg)
+    sent_model = sent_cfg.get("llm_model", "")
+    sent_rows: list[dict] = []
+    sent_calls = 0
+    top_competitor = None
+    # Top competitor = highest-ranked non-client brand across all engines.
+    combined: dict[str, int] = {}
+    for lb in leaderboards.values():
+        for r in lb.get("rows", []):
+            if not r["is_client"]:
+                combined[r["brand"]] = combined.get(r["brand"], 0) + r["mention_count"]
+    if combined:
+        top_competitor = max(sorted(combined), key=lambda b: combined[b])
+    if sent_enabled:
+        targets = {client_name: client_patterns}
+        if top_competitor:
+            targets[top_competitor] = [top_competitor]
+        answers_all = [
+            {"engine": r["engine"], "answer_text": r.get("answer_text", "")}
+            for r in rows
+        ]
+        sent_rows, sent_calls = sentiment_mod.collect_sentiment(
+            answers_all, targets, sent_model, llm_runner=sentiment_llm_runner,
+            call_budget=sentiment_call_budget)
+        if sent_rows:
+            sentiment_mod.save_sentiment(db_path, run_ts, sent_rows)
+
+    # Y.6 AIVI per engine + all-engine average.
+    aivi_weights = aivi_mod.resolve_weights(config.get("aivi", {}) or {})
+    sentiment_axis = None
+    if sent_enabled:
+        sentiment_axis = sentiment_mod.sentiment_axis(sent_rows, client_name)
+    per_engine: dict[str, dict] = {}
+    for engine in engines:
+        engine_rows = [r for r in rows if r["engine"] == engine]
+        total = len(engine_rows)
+        mentions_axis = (100.0 * sum(1 for r in engine_rows if r["mentioned"]) / total) if total else 0.0
+        lb = leaderboards.get(engine, {})
+        ranking_axis = brand_mentions_mod.client_ranking_axis(
+            lb.get("client_rank"), len(lb.get("rows", [])))
+        citations_axis = citation_mod.citations_axis(citations.get(engine, []))
+        per_engine[engine] = aivi_mod.compute_aivi(
+            {"mentions": mentions_axis, "ranking": ranking_axis,
+             "citations": citations_axis, "sentiment": sentiment_axis},
+            aivi_weights)
+        aivi_mod.save_aivi(db_path, run_ts, engine, per_engine[engine])
+    aivi_trends = {
+        engine: aivi_mod.get_aivi_trend(db_path, engine)
+        for engine in engines
+    }
+
+    # -----------------------------------------------------------------------
+    # Phase E — engine strategy (Y.10–Y.12). Pure aggregation of the signals
+    # already computed above; no new engine calls.
+    # -----------------------------------------------------------------------
+    # Y.12 foundational (transferable) readiness score — engine-agnostic, from
+    # existing keyword_profiles / schema recs / Y.7 leaderboard.
+    try:
+        from brief_prompts import load_schema_recommendations
+        schema_recs = load_schema_recommendations()
+    except Exception as exc:  # never abort the report on an editorial-file issue
+        logger.warning("Could not load schema_recommendations.yml: %s", exc)
+        schema_recs = []
+    foundational_weights = foundational_mod.resolve_weights(
+        config.get("foundational", {}) or {})
+    foundational_result = foundational_mod.compute_foundational_score(
+        analysis_data, schema_recs, leaderboards, foundational_weights,
+        client_name_patterns=client_patterns)
+    foundational_mod.save_foundational_score(db_path, run_ts, foundational_result)
+    foundational_trend = foundational_mod.get_foundational_trend(db_path)
+
+    # Y.10 engine profiles + per-engine recommendations + prioritisation.
+    engine_profiles = engine_recs_mod.load_engine_profiles()
+    per_engine_results = {}
+    per_engine_aivi_scores = {}
+    for engine in engines:
+        aivi_res = per_engine.get(engine, {})
+        lb = leaderboards.get(engine, {})
+        cats = sorted({r["category"] for r in citations.get(engine, []) if r.get("category")})
+        per_engine_results[engine] = {
+            "aivi": aivi_res.get("aivi"),
+            "client_rank": lb.get("client_rank"),
+            "citation_categories": cats,
+        }
+        per_engine_aivi_scores[engine] = aivi_res.get("aivi")
+    priority_weights = engine_recs_mod.resolve_priority_weights(
+        config.get("engine_prioritization", {}) or {})
+    engine_recommendations = engine_recs_mod.engine_recommendations(
+        engines, engine_profiles, per_engine_results)
+    engine_prioritization = engine_recs_mod.prioritize_engines(
+        engines, engine_profiles, per_engine_aivi_scores, priority_weights)
+
+    # Y.11 cross-engine transfer (needs ≥2 engines; single engine → not measurable).
+    mention_by_engine = {}
+    cited_by_engine = {}
+    for engine in engines:
+        engine_rows = [r for r in rows if r["engine"] == engine]
+        mention_by_engine[engine] = any(r["mentioned"] for r in engine_rows)
+        cited_by_engine[engine] = any(r["cited"] for r in engine_rows)
+    client_rank_by_engine = {
+        engine: leaderboards.get(engine, {}).get("client_rank") for engine in engines
+    }
+    transfer_result = engine_transfer_mod.compute_transfer(
+        engines, mention_by_engine, cited_by_engine, citations, client_rank_by_engine)
+    engine_transfer_mod.save_transfer(db_path, run_ts, transfer_result)
+
+    return {
+        "leaderboards": leaderboards,
+        "citations": citations,
+        "sentiment": {
+            "enabled": sent_enabled, "rows": sent_rows, "calls": sent_calls,
+            "client_brand": client_name, "top_competitor": top_competitor,
+        },
+        "aivi": {
+            "per_engine": per_engine,
+            "all_engine_avg": aivi_mod.all_engine_average(per_engine),
+            "trends": aivi_trends,
+        },
+        "foundational": {
+            "result": foundational_result,
+            "trend": foundational_trend,
+        },
+        "engine_strategy": {
+            "recommendations": engine_recommendations,
+            "prioritization": engine_prioritization,
+        },
+        "transfer": transfer_result,
+        "candidates_file": candidates_file,
+    }
+
+
 def generate_report(source_json: str, run_ts: str, engines: list[str],
                     rows: list[dict], trends: dict, skipped: list[dict],
-                    geo_context: str, client_name: str) -> str:
+                    geo_context: str, client_name: str,
+                    enrichment: dict | None = None) -> str:
     """Render the ai_visibility markdown report (G.1.5).
 
     Includes per-engine mention/citation rates for this run, the per-engine
@@ -646,7 +1137,159 @@ def generate_report(source_json: str, run_ts: str, engines: list[str],
         lines.append("*No tracked competitor domains appeared in the returned sources.*")
     lines.append("")
 
+    lines.extend(_share_of_voice_section(engines, rows))
+
+    if enrichment:
+        lines.extend(_enrichment_sections(engines, enrichment))
+
     return "\n".join(lines)
+
+
+def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
+    """Render the Y.6–Y.12 report sections.
+
+    Order: the FOUNDATIONAL readiness score (Y.12) leads as the cross-platform
+    priority, ahead of per-engine AIVI (Y.6); then leaderboard, citations,
+    sentiment (Y.7–Y.9); then per-engine recommendations + prioritisation (Y.10)
+    and the cross-engine transfer section (Y.11)."""
+    out: list[str] = []
+
+    # Y.12 — foundational (transferable) readiness FIRST (Spec Y.12.2).
+    foundational_block = enrichment.get("foundational", {}) or {}
+    if foundational_block.get("result"):
+        out.extend(foundational_mod.render_foundational_section(
+            foundational_block.get("result", {}) or {},
+            foundational_block.get("trend", []) or []))
+
+    aivi_block = enrichment.get("aivi", {}) or {}
+    out.extend(aivi_mod.render_aivi_section(
+        aivi_block.get("per_engine", {}) or {},
+        aivi_block.get("all_engine_avg"),
+        aivi_block.get("trends", {}) or {}))
+
+    out.append("## Competitor mention leaderboard")
+    out.append(
+        "Brands the AI *named* in its answers (not only cited domains), ranked "
+        "by how many answers named them. This is the dominant AI-answer "
+        "signal — which rivals the AI recommends in the client's place."
+    )
+    out.append("")
+    leaderboards = enrichment.get("leaderboards", {}) or {}
+    for engine in engines:
+        out.extend(brand_mentions_mod.render_leaderboard_section(
+            engine, leaderboards.get(engine, {}) or {}))
+    candidates_file = enrichment.get("candidates_file")
+    if candidates_file:
+        out.append(
+            f"*LLM-surfaced brand candidates not yet in `known_brands` were "
+            f"written to `{os.path.basename(candidates_file)}` for review.*")
+        out.append("")
+
+    out.append("## Citations")
+    out.append(
+        "Every source URL the engines returned, categorised via the existing "
+        "content/entity classifier and attributed to a brand — an outreach "
+        "target list of the sources the AI trusts for this topic. Tracking "
+        "params are retained (they identify the surfacing engine)."
+    )
+    out.append("")
+    citations = enrichment.get("citations", {}) or {}
+    for engine in engines:
+        out.extend(citation_mod.render_citation_section(
+            engine, citations.get(engine, []) or []))
+
+    sent = enrichment.get("sentiment", {}) or {}
+    out.extend(sentiment_mod.render_sentiment_section(
+        sent.get("rows"), sent.get("enabled", False),
+        sent.get("client_brand", "Client"), sent.get("top_competitor")))
+
+    # Y.10 — per-engine recommendations + platform prioritisation.
+    strategy = enrichment.get("engine_strategy", {}) or {}
+    out.extend(engine_recs_mod.render_engine_recommendations_section(
+        strategy.get("recommendations", []) or [],
+        strategy.get("prioritization", []) or []))
+
+    # Y.11 — cross-engine transfer.
+    transfer = enrichment.get("transfer", {}) or {}
+    if transfer:
+        out.extend(engine_transfer_mod.render_transfer_section(transfer))
+    return out
+
+
+def _share_of_voice_section(engines: list[str], rows: list[dict]) -> list[str]:
+    """Render the cross-engine share-of-voice section (Y.5.3).
+
+    Per engine: the client mention rate and citation rate (over that engine's
+    answers this run) alongside the top competitor domains cited (reusing the
+    existing ``competitors_cited`` detection). Then a per-persona breakdown of
+    the client mention rate. Every value carries its run count and the section
+    reiterates the snapshot caveat — visibility is comparative, and knowing
+    which competitors the AI cites instead of the client is the actionable
+    signal. Spec: yoast_geo_upgrade_spec_v1.md#Y.5.
+    """
+    out: list[str] = []
+    out.append("## Cross-engine share of voice")
+    out.append(
+        "Visibility is comparative: the point is not only *whether* the "
+        "client appears but *relative to whom*. Below, per engine, is the "
+        "client's mention and citation rate this run alongside the competitor "
+        "domains the engine cited instead — knowing which rivals the AI cites "
+        "in the client's place is the actionable signal. All rates carry the "
+        "run count; single-run values are snapshots (see the caveat above), "
+        "so read the per-engine trend, not one number."
+    )
+    out.append("")
+    out.append("| Engine | Answers | Client mention rate | Client citation rate "
+               "| Top competitor domains cited |")
+    out.append("|--------|---------|---------------------|----------------------"
+               "|------------------------------|")
+    for engine in engines:
+        engine_rows = [r for r in rows if r["engine"] == engine]
+        total = len(engine_rows)
+        if not total:
+            out.append(f"| {engine} | 0 | — | — | — |")
+            continue
+        mentioned = sum(1 for r in engine_rows if r["mentioned"])
+        cited = sum(1 for r in engine_rows if r["cited"])
+        comp_counts: dict[str, int] = {}
+        for r in engine_rows:
+            for competitor in r.get("competitors_cited", []):
+                comp_counts[competitor] = comp_counts.get(competitor, 0) + 1
+        if comp_counts:
+            top = sorted(comp_counts.items(), key=lambda item: (-item[1], item[0]))[:5]
+            comp_cell = ", ".join(f"{dom} ({n})" for dom, n in top)
+        else:
+            comp_cell = "none"
+        out.append(
+            f"| {engine} | {total} | {_rate(mentioned, total)} "
+            f"| {_rate(cited, total)} | {comp_cell} |"
+        )
+    out.append("")
+
+    # Per-persona breakdown of the client mention rate. Only profile-sourced
+    # rows carry a persona; if none do, state that plainly (principle 3).
+    out.append("### Client mention rate by persona")
+    persona_rows: dict[str, list[dict]] = {}
+    for r in rows:
+        persona = r.get("persona")
+        if persona:
+            persona_rows.setdefault(persona, []).append(r)
+    if persona_rows:
+        out.append("| Persona | Answers | Client mention rate |")
+        out.append("|---------|---------|---------------------|")
+        for persona in sorted(persona_rows):
+            prows = persona_rows[persona]
+            total = len(prows)
+            mentioned = sum(1 for r in prows if r["mentioned"])
+            out.append(f"| {persona} | {total} | {_rate(mentioned, total)} |")
+    else:
+        out.append(
+            "*No persona-tagged questions this run — no client profile was "
+            "wired in, so profile-seeded persona probing was skipped. The "
+            "per-persona breakdown appears once a client profile is present.*"
+        )
+    out.append("")
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -656,7 +1299,7 @@ def generate_report(source_json: str, run_ts: str, engines: list[str],
 def main(argv: list[str] | None = None) -> int:
     _load_env()
     parser = argparse.ArgumentParser(
-        description="Probe AI engines (Claude/Gemini) for client mentions and citations."
+        description="Probe AI engines (Claude/Gemini/OpenAI/Perplexity) for client mentions and citations."
     )
     parser.add_argument("--json", default=None,
                         help="Path to market_analysis_*.json (default: latest)")
@@ -688,18 +1331,59 @@ def main(argv: list[str] | None = None) -> int:
         "location", "Vancouver, British Columbia, Canada")
     city = serpapi_location.split(",")[0].strip()
     max_questions = args.max_questions or int(av_config.get("max_questions", DEFAULT_MAX_QUESTIONS))
+    # situational_templates is a persona-keyed map (Y.4). No client profile is
+    # wired into the probe until Phase B (Y.5), so expand ALL persona blocks
+    # here (backward-compatible superset). Spec: yoast_geo_upgrade_spec_v1.md#Y.4.
+    situational_templates = flatten_situational_templates(
+        vocab.get("situational_templates", []))
+
+    # Y.5: profile-seeded persona questions become the highest-priority probe
+    # source (gate Y-D1: augment, never replace). Absent/malformed profile ⇒
+    # empty list ⇒ the precedence collapses to the original G.1 behaviour.
+    client_slug = str(av_config.get("client_slug", DEFAULT_CLIENT_SLUG))
+    profiles = load_client_profiles()
+    profile = profiles.get(client_slug)
+    if profile:
+        profile_qs = generate_profile_questions(profile)
+        logger.info(
+            "Client profile '%s' loaded: %d persona-seeded questions.",
+            client_slug, len(profile_qs))
+    else:
+        profile_qs = []
+        logger.info(
+            "No client profile for slug '%s' — profile questions skipped; "
+            "falling back to keyword-derived probes.", client_slug)
+
     questions = build_question_set(
-        data, vocab.get("situational_templates", []), city, max_questions)
+        data, situational_templates, city, max_questions,
+        profile_questions=profile_qs)
     if not questions:
         logger.error("No probe questions could be built from %s.", json_path)
         return 1
 
+    # Y-D4 hard ceiling on total paid calls across questions × engines. When
+    # the plan exceeds max_total_calls the question set is truncated so the
+    # ceiling is never breached, and the plan line states both figures.
+    max_total_calls = int(av_config.get("max_total_calls", DEFAULT_MAX_TOTAL_CALLS))
+    ceiling_applied = False
+    if max_total_calls > 0 and len(questions) * len(engines) > max_total_calls:
+        allowed = max_total_calls // max(len(engines), 1)
+        questions = questions[:allowed]
+        ceiling_applied = True
+
     total_calls = len(questions) * len(engines)
-    print(
+    plan = (
         f"AI visibility probe plan: {len(questions)} questions x {len(engines)} engines "
         f"({', '.join(engines)}) = {total_calls} paid API calls "
-        f"(cap {max_questions} questions per engine)."
+        f"(cap {max_questions} questions per engine; "
+        f"max_total_calls ceiling {max_total_calls})."
     )
+    if ceiling_applied:
+        plan += (
+            f" Question set truncated to {len(questions)} to stay within the "
+            f"{max_total_calls}-call ceiling."
+        )
+    print(plan)
     if not (args.yes or av_config.get("assume_yes", False)):
         print(
             "Cost guard: no API calls were made. Re-run with --yes "
@@ -733,9 +1417,23 @@ def main(argv: list[str] | None = None) -> int:
         for engine in engines
     }
 
+    # Phase D read-side enrichment (Y.6–Y.9): leaderboard, citations, sentiment,
+    # AIVI — from the answers already fetched. Sentiment counts against the same
+    # max_total_calls ceiling; brand-LLM + sentiment default OFF (zero calls).
+    topic = re.sub(r"^ai_visibility_|\.md$", "",
+                   os.path.basename(_derive_output_path(json_path)))
+    topic = re.sub(r"_\d{8}_\d{4}$", "", topic) or "report"
+    sentiment_budget = None
+    if sentiment_mod.is_enabled(config.get("sentiment", {}) or {}):
+        sentiment_budget = max(0, max_total_calls - total_calls)
+    enrichment = run_report_enrichment(
+        rows, engines, config, data, run_ts, topic, args.db, json_path,
+        out_dir=os.path.dirname(os.path.abspath(args.out)) if args.out else ".",
+        sentiment_call_budget=sentiment_budget)
+
     report = generate_report(
         json_path, run_ts, engines, rows, trends, skipped, geo_context,
-        analysis_cfg.get("client_name", "Client"))
+        analysis_cfg.get("client_name", "Client"), enrichment=enrichment)
     out_path = args.out or _derive_output_path(json_path)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(report)

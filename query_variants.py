@@ -157,12 +157,53 @@ def autocomplete_query_variants(keyword, city):
 # --- SITUATIONAL (CONVERSATIONAL) QUERY PROBES ---
 # Spec: seo_geo_deferred_spec_v1.md#T.5.
 
-def situational_template_probes(base_keyword, templates, city):
+def flatten_situational_templates(situational_templates, personas=None):
+    """Flatten the persona-keyed situational_templates map into a template list.
+
+    Spec: yoast_geo_upgrade_spec_v1.md#Y.4 (backward-compatible restructure of
+    the T.5 flat list into a persona-keyed map).
+
+    Accepts either shape:
+      * a persona-keyed map ``{persona_label: [templates...]}`` (current); or
+      * a plain list of templates (legacy) — returned as-is.
+
+    ``personas`` (optional list of persona labels): when given, only those
+    persona blocks are expanded (a client profile is present, Y.1); a label
+    absent from the map is skipped. When ``personas`` is None, ALL persona
+    blocks are expanded (no profile — backward-compatible default), preserving
+    the previous flat-list behaviour as a superset. De-duplicates while keeping
+    the map's declaration order.
+    """
+    if isinstance(situational_templates, (list, tuple)):
+        return list(situational_templates)
+    if not isinstance(situational_templates, dict):
+        return []
+    if personas is None:
+        selected = list(situational_templates.keys())
+    else:
+        wanted = {str(p) for p in personas}
+        selected = [k for k in situational_templates.keys() if str(k) in wanted]
+    out = []
+    seen = set()
+    for label in selected:
+        for template in situational_templates.get(label) or []:
+            key = str(template)
+            if key not in seen:
+                seen.add(key)
+                out.append(template)
+    return out
+
+
+def situational_template_probes(base_keyword, templates, city, service=""):
     """Fill the editorial situational_templates for one root keyword.
 
-    Templates live in serp_vocab.yml (editorial); placeholders are
-    {base} (de-localised keyword), {topic} (subject after "help with ",
-    else the base), and {city}. Spec: seo_geo_deferred_spec_v1.md#T.5.
+    Templates live in serp_vocab.yml (editorial). ``templates`` is a FLAT list
+    of template strings — callers holding the persona-keyed map (Y.4) flatten
+    it first via :func:`flatten_situational_templates`. Placeholders: {base}
+    (de-localised keyword), {topic} (subject after "help with ", else the
+    base), {city}, and the optional {service} (the client profile's
+    service_description, omitted cleanly when absent). Spec:
+    seo_geo_deferred_spec_v1.md#T.5, {service} added yoast_geo_upgrade#Y.4.
     """
     base = delocalise_keyword(base_keyword, city)
     if not base:
@@ -176,7 +217,8 @@ def situational_template_probes(base_keyword, templates, city):
     seen = set()
     for template in templates:
         try:
-            candidate = template.format(base=base, topic=topic, city=city).strip()
+            candidate = template.format(
+                base=base, topic=topic, city=city, service=service).strip()
         except (KeyError, IndexError):
             logging.warning(
                 f"situational_templates entry has an unknown placeholder, skipping: {template!r}"

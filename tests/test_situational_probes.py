@@ -46,28 +46,37 @@ class TestVocabSection(unittest.TestCase):
     """T.5.5 — situational_templates is a required serp_vocab.yml section."""
 
     def test_vocab_has_situational_templates(self):
+        # Restructured into a persona-keyed map (Y.4): {persona_label: [...]}.
         vocab = load_serp_vocab()
         self.assertIn("situational_templates", vocab)
         templates = vocab["situational_templates"]
-        self.assertIsInstance(templates, list)
+        self.assertIsInstance(templates, dict)
         self.assertGreaterEqual(len(templates), 1)
-        self.assertTrue(all(isinstance(t, str) and t.strip() for t in templates))
+        for entries in templates.values():
+            self.assertIsInstance(entries, list)
+            self.assertTrue(all(isinstance(t, str) and t.strip() for t in entries))
+
+    def _all_templates(self):
+        import query_variants
+        return query_variants.flatten_situational_templates(
+            load_serp_vocab()["situational_templates"])
 
     def test_templates_use_only_known_placeholders(self):
-        vocab = load_serp_vocab()
-        for template in vocab["situational_templates"]:
-            # Must format cleanly with the three documented placeholders.
+        for template in self._all_templates():
+            # Must format cleanly with the documented placeholders (incl.
+            # the optional {service} added in Y.4).
             formatted = template.format(base="couples counselling",
-                                        topic="stress", city="Vancouver")
+                                        topic="stress", city="Vancouver",
+                                        service="family systems counselling")
             self.assertTrue(formatted.strip())
 
     def test_templates_are_situational_length(self):
         # The probes exist to measure 6+-word queries; a short template
         # would sabotage the measurement.
-        vocab = load_serp_vocab()
-        for template in vocab["situational_templates"]:
+        for template in self._all_templates():
             formatted = template.format(base="counselling", topic="stress",
-                                        city="Vancouver")
+                                        city="Vancouver",
+                                        service="family systems counselling")
             self.assertGreaterEqual(
                 len(formatted.split()), 6,
                 f"template shorter than 6 words when filled: {template!r}")
@@ -148,7 +157,10 @@ class TestProbeGeneration(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.TEMPLATES = load_serp_vocab()["situational_templates"]
+        # situational_templates is now a persona-keyed map (Y.4); flatten all
+        # persona blocks to the legacy flat list the generator consumes.
+        cls.TEMPLATES = query_variants.flatten_situational_templates(
+            load_serp_vocab()["situational_templates"])
 
     def _generate(self, keywords, paa, max_total=6, per_keyword=2):
         return query_variants.generate_situational_probes(

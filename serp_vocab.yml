@@ -142,19 +142,38 @@ eeat_signals:
     - reviewed by
 
 # Situational (conversational) probe templates (Spec:
-# seo_geo_deferred_spec_v1.md#T.5). Fallback source for the "S"-label
-# query probes: a keyword's own 6+-word PAA questions are used first
-# (verbatim); these templates fill the remaining probes_per_keyword slots.
+# seo_geo_deferred_spec_v1.md#T.5, restructured yoast_geo_upgrade_spec_v1.md#Y.4).
+# Fallback source for the "S"-label query probes: a keyword's own 6+-word PAA
+# questions are used first (verbatim); these templates fill the remaining
+# probes_per_keyword slots.
+#
+# PERSONA-KEYED (Y.4): a MAP of persona_label -> [templates...]. When a client
+# profile (Y.1) is present, only that profile's declared personas are expanded;
+# with NO profile, ALL persona blocks are expanded (backward-compatible — the
+# old flat list is preserved verbatim under `therapy_seeker`, so keyword-only
+# runs produce the same superset of probes as before).
+#
 # Placeholders: {base} = de-localised keyword, {topic} = the subject after
-# "help with " (otherwise same as {base}), {city} = configured SERP city.
-# Keep every template 6+ words — the probes exist to measure how often
-# long, situation-style queries trigger an AI answer versus short keywords.
+# "help with " (otherwise same as {base}), {city} = configured SERP city, and
+# the optional {service} = the client profile's service_description (omitted
+# cleanly when absent). Keep every template 6+ words — the probes exist to
+# measure how often long, situation-style queries trigger an AI answer versus
+# short keywords.
 situational_templates:
-  - "my partner refuses to try {base} what can I do"
-  - "how do I know if we actually need {base} or if it is too late"
-  - "what should I expect from a first {base} session in {city}"
-  - "I feel stuck dealing with {topic} on my own where do I start"
-  - "my family keeps having the same fight over and over will {base} help"
+  therapy_seeker:
+    - "my partner refuses to try {base} what can I do"
+    - "how do I know if we actually need {base} or if it is too late"
+    - "what should I expect from a first {base} session in {city}"
+    - "I feel stuck dealing with {topic} on my own where do I start"
+    - "my family keeps having the same fight over and over will {base} help"
+  clinician_trainee:
+    - "how do I get trained in {base} as a clinician"
+    - "what supervision is available for {base} practitioners in {city}"
+    - "is {base} training worth it for a working therapist"
+  referrer:
+    - "where can I refer a family for {base} in {city}"
+    - "how do I refer a patient for {base} near me"
+    - "which local providers offer {base} for a GP referral in {city}"
 
 # Templates for the two AI-likely informational alternatives generated per
 # keyword. Placeholders: {base} = de-localised keyword, {topic} = the

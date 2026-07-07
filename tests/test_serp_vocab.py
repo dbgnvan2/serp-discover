@@ -56,11 +56,16 @@ class TestVocabParity(unittest.TestCase):
 
     def test_situational_templates_present(self):
         # Spec: seo_geo_deferred_spec_v1.md#T.5 (T.5.5) — loader-required
-        # editorial section; detailed tests in tests/test_situational_probes.py.
+        # editorial section; restructured into a persona-keyed map by
+        # yoast_geo_upgrade_spec_v1.md#Y.4. Detailed tests in
+        # tests/test_situational_probes.py and tests/test_persona_templates.py.
         templates = self.vocab["situational_templates"]
-        self.assertIsInstance(templates, list)
+        self.assertIsInstance(templates, dict)
         self.assertTrue(templates)
-        self.assertTrue(all(isinstance(t, str) and t.strip() for t in templates))
+        for persona, entries in templates.items():
+            self.assertIsInstance(persona, str)
+            self.assertIsInstance(entries, list)
+            self.assertTrue(all(isinstance(t, str) and t.strip() for t in entries))
 
 
 class TestVocabLoader(unittest.TestCase):

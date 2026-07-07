@@ -163,7 +163,7 @@ pattern_matching.STOP_WORDS = STOP_WORDS  # sync config-driven stop words
 PAA_CATEGORY_TRIGGERS = SERP_VOCAB["paa_category_triggers"]
 SERVICE_LIKE_TOKENS = tuple(SERP_VOCAB["service_like_tokens"])
 AI_ALTERNATIVE_TEMPLATES = SERP_VOCAB["ai_alternative_templates"]
-SITUATIONAL_TEMPLATES = list(SERP_VOCAB["situational_templates"])
+SITUATIONAL_TEMPLATES = query_variants.flatten_situational_templates(SERP_VOCAB["situational_templates"])  # persona-keyed map (Y.4); no profile in audit -> all blocks
 
 # --- SITUATIONAL PROBES (Spec: seo_geo_deferred_spec_v1.md#T.5) ---
 # "S"-label conversational query probes. Paid feature, off by default;
