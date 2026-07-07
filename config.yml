@@ -70,6 +70,34 @@ ai_visibility:
   assume_yes: false
   history_runs: 5
   geo_context: I'm in North Vancouver, BC.
+# ---------------------------------------------------------------------------
+# Phase D report enrichment (Yoast GEO upgrade Y.6–Y.9). All read-side: they
+# add stored metrics + report sections from the answers already fetched (no new
+# engine calls except Y.9's opt-in sentiment classification).
+# ---------------------------------------------------------------------------
+aivi:
+  # AI Visibility Index composite weighting across the four axes (Y-D6). Equal
+  # 25% each by default; documented in docs/methodology.md so the score is
+  # defensible and tunable. Malformed/missing weights fall back to equal with a
+  # warning. Never hardcoded — the score is always computed from these.
+  weights:
+    mentions: 0.25
+    ranking: 0.25
+    citations: 0.25
+    sentiment: 0.25
+brand_mentions:
+  # Y.7 competitor mention leaderboard. The deterministic gazetteer pass
+  # (known_brands + analysis-JSON competitors) always runs. The gated LLM pass
+  # that fills unknown brands is OFF by default (Y-D7) — turn on only after you
+  # trust the candidate-review file. Model id from config (never hardcoded).
+  llm_extraction: false
+  llm_model: claude-sonnet-4-20250514
+sentiment:
+  # Y.9 per-brand sentiment. OFF by default (Y-D8): a disabled run makes zero
+  # sentiment calls, the report reads "not measured", and AIVI excludes the
+  # axis. Each classification counts against ai_visibility.max_total_calls.
+  enabled: false
+  llm_model: claude-sonnet-4-20250514
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant

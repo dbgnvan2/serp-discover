@@ -168,6 +168,9 @@ class EntityClassifier:
         if any(d in domain_l for d in patterns.get("professional_association_domains", [])):
             return 'professional_association', 0.95, ["known_professional_association_domain"]
 
+        if any(d in domain_l for d in patterns.get("publisher_domains", [])):
+            return 'publisher', 0.9, ["known_publisher_domain"]
+
         if any(d in domain_l for d in patterns.get("media_domains", [])):
             return 'media', 0.9, ["known_media_domain"]
 

@@ -6,6 +6,7 @@
     "nonprofit",
     "government",
     "media",
+    "publisher",
     "professional_association",
     "education"
   ],
@@ -16,6 +17,7 @@
     "nonprofit": "Nonprofit or charity organizations.",
     "government": "Government sites and public-sector service sources.",
     "media": "Editorial, social, video, book, or news/media platforms.",
+    "publisher": "Editorial publishers and reference sites that syndicate or host authored articles (news outlets, magazines, encyclopedic references) — the AI-citation 'Publisher' category.",
     "professional_association": "Associations, colleges, and regulatory bodies.",
     "education": "Universities, colleges, and research institutions."
   },
@@ -32,6 +34,7 @@
     ],
     "professional_association_domains": ["bcacc.ca"],
     "media_domains": ["reddit.com", "youtube.com", "amazon.ca", "cbc.ca", "vancouversun.com", "canadianaffairs.news"],
+    "publisher_domains": ["nytimes.com", "theglobeandmail.com", "psychologytoday.com/us/blog", "wikipedia.org", "medium.com", "theconversation.com", "healthline.com", "verywellmind.com"],
     "legal_terms": ["law", "legal", "lawyer", "lawyers", "attorney", "attorneys", "estate", "litigation"],
     "counselling_terms": ["counselling", "counseling", "therapy", "therapist", "psychology", "psychotherapy", "mentalhealth", "wellness"],
     "nonprofit_keywords": ["registered charity", "non-profit organization", "donate", "volunteer"],
