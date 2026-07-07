@@ -2160,6 +2160,249 @@ class UrlPatternRulesTab(BaseConfigTab):
         return data
 
 
+# ---------------------------------------------------------------------------
+# Client Profile & Queries tab (Y.13) — data layer.
+#
+# Spec: yoast_geo_upgrade_spec_v1.md#Y.13. The tab edits the SELECTED client's
+# block in client_profiles.yml (Y.1). These module-level functions hold all the
+# load/validate/save/preview logic so the round-trip and validation contracts
+# are testable WITHOUT tkinter (per CLAUDE.md: business logic must not require
+# the GUI framework). The tab is a thin widget layer over them.
+# ---------------------------------------------------------------------------
+
+CLIENT_PROFILES_FILE = "client_profiles.yml"
+
+
+def load_client_profiles_file(path):
+    """Load the whole client_profiles.yml mapping (slug -> block).
+
+    Returns a plain dict; a missing file yields {} (the tab starts empty and
+    the user can add the first client). Malformed YAML raises so the tab can
+    surface the error rather than silently discarding the user's file.
+    """
+    if not os.path.exists(path):
+        return {}
+    with open(path, "r") as f:
+        data = yaml.safe_load(f) or {}
+    if not isinstance(data, dict):
+        raise ValueError(
+            "client_profiles.yml must be a mapping of client slug -> profile"
+        )
+    return data
+
+
+def validate_client_block(block):
+    """Validate one client's profile block. Return (is_valid, errors, warnings).
+
+    Enforces the minimum contract so a saved block round-trips through
+    profile_questions.load_client_profiles + generate: every persona needs a
+    non-empty label, tier names must be unique within a persona, and the block
+    must be a mapping. Editorial content itself is not second-guessed.
+    Spec: yoast_geo_upgrade_spec_v1.md#Y.13.4.
+    """
+    errors = []
+    warnings = []
+    if not isinstance(block, dict):
+        return (False, ["Client profile must be a mapping."], [])
+
+    personas = block.get("personas")
+    if personas is None:
+        warnings.append("Client has no personas — no questions will be generated.")
+        personas = []
+    if not isinstance(personas, list):
+        return (False, ["'personas' must be a list."], warnings)
+
+    seen_labels = set()
+    for i, persona in enumerate(personas):
+        if not isinstance(persona, dict):
+            errors.append(f"Persona #{i + 1} is not a mapping.")
+            continue
+        label = str(persona.get("label") or "").strip()
+        if not label:
+            errors.append(f"Persona #{i + 1} has an empty label.")
+        elif label in seen_labels:
+            errors.append(f"Duplicate persona label: {label!r}.")
+        else:
+            seen_labels.add(label)
+
+        intents = persona.get("intents")
+        if intents is not None:
+            if not isinstance(intents, dict):
+                errors.append(
+                    f"Persona {label or i + 1}: 'intents' must be a mapping of "
+                    "tier name -> tier block."
+                )
+            # dict keys are unique by construction, but guard string coercion
+            # for tier blocks being mappings.
+            elif not all(isinstance(v, dict) for v in intents.values()):
+                errors.append(
+                    f"Persona {label or i + 1}: each intent tier must be a mapping."
+                )
+
+    return (len(errors) == 0, errors, warnings)
+
+
+def validate_client_profiles(data):
+    """Validate the whole client_profiles.yml (every block). Registry-shaped."""
+    if not isinstance(data, dict):
+        return (False, ["client_profiles.yml must be a mapping."], [])
+    errors = []
+    warnings = []
+    for slug, block in data.items():
+        ok, errs, warns = validate_client_block(block)
+        errors.extend(f"{slug}: {e}" for e in errs)
+        warnings.extend(f"{slug}: {w}" for w in warns)
+    return (len(errors) == 0, errors, warnings)
+
+
+def upsert_client_block(all_data, slug, block):
+    """Return a new mapping with *slug* set to *block*, other clients intact.
+
+    The single save path (Y.13.2): only the selected client's block is
+    replaced; every other client's block is preserved byte-for-byte. Never
+    mutates the input mapping.
+    """
+    updated = dict(all_data or {})
+    updated[str(slug)] = block
+    return updated
+
+
+def preview_client_questions(all_data, slug):
+    """Generate the question preview for the selected client (Y.13.3).
+
+    Pure — calls profile_questions.generate; NO network/API call. Returns the
+    list of {question, persona, city, intent} dicts, or [] for an unknown slug.
+    """
+    import profile_questions
+    block = (all_data or {}).get(slug)
+    if not isinstance(block, dict):
+        return []
+    return profile_questions.generate(block)
+
+
+class ClientProfileTab(BaseConfigTab):
+    """Tab for client_profiles.yml — edit the SELECTED client's profile block,
+    add/remove personas and funnel/intent tiers, and preview the generated
+    questions with no API spend.
+
+    Spec: yoast_geo_upgrade_spec_v1.md#Y.13. Instance variables are initialized
+    BEFORE super().__init__() (per the CLAUDE.md GUI init-order rule) because
+    super().__init__ calls load_current_data + render_ui, which reference them.
+    """
+
+    def __init__(self, parent, client_dir=None):
+        # Init-order rule: declare every attribute render_ui() touches first.
+        self.client_selector = None
+        self.selected_slug = None
+        self.personas_tree = None
+        self.preview_widget = None
+        self.field_vars = {}
+        super().__init__(parent, CLIENT_PROFILES_FILE, "yaml")
+
+    def load_current_data(self):
+        """Load the whole client_profiles.yml mapping (slug -> block)."""
+        try:
+            self.current_data = load_client_profiles_file(self.file_path)
+        except Exception as e:
+            self.current_data = {}
+            print(f"Error loading {self.file_name}: {e}")
+        # Default selection: first client slug, if any.
+        slugs = list(self.current_data.keys())
+        if self.selected_slug not in slugs:
+            self.selected_slug = slugs[0] if slugs else None
+
+    def validate(self):
+        """Validate the full mapping via the dedicated client-profile validator."""
+        return validate_client_profiles(self.get_edited_data())
+
+    def preview_questions(self):
+        """Return generated questions for the currently selected client (no API)."""
+        return preview_client_questions(self.get_edited_data(), self.selected_slug)
+
+    def render_ui(self):
+        """Render the profile editor. Requires tkinter; degrades to a label."""
+        if not TKINTER_AVAILABLE:
+            return
+        for child in list(self.children.values()):
+            child.destroy()
+        main = ttk.Frame(self)
+        main.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Client selector row (the "selected client" this tab operates on).
+        top = ttk.Frame(main)
+        top.pack(fill="x", pady=(0, 10))
+        ttk.Label(top, text="Client:").pack(side="left")
+        slugs = list(self.current_data.keys())
+        self.client_selector = ttk.Combobox(
+            top, values=slugs, state="readonly", width=30)
+        if self.selected_slug:
+            self.client_selector.set(self.selected_slug)
+        self.client_selector.pack(side="left", padx=(6, 0))
+        self.client_selector.bind(
+            "<<ComboboxSelected>>", lambda _e: self._on_client_change())
+
+        ttk.Label(
+            main,
+            text="Edit this client's brand, cities, personas and funnel "
+                 "queries. Seed questions are probed verbatim; templates "
+                 "expand per city. Use Preview to see the exact questions "
+                 "before any paid run — generation costs nothing.",
+            foreground="gray", wraplength=760, justify="left",
+        ).pack(anchor="w", pady=(0, 10))
+
+        # Simple field editors for the scalar profile fields.
+        block = self.current_data.get(self.selected_slug or "", {}) or {}
+        self.field_vars = {}
+        for key in ("brand_name", "domain", "location", "primary_city"):
+            row = ttk.Frame(main)
+            row.pack(fill="x", pady=2)
+            ttk.Label(row, text=key, width=18).pack(side="left")
+            var = tk.StringVar(value=str(block.get(key, "")))
+            self.field_vars[key] = var
+            ttk.Entry(row, textvariable=var, width=50).pack(
+                side="left", fill="x", expand=True)
+
+        # Preview button + output.
+        ttk.Button(
+            main, text="Preview generated questions",
+            command=self._render_preview,
+        ).pack(anchor="w", pady=(10, 4))
+        self.preview_widget = scrolledtext.ScrolledText(main, height=12)
+        self.preview_widget.pack(fill="both", expand=True)
+
+    def _on_client_change(self):
+        if self.client_selector is not None:
+            self.selected_slug = self.client_selector.get() or None
+            self.render_ui()
+
+    def _render_preview(self):
+        if self.preview_widget is None:
+            return
+        rows = self.preview_questions()
+        self.preview_widget.delete("1.0", "end")
+        if not rows:
+            self.preview_widget.insert("end", "(no questions — add personas)\n")
+            return
+        for r in rows:
+            tier = r.get("intent") or "-"
+            city = r.get("city") or "-"
+            self.preview_widget.insert(
+                "end", f"[{r['persona']} / {tier} / {city}] {r['question']}\n")
+
+    def get_edited_data(self):
+        """Merge the edited scalar fields for the selected client back into the
+        full mapping, preserving every OTHER client's block untouched."""
+        if not self.selected_slug:
+            return dict(self.current_data or {})
+        block = dict((self.current_data or {}).get(self.selected_slug, {}) or {})
+        for key, var in (self.field_vars or {}).items():
+            try:
+                block[key] = var.get()
+            except Exception:
+                pass
+        return upsert_client_block(self.current_data, self.selected_slug, block)
+
+
 class ConfigManagerWindow:
     """Main Configuration Manager window with tabbed interface."""
 
@@ -2205,11 +2448,14 @@ class ConfigManagerWindow:
             IntentClassifierTriggersTab(notebook),
             ConfigSettingsTab(notebook),
             UrlPatternRulesTab(notebook),
+            ClientProfileTab(notebook),
         ]
 
-        # Add tabs to notebook
+        # Add tabs to notebook. The client-profile tab shows a friendly title
+        # since it edits the selected client's block, not just a raw file.
+        _tab_titles = {CLIENT_PROFILES_FILE: "Client Profile & Queries"}
         for tab in self.tabs:
-            notebook.add(tab, text=tab.file_name)
+            notebook.add(tab, text=_tab_titles.get(tab.file_name, tab.file_name))
 
         # Footer buttons
         footer_frame = ttk.Frame(self.window)

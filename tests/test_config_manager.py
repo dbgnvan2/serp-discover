@@ -29,6 +29,7 @@ from config_manager import (
     IntentClassifierTriggersTab,
     ConfigSettingsTab,
     UrlPatternRulesTab,
+    ClientProfileTab,
     VALIDATORS_BY_FILE,
     HELP_BY_FILE,
     HELP_BY_FIELD,
@@ -61,11 +62,11 @@ class TestConfigManagerWindowCreation:
             root.destroy()
 
     def test_tabs_created(self):
-        """All 8 tabs should be created."""
+        """All 9 tabs should be created (8 file tabs + Client Profile & Queries)."""
         root = tk.Tk()
         try:
             window = ConfigManagerWindow(root)
-            assert len(window.tabs) == 8
+            assert len(window.tabs) == 9
             window.window.destroy()
         finally:
             root.destroy()
@@ -651,6 +652,7 @@ class TestTabInitializationOrder:
             IntentMappingTab,
             ConfigSettingsTab,
             UrlPatternRulesTab,
+            ClientProfileTab,
         )
 
         # Check each tab has required instance attributes
@@ -659,6 +661,9 @@ class TestTabInitializationOrder:
             (IntentMappingTab, ['tree']),
             (ConfigSettingsTab, ['section_widgets', 'section_frames']),
             (UrlPatternRulesTab, ['tree']),
+            # Y.13.2 — the client-profile tab follows the same init-order rule.
+            (ClientProfileTab, ['client_selector', 'selected_slug',
+                                'preview_widget', 'field_vars']),
         ]
 
         for tab_class, expected_attrs in checks:
