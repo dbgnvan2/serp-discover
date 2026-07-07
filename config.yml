@@ -56,6 +56,8 @@ ai_visibility:
   claude_web_search_tool: web_search_20260209
   gemini_model: gemini-2.5-flash
   max_questions: 20
+  max_total_calls: 60
+  client_slug: living_systems
   assume_yes: false
   history_runs: 5
   geo_context: I'm in North Vancouver, BC.

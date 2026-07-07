@@ -63,12 +63,16 @@ class TestConfigDefaults(unittest.TestCase):
             cfg = yaml.safe_load(f)
         self.assertIn("ai_visibility", cfg)
         av = cfg["ai_visibility"]
-        self.assertEqual(av["engines"], ["claude", "gemini"])
+        # Gate Y-D9 (user-approved) engine defaults for this client:
+        # gemini + openai + perplexity ON; claude available-but-not-default.
+        self.assertEqual(av["engines"], ["gemini", "openai", "perplexity"])
         self.assertEqual(av["max_questions"], 20)
         self.assertFalse(av["assume_yes"])
         # Model ids come from config, never hardcoded in call sites.
         self.assertIn("claude_model", av)
         self.assertIn("gemini_model", av)
+        self.assertIn("openai_model", av)
+        self.assertIn("perplexity_model", av)
 
     def test_gitignore_covers_report_glob(self):
         with open(os.path.join(_REPO_ROOT, ".gitignore"), encoding="utf-8") as f:
@@ -206,8 +210,10 @@ class TestQuestionSources(unittest.TestCase):
     def test_situational_probes_preferred(self):
         questions = pav.build_question_set(
             _analysis_fixture(), self.TEMPLATES, "North Vancouver", max_questions=20)
-        self.assertTrue(all(q["source"] == "situational_probe" for q in questions))
+        self.assertTrue(all(q["source"] == "situational" for q in questions))
         self.assertEqual(len(questions), 2)
+        # Y.5: with no profile, keyword-derived rows carry persona=None.
+        self.assertTrue(all(q["persona"] is None for q in questions))
 
     def test_paa_fallback_filters_short_questions(self):
         data = _analysis_fixture()
@@ -346,12 +352,15 @@ class _MainRunMixin:
             if claude_probe is None and gemini_probe is None:
                 pass
             printed = []
+            # These tests assert the pre-Y.5 (G.1) precedence, so neutralise the
+            # profile source: with no profile, behaviour equals G.1 (Y.5.1).
             with patch.dict(os.environ, env, clear=True):
                 with patch.object(pav, "_load_config", return_value=config):
-                    with patch.object(pav, "ClaudeProbe", claude_cls):
-                        with patch.object(pav, "GeminiProbe", gemini_cls):
-                            with patch("builtins.print", side_effect=lambda *a, **k: printed.append(" ".join(str(x) for x in a))):
-                                exit_code = pav.main(args)
+                    with patch.object(pav, "load_client_profiles", return_value={}):
+                        with patch.object(pav, "ClaudeProbe", claude_cls):
+                            with patch.object(pav, "GeminiProbe", gemini_cls):
+                                with patch("builtins.print", side_effect=lambda *a, **k: printed.append(" ".join(str(x) for x in a))):
+                                    exit_code = pav.main(args)
             report = None
             if os.path.exists(out_path):
                 with open(out_path, encoding="utf-8") as f:
@@ -412,7 +421,9 @@ class TestEngineSelection(_MainRunMixin, unittest.TestCase):
 
     def test_config_engine_list_used_when_no_flag(self):
         self.assertEqual(pav.resolve_engines(None, {"engines": ["gemini"]}), ["gemini"])
-        self.assertEqual(pav.resolve_engines(None, {}), ["claude", "gemini"])
+        # No config engines ⇒ the Y-D9 default engine list.
+        self.assertEqual(pav.resolve_engines(None, {}),
+                         ["gemini", "openai", "perplexity"])
 
     def test_missing_gemini_key_skips_with_warning_and_claude_completes(self):
         # Exercise build_probes with the REAL GeminiProbe constructor (no
@@ -450,10 +461,11 @@ class TestEngineSelection(_MainRunMixin, unittest.TestCase):
             claude_cls = MagicMock(return_value=claude_probe)
             with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "key"}):
                 with patch.object(pav, "_load_config", return_value=config):
-                    with patch.object(pav, "ClaudeProbe", claude_cls):
-                        with patch.object(pav, "GeminiProbe", gemini_cls):
-                            with self.assertLogs(pav.logger, level="WARNING"):
-                                exit_code = pav.main([
+                    with patch.object(pav, "load_client_profiles", return_value={}):
+                        with patch.object(pav, "ClaudeProbe", claude_cls):
+                            with patch.object(pav, "GeminiProbe", gemini_cls):
+                                with self.assertLogs(pav.logger, level="WARNING"):
+                                    exit_code = pav.main([
                                     "--json", json_path, "--db", db_path,
                                     "--out", out_path, "--yes",
                                     "--config", os.path.join(tmpdir, "nope.yml"),
