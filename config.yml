@@ -98,6 +98,32 @@ sentiment:
   # axis. Each classification counts against ai_visibility.max_total_calls.
   enabled: false
   llm_model: claude-sonnet-4-20250514
+# ---------------------------------------------------------------------------
+# Phase E engine strategy (Yoast GEO upgrade Y.10–Y.12). All read-side: pure
+# aggregation of already-collected signals (no new engine calls).
+# ---------------------------------------------------------------------------
+foundational:
+  # Y.12 foundational (transferable) GEO readiness score. Three sub-scores —
+  # accessibility/extractability, structure/schema, off-site authority —
+  # weighted into a single 0–100 that lifts the client on every engine at once.
+  # Equal thirds by default; documented in docs/methodology.md. A sub-score
+  # with no captured data is n/a and excluded from the mean (renormalised),
+  # never counted as 0. Malformed/missing weights fall back to equal + warning.
+  weights:
+    accessibility: 0.3333
+    structure: 0.3333
+    authority: 0.3334
+engine_prioritization:
+  # Y.10 platform-prioritisation blend. Ranks the ENABLED engines for this
+  # client by a documented, config-weighted blend of three normalised 0–1
+  # signals: opportunity (low current AIVI = high opportunity), reach tier,
+  # and referral-click tier (the latter two from engine_profiles.yml). This is
+  # INDICATIVE guidance, not a fixed ranking — prioritisation is audience
+  # dependent (a Google-organic audience favours Google AI surfaces first).
+  weights:
+    opportunity: 0.5
+    reach: 0.3
+    referral: 0.2
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant

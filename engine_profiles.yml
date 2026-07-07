@@ -1,0 +1,107 @@
+# engine_profiles.yml — per-engine source-bias profiles + recommended moves.
+#
+# Spec: yoast_geo_upgrade_spec_v1.md#Y.10 (decision gate Y-D9).
+#
+# EDITORIAL FILE. Because citation optimisation does NOT transfer across AI
+# answer engines (see the spec's "Empirical basis" §1–2), a single set of
+# recommendations is wrong for a multi-engine world. Each engine retrieves from
+# a different backend with a different source bias, so the advice for "what to
+# change here" differs by engine. This file is the ONLY place that advice lives
+# — engine_recommendations.py joins the client's per-engine results to these
+# blocks and emits the moves; NO engine advice is hardcoded in Python.
+#
+# CONFIDENCE / TEMPORAL CAVEAT (binding, state it in every rendering):
+#   The directional findings (which backend, which source bias) are HIGH
+#   confidence — they reproduce across independent panels. The exact figures
+#   (avg_citations, reach/referral tiers) are LOW confidence: most come from
+#   GEO vendors with a commercial interest, and the retrieval backends shift
+#   over time. Treat avg_citations as INDICATIVE and DATED; re-measure rather
+#   than trust a number. Editors: update `avg_citations_asof` when you revise.
+#
+# Schema per engine block:
+#   retrieval_backend      : where the engine retrieves from (short phrase)
+#   source_bias            : list of short phrases describing what it favours
+#   avg_citations          : indicative citation count per answer (dated)
+#   avg_citations_asof     : the date the avg_citations figure reflects
+#   reach_tier             : audience-reach tier — high | medium | low
+#   referral_click_tier    : referral-click value tier — high | medium | low
+#   recommended_content_moves : editorial list — what to change for this engine
+#   confidence             : one-line note that these signals shift over time
+#
+# reach_tier / referral_click_tier feed the platform-prioritisation blend in
+# engine_recommendations.py (documented, config-weighted). They are ordinal
+# tiers, not measurements — treat as indicative guidance, re-measure per client.
+#
+# Engine keys match the probe's VALID_ENGINES: the OpenAI engine surfaces as
+# ChatGPT, so its block key is `openai` (aliased from `chatgpt`).
+
+engines:
+  openai:                      # ChatGPT (probe engine key: openai)
+    display_name: ChatGPT
+    retrieval_backend: Own index + Bing-derived web results
+    source_bias:
+      - encyclopedic / consensus sources
+      - established publishers over forums
+      - cites few sources per answer
+    avg_citations: 3.7
+    avg_citations_asof: "2026"
+    reach_tier: high
+    referral_click_tier: medium
+    recommended_content_moves:
+      - State the core answer as a plain, consensus-phrased factual claim near the top
+      - Earn mentions on encyclopedic and established-publisher sources (Wikipedia-adjacent, major directories)
+      - Keep claims uncontroversial and well-corroborated — ChatGPT favours consensus
+    confidence: >
+      Backend and citation habits shift with model versions; re-measure each run.
+
+  perplexity:
+    display_name: Perplexity
+    retrieval_backend: Proprietary index + Bing hybrid
+    source_bias:
+      - fresh / recently-updated content
+      - forum and community references (Reddit-heavy)
+      - cites many sources per answer
+    avg_citations: 14.0
+    avg_citations_asof: "2026"
+    reach_tier: medium
+    referral_click_tier: high
+    recommended_content_moves:
+      - Publish and visibly date fresh content; freshness is weighted heavily
+      - Seed authentic community discussion (relevant forums, Q&A) — Perplexity leans on them
+      - Provide many linkable, quotable facts; it cites broadly, so more surfaces get cited
+    confidence: >
+      Freshness weighting and forum reliance change frequently; re-measure.
+
+  gemini:
+    display_name: Gemini / Google AI Overviews
+    retrieval_backend: Google's index
+    source_bias:
+      - highest overlap with Google organic rankings
+      - authoritative / structured pages that already rank
+    avg_citations: 8.0
+    avg_citations_asof: "2026"
+    reach_tier: high
+    referral_click_tier: medium
+    recommended_content_moves:
+      - Win the underlying Google organic ranking first — Gemini mirrors Google's index
+      - Add answer-extraction structure (question headings, direct answers, FAQPage schema)
+      - Existing SEO carries over here more than on any other engine
+    confidence: >
+      Tracks Google's ranking system, which changes continuously; re-measure.
+
+  claude:
+    display_name: Claude
+    retrieval_backend: Brave Search (as reported)
+    source_bias:
+      - well-structured, in-depth content
+      - conservative; favours depth over breadth
+    avg_citations: 5.0
+    avg_citations_asof: "2026"
+    reach_tier: low
+    referral_click_tier: low
+    recommended_content_moves:
+      - Provide structured, in-depth content with clear headings and definitions
+      - Make factual statements explicit and self-contained (liftable in isolation)
+      - Depth and structure matter more than freshness or volume here
+    confidence: >
+      Search partner and behaviour may change; re-measure rather than assume.
