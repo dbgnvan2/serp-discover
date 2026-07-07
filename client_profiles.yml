@@ -1,0 +1,86 @@
+# client_profiles.yml — per-client profiles for persona-segmented AI-visibility
+# question generation.
+#
+# Spec: yoast_geo_upgrade_spec_v1.md#Y.1 (decision gate Y-D5: a single shared
+# editorial file with one block per CLIENT, keyed by client slug).
+#
+# EDITORIAL FILE — a non-developer may edit any value here. The GUI
+# "Client Profile & Queries" tab (Y.13) reads and writes this file; no YAML
+# hand-editing is required, but the file is human-readable so it can be
+# reviewed and tuned directly.
+#
+# CLIENT slug vs TOPIC slug — DO NOT CONFLATE.
+#   * The top-level key here is a CLIENT slug (e.g. `living_systems`). There
+#     is exactly one profile block per client. One client profile serves ALL
+#     of that client's topics / keyword sets.
+#   * The TOPIC slug (e.g. `leila` from `keywords_leila.csv`) names OUTPUT
+#     files and is unrelated to this file. Output naming is unchanged.
+#
+# Fields (all editorial):
+#   brand_name            — the client's brand, probed verbatim in questions.
+#   domain                — the client's website domain.
+#   location              — human region description (free text).
+#   primary_city          — the city local tiers expand for first.
+#   secondary_cities      — additional cities local tiers expand across (optional).
+#   service_description    — one paragraph; fills the optional {service} placeholder.
+#   personas              — list of audience personas (see below).
+#
+# Each persona has:
+#   label            — machine-friendly persona name (tagged on every question).
+#   needs            — short phrase describing what the persona wants.
+#   intent (opt)     — a hint string.
+#   seed_questions   — LITERAL questions probed verbatim (NO templating, NO
+#                      city suffixing). This is where the client's real,
+#                      hand-authored queries live. A `{city}` inside a seed is
+#                      treated as literal text, never expanded.
+#   templates        — patterns expanded per city (only `templates` expand).
+#   intents (opt)    — a map of named funnel/intent TIERS, each a persona-level
+#                      block that itself carries `seed_questions` and/or
+#                      `templates`. The tier list is OPEN and per-client.
+#                      A tier flagged `local: true` expands its templates across
+#                      [primary_city] + secondary_cities PLUS a "near me" variant
+#                      PLUS a de-localised copy. Non-local tiers are probed as-is.
+#                      `informational` and `local_transactional` are the
+#                      defaults; `local_transactional` is local by convention.
+
+living_systems:                     # CLIENT slug — one block per client (not per topic)
+  brand_name: Living Systems Counselling and Training
+  domain: livingsystems.ca
+  location: North Shore / Metro Vancouver, BC
+  primary_city: North Vancouver
+  secondary_cities: [West Vancouver, Vancouver]
+  service_description: >
+    A Bowen Family Systems Theory nonprofit offering counselling for
+    individuals, couples and families, plus clinical training in
+    family systems theory.
+  personas:
+    - label: prospective_client
+      needs: understand their patterns and find local counselling
+      intents:
+        informational:               # top-of-funnel, non-local — the client's real CSV
+          seed_questions:
+            - why do I act differently around my family
+            - how childhood affects adult relationships
+            - repeating relationship patterns
+            - how does birth order affect personality
+            - family of origin issues
+            - how to stop repeating my parents' patterns
+        local_transactional:         # booking-intent — the missing tier
+          local: true
+          templates:
+            - "relationship counselling {city}"
+            - "relationship counselling near me"
+            - "couples counselling {city}"
+            - "family therapist {city}"
+            - "marriage counselling near me"
+    - label: clinician_trainee
+      needs: training and supervision in family systems theory
+      seed_questions:
+        - Bowen Family Systems Theory training programs
+        - family systems therapy training for clinicians
+        - clinical supervision family systems {city}
+    - label: referrer
+      needs: refer a family/patient for systemic counselling
+      seed_questions:
+        - where to refer a family for counselling in {city}
+        - family counselling services for GP referral {city}

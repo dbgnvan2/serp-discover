@@ -777,20 +777,94 @@ Turn it on to add exactly one call per root keyword; `bing_check.num`
 (default 20) controls how deep the Bing results go, and the run log states
 how many Bing calls were made.
 
+#### Client profiles and persona-segmented questions (`client_profiles.yml`)
+
+**What it is:** a per-client profile that generates the natural-language
+questions real AI-assistant users ask — grouped by **persona** (who is asking)
+and **funnel tier** (how ready they are to book). The tool has always been able
+to probe questions derived from a keyword CSV; this adds a second, parallel
+source that does not need a keyword list at all. Each client gets one profile
+block in `client_profiles.yml` (keyed by the **client** slug, e.g.
+`living_systems` — not the topic slug that names output files). A profile
+carries the brand, domain, region, cities, a one-paragraph service
+description, and a list of personas. For Living Systems the shipped personas
+are the **prospective client** (with two tiers — top-of-funnel
+*informational* concept questions and booking-intent *local_transactional*
+queries), the **clinician/trainee**, and the **referrer**.
+
+Two kinds of questions are generated. `seed_questions` are the client's own
+hand-authored queries, probed **verbatim** — "family of origin issues", "how
+does birth order affect personality" — never reworded or city-suffixed.
+`templates` expand: a booking-intent local tier fans "relationship counselling
+{city}" out across North Vancouver, West Vancouver, and Vancouver, **plus** a
+"relationship counselling near me" variant, **plus** a de-localised "relationship
+counselling" copy (because the AI-answer probe needs the non-local phrasing
+too). You preview the exact expanded list — with persona, tier, and city tags —
+in the Settings **"Client Profile & Queries"** tab before any run; generation
+is deterministic and costs nothing.
+
+**Why it matters:** people do not talk to an AI assistant in keywords. They ask
+questions shaped by who they are and what they need, and those questions span
+audiences a keyword list quietly misses. A therapy keyword set surfaces the
+therapy-seeker; it never surfaces the **clinician** looking for Bowen training
+or the **GP/referrer** deciding where to send a family — yet both are people
+whose AI answer could name (or omit) the client. Separating the funnel tiers
+matters too: a review found the client had been probing only top-of-funnel
+concept questions ("repeating relationship patterns") and none of the
+booking-intent local queries ("family therapist North Vancouver") that actually
+convert. The profile makes both explicit, per client, and editable in the GUI.
+
+**Editing profiles in Settings (the "Client Profile & Queries" tab):** open
+**Edit Configuration** and choose the tab. Pick the client from the selector at
+the top, then edit the brand, domain, location, cities, and each persona's
+funnel tiers — the verbatim seed questions and the per-city templates. Click
+**Preview generated questions** to see the exact list the probe would ask, each
+tagged with its persona, tier, and city, before you spend anything: the preview
+is generation only, with zero API calls. Saving is atomic and validated — it
+round-trips through the same loader the probe uses, rejects mistakes like an
+empty persona label with an inline message, and never disturbs any other
+client's profile. WHY this lives in the GUI: this is a multi-client tool, so
+each website's personas and funnel queries are set per client, in Settings —
+not by hand-editing YAML and not in a keyword CSV.
+
 #### The AI-engine visibility probe (standalone: ai_visibility_*.md)
 
 **What it is:** a standalone script (`python probe_ai_visibility.py --yes`)
-that asks real AI assistants — Claude and Google Gemini, each with web
-search/grounding turned on — the same situation-style questions a
+that asks real AI assistants — **Claude, Google Gemini, ChatGPT (OpenAI),
+and Perplexity**, each with web search/grounding turned on — the same
+situation-style questions a
 therapy-seeker would type ("my partner refuses to try counselling what can
 I do", prefixed with "I'm in North Vancouver, BC."), and records per engine
 whether the answer **mentioned** Living Systems by name, **cited**
 livingsystems.ca as a source, and which **competitors** were cited instead.
-Questions come from the run's own situational probes when available, then
-long People-Also-Ask questions, then the editorial templates in
-`serp_vocab.yml`. Every run is stored in the local database, and the report
-shows this run's mention/citation rate per engine next to the same rates
-from previous runs.
+Questions are chosen by a **precedence chain**: **profile-seeded persona
+questions first** (from the client's block in `client_profiles.yml` — the
+audience-shaped questions real assistant users ask, see "Client profiles and
+persona-segmented questions" above), then the run's own situational probes,
+then long People-Also-Ask questions, then the editorial templates in
+`serp_vocab.yml`. When no client profile is present the chain simply starts
+at situational probes — behaviour is exactly as before. Every probe row now
+also records **which persona** seeded it and **which source** in the chain it
+came from (`profile` / `situational` / `paa` / `template`), so the report can
+break results down by audience. Every run is stored in the local database,
+and the report shows this run's mention/citation rate per engine next to the
+same rates from previous runs.
+
+**Share of voice — visibility relative to whom:** the report includes a
+**cross-engine share-of-voice** section. Answering "does the client appear?"
+is only half the question a client pays for; the other half is "**relative to
+whom?**" For each engine the section lists the client's mention and citation
+rate this run alongside the **top competitor domains the engine cited
+instead** — because knowing which rivals the AI recommends in the client's
+place is the actionable signal (it names the outreach and content targets).
+Because the probe questions carry persona tags, the section also gives a
+**per-persona breakdown** of the client's mention rate — so you can see, for
+example, that the client surfaces well for prospective-client questions but
+not for referrer questions. Every value carries its run count, and the
+section reiterates the snapshot caveat: read the per-engine, per-persona
+trend across runs, never a single number. When no profile is wired in, the
+per-persona table states plainly that no persona-tagged questions ran (it is
+never faked as zeros).
 
 **Why it matters — and why it's a trend, not a snapshot:** AI answers are a
 growing referral surface: people increasingly ask an assistant instead of
@@ -802,16 +876,177 @@ the signal is the direction across runs ("cited in 2 of the last 5 runs,
 up from 0"). That's why the tool records every run per engine and the report
 always carries a caveat that single-run values are snapshots.
 
-**Choosing engines:** `config.yml ai_visibility.engines` (default both
-`claude` and `gemini`) controls which assistants run; `--engines claude`
-overrides for one run. Claude uses your existing `ANTHROPIC_API_KEY`;
-Gemini needs the optional `GEMINI_API_KEY` — if it's not set the engine is
-skipped with a warning and the rest of the run completes.
+**Choosing engines:** `config.yml ai_visibility.engines` (default
+`gemini`, `openai`, and `perplexity` for this client — gate Y-D9) controls
+which assistants run; `--engines openai` (or any comma-separated subset)
+overrides for one run. Four engines are supported: `claude`, `gemini`,
+`openai` (ChatGPT), and `perplexity`. Each is key-gated and skipped with a
+warning (never an abort) if its key is missing, and the rest of the run
+completes: Claude uses your existing `ANTHROPIC_API_KEY`, Gemini needs
+`GEMINI_API_KEY`, **ChatGPT needs `OPENAI_API_KEY`** (Y.2 — uses OpenAI's
+web-search-enabled Responses API, returning the URL citations it retrieved),
+and **Perplexity needs `PERPLEXITY_API_KEY`** (Y.3 — uses a Sonar
+search-grounded model, which is citation-first and returns explicit source
+URLs, making it a high-signal target for the "cited" metric).
+
+*Tier caveat:* OpenAI's citation annotations and Perplexity's Sonar
+citations are confirmed against the vendors' current (2026-07) docs, but the
+exact citation fields and whether they appear can vary by account tier and
+model. Endpoints and model ids are all set in `config.yml`, so you can point
+each engine at the tier/model your account has without a code change; if an
+engine's tier returns no citations, the probe still measures whether the
+answer *mentions* the client — only the citation-based "cited" flag reads as
+absent, and it is never faked.
+
+**Why per-engine coverage matters — optimization does not transfer:** a
+strong showing on one AI engine does **not** carry over to the others.
+Independent cross-engine analyses report that the source URLs different
+engines cite overlap only ~11–18% (they draw on different retrieval
+backends — ChatGPT leans on a Bing-derived, consensus-heavy index and cites
+few sources; Perplexity is freshness- and community-heavy and cites many;
+Gemini mirrors Google's index; Claude favours structured depth). So being
+cited by Gemini tells you almost nothing about ChatGPT or Perplexity. That
+is exactly why the report keeps **every metric per engine, never only an
+average**, and why measuring all the engines the client's audience actually
+uses — not just one — is the point of adding ChatGPT and Perplexity here.
+For a Google-organic local nonprofit like Living Systems, Gemini/Google AI
+surfaces usually carry the most existing SEO weight, ChatGPT reaches the
+most people, and Perplexity punches above its usage weight for referral
+clicks — which is why all three are ON by default and Claude is available
+but off.
 
 **Cost control:** each question is one paid API call per engine (default
-cap: 20 questions × 2 engines = 40 calls). The script always prints that
-math first and makes **zero** calls unless you pass `--yes` (or set
-`ai_visibility.assume_yes: true`).
+cap: 20 questions × 3 default engines = 60 calls). On top of the per-engine
+`max_questions` cap there is a **hard total-calls ceiling**
+(`ai_visibility.max_total_calls`, default 60) that applies across
+questions × engines — so as more engines are enabled the total spend can
+never run away. The script always prints that math first, including the
+ceiling, and if the plan would exceed the ceiling it truncates the question
+set so it never does. It makes **zero** calls unless you pass `--yes` (or set
+`ai_visibility.assume_yes: true`); over-budget without `--yes` still spends
+nothing.
+
+#### The AI Visibility Index, leaderboard, citations, and sentiment (in the same ai_visibility_*.md report)
+
+The same probe report now also carries four enrichment sections, computed
+from the answers already fetched — **no extra API calls** except the opt-in
+sentiment step. Together they turn "does the client appear?" into a scorecard
+of *how* the client shows up and *who beats them*.
+
+**AI Visibility Index (AIVI) — the single headline number.** *What:* a
+0–100 score per engine (plus an all-engine average) built from four
+equally-weighted axes — **Mentions** (share of questions that named the
+client), **Ranking** (the client's place on the competitor leaderboard below,
+normalised so rank 1 = 100 and unranked = 0), **Citations** (client-owned
+source URLs as a share of all sources the engine cited), and **Sentiment**
+(the client's % positive, when that opt-in feature is on). *Why:* raw
+mention/citation rates don't answer "are we getting more visible?" at a
+glance; a composite does, and because it is stored every run it is readable
+as a trend with a prior-run delta. The weighting lives in `config.yml`
+(`aivi.weights`) so it is tunable and defensible — the number is always
+computed by the tool, never invented by an AI. When sentiment is off its axis
+shows **n/a** and is dropped from the average (the other three re-weight to
+fill the gap); it is never silently counted as zero, because an unmeasured
+thing is not a zero. Read AIVI as a per-engine snapshot-trend, not a verdict:
+AI answers swing between runs, and a strong AIVI on one engine does not carry
+to the others.
+
+**Competitor mention leaderboard — who the AI names instead of you.** *What:*
+a ranked list of the brands the AI *named in its answer text* (not merely the
+domains it linked), with the client's own rank called out ("#7 of 18 named
+brands", or "not mentioned"). *Why:* in AI answers the dominant signal is
+being *named* — Yoast's report found 24 rival brands named across five
+answers, many with no link at all, which a link-only check misses entirely.
+The leaderboard is built deterministically from your `known_brands` list plus
+the recurring competitors in the latest analysis, so it works with no AI call.
+An **optional** AI extraction pass (`brand_mentions.llm_extraction`, off by
+default) can surface brands you haven't listed yet; any new names it finds are
+written to a review file, `brand_mentions_candidates_<topic>_<ts>.md`, for you
+to promote into `known_brands` in `config.yml` — the tool never grows its
+brand list silently behind your back.
+
+**Citations table — the sources the AI trusts, as an outreach list.** *What:*
+every source URL each engine returned, listed once (identical URLs merged with
+a cite count), each tagged with its domain, a **category** (publisher,
+directory, media, government, and so on — taken straight from the tool's
+existing site classifier, not a separate list), and the brand it supports;
+the client's own sources are flagged. Tracking parameters like
+`?utm_source=openai` are kept exactly as returned, because they confirm the
+citation came from the live engine. *Why:* these are the sources the AI trusts
+for this topic — i.e. the highest-value content-partnership and outreach
+targets. The section ends with a one-line "top cited domains for this topic"
+shortlist you can act on directly.
+
+**Sentiment — what the AI says about you (opt-in).** *What:* when you turn it
+on (`sentiment.enabled: true` in `config.yml`), the tool runs one AI
+classification per answer that mentions the client or the top competitor and
+reports **% positive** for each, with the actual **positive/negative keyword
+phrases** the answer used (e.g. a competitor's positives "integrated supports
+for youth and families", "no-cost assessment"; a negative "may require a
+physician referral"). *Why:* for a nonprofit whose reputation is the product,
+"what does the AI say *about* us" matters as much as whether it names us. It is
+**off by default** because it costs one extra AI call per qualifying answer
+(counted against the same total-calls ceiling); when off, the report plainly
+says "sentiment not measured" and AIVI drops the axis rather than faking a
+score. *Caveat:* AI sentiment is an estimate, not a measured fact — read it as
+a trend across runs, and confirm any single striking result by reading the
+answer excerpt the tool stores.
+
+#### Engine strategy: the foundational score, per-engine advice, and the transfer metric (top of the same ai_visibility_*.md report)
+
+These three sections answer the strategic question behind all the numbers
+above: **which AI platforms should this client work on, and does improving one
+help the others?** They rest on a well-replicated finding — visibility on one
+AI engine mostly does *not* carry to another (the engines cite mostly different
+sources), *except* for one shared foundation that lifts them all.
+
+**Foundational GEO readiness — the transferable, do-first layer (presented
+first, ahead of AIVI).** *What:* a single 0–100 score for the layer the client
+controls and that pays off on *every* engine at once — (1) accessibility /
+answer-extractability (can an AI lift a complete answer from the page: question
+-shaped headings, an answer at the top, an FAQ block), (2) structure / schema
+(the schema.org markup the client's own pages carry vs what the topic warrants),
+and (3) off-site authority (how often third-party AI answers *name* the client
+vs the rivals — the signal reported to predict AI citation roughly three times
+better than backlinks). Each sub-score lists its top two-or-three concrete gaps,
+drawn from data the tool already computed (the rank-vs-citation "geo alerts", the
+missing schema types, the rival brands the AI names in the client's place) — so
+it is a to-do list, not just a grade. *Why it comes first:* AIVI measures the
+*outcome* (a lagging result that differs per engine); this measures the
+transferable *inputs* (a leading indicator that does not). The empirical evidence
+says fix these foundations before chasing any single engine — they are the only
+work that lifts all engines together. A sub-score with no captured data shows
+`n/a` and is dropped from the average (never counted as zero), and the score is
+stored each run so you can watch it climb.
+
+**Per-engine recommendations — because optimisation does not transfer.** *What:*
+a "what to change here" block per engine (ChatGPT, Perplexity, Gemini, Claude),
+plus a prioritisation list ranking the engines you have enabled. *Why the advice
+differs by engine:* each engine retrieves from a different backend with a
+different taste — ChatGPT leans encyclopedic/consensus and cites few sources;
+Perplexity rewards fresh, community-referenced content and cites many; Gemini
+mirrors Google's own rankings; Claude favours structured depth. Because a win on
+one does not transfer, one set of tips would be wrong for the others. All the
+advice lives in the editorial `engine_profiles.yml` — edit that file to tune it;
+nothing is baked into code. The prioritisation blends current opportunity (a low
+AIVI is high upside), engine reach, and referral-click value, but it is
+explicitly **indicative guidance, not a fixed order**: a local nonprofit whose
+audience arrives via Google organic should usually favour Google's AI surfaces
+first, because existing SEO partly carries over there. *Caveat, stated in the
+report:* the backends and these figures shift over time and many come from
+vendors — treat them as direction, and re-measure.
+
+**Cross-engine transfer — "if I optimise once, am I good everywhere?"** *What:*
+this client's *actual* overlap across the engines you ran, not an industry
+average: on how many engines the client is mentioned/cited ("mentioned on 2 of
+3 engines"), how much the engines' cited-source sets overlap (a 0-to-1 score
+where 1.0 means identical sources and 0.0 means completely different ones), and
+how the client's leaderboard rank varies across engines. *Why it matters:* it
+answers the "optimise once?" question directly from the client's own data —
+**high overlap means the foundational work above is enough; low overlap means
+you also need per-engine targeting.** It needs at least two engines enabled; with
+one engine it simply says "transfer not measurable (single engine)". As always, a
+single run is a snapshot — read the trend.
 
 #### The Search Console sponge analysis (standalone: gsc_analysis_*.md)
 

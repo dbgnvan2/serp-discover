@@ -109,14 +109,27 @@ Editorial content currently lives in:
 - `strategic_patterns.yml` — Bowen patterns (triggers, status quo, reframes)
 - `url_pattern_rules.yml` — URL pattern fallbacks for content classifier
 - `domain_overrides.yml` — manual entity-type overrides
-- `classification_rules.json` — content type and entity type pattern lists
+- `classification_rules.json` — content type and entity type pattern lists (includes the `publisher` entity type + `publisher_domains` list added for the yoast_geo_upgrade Y.8 citation table; the Y.8 citation category is sourced from this file via the existing classifier, never a parallel list)
 - `clinical_dictionary.json` — Bowen vs medical vocabulary tiers
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
-- `serp_vocab.yml` — SERP audit vocabulary: stop words, PAA category triggers, service tokens, AI-alternative query templates (added seo_geo_review C.4); `eeat_signals` credential tokens and review markers (added seo_geo_deferred G.3); `situational_templates` probe query templates (added seo_geo_deferred T.5)
+- `serp_vocab.yml` — SERP audit vocabulary: stop words, PAA category triggers, service tokens, AI-alternative query templates (added seo_geo_review C.4); `eeat_signals` credential tokens and review markers (added seo_geo_deferred G.3); `situational_templates` probe query templates — persona-keyed map `{persona_label: [templates...]}` supporting an optional `{service}` placeholder (added seo_geo_deferred T.5; restructured to persona-keyed by yoast_geo_upgrade Y.4)
 - `play_routing.yml` — "Recommended Play" decision table: ordered, first-match-wins rules mapping pre-computed keyword signals to one of five plays (rank / extraction / reformat / local_pivot / deprioritize), plus each play's label + strategy_text (added seo_geo_review chip A)
-- `config.yml` — operational settings
+- `engine_profiles.yml` — per-engine (chatgpt/`openai`, perplexity, gemini, claude) source-bias profiles: `retrieval_backend`, `source_bias` phrases, indicative+dated `avg_citations`, `reach_tier`/`referral_click_tier`, and the editorial `recommended_content_moves` list joined by `engine_recommendations.py` to produce per-engine "what to change here" advice. This is the ONLY place engine advice lives — no engine advice is hardcoded in Python. Vendor/temporal confidence caveat is binding: directional findings are high confidence, the numbers are indicative and shift over time — re-measure (added yoast_geo_upgrade Y.10)
+- `client_profiles.yml` — per-client profile blocks (keyed by client slug) driving persona-segmented AI-visibility question generation: `brand_name`, `domain`, `location`, `primary_city`, `secondary_cities`, `service_description`, and `personas` (each with `label`, `needs`, verbatim `seed_questions`, and per-city-expanding `templates` under open, per-client funnel/intent tiers). Edited in the GUI "Client Profile & Queries" tab (added yoast_geo_upgrade Y.1 / Y.13)
+- `config.yml` — operational settings, including the editorial `known_brands`
+  list (competitor brand names / domains) used by the Y.7 gazetteer and Y.8
+  citation brand attribution; `aivi.weights` (Y.6 composite weighting, default
+  equal 25% each); `brand_mentions.llm_extraction` (Y.7 gated LLM pass, OFF by
+  default); `sentiment.enabled` (Y.9 gated sentiment, OFF by default);
+  `foundational.weights` (Y.12 foundational readiness sub-score weighting,
+  default equal thirds); and `engine_prioritization.weights` (Y.10 platform
+  -prioritisation blend weights: opportunity / reach / referral)
+- `brand_mentions_candidates_<topic>_<ts>.md` — **candidate-review file** (like
+  `domain_override_candidates.md`): LLM-surfaced brand names not yet in
+  `known_brands`, written by Y.7 for the user to promote into `known_brands`.
+  No silent taxonomy growth — new brands never enter the gazetteer automatically.
 
 When in doubt, ask the user before adding new editorial content to a `.py` file.
 
