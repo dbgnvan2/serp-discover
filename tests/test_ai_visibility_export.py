@@ -46,6 +46,15 @@ def _seed(db_path, run_ts="2026-07-22T10:00:00+00:00"):
         {"url": "https://theravive.com/x", "domain": "theravive.com",
          "category": "directory", "brand": None, "is_client": False, "cite_count": 1},
     ])
+    with sqlite3.connect(db_path) as conn:
+        conn.execute("""CREATE TABLE IF NOT EXISTS answer_sentiment (
+            run_ts TEXT, engine TEXT, brand TEXT, polarity TEXT,
+            positive_aspects_json TEXT, negative_aspects_json TEXT, answer_excerpt TEXT)""")
+        conn.executemany(
+            "INSERT INTO answer_sentiment (run_ts, engine, brand, polarity) VALUES (?, ?, ?, ?)",
+            [(run_ts, "gemini", "Living Systems", "positive"),
+             (run_ts, "gemini", "Theravive", "negative")])
+        conn.commit()
     return run_ts
 
 
@@ -63,6 +72,7 @@ def test_avexport_1_shape_and_schema(tmp_path):
     assert export["engines"] == ["gemini", "openai"]
     assert len(export["brand_mentions"]) == 3
     assert len(export["ai_citations"]) == 2
+    assert len(export["answer_sentiment"]) == 2   # SC-3.4: per-brand sentiment for Compete
     # round-trip through the writer re-validates on reload
     path = write_ai_visibility_export(export, out_dir=str(tmp_path / "output"),
                                       client_slug="living_systems")

@@ -61,6 +61,7 @@ EXPORT_SCHEMA_VERSION = "1.0"
 # (brand_mentions.BRAND_MENTIONS_TABLE / citation_table.CITATIONS_TABLE).
 _BRAND_MENTIONS_TABLE = "brand_mentions"
 _CITATIONS_TABLE = "ai_citations"
+_SENTIMENT_TABLE = "answer_sentiment"
 
 _SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "ai_visibility_export_schema.json")
 _SCHEMA = None
@@ -139,6 +140,21 @@ def _read_ai_citations(conn: sqlite3.Connection, run_ts: str) -> list[dict]:
     ]
 
 
+def _read_answer_sentiment(conn: sqlite3.Connection, run_ts: str) -> list[dict]:
+    """Per-answer sentiment rows (engine, brand, polarity) — lets serp-compete compute
+    per-competitor sentiment (SC-3.4) from that competitor's own rows only. Absent
+    table (sentiment disabled in the probe run) → []."""
+    if not _table_exists(conn, _SENTIMENT_TABLE):
+        return []
+    rows = conn.execute(
+        f"""SELECT engine, brand, polarity FROM {_SENTIMENT_TABLE}
+            WHERE run_ts = ? ORDER BY engine ASC, brand ASC""",
+        (run_ts,),
+    ).fetchall()
+    return [{"engine": engine, "brand": brand, "polarity": polarity}
+            for engine, brand, polarity in rows]
+
+
 # ---------------------------------------------------------------------------
 # Build + write
 # ---------------------------------------------------------------------------
@@ -152,6 +168,7 @@ def _empty_export(client_name: str | None, source_run_ts: str | None = None) -> 
         "data_available": False,
         "brand_mentions": [],
         "ai_citations": [],
+        "answer_sentiment": [],
     }
 
 
@@ -177,14 +194,16 @@ def build_ai_visibility_export(db_path: str, run_ts: str | None = None,
             return _validated(_empty_export(client_name))
         brand_mentions = _read_brand_mentions(conn, resolved_run_ts)
         ai_citations = _read_ai_citations(conn, resolved_run_ts)
+        answer_sentiment = _read_answer_sentiment(conn, resolved_run_ts)
 
-    if not brand_mentions and not ai_citations:
+    if not brand_mentions and not ai_citations and not answer_sentiment:
         # run_ts existed in a table but produced no mentions/citations, OR was a
         # caller-supplied run with none — honest empty, source_run_ts retained.
         return _validated(_empty_export(client_name, source_run_ts=resolved_run_ts))
 
     engines = sorted({r["engine"] for r in brand_mentions} |
-                     {r["engine"] for r in ai_citations})
+                     {r["engine"] for r in ai_citations} |
+                     {r["engine"] for r in answer_sentiment})
     export = {
         "schema_version": EXPORT_SCHEMA_VERSION,
         "source_run_ts": resolved_run_ts,
@@ -193,6 +212,7 @@ def build_ai_visibility_export(db_path: str, run_ts: str | None = None,
         "data_available": True,
         "brand_mentions": brand_mentions,
         "ai_citations": ai_citations,
+        "answer_sentiment": answer_sentiment,
     }
     return _validated(export)
 

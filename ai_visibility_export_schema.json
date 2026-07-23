@@ -11,7 +11,8 @@
     "client_name",
     "engines",
     "brand_mentions",
-    "ai_citations"
+    "ai_citations",
+    "answer_sentiment"
   ],
   "properties": {
     "schema_version": { "type": "string" },
@@ -52,6 +53,19 @@
           "brand":      { "type": ["string", "null"] },
           "is_client":  { "type": "boolean" },
           "cite_count": { "type": "integer" }
+        }
+      }
+    },
+    "answer_sentiment": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["engine", "brand", "polarity"],
+        "properties": {
+          "engine":   { "type": "string" },
+          "brand":    { "type": "string" },
+          "polarity": { "type": "string" }
         }
       }
     }
