@@ -1293,6 +1293,30 @@ def _share_of_voice_section(engines: list[str], rows: list[dict]) -> list[str]:
 
 
 # ---------------------------------------------------------------------------
+# serp-compete AV export (post-run hook)
+# ---------------------------------------------------------------------------
+
+def _safe_write_av_export(db_path: str, out_dir: str, client_slug: str,
+                          client_name: str | None, run_ts: str | None) -> str | None:
+    """Write the serp-compete AV export from stored rows — never raises (P15).
+
+    A paid probe run must not abort because the downstream serp-compete export
+    hit a problem, so every failure (including ImportError) is caught and logged.
+    Returns the export path, or None on failure.
+
+    Spec:  discover AV-EXPORT (serp-compete C1 dependency).
+    Tests: tests/test_ai_visibility_export.py::test_hook_guard_never_aborts_run
+    """
+    try:
+        from ai_visibility_export import export_latest
+        return export_latest(db_path, out_dir=out_dir, client_slug=client_slug,
+                             client_name=client_name, run_ts=run_ts)
+    except Exception as exc:  # never abort a paid run on an export problem (P15)
+        logger.warning("AV export skipped: %s", exc)
+        return None
+
+
+# ---------------------------------------------------------------------------
 # CLI entry point
 # ---------------------------------------------------------------------------
 
@@ -1437,6 +1461,16 @@ def main(argv: list[str] | None = None) -> int:
     out_path = args.out or _derive_output_path(json_path)
     with open(out_path, "w", encoding="utf-8") as f:
         f.write(report)
+
+    # AV-EXPORT: refresh the serp-compete consumption file from this run's stored
+    # brand_mentions/ai_citations (pure read, no re-probe). The export is a
+    # Compete-bound artifact like competitor_handoff_*.json, so it always lands in
+    # output/ regardless of where the human --out report goes. Guarded so an
+    # export failure can never abort a paid probe run. Spec: discover AV-EXPORT.
+    av_path = _safe_write_av_export(
+        args.db, "output", client_slug, analysis_cfg.get("client_name"), run_ts)
+    if av_path:
+        print(f"AI_VISIBILITY_EXPORT_OUT={av_path}")
 
     executed = len(rows)
     print(f"AI visibility probes: {executed} answers recorded across {len(probes)} engine(s).")

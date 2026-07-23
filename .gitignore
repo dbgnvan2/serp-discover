@@ -18,6 +18,10 @@ advisory_briefing_*
 content_opportunities_*
 feasibility_*.md
 ai_visibility_*
+# ...but the AI-visibility EXPORT source + schema are tracked code, not generated
+# artifacts (the generated export is output/ai_visibility_export_<slug>_<ts>.json).
+!ai_visibility_export.py
+!ai_visibility_export_schema.json
 gsc_analysis_*
 *.validation.md
 

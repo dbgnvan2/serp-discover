@@ -1,0 +1,59 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AIVisibilityExport",
+  "description": "Validated export of serp-discover AI-visibility outputs (brand_mentions + ai_citations) for serp-compete to consume. Spec: discover AV-EXPORT.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "data_available",
+    "source_run_ts",
+    "client_name",
+    "engines",
+    "brand_mentions",
+    "ai_citations"
+  ],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "data_available": { "type": "boolean" },
+    "source_run_ts": { "type": ["string", "null"] },
+    "client_name": { "type": ["string", "null"] },
+    "engines": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "brand_mentions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["engine", "brand", "mention_count", "questions_total", "is_client", "source"],
+        "properties": {
+          "engine":          { "type": "string" },
+          "brand":           { "type": "string" },
+          "mention_count":   { "type": "integer" },
+          "questions_total": { "type": "integer" },
+          "is_client":       { "type": "boolean" },
+          "source":          { "type": "string" }
+        }
+      }
+    },
+    "ai_citations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["engine", "url", "domain", "category", "brand", "is_client", "cite_count"],
+        "properties": {
+          "engine":     { "type": "string" },
+          "url":        { "type": "string" },
+          "domain":     { "type": "string" },
+          "category":   { "type": "string" },
+          "brand":      { "type": ["string", "null"] },
+          "is_client":  { "type": "boolean" },
+          "cite_count": { "type": "integer" }
+        }
+      }
+    }
+  }
+}

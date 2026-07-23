@@ -591,6 +591,16 @@ For each run, Serp-Discover produces 7 files:
 | `advisory_briefing_<topic>_<timestamp>.md` | Executive summary + top priorities | Leadership, stakeholders |
 | `feasibility_<topic>_<timestamp>.md` | DA gap analysis + pivot suggestions | Strategy, SEO team |
 
+> **Serp-Compete export (AI-visibility).** Separately, the standalone AI-visibility
+> probe (`probe_ai_visibility.py`) writes `ai_visibility_<topic>_<ts>.md`, and
+> `export_ai_visibility.py` writes `output/ai_visibility_export_<slug>_<ts>.json` —
+> a schema-validated snapshot of the per-engine brand-mention and citation
+> leaderboards. **Why it matters:** Serp-Compete (Tool 2) consumes this file to
+> compute *competitive AI Share-of-Voice* — whose brand and sources the models
+> return for category questions, yours or your competitors' — without re-running
+> any paid probes. Before any probe run exists, the export is written with
+> `data_available: false` so Tool 2 degrades gracefully instead of failing.
+
 ### Reading Each File
 
 #### market_analysis_*.md
