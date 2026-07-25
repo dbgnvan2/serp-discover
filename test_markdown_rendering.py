@@ -303,5 +303,42 @@ class TestFeasibilityLocalPackHonesty(unittest.TestCase):
         self.assertNotIn("✗ not in local pack", report)
 
 
+class TestAioExposureSection(unittest.TestCase):
+    """D1 / AV.1 — the AI Overview Exposure section is wired into generate_report
+    (P21: the call fires on the real report path) and labels its estimates."""
+
+    def _report(self):
+        data = {
+            "keyword_profiles": {
+                "exposed kw": {"has_ai_overview": True, "client_rank": 1,
+                               "client_aio_cited": False,
+                               "aio_top_sources": [("rival.com", 2)]},
+                "cited kw": {"has_ai_overview": True, "client_rank": 1,
+                             "client_aio_cited": True,
+                             "aio_top_sources": [("livingsystems.ca", 1)]},
+                "no aio kw": {"has_ai_overview": False, "client_rank": 4},
+            }
+        }
+        return generate_insight_report.generate_report(data)
+
+    def test_av1_11b_section_present_in_report(self):
+        self.assertIn("## 5d. AI Overview Exposure", self._report())
+
+    def test_av1_4b_report_labels_estimates(self):
+        report = self._report()
+        # estimates flagged as estimates, and the multiplier is named as config
+        self.assertIn("estimate", report.lower())
+        self.assertIn("aio_ctr_multiplier", report)
+
+    def test_av1_8b_at_risk_queue_orders_noncited_first(self):
+        # Scope to the 5d section — both keywords also appear in 5b (alphabetical).
+        report = self._report()
+        section = report[report.index("## 5d. AI Overview Exposure"):]
+        nxt = section.find("\n## ", 1)
+        if nxt != -1:
+            section = section[:nxt]
+        self.assertLess(section.index("exposed kw"), section.index("cited kw"))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -124,6 +124,27 @@ engine_prioritization:
     opportunity: 0.5
     reach: 0.3
     referral: 0.2
+aio_exposure:
+  # D1 (AV.1) AI Overview zero-click exposure. Estimates the organic click-
+  # through the Google AI Overview intercepts per keyword, from signals already
+  # on keyword_profiles (no new fetch, no LLM call). ALL values here are INDUSTRY
+  # REFERENCE POINTS, not measured livingsystems.ca CTR — the report labels them
+  # "estimated". Malformed/missing values fall back to these documented defaults
+  # with a warning (mirrors aivi.weights). Documented in docs/methodology.md.
+  aio_ctr_multiplier: 0.60   # ~60% AIO CTR-interception reference (industry)
+  citation_credit: 0.5       # a client citation inside the AIO recovers half the loss
+  history_runs: 5            # runs shown in the exposure trend
+  ctr_curve:                 # reference organic CTR by 1-based SERP position
+    1: 0.28
+    2: 0.15
+    3: 0.10
+    4: 0.07
+    5: 0.05
+    6: 0.04
+    7: 0.03
+    8: 0.025
+    9: 0.02
+    10: 0.015
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant

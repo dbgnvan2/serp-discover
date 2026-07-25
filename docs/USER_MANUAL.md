@@ -396,6 +396,46 @@ Classification of who owns the page:
 | **Commercial** | Insurance, pharma, medical device company |
 | **Social** | Reddit, Facebook, Twitter |
 
+### AI Overview Exposure & Estimated Zero-Click Loss
+
+**What it is.** A Google **AI Overview (AIO)** is the AI-generated answer box that
+can appear above the organic results. When it does, it often answers the query
+directly — so the searcher never clicks through, even to the #1 result. The
+market-analysis report's **Section 5d — AI Overview Exposure** estimates, per
+keyword, how much of your organic click-through the AIO is likely intercepting,
+and whether *your* site is cited **inside** the Overview.
+
+**Why it matters.** Rank no longer equals traffic. Ranking #1 under a rich AIO can
+lose more clicks than ranking #3 with no AIO. And being *cited inside the AIO* is
+the new "position zero" — it partially offsets the visibility the Overview takes.
+Section 5d turns this into a priority queue: the keywords where you are **not**
+cited and the estimated loss is highest are where to act first (earn the citation,
+or reformat the page to be AIO-extractable).
+
+**How to read it.**
+
+| Column | Meaning |
+|--------|---------|
+| **Organic position** | Your Google rank for the keyword (— if unranked) |
+| **AIO present** | Whether an AI Overview showed for this query |
+| **Client cited?** | Whether the AIO cited one of your URLs (✓) or not (✗) |
+| **Est. CTR loss** | Modeled organic click-through lost to the AIO (higher = worse) |
+
+*Example.* Two keywords both rank #1 with an AIO. On keyword A your site is cited
+inside the Overview; on keyword B it is not. B shows the **higher** estimated loss
+and sorts to the top of the queue — that is the one bleeding clicks with nothing to
+show for it.
+
+**It is an estimate, not a measurement.** `Est. CTR loss` combines a reference
+organic-CTR-by-position curve with an industry AI-Overview interception rate
+(~60%), reduced by `citation_credit` when you are cited. Those reference numbers
+live in `config.yml → aio_exposure` (`aio_ctr_multiplier`, `citation_credit`,
+`ctr_curve`) and are yours to tune — they are **industry reference points, not
+measured livingsystems.ca data**, which is why the report labels every figure
+"estimated". For *first-party* click loss, see the GSC sponge-effect analysis.
+Because AIOs change constantly, the section trends coverage and cited-share across
+runs — read the movement, not one number.
+
 ### Keyword Prioritization: Feasibility > Intent > Confidence
 
 When Serp-Discover recommends which keywords to target first, it ranks them using three factors in priority order. Understanding this hierarchy helps you make strategic decisions.

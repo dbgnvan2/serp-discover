@@ -13,6 +13,7 @@ Sections
 5. SERP Composition (Entity + Content Dominance)
 5b. Per-Keyword SERP Intent  ← NEW (M1.A)
 5c. Keyword Feasibility & Pivot Recommendations
+5d. AI Overview Exposure  ← NEW (D1 / AV.1)
 6. Market Volatility
 
 Usage
@@ -30,6 +31,8 @@ from datetime import datetime
 import yaml
 
 from play_rendering import format_play_cell, format_play_line
+
+import aio_exposure
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 _PATTERN_INTENT_CLASS_CACHE: dict | None = None
@@ -398,7 +401,7 @@ def _order_briefs_by_opportunity(data: dict, strategic_recs: list, best_opportun
     return brief_metadata
 
 
-def generate_report(data):
+def generate_report(data, db_path=None, run_ts=None):
     report = []
 
     # Extract Metadata
@@ -747,6 +750,13 @@ def generate_report(data):
             "Re-run with credentials to enable full feasibility scoring.\n"
         )
 
+    # 5d. AI Overview Exposure (D1 / AV.1 — modeled zero-click estimate; always
+    # rendered when keyword_profiles present). Persists to ai_aio_exposure and
+    # shows the trend delta only when main() supplies db_path + run_ts.
+    report.extend(aio_exposure.build_aio_exposure_report(
+        data.get("keyword_profiles", {}), config, db_path=db_path, run_ts=run_ts,
+    ))
+
     # Section 6 — Market Volatility (RC.7 — suppress or explain non-comparable runs)
     if METRICS_AVAILABLE:
         _overview = data.get("overview", [])
@@ -986,10 +996,18 @@ def main():
                         help="Path to serp_norm.json or market_analysis_v2.json")
     parser.add_argument("--out", required=True,
                         help="Output Markdown file path")
+    parser.add_argument("--db", default="serp_data.db",
+                        help="SQLite DB for AI-Overview exposure trend (D1 / AV.1).")
+    parser.add_argument("--run-ts", default=None,
+                        help="Run timestamp YYYYMMDD_HHMM; default parsed from --json.")
     args = parser.parse_args()
 
     data = load_data(args.json)
-    report_content = generate_report(data)
+    # D1: persist AIO exposure under the run's identity (parsed from the
+    # market_analysis_* filename) so the trend is keyed to real runs, never a
+    # wall-clock stamp. Unparseable → run_ts None → render-only (no persistence).
+    run_ts = args.run_ts or aio_exposure.run_ts_from_filename(args.json)
+    report_content = generate_report(data, db_path=args.db, run_ts=run_ts)
 
     try:
         with open(args.out, 'w', encoding='utf-8') as f:

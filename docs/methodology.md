@@ -113,6 +113,35 @@ the field to have a matching rule.
 
 *Spec: seo_geo_review_20260704.md T.4. Implemented 2026-07-04.*
 
+### AI Overview Exposure (Section 5d — D1 / AV.1)
+
+`generate_insight_report.py` renders a **5d. AI Overview Exposure** table
+(`aio_exposure.py`) estimating, per keyword, how much organic click-through the
+Google AI Overview (AIO) is likely intercepting — the market-side complement to
+the GSC sponge effect (`run_gsc_analysis.py`, which is first-party). It is pure
+read-side assembly from fields already on `keyword_profiles` (no new SERP fetch,
+no LLM call): `has_ai_overview` (AIO present), `client_rank` (organic position,
+NULL when unranked), `client_aio_cited` (the AIO cites a client URL — the
+registrable-domain match computed upstream via `_is_client_domain`), and
+`aio_top_sources` (the cited domains).
+
+The per-keyword estimate is a **heuristic**, not a measurement:
+`est_ctr_loss = ctr_base(position) × aio_ctr_multiplier`, reduced by
+`citation_credit` when the client is cited inside the AIO; `0` when there is no
+AIO or the client is unranked (no organic CTR to lose). Every constant — the
+organic `ctr_curve`, the `aio_ctr_multiplier` (default `0.60`, the industry
+"~60% AIO CTR interception" reference), and the `citation_credit` (default `0.5`)
+— lives in `config.yml aio_exposure` and is resolved with a documented-default
+fallback + warning (mirroring `aivi.weights`). These are **industry reference
+points, not measured livingsystems.ca CTR**, and the report labels every value
+"estimated". The table defaults to the highest-loss, **not-cited** keywords first
+(the priority queue). A run-level rollup (`aio_coverage_pct`, `cited_share`) is
+persisted to the `ai_aio_exposure` SQLite table under the run's timestamp and
+trended over `aio_exposure.history_runs`; results drift run-to-run, so the report
+shows the trend delta, not a single number.
+
+*Spec: discover-spec.md#D1 (AV.1). Implemented 2026-07-24.*
+
 ---
 
 ## Part 3 — Content brief generation

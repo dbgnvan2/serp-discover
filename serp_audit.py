@@ -2120,8 +2120,8 @@ def main():
     try:
         md_content = []
 
-        # 1. Insight Report
-        md_content.append(generate_insight_report.generate_report(full_data))
+        # 1. Insight Report (D1/AV.1: db_path+run_ts persist ai_aio_exposure + trend on the primary market_analysis path; run_ts from OUTPUT_MD)
+        md_content.append(generate_insight_report.generate_report(full_data, db_path="serp_data.db", run_ts=generate_insight_report.aio_exposure.run_ts_from_filename(OUTPUT_MD)))
         md_content.append("\n---\n")
 
         # 2. Content Briefs (RC.8 — brief sequencing)
