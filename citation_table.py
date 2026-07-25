@@ -202,6 +202,10 @@ def save_citations(db_path: str, run_ts: str, engine: str,
                    table: list[dict]) -> None:
     init_citations_table(db_path)
     with sqlite3.connect(db_path) as conn:
+        # Idempotent per (run_ts, engine): replace this engine's rows for the run so
+        # a re-save appends no duplicates (P8, matching aio_exposure/commodity).
+        conn.execute(f"DELETE FROM {CITATIONS_TABLE} WHERE run_ts = ? AND engine = ?",
+                     (run_ts, engine))
         conn.executemany(
             f"""INSERT INTO {CITATIONS_TABLE}
                 (run_ts, engine, url, domain, category, brand, is_client,

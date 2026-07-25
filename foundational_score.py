@@ -375,6 +375,8 @@ def save_foundational_score(db_path: str, run_ts: str, result: dict) -> None:
     init_foundational_table(db_path)
     subs = result.get("subscores", {})
     with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DELETE FROM {FOUNDATIONAL_TABLE} WHERE run_ts = ?",
+                     (run_ts,))   # idempotent per run_ts — P8
         conn.execute(
             f"""INSERT INTO {FOUNDATIONAL_TABLE}
                 (run_ts, score, accessibility, structure, authority, weights_json)

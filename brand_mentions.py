@@ -394,6 +394,8 @@ def save_brand_mentions(db_path: str, run_ts: str, engine: str,
     questions_total = leaderboard.get("questions_total", 0)
     rows = leaderboard.get("rows", [])
     with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DELETE FROM {BRAND_MENTIONS_TABLE} WHERE run_ts = ? AND engine = ?",
+                     (run_ts, engine))   # idempotent per (run_ts, engine) — P8
         conn.executemany(
             f"""INSERT INTO {BRAND_MENTIONS_TABLE}
                 (run_ts, engine, brand, mention_count, questions_total,

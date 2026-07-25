@@ -215,6 +215,8 @@ def init_sentiment_table(db_path: str) -> None:
 def save_sentiment(db_path: str, run_ts: str, rows: list[dict]) -> None:
     init_sentiment_table(db_path)
     with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DELETE FROM {SENTIMENT_TABLE} WHERE run_ts = ?",
+                     (run_ts,))   # idempotent per run_ts (all engines saved together) — P8
         conn.executemany(
             f"""INSERT INTO {SENTIMENT_TABLE}
                 (run_ts, engine, brand, polarity, positive_aspects_json,

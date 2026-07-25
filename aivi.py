@@ -143,6 +143,8 @@ def save_aivi(db_path: str, run_ts: str, engine: str, result: dict) -> None:
     init_aivi_table(db_path)
     axes = result.get("axes", {})
     with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DELETE FROM {AIVI_TABLE} WHERE run_ts = ? AND engine = ?",
+                     (run_ts, engine))   # idempotent per (run_ts, engine) — P8
         conn.execute(
             f"""INSERT INTO {AIVI_TABLE}
                 (run_ts, engine, aivi, mentions_axis, ranking_axis,

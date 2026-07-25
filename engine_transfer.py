@@ -231,6 +231,8 @@ def save_transfer(db_path: str, run_ts: str, result: dict) -> None:
             }),
         )
     with sqlite3.connect(db_path) as conn:
+        conn.execute(f"DELETE FROM {TRANSFER_TABLE} WHERE run_ts = ?",
+                     (run_ts,))   # idempotent per run_ts — P8
         conn.execute(
             f"""INSERT INTO {TRANSFER_TABLE}
                 (run_ts, engine_count, mentioned_count, cited_count, avg_jaccard,
