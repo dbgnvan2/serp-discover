@@ -70,6 +70,12 @@ ai_visibility:
   assume_yes: false
   history_runs: 5
   geo_context: I'm in North Vancouver, BC.
+  # D5/AV.5.1 — retain the FULL AI answer text (not just the 400-char excerpt) in
+  # the ai_visibility_probes.raw_answer column for an audit trail. OFF by default:
+  # full answers are unbounded and may carry PII. When on, each is capped at
+  # raw_answer_max_chars.
+  store_raw_answer: false
+  raw_answer_max_chars: 10000
 # ---------------------------------------------------------------------------
 # Phase D report enrichment (Yoast GEO upgrade Y.6–Y.9). All read-side: they
 # add stored metrics + report sections from the answers already fetched (no new
@@ -145,6 +151,22 @@ aio_exposure:
     8: 0.025
     9: 0.02
     10: 0.015
+commodity:
+  # D4 (AV.4) query commodity / AI-absorption risk. A deterministic 0-100 blend
+  # (no LLM on the report path) of answer_similarity (top-N result title+snippet
+  # token-set Jaccard), serp_homogeneity (entity + title-pattern concentration),
+  # and aio_present. Weights fall back to these documented defaults + a warning if
+  # malformed (mirrors aivi.weights). The one_paragraph_answerable LLM term is OFF
+  # by default (its weight renormalises out). Bands: < medium = low, >= high = high.
+  weights:
+    answer_similarity: 0.4
+    serp_homogeneity: 0.3
+    aio_present: 0.2
+    one_paragraph_answerable: 0.1
+  top_n_results: 5
+  bands:
+    medium: 40
+    high: 70
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant

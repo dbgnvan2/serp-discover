@@ -286,3 +286,36 @@ def render_sentiment_section(rows: list[dict] | None, enabled: bool,
     out.append(_CAVEAT)
     out.append("")
     return out
+
+
+def render_negative_sentiment_alert(rows: list[dict] | None, enabled: bool,
+                                    client_brand: str) -> list[str]:
+    """D5/AV.5.2 — a prominent own-brand alert when the CLIENT is portrayed
+    negatively in one or more AI answers this run.
+
+    Gated on ``enabled``: sentiment OFF → ``[]`` (no fabricated verdict, principle
+    3). Also ``[]`` when there is no client brand or no measured negative client
+    answer — so the alert adds nothing unless there is a real, measured negative.
+    """
+    if not enabled or not client_brand:
+        return []
+    rows = rows or []
+    client_rows = [r for r in rows if _norm(r.get("brand")) == _norm(client_brand)]
+    neg_rows = [r for r in client_rows if r.get("polarity") == "negative"]
+    if not neg_rows:
+        return []
+    engines = sorted({r.get("engine") for r in neg_rows if r.get("engine")})
+    # Chips scoped to the negative-polarity rows only, so "recurring negatives"
+    # matches the "N of M" count (P3 — no phrases from positive/neutral answers).
+    neg_chips = aspect_chips(neg_rows, client_brand)["negative"]
+    out: list[str] = []
+    out.append(
+        f"> ⚠️ **Negative sentiment alert:** {client_brand} was portrayed "
+        f"negatively in {len(neg_rows)} of {len(client_rows)} answer(s) this run"
+        + (f" ({', '.join(engines)})" if engines else "") + "."
+    )
+    if neg_chips:
+        out.append(">")
+        out.append(f"> Recurring negatives: {', '.join(neg_chips)}.")
+    out.append("")
+    return out

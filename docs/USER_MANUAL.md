@@ -436,6 +436,26 @@ measured livingsystems.ca data**, which is why the report labels every figure
 Because AIOs change constantly, the section trends coverage and cited-share across
 runs — read the movement, not one number.
 
+### Query Commodity / AI-Absorption Risk
+
+**What it is.** Section 5e of the market-analysis report scores each keyword 0–100 on
+how *commoditized* its answer is — how easily one AI paragraph could replace the entire
+page of results. It combines how similar the top results read to each other, how uniform
+the SERP is (one type of site, one type of headline), and whether an AI Overview already
+appears.
+
+**Why it matters.** If a hundred pages answer a question the same way, an AI answer can
+absorb all of them — ranking there becomes a race to the bottom. High-commodity keywords
+are where generic content loses; the response is to **differentiate** (a distinct
+systemic angle only you can write) or to route the keyword to extraction/deprioritize.
+The table is a "differentiate-or-lose" queue, highest-risk first, and each row carries
+its Recommended Play so the action is explicit.
+
+**It is indicative, not a verdict.** The score is a deterministic heuristic (no AI is
+asked to judge), reproducible run to run, with the blend weights in
+`config.yml commodity.weights`. Keywords with too few results to compare are flagged
+low-confidence rather than scored with false precision.
+
 ### Keyword Prioritization: Feasibility > Intent > Confidence
 
 When Serp-Discover recommends which keywords to target first, it ranks them using three factors in priority order. Understanding this hierarchy helps you make strategic decisions.
@@ -640,6 +660,16 @@ For each run, Serp-Discover produces 7 files:
 > return for category questions, yours or your competitors' — without re-running
 > any paid probes. Before any probe run exists, the export is written with
 > `data_available: false` so Tool 2 degrades gracefully instead of failing.
+
+> **Own-brand negative-sentiment alert.** When per-brand sentiment is enabled
+> (`sentiment.enabled: true`), the AI-visibility report raises a prominent alert if
+> the AI answers portray **your** brand negatively this run — showing how many
+> answers, on which engines, and the recurring negative phrases — so a reputation
+> problem in the models' answers surfaces immediately rather than being buried in a
+> table. With sentiment off (the default) the report simply says "not measured" and
+> never invents a verdict. Separately, `ai_visibility.store_raw_answer` (off by
+> default) retains each full AI answer for auditing; leave it off unless you need the
+> verbatim text, since answers are long and may contain personal information.
 
 ### Reading Each File
 

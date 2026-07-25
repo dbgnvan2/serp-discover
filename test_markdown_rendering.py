@@ -340,5 +340,35 @@ class TestAioExposureSection(unittest.TestCase):
         self.assertLess(section.index("exposed kw"), section.index("cited kw"))
 
 
+class TestCommoditySection(unittest.TestCase):
+    """D4 / AV.4 — the Query Commodity section is wired into generate_report (P21)."""
+
+    def _report(self):
+        data = {
+            "keyword_profiles": {
+                "what is anxiety": {
+                    "has_ai_overview": True,
+                    "entity_distribution": {"directory": 6},
+                    "title_patterns": {"pattern_counts": {"what_is": 6}},
+                    "recommended_play": {"play": "extraction_play"},
+                    "top5_organic": [],
+                },
+            },
+            "organic_results": [
+                {"Root_Keyword": "what is anxiety", "Title": "what is anxiety",
+                 "Snippet": "what is anxiety"} for _ in range(3)
+            ],
+        }
+        return generate_insight_report.generate_report(data)
+
+    def test_av4_section_present_in_report(self):
+        self.assertIn("## 5e. Query Commodity", self._report())
+
+    def test_av4_labels_indicative_and_config(self):
+        report = self._report()
+        self.assertIn("Indicative", report)
+        self.assertIn("commodity.weights", report)
+
+
 if __name__ == "__main__":
     unittest.main()

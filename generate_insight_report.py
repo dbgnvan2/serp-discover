@@ -33,6 +33,7 @@ import yaml
 from play_rendering import format_play_cell, format_play_line
 
 import aio_exposure
+import commodity_score
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 _PATTERN_INTENT_CLASS_CACHE: dict | None = None
@@ -755,6 +756,13 @@ def generate_report(data, db_path=None, run_ts=None):
     # shows the trend delta only when main() supplies db_path + run_ts.
     report.extend(aio_exposure.build_aio_exposure_report(
         data.get("keyword_profiles", {}), config, db_path=db_path, run_ts=run_ts,
+    ))
+
+    # 5e. Query Commodity / AI-Absorption Risk (D4 / AV.4 — deterministic; always
+    # rendered when keyword_profiles present; persists to commodity_score when
+    # main() supplies db_path + run_ts).
+    report.extend(commodity_score.build_commodity_report(
+        data.get("keyword_profiles", {}), data, config, db_path=db_path, run_ts=run_ts,
     ))
 
     # Section 6 — Market Volatility (RC.7 — suppress or explain non-comparable runs)

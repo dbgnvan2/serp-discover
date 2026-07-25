@@ -693,9 +693,32 @@ def top_competitor_domains(data: dict, client_domain: str, limit: int = 15) -> l
 # timestamps, CREATE TABLE IF NOT EXISTS (idempotent).
 # ---------------------------------------------------------------------------
 
-#: Columns added by Y.5 via idempotent ALTER TABLE (storage.py convention).
+#: Columns added by Y.5 / D5 via idempotent ALTER TABLE (storage.py convention).
 #: A pre-existing DB is upgraded once; old rows read back as NULL (principle 3).
-_PROBE_MIGRATION_COLUMNS = (("persona", "TEXT"), ("source", "TEXT"))
+#: ``raw_answer`` (D5/AV.5.1) is added here too so pre-D5 DBs migrate on first use.
+_PROBE_MIGRATION_COLUMNS = (("persona", "TEXT"), ("source", "TEXT"),
+                            ("raw_answer", "TEXT"))
+
+#: D5/AV.5.1 — cap on the stored full answer text when store_raw_answer is on.
+#: The full LLM answer is unbounded and may carry PII, so retention is opt-in
+#: (config.yml ai_visibility.store_raw_answer, default off) and length-capped.
+DEFAULT_RAW_ANSWER_MAX_CHARS = 10000
+#: Appended when a stored raw answer is clipped, so an auditor can tell a
+#: genuinely-short answer from a silently-truncated one (P9). Kept inside the cap.
+_TRUNC_MARKER = " …[truncated]"
+
+
+def _coerce_raw_cap(value) -> int:
+    """Coerce ai_visibility.raw_answer_max_chars to a non-negative int with a
+    fallback + warning — never a bare int() that could crash persistence AFTER the
+    paid probes ran (the config-fallback convention, cf. aivi.resolve_weights)."""
+    try:
+        cap = int(value)
+    except (TypeError, ValueError):
+        logger.warning("ai_visibility.raw_answer_max_chars non-numeric — using %d.",
+                       DEFAULT_RAW_ANSWER_MAX_CHARS)
+        return DEFAULT_RAW_ANSWER_MAX_CHARS
+    return cap if cap >= 0 else DEFAULT_RAW_ANSWER_MAX_CHARS
 
 
 def init_probe_table(db_path: str) -> None:
@@ -710,7 +733,8 @@ def init_probe_table(db_path: str) -> None:
             competitor_domains_json TEXT,
             answer_excerpt          TEXT,
             persona                 TEXT,
-            source                  TEXT
+            source                  TEXT,
+            raw_answer              TEXT
         )''')
         # Migration for DBs created before Y.5: add persona/source columns.
         # ALTER TABLE … ADD COLUMN wrapped in try/except OperationalError so
@@ -724,21 +748,39 @@ def init_probe_table(db_path: str) -> None:
         conn.commit()
 
 
-def save_probe_rows(db_path: str, rows: list[dict]) -> None:
+def save_probe_rows(db_path: str, rows: list[dict], *,
+                    store_raw_answer: bool = False,
+                    raw_answer_max_chars: int = DEFAULT_RAW_ANSWER_MAX_CHARS) -> None:
+    """Persist probe rows. D5/AV.5.1: when ``store_raw_answer`` is on (config-gated,
+    default off) the FULL answer text is additionally persisted in ``raw_answer``,
+    capped at ``raw_answer_max_chars`` for size/PII safety; off → ``raw_answer``
+    stays NULL and only the 400-char ``answer_excerpt`` is kept."""
     init_probe_table(db_path)
+    cap = _coerce_raw_cap(raw_answer_max_chars)
+
+    def _raw(row: dict):
+        if not store_raw_answer:
+            return None
+        text = row.get("answer_text") or ""
+        if len(text) > cap:                          # P9: signal the clip, keep a
+            room = max(0, cap - len(_TRUNC_MARKER))  # hard cap incl. the marker
+            return text[:room] + _TRUNC_MARKER
+        return text
+
     with sqlite3.connect(db_path) as conn:
         conn.executemany(
             f"""INSERT INTO {PROBE_TABLE}
                 (run_ts, engine, model, question, mentioned, cited,
-                 competitor_domains_json, answer_excerpt, persona, source)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 competitor_domains_json, answer_excerpt, persona, source,
+                 raw_answer)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     row["run_ts"], row["engine"], row["model"], row["question"],
                     int(bool(row["mentioned"])), int(bool(row["cited"])),
                     json.dumps(row.get("competitors_cited", [])),
                     (row.get("answer_excerpt") or "")[:400],
-                    row.get("persona"), row.get("source"),
+                    row.get("persona"), row.get("source"), _raw(row),
                 )
                 for row in rows
             ],
@@ -1202,6 +1244,10 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
     out.extend(sentiment_mod.render_sentiment_section(
         sent.get("rows"), sent.get("enabled", False),
         sent.get("client_brand", "Client"), sent.get("top_competitor")))
+    # D5/AV.5.2 — own-brand negative-sentiment alert (gated on sentiment.enabled).
+    out.extend(sentiment_mod.render_negative_sentiment_alert(
+        sent.get("rows"), sent.get("enabled", False),
+        sent.get("client_brand", "Client")))
 
     # Y.10 — per-engine recommendations + platform prioritisation.
     strategy = enrichment.get("engine_strategy", {}) or {}
@@ -1434,7 +1480,12 @@ def main(argv: list[str] | None = None) -> int:
         client_name_patterns, client_domain, competitor_domains, run_ts)
 
     if rows:
-        save_probe_rows(args.db, rows)
+        save_probe_rows(
+            args.db, rows,
+            store_raw_answer=bool(av_config.get("store_raw_answer", False)),
+            raw_answer_max_chars=av_config.get(
+                "raw_answer_max_chars", DEFAULT_RAW_ANSWER_MAX_CHARS),
+        )
     history_runs = int(av_config.get("history_runs", DEFAULT_HISTORY_RUNS))
     trends = {
         engine: get_engine_trend(args.db, engine, limit=history_runs)
