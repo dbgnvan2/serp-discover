@@ -11,6 +11,8 @@ import time
 from datetime import datetime
 from ruamel.yaml import YAML
 
+from yaml_io import save_yaml_preserving_comments
+
 from apply_domain_override_candidates import merge_overrides, write_overrides
 from classifiers import ENTITY_TYPE_DESCRIPTIONS, ENTITY_TYPES, EntityClassifier
 from generate_domain_override_candidates import (
@@ -466,8 +468,9 @@ class SerpLauncherApp:
             return self._yaml().load(f) or {}
 
     def save_config(self, config):
-        with open(self.config_path(), "w", encoding="utf-8") as f:
-            self._yaml().dump(config, f)
+        # Route through the shared comment-preserving writer (atomic, symlink-aware,
+        # fresh-YAML-per-call) — the single home for YAML config saves (yaml_io).
+        save_yaml_preserving_comments(self.config_path(), config)
 
     def read_keyword_file(self, path):
         if not os.path.exists(path):
