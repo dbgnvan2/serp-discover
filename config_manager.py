@@ -6,6 +6,8 @@ from datetime import datetime
 from abc import ABC, abstractmethod
 from pathlib import Path
 
+from yaml_io import save_yaml_preserving_comments
+
 try:
     import tkinter as tk
     from tkinter import ttk, messagebox, filedialog, scrolledtext, Text
@@ -277,8 +279,10 @@ class BaseConfigTab(ttk.Frame):
         try:
             data = self.get_edited_data()
             if self.file_type == "yaml":
-                with open(self.file_path, "w") as f:
-                    yaml.safe_dump(data, f, default_flow_style=False, sort_keys=False)
+                # Preserve comments/key-order (ruamel round-trip). safe_dump strips
+                # every comment, which wiped the doc blocks in config.yml + the 7
+                # other editorial YAML configs on each save.
+                save_yaml_preserving_comments(self.file_path, data)
             else:  # json
                 with open(self.file_path, "w") as f:
                     json.dump(data, f, indent=2)

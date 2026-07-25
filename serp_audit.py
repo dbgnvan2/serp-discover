@@ -18,6 +18,7 @@ import bing_check
 import handoff_writer
 import yaml
 import metrics
+from yaml_io import save_yaml_preserving_comments
 from urllib.parse import urlparse
 from classifiers import ContentClassifier, EntityClassifier
 from url_enricher import UrlEnricher
@@ -2189,8 +2190,7 @@ def main():
         _cfg["files"]["output_xlsx"] = OUTPUT_FILE
         _cfg["files"]["output_json"] = OUTPUT_JSON
         _cfg["files"]["output_md"] = OUTPUT_MD
-        with open("config.yml", "w") as _f:
-            yaml.safe_dump(_cfg, _f, sort_keys=False, allow_unicode=False)
+        save_yaml_preserving_comments("config.yml", _cfg)  # ruamel: keep comments (was safe_dump, stripped every run)
         print(f"Updated config.yml: output paths set to {OUTPUT_JSON}")
     except Exception as _e:
         logging.warning(f"Could not update config.yml output paths: {_e}")

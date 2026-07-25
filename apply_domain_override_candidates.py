@@ -6,6 +6,7 @@ import argparse
 
 import yaml
 
+from yaml_io import save_yaml_preserving_comments
 from classifiers import EntityClassifier
 from generate_domain_override_candidates import (
     collect_candidates,
@@ -35,8 +36,9 @@ def merge_overrides(existing_overrides, high_confidence_candidates):
 
 
 def write_overrides(path, overrides):
-    with open(path, "w", encoding="utf-8") as f:
-        yaml.safe_dump(dict(sorted(overrides.items())), f, sort_keys=False)
+    # Comment-preserving write (ruamel round-trip) — safe_dump stripped
+    # domain_overrides.yml's header comments whenever candidates were applied.
+    save_yaml_preserving_comments(path, dict(sorted(overrides.items())))
 
 
 def main():
