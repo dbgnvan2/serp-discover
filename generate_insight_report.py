@@ -34,6 +34,7 @@ from play_rendering import format_play_cell, format_play_line
 
 import aio_exposure
 import commodity_score
+import demand_dashboard
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 _PATTERN_INTENT_CLASS_CACHE: dict | None = None
@@ -764,6 +765,11 @@ def generate_report(data, db_path=None, run_ts=None):
     report.extend(commodity_score.build_commodity_report(
         data.get("keyword_profiles", {}), data, config, db_path=db_path, run_ts=run_ts,
     ))
+
+    # 5f. Demand vs Clicks snapshot (D3 / AV.3 — read-model over D1 coverage + GSC
+    # clicks; the divergence trend is deferred, see the module). No persistence.
+    report.extend(demand_dashboard.build_dashboard(
+        data.get("keyword_profiles", {}), config, db_path=db_path))
 
     # Section 6 — Market Volatility (RC.7 — suppress or explain non-comparable runs)
     if METRICS_AVAILABLE:

@@ -475,6 +475,25 @@ site), the bands are industry reference not goals, and GSC's 2–3 day reporting
 the most recent run is provisional. Because Search Console returns per-query totals (not
 per-day), the trend builds up run over run.
 
+### Demand vs Clicks
+
+**What it is.** Section 5f of the market-analysis report puts the AI-Overview coverage
+(how often an AI answer sits above your results) next to your actual Search Console
+clicks, and estimates how much of your traffic those AI answers are likely intercepting.
+
+**Why it matters.** It's the one place the "ranking ≠ traffic" problem is made concrete
+for your own site: you see the share of your keywords with an AI Overview, whether you're
+cited in it, and a rough estimate of the clicks at risk on the keywords where you're not.
+That turns an abstract worry into a shortlist.
+
+**What it does and doesn't show.** It's a **snapshot** — the point-in-time position, not
+a trend. The full "demand holding while clicks fall" trend line is deliberately not built:
+it would need per-keyword search-volume data (which the SERP sources don't provide) and
+daily Search Console history (Console gives per-query totals), so inventing it would be
+guessing. For the demand trend that *can* be measured honestly, see the
+branded-vs-non-branded share in the GSC analysis report. If GSC isn't connected, this
+section shows the AI-Overview coverage and points you to connect GSC for the clicks overlay.
+
 ### Keyword Prioritization: Feasibility > Intent > Confidence
 
 When Serp-Discover recommends which keywords to target first, it ranks them using three factors in priority order. Understanding this hierarchy helps you make strategic decisions.

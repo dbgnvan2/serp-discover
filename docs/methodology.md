@@ -164,6 +164,25 @@ proxy — labelled as such and paired with the play routing, not treated as a ve
 
 *Spec: discover-spec.md#D4 (AV.4). Implemented 2026-07-25.*
 
+### Demand vs Clicks snapshot (Section 5f — D3 / AV.3)
+
+`generate_insight_report.py` renders a **5f. Demand vs Clicks** snapshot
+(`demand_dashboard.py`) that operationalizes *clicks ≠ demand*: D1's
+`aio_coverage_pct` (how much AI-Overview interception the SERP shows) alongside the
+client's own Search Console clicks/impressions, and an **estimated traffic at risk** =
+GSC impressions × the modeled AIO CTR interception (`est_ctr_loss`) for AIO keywords
+where the client is not cited (indicative). GSC clicks are read read-only from the
+`gsc_cache` table (via `db_path`, joined by lower-cased keyword) — never by importing
+the standalone `gsc_client`; when the table is absent or GSC is off, the section
+degrades to an honest "connect GSC" note. **Scope (decision D-D3):** snapshot only. The
+spec's `divergence_flag` (a trailing-window trend of visibility falling while brand
+demand holds) is **deferred** — it needs a per-keyword `search_volume` source (none of
+the current SERP providers supply one) and a daily GSC series (Search Console returns
+per-query totals, no `date` dimension); building it on absent data would be a fabricated
+signal. The branded-demand trend that *is* buildable lives in the D2 GSC analysis report.
+
+*Spec: discover-spec.md#D3 (AV.3). Implemented 2026-07-25.*
+
 ---
 
 ## Part 3 — Content brief generation

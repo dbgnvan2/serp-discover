@@ -370,5 +370,17 @@ class TestCommoditySection(unittest.TestCase):
         self.assertIn("commodity.weights", report)
 
 
+class TestDemandDashboardSection(unittest.TestCase):
+    """D3 / AV.3 — the Demand vs Clicks snapshot is wired into generate_report (P21)."""
+
+    def test_av3_section_present_and_degrades(self):
+        data = {"keyword_profiles": {
+            "anxiety therapy": {"has_ai_overview": True, "client_rank": 1,
+                                "client_aio_cited": False, "aio_top_sources": []}}}
+        report = generate_insight_report.generate_report(data)   # no db → GSC not connected
+        self.assertIn("## 5f. Demand vs Clicks", report)
+        self.assertIn("Snapshot only", report)                   # trend deferral documented
+
+
 if __name__ == "__main__":
     unittest.main()
