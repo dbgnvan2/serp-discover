@@ -179,6 +179,18 @@ gsc:
   # When true, generate_content_brief attaches the latest gsc_analysis_*
   # sidecar as gsc_summary to the LLM payload (client-private data).
   feed_strategic_flags: false
+gsc_demand:
+  # D2 (AV.2) branded vs non-branded demand (run_gsc_analysis.py). Classifies the
+  # run's GSC queries as name-seeking (branded) using analysis_report.client_name_
+  # patterns, and trends the branded click share across runs. The bands are
+  # INDUSTRY REFERENCE points (below-avg < 2.4%, top >= 10%), labelled as reference
+  # in the report — not targets for this client. Malformed → defaults + warning.
+  bands:
+    below_avg: 0.024
+    top: 0.10
+  # Optional generic words that contain the brand but are not name-seeking
+  # (e.g. a common word) — excluded from branded classification.
+  negative_terms: []
 serp_intent:
   thresholds:
     primary_share: 0.6

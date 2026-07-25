@@ -397,13 +397,14 @@ class TestDisabledAndIsolation(unittest.TestCase):
     def test_pipeline_never_imports_gsc_client(self):
         # Import-time isolation: importing the pipeline modules must not
         # pull in gsc_client (G.4.4).
-        for module in ("gsc_client", "run_gsc_analysis"):
+        for module in ("gsc_client", "run_gsc_analysis", "gsc_demand"):
             sys.modules.pop(module, None)
         import serp_audit  # noqa: F401
         import generate_content_brief  # noqa: F401
         import brief_rendering  # noqa: F401
         self.assertNotIn("gsc_client", sys.modules)
         self.assertNotIn("run_gsc_analysis", sys.modules)
+        self.assertNotIn("gsc_demand", sys.modules)   # D2: GSC-path only, not pipeline
 
     def test_pipeline_sources_have_no_gsc_client_import(self):
         for module in ("serp_audit.py", "generate_content_brief.py",
@@ -415,6 +416,10 @@ class TestDisabledAndIsolation(unittest.TestCase):
                              f"{module} must not import gsc_client")
             self.assertNotIn("from gsc_client", source,
                              f"{module} must not import gsc_client")
+            self.assertNotIn("import gsc_demand", source,
+                             f"{module} must not import gsc_demand (GSC-path only)")
+            self.assertNotIn("from gsc_demand", source,
+                             f"{module} must not import gsc_demand (GSC-path only)")
 
 
 class TestEndToEndRun(unittest.TestCase):

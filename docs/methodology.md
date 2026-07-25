@@ -257,6 +257,28 @@ The query set is the run's root keywords plus their A.1/A.2 informational varian
 
 *Spec: seo_geo_deferred_spec_v1.md#G.4. Implemented 2026-07-04.*
 
+### Branded vs Non-Branded Demand (D2 / AV.2)
+
+`run_gsc_analysis.py` also classifies the run's GSC queries as **branded**
+(name-seeking) vs **non-branded** and trends the branded click share
+(`gsc_demand.py`) — the demand signal that predicts survival when generic clicks
+fall to AI answers. Classification reuses `analysis_report.client_name_patterns`
+(the `detect_visibility` substring form — single-word brands included — plus an
+optional `gsc_demand.negative_terms` override), recomputed every run so a pattern
+edit reclassifies (never gated by the 7-day GSC cache). `branded_click_share =
+branded_clicks / total_clicks` over the run's **tracked** queries (labelled as
+such, not the full property), banded against `config.yml gsc_demand.bands`
+(industry reference points below-avg < 2.4% / top ≥ 10%, labelled reference, not a
+target). Because the current GSC client fetches per-query only (no `date`
+dimension), the series is keyed by **run** (`run_ts`, parsed from the source
+filename) and trends across successive runs (decision D-D2a; true per-day grain +
+provisional-day flagging are deferred to a future dated fetch). Persisted to
+`gsc_demand_run` + `gsc_demand_score` (idempotent per `property`+`run_ts`), a new
+"Branded vs Non-Branded Demand" section in `gsc_analysis_<topic>_<ts>.md`, and a
+`demand` block in the sidecar. GSC's 2–3 day lag makes the latest run provisional.
+
+*Spec: discover-spec.md#D2 (AV.2). Implemented 2026-07-25.*
+
 ### E-E-A-T author-signal detection (report Sections 5b/7 evidence)
 
 During enrichment, `url_enricher.py` detects author signals on each ranking page: `author_present` (JSON-LD `author`/`Person`, a `rel=author` link, or a class/itemprop byline node), `credential_hits` (distinct professional-designation tokens found in the first `enrichment.eeat_scan_chars` characters of body text or in JSON-LD author fields), and `review_marker_present` ("medically reviewed"-style phrases). The credential and review vocabularies are editorial and live in `serp_vocab.yml` (`eeat_signals` section, loader-required); matching mirrors `intent_classifier.py` — word boundaries for single tokens (so "RP" never fires inside "harp"), substring for multi-word phrases, case-insensitive. `brief_data_extraction._build_eeat_signals` summarises the signals per keyword (`keyword_profiles.eeat_signals`: pages, `credentialed_page_count`, `client_page`) so Sections 5b and 7 can state whether credentialed authorship is table-stakes on that SERP and whether the client's page carries a credentialed byline.

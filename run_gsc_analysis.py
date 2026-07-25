@@ -40,6 +40,8 @@ import sys
 from datetime import date, datetime, timedelta
 from statistics import median
 
+import gsc_demand
+
 import yaml
 
 logging.basicConfig(
@@ -280,7 +282,9 @@ def _pct(value) -> str:
 
 
 def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
-                    config: dict, source_json: str, date_range: tuple[str, str]) -> str:
+                    config: dict, source_json: str, date_range: tuple[str, str],
+                    demand_score: dict | None = None,
+                    demand_trend: list | None = None) -> str:
     lines: list[str] = []
     client_name = (config.get("analysis_report", {}) or {}).get("client_name", "Client")
     gsc_cfg = config.get("gsc", {}) or {}
@@ -301,6 +305,9 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
     lines.append(
         f"- Queries with no GSC data: {len(rows) - len(with_data)} "
         "(no impressions recorded — reported as absent, not as zero)\n")
+
+    if demand_score is not None:
+        lines.extend(gsc_demand.render_demand_section(demand_score, demand_trend))
 
     lines.append("## The sponge table — does an AI Overview soak up clicks?")
     lines.append(
@@ -367,7 +374,8 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
 
 
 def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
-                  config: dict, source_json: str, date_range: tuple[str, str]) -> dict:
+                  config: dict, source_json: str, date_range: tuple[str, str],
+                  demand_score: dict | None = None) -> dict:
     gsc_cfg = config.get("gsc", {}) or {}
     return {
         "generated_at": datetime.now().isoformat(),
@@ -380,6 +388,7 @@ def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
         "per_query": rows,
         "sponge": sponge,
         "reformat_candidates": candidates,
+        "demand": demand_score,
     }
 
 
@@ -406,7 +415,8 @@ def check_preconditions(config: dict) -> tuple[bool, str]:
 
 
 def run_analysis(data: dict, config: dict, client, source_json: str,
-                 today: date | None = None) -> tuple[str, dict]:
+                 today: date | None = None,
+                 db_path: str | None = None) -> tuple[str, dict]:
     """Pull GSC stats for the run's queries and build (report_md, sidecar)."""
     gsc_cfg = config.get("gsc", {}) or {}
     lookback_days = int(gsc_cfg.get("lookback_days", 90))
@@ -433,8 +443,33 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
 
     sponge = compute_sponge_effect(rows)
     candidates = find_reformat_candidates(rows, sponge, geo_alert_keywords(data))
-    report = generate_report(rows, sponge, candidates, config, source_json, date_range)
-    sidecar = build_sidecar(rows, sponge, candidates, config, source_json, date_range)
+
+    # D2/AV.2 — branded vs non-branded demand. Classify the rows just pulled and
+    # persist per-run (grain = run_ts, parsed from the source filename) so the
+    # branded share trends across runs (D-D2a). Classification is recomputed every
+    # run so a client_name_patterns edit reclassifies (never gated by the cache).
+    rows, demand_score = gsc_demand.compute_demand(rows, config)
+    demand_trend = None
+    run_ts = gsc_demand.run_ts_from_filename(source_json)
+    property_ = (config.get("gsc", {}) or {}).get("property")
+    if db_path and run_ts and property_:
+        try:
+            gsc_demand.save_demand(db_path, property_, run_ts, rows, demand_score,
+                                   fetched_at=run_ts)
+            demand_trend = gsc_demand.get_demand_trend(db_path, property_)
+        except Exception as exc:   # persistence must never break the report
+            logger.warning("gsc_demand persistence failed: %s", exc)
+    elif db_path and run_ts and not property_:
+        # Without a property the (property, run_ts) idempotency key matches on NULL
+        # and every re-run would append duplicates — skip + warn, render still fires.
+        logger.warning("gsc.property is not set — skipping gsc_demand persistence "
+                       "(the demand section still renders).")
+
+    report = generate_report(rows, sponge, candidates, config, source_json,
+                             date_range, demand_score=demand_score,
+                             demand_trend=demand_trend)
+    sidecar = build_sidecar(rows, sponge, candidates, config, source_json,
+                            date_range, demand_score=demand_score)
     return report, sidecar
 
 
@@ -480,7 +515,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        report, sidecar = run_analysis(data, config, client, json_path)
+        report, sidecar = run_analysis(data, config, client, json_path,
+                                       db_path=args.db)
     except RuntimeError as exc:
         logger.error("%s", exc)
         return 1

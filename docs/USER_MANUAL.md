@@ -456,6 +456,25 @@ asked to judge), reproducible run to run, with the blend weights in
 `config.yml commodity.weights`. Keywords with too few results to compare are flagged
 low-confidence rather than scored with false precision.
 
+### Branded vs Non-Branded Demand (Search Console)
+
+**What it is.** When Google Search Console is connected, the GSC analysis report
+splits the client's search demand into **branded** (people searching the name —
+"living systems counselling") and **non-branded** (generic — "couples therapy") and
+tracks the branded share of clicks over time.
+
+**Why it matters.** Clicks can fall while *demand* holds. Non-branded clicks are the
+first to be absorbed by AI answers; branded demand — people who already know and want
+you — is stickier and predicts survival. A rising branded share as generic clicks fall
+is a sign the brand is compounding, not eroding. The report bands the share against an
+industry reference (below-average < 2.4%, top ≥ 10%) — a reference point, not a target
+for this client.
+
+**Reading it honestly.** The share is over the queries the tool tracked (not the whole
+site), the bands are industry reference not goals, and GSC's 2–3 day reporting lag means
+the most recent run is provisional. Because Search Console returns per-query totals (not
+per-day), the trend builds up run over run.
+
 ### Keyword Prioritization: Feasibility > Intent > Confidence
 
 When Serp-Discover recommends which keywords to target first, it ranks them using three factors in priority order. Understanding this hierarchy helps you make strategic decisions.
