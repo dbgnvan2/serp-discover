@@ -25,18 +25,17 @@ from ruamel.yaml import YAML
 
 logger = logging.getLogger(__name__)
 
-_YAML_RT = None
-
-
 def _yaml_rt():
-    """Lazily-built ruamel round-trip YAML — preserves comments + key order across a
-    load→modify→dump cycle (PyYAML's ``safe_dump`` strips them)."""
-    global _YAML_RT
-    if _YAML_RT is None:
-        rt = YAML()             # typ='rt' by default
-        rt.preserve_quotes = True
-        _YAML_RT = rt
-    return _YAML_RT
+    """A FRESH ruamel round-trip YAML per call — NOT a shared singleton. On a
+    mid-dump failure ruamel leaves its reused emitter bound to the (now closed)
+    stream, so a shared instance would raise "I/O operation on closed file" on EVERY
+    later save across all callers until the process restarts (P1/P15). A fresh
+    instance per call can't be poisoned. ``width`` is large so long value lines are
+    not folded (avoids cosmetic churn/trailing space vs the old ``safe_dump``)."""
+    rt = YAML()                 # typ='rt' by default
+    rt.preserve_quotes = True
+    rt.width = 4096
+    return rt
 
 
 def _merge_into_commented(dst, src):
@@ -66,21 +65,31 @@ def save_yaml_preserving_comments(file_path, data):
 
     Handles both mapping-topped files (deep-merge) and sequence-topped files (e.g.
     strategic_patterns.yml — replace items in place so the document-level comment on
-    the loaded CommentedSeq is kept; inner per-item comments are not merged). The
-    write is **atomic** (temp file + ``os.replace``) so a failed dump can never
-    truncate the existing config (P2)."""
+    the loaded CommentedSeq is kept; inner per-item comments are not merged). A
+    symlinked ``file_path`` is followed to its real target (so the multi-client
+    symlink workflow keeps working). The write is **atomic** (temp file +
+    ``os.replace``) so a failed dump can never truncate the existing config (P2).
+
+    Latent caveat: callers typically build ``data`` with PyYAML ``yaml.safe_load``
+    while the on-disk file is re-read here with ruamel — the two disagree on YAML-1.1
+    bool-like keys (``on/off/yes/no``), so such a divergent key would be treated as
+    removed and re-added, dropping its comment. No repo config uses such a key today
+    (guarded by ``tests/test_yaml_io.py``); align the parsers if one ever does."""
     yaml_rt = _yaml_rt()
+    # Follow a symlink to its target so the atomic replace updates the shared file
+    # instead of detaching the link (multi-client setups symlink these configs).
+    target = os.path.realpath(file_path)
     doc = None
-    if os.path.exists(file_path):
+    if os.path.exists(target):
         try:
-            with open(file_path, "r", encoding="utf-8") as f:
+            with open(target, "r", encoding="utf-8") as f:
                 doc = yaml_rt.load(f)
         except Exception as exc:
             # A genuinely-unparseable file OR a transient read failure both land
             # here; surface it (never silently re-strip the comments — P2).
             logger.warning("Could not read %s to preserve comments (%s) — writing "
                            "fresh; any comments already in that file are lost.",
-                           file_path, exc)
+                           target, exc)
             doc = None
 
     if isinstance(doc, dict) and isinstance(data, dict):
@@ -92,18 +101,22 @@ def save_yaml_preserving_comments(file_path, data):
     else:
         out = data             # absent / unparseable / type-mismatch → fresh write
 
-    directory = os.path.dirname(os.path.abspath(file_path))
+    directory = os.path.dirname(target)
     fd, tmp = tempfile.mkstemp(prefix=".yamlio_", suffix=".yml", dir=directory)
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             yaml_rt.dump(out, f)
-        if os.path.exists(file_path):
+        if os.path.exists(target):
             try:   # keep the original file's permissions (mkstemp creates 0600)
-                os.chmod(tmp, os.stat(file_path).st_mode & 0o777)
+                os.chmod(tmp, os.stat(target).st_mode & 0o777)
             except OSError:
                 pass
-        os.replace(tmp, file_path)     # atomic swap — original survives a failed dump
+        os.replace(tmp, target)        # atomic swap — original survives a failed dump
     except Exception:
+        try:
+            os.close(fd)               # in case os.fdopen never took ownership of fd
+        except OSError:
+            pass
         if os.path.exists(tmp):
             os.remove(tmp)
         raise

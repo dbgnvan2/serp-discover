@@ -85,20 +85,55 @@ def test_unparseable_on_disk_writes_fresh_and_warns(tmp_path, caplog):
     assert "comments" in caplog.text.lower()   # not silent — surfaced (P2)
 
 
-def test_atomic_write_preserves_original_on_dump_failure(tmp_path, monkeypatch):
-    """A dump failure must leave the original config intact (temp + os.replace), not
-    truncate it, and leave no temp file behind (P2)."""
-    f = tmp_path / "c.yml"
-    f.write_text("a: 1  # keep\n")
+def test_dump_failure_is_atomic_and_does_not_poison_later_saves(tmp_path):
+    """A mid-dump failure (un-representable value) must (a) leave the original config
+    intact with no temp file behind (atomic, P2), AND (b) not break the next save —
+    fresh-YAML-per-call means no poisoned shared emitter (P1/P15)."""
+    bad = tmp_path / "bad.yml"
+    bad.write_text("a: 1  # keep\n")
+    good = tmp_path / "good.yml"
+    good.write_text("g: 1  # doc\n")
 
-    def _boom(*_a, **_k):
-        raise RuntimeError("boom")
-    monkeypatch.setattr(yaml_io._yaml_rt(), "dump", _boom)
+    with pytest.raises(Exception):
+        yaml_io.save_yaml_preserving_comments(str(bad), {"a": object()})   # RepresenterError mid-emit
+    assert bad.read_text() == "a: 1  # keep\n"                             # original untouched (atomic)
+    assert not any(p.name.startswith(".yamlio_") for p in tmp_path.iterdir())  # no temp leak
 
-    with pytest.raises(RuntimeError):
-        yaml_io.save_yaml_preserving_comments(str(f), {"a": 2})
-    assert f.read_text() == "a: 1  # keep\n"                     # untouched
-    assert not any(p.name.startswith(".yamlio_") for p in tmp_path.iterdir())
+    # The old shared-singleton bug would make THIS raise "I/O operation on closed file":
+    yaml_io.save_yaml_preserving_comments(str(good), {"g": 2})
+    assert "g: 2" in good.read_text() and "# doc" in good.read_text()
+
+
+def test_symlinked_config_updates_target_not_detaches_link(tmp_path):
+    """P3/P6 — a symlinked config (the multi-client workflow) is written through to
+    its target, keeping the link; not replaced by a standalone file."""
+    import os
+    real = tmp_path / "real.yml"
+    real.write_text("a: 1  # doc\n")
+    link = tmp_path / "config.yml"
+    os.symlink(real, link)
+    yaml_io.save_yaml_preserving_comments(str(link), {"a": 2})
+    assert os.path.islink(str(link))                       # link intact, not a plain file
+    assert "a: 2" in real.read_text() and "# doc" in real.read_text()   # target updated + comment kept
+
+
+def test_no_repo_config_has_yaml11_boollike_top_level_key():
+    """Latent-divergence guard (Finding 3): the PyYAML-src vs ruamel-dst parser
+    mismatch only bites on YAML-1.1 bool-like keys; assert no repo config uses one."""
+    import glob
+    import os
+    import yaml as pyyaml
+    root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    boollike = {"on", "off", "yes", "no", "true", "false"}
+    for path in glob.glob(os.path.join(root, "*.yml")):
+        try:
+            data = pyyaml.safe_load(open(path, encoding="utf-8")) or {}
+        except Exception:
+            continue
+        if isinstance(data, dict):
+            keys = {str(k).lower() for k in data.keys()}
+            assert not (keys & boollike), \
+                f"{os.path.basename(path)} has a bool-like top-level key — align parsers in yaml_io"
 
 
 def test_merge_nested_update_keeps_sibling_comment():
