@@ -24,6 +24,7 @@ Usage
 """
 import argparse
 import json
+import logging
 import os
 import sys
 from datetime import datetime
@@ -403,6 +404,17 @@ def _order_briefs_by_opportunity(data: dict, strategic_recs: list, best_opportun
     return brief_metadata
 
 
+def _safe_section(name, builder):
+    """Render one report section in isolation. A raise degrades to a placeholder
+    line so a single malformed keyword can't abort the whole market_analysis_*.md
+    write (which serp_audit wraps in a swallowing try) and lose the content briefs."""
+    try:
+        return builder()
+    except Exception as exc:
+        logging.error("Report section %r failed to render: %s", name, exc)
+        return [f"## {name}", f"*Section unavailable this run — {exc}*", ""]
+
+
 def generate_report(data, db_path=None, run_ts=None):
     report = []
 
@@ -752,24 +764,23 @@ def generate_report(data, db_path=None, run_ts=None):
             "Re-run with credentials to enable full feasibility scoring.\n"
         )
 
-    # 5d. AI Overview Exposure (D1 / AV.1 — modeled zero-click estimate; always
-    # rendered when keyword_profiles present). Persists to ai_aio_exposure and
-    # shows the trend delta only when main() supplies db_path + run_ts.
-    report.extend(aio_exposure.build_aio_exposure_report(
-        data.get("keyword_profiles", {}), config, db_path=db_path, run_ts=run_ts,
-    ))
-
-    # 5e. Query Commodity / AI-Absorption Risk (D4 / AV.4 — deterministic; always
-    # rendered when keyword_profiles present; persists to commodity_score when
-    # main() supplies db_path + run_ts).
-    report.extend(commodity_score.build_commodity_report(
-        data.get("keyword_profiles", {}), data, config, db_path=db_path, run_ts=run_ts,
-    ))
-
-    # 5f. Demand vs Clicks snapshot (D3 / AV.3 — read-model over D1 coverage + GSC
-    # clicks; the divergence trend is deferred, see the module). No persistence.
-    report.extend(demand_dashboard.build_dashboard(
-        data.get("keyword_profiles", {}), config, db_path=db_path))
+    # 5d / 5e / 5f — the three AI-era sections (D1 AIO exposure, D4 commodity risk,
+    # D3 demand dashboard). Each is composed in ISOLATION via _safe_section: a raise
+    # in one degrades to a placeholder while the siblings + the rest of the report
+    # still render, so a single malformed keyword can't abort the whole
+    # market_analysis_*.md write and lose the content briefs.
+    _kp = data.get("keyword_profiles", {})
+    report.extend(_safe_section(
+        "5d. AI Overview Exposure",
+        lambda: aio_exposure.build_aio_exposure_report(
+            _kp, config, db_path=db_path, run_ts=run_ts)))
+    report.extend(_safe_section(
+        "5e. Query Commodity / AI-Absorption Risk",
+        lambda: commodity_score.build_commodity_report(
+            _kp, data, config, db_path=db_path, run_ts=run_ts)))
+    report.extend(_safe_section(
+        "5f. Demand vs Clicks",
+        lambda: demand_dashboard.build_dashboard(_kp, config, db_path=db_path)))
 
     # Section 6 — Market Volatility (RC.7 — suppress or explain non-comparable runs)
     if METRICS_AVAILABLE:

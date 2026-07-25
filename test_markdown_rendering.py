@@ -382,5 +382,23 @@ class TestDemandDashboardSection(unittest.TestCase):
         self.assertIn("Snapshot only", report)                   # trend deferral documented
 
 
+class TestSectionIsolation(unittest.TestCase):
+    """Sweep — one AI-era section raising must NOT drop the whole report; it degrades
+    to a placeholder while the siblings still render (_safe_section)."""
+
+    def test_one_section_failure_degrades_to_placeholder(self):
+        from unittest.mock import patch
+        data = {"keyword_profiles": {
+            "kw": {"has_ai_overview": True, "client_rank": 1,
+                   "client_aio_cited": False, "aio_top_sources": []}}}
+        with patch("commodity_score.build_commodity_report",
+                   side_effect=RuntimeError("boom")):
+            report = generate_insight_report.generate_report(data)
+        self.assertIn("## 5e. Query Commodity", report)         # placeholder header
+        self.assertIn("Section unavailable this run", report)   # degraded, not crashed
+        self.assertIn("## 5d. AI Overview Exposure", report)    # sibling still rendered
+        self.assertIn("## 5f. Demand vs Clicks", report)        # sibling still rendered
+
+
 if __name__ == "__main__":
     unittest.main()

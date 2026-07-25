@@ -51,6 +51,13 @@ def test_serp_homogeneity_concentration():
     assert serp_homogeneity({}, {}) == 0.0                            # no signal → 0
 
 
+def test_serp_homogeneity_tolerates_malformed_fields():
+    """P2 — a non-dict profile field must not raise (it would drop the whole report
+    under serp_audit's swallowing try)."""
+    assert serp_homogeneity(["not", "a", "dict"], "also not a dict") == 0.0
+    assert serp_homogeneity({"directory": 3}, {"pattern_counts": "bad"}) == 1.0
+
+
 def test_composite_all_max_is_100_with_llm_off_renormalized():
     """LLM term OFF (None) → its weight renormalizes over the other three, so an
     all-1 input still reaches 100 (not capped at 90)."""

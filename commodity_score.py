@@ -148,10 +148,15 @@ def serp_homogeneity(entity_distribution: dict | None,
                      title_patterns: dict | None) -> float:
     """0–1 SERP concentration: top entity-type share blended with title-pattern
     dominance. A uniform SERP (one entity type, one title shape) → high."""
-    ent = entity_distribution or {}
+    # isinstance guards: a malformed (non-dict) profile field must not raise here —
+    # generate_report composes this under serp_audit's swallowing try, so a raise
+    # would silently drop the whole market_analysis_*.md (P2).
+    ent = entity_distribution if isinstance(entity_distribution, dict) else {}
     ent_total = sum(ent.values()) if ent else 0
     ent_conc = (max(ent.values()) / ent_total) if ent_total else 0.0
-    counts = (title_patterns or {}).get("pattern_counts") or {}
+    tp = title_patterns if isinstance(title_patterns, dict) else {}
+    counts = tp.get("pattern_counts")
+    counts = counts if isinstance(counts, dict) else {}
     tp_total = sum(counts.values()) if counts else 0
     tp_conc = (max(counts.values()) / tp_total) if tp_total else 0.0
     if ent_total and tp_total:

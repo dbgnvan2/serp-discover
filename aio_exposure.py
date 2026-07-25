@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import sqlite3
 
@@ -350,7 +351,9 @@ def run_ts_from_filename(path: str | None) -> str | None:
     """
     if not path:
         return None
-    match = _RUN_TS_RE.search(str(path))
+    # basename only, so a timestamped ANCESTOR directory can't mis-key the run
+    # (kept consistent with gsc_demand.run_ts_from_filename).
+    match = _RUN_TS_RE.search(os.path.basename(str(path)))
     return match.group(1) if match else None
 
 

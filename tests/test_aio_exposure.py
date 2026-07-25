@@ -272,6 +272,9 @@ def test_run_ts_from_filename():
     assert run_ts_from_filename("output/market_analysis_leila_20260704_2113.json") == "20260704_2113"
     assert run_ts_from_filename("no_timestamp_here.json") is None
     assert run_ts_from_filename(None) is None
+    # basename only — a timestamped ancestor dir must not win over the filename stamp
+    assert run_ts_from_filename(
+        "runs/20260101_0000/market_analysis_x_20260725_0930.json") == "20260725_0930"
 
 
 # --- learning-qa follow-ups: idempotency, robustness, real argv path ---------
