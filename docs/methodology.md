@@ -211,3 +211,11 @@ The query set is the run's root keywords plus their A.1/A.2 informational varian
 During enrichment, `url_enricher.py` detects author signals on each ranking page: `author_present` (JSON-LD `author`/`Person`, a `rel=author` link, or a class/itemprop byline node), `credential_hits` (distinct professional-designation tokens found in the first `enrichment.eeat_scan_chars` characters of body text or in JSON-LD author fields), and `review_marker_present` ("medically reviewed"-style phrases). The credential and review vocabularies are editorial and live in `serp_vocab.yml` (`eeat_signals` section, loader-required); matching mirrors `intent_classifier.py` — word boundaries for single tokens (so "RP" never fires inside "harp"), substring for multi-word phrases, case-insensitive. `brief_data_extraction._build_eeat_signals` summarises the signals per keyword (`keyword_profiles.eeat_signals`: pages, `credentialed_page_count`, `client_page`) so Sections 5b and 7 can state whether credentialed authorship is table-stakes on that SERP and whether the client's page carries a credentialed byline.
 
 *Spec: seo_geo_deferred_spec_v1.md#G.3. Implemented 2026-07-04.*
+
+---
+
+## Out of scope
+
+**Backlink / off-site authority analysis.** Tool 1 uses the **Domain Authority gap** between the client and the ranking competitors as its authority signal for keyword feasibility (`feasibility.py`, with DA/PA sourced per domain from DataForSEO and Moz as fallback); it does **not** analyse backlink profiles. Backlink discovery, toxic-link identification, and referring-domain diversity are deliberately out of scope. Across the tool suite, Domain Authority (and Moz Page Authority) serve as the single authority proxy; a full backlink graph requires a paid third-party link-index provider (Ahrefs, Majestic, or DataForSEO backlinks) and is judged low-ROI for a single nonprofit. This is a deliberate boundary, not an omission — revisit only if scale or budget changes.
+
+*Spec: suite_enhancement_spec_v1.md#X-4.*
