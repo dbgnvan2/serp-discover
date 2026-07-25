@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEO/GEO Audit — Which Tool at Which Step</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --ink:#e8eaed; --muted:#9aa0aa; --line:#2a2f3a;
+    --sd:#4f8cff; --sc:#c07cff; --tt:#37c98b; --suite:#f2b544; --gap:#ff6b6b;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 64px;}
+  h1{font-size:24px;margin:0 0 4px;font-weight:650;letter-spacing:-.01em}
+  .sub{color:var(--muted);margin:0 0 24px;font-size:14px}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 22px}
+  .chip{display:inline-flex;align-items:center;gap:7px;background:var(--panel);
+    border:1px solid var(--line);border-radius:999px;padding:5px 12px;font-size:13px}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .d-sd{background:var(--sd)} .d-sc{background:var(--sc)} .d-tt{background:var(--tt)}
+  .d-suite{background:var(--suite)} .d-gap{background:var(--gap)}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+    padding:18px 20px;margin:0 0 22px}
+  .card h2{font-size:15px;margin:0 0 12px;color:var(--muted);font-weight:600;
+    text-transform:uppercase;letter-spacing:.06em}
+  .mermaid{width:100%;overflow-x:auto}
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{color:var(--muted);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+  td.tool{white-space:nowrap;font-weight:600}
+  .tag{display:inline-block;padding:1px 8px;border-radius:6px;font-size:12px;font-weight:600}
+  .t-ok{background:rgba(55,201,139,.15);color:var(--tt)}
+  .t-part{background:rgba(242,181,68,.15);color:var(--suite)}
+  .t-gap{background:rgba(255,107,107,.15);color:var(--gap)}
+  .foot{color:var(--muted);font-size:12.5px;margin-top:18px}
+  a{color:var(--sd)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>SEO / GEO Audit — Which Tool at Which Step</h1>
+  <p class="sub">Living Systems Counselling · three-tool suite mapped to Neil Patel's 17-step audit · 2026-07-21</p>
+
+  <div class="legend">
+    <span class="chip"><span class="dot d-sd"></span>serp-discover — market intelligence</span>
+    <span class="chip"><span class="dot d-sc"></span>serp-compete — competitor audit</span>
+    <span class="chip"><span class="dot d-tt"></span>TalkingToad — own-site technical + GEO</span>
+    <span class="chip"><span class="dot d-suite"></span>Suite / orchestration</span>
+    <span class="chip"><span class="dot d-gap"></span>Gap or partial (proposed)</span>
+  </div>
+
+  <div class="card">
+    <h2>Audit lifecycle — five phases</h2>
+    <div class="mermaid">
+flowchart LR
+    START([Start audit]):::suite
+
+    subgraph P1["Phase 1 · Discover (outward)"]
+      direction TB
+      SD["serp-discover<br/>SERP + keyword + AI-visibility"]:::sd
+      SD1["11 Competitive landscape<br/>13 Content gap<br/>2 Demand baseline<br/>17 AI-visibility probe"]:::note
+      SD --> SD1
+    end
+
+    subgraph P2["Phase 2 · Competitors (outward)"]
+      direction TB
+      SC["serp-compete<br/>competitor page audit"]:::sc
+      SC1["11 Deep competitor scan<br/>15 Competitor EEAT<br/>SC-1 schema/extractability"]:::note
+      SC --> SC1
+    end
+
+    subgraph P3["Phase 3 · Own site (inward)"]
+      direction TB
+      TT["TalkingToad<br/>crawl · 152 codes · GEO"]:::tt
+      TT1["1 Crawl · 3 Meta · 5 Index<br/>6 Dupes · 10 Links · 12 Sitemap<br/>14 Schema · 15 EEAT · 17 AI-ready"]:::note
+      TT2["Proposed: 4 Cannibalization<br/>7 Speed · 8 CWV · 9 Mobile"]:::gap
+      TT --> TT1 --> TT2
+    end
+
+    subgraph P4["Phase 4 · Fix & verify"]
+      direction TB
+      FIX["TalkingToad<br/>WP Fix Manager + re-crawl"]:::tt
+    end
+
+    subgraph P5["Phase 5 · Monitor"]
+      direction TB
+      MON["Scheduled runs (X-3)<br/>quarterly full · monthly light"]:::suite
+    end
+
+    START --> P1 --> P2 --> P3 --> P4 --> P5
+    P5 -.->|re-run| P1
+    SD1 -.->|competitor_handoff.json| SC
+    TT1 -.->|X-2 AI-cited pages| SD
+
+    BL["16 Backlinks — out of scope<br/>by decision (X-4)"]:::gap
+    P3 -.-> BL
+
+    classDef sd fill:#12233f,stroke:#4f8cff,color:#dbe7ff,stroke-width:1.5px;
+    classDef sc fill:#241238,stroke:#c07cff,color:#efe1ff,stroke-width:1.5px;
+    classDef tt fill:#0f2c22,stroke:#37c98b,color:#d6f7e8,stroke-width:1.5px;
+    classDef suite fill:#332a12,stroke:#f2b544,color:#ffedc7,stroke-width:1.5px;
+    classDef gap fill:#331717,stroke:#ff6b6b,color:#ffd9d9,stroke-width:1.2px,stroke-dasharray:4 3;
+    classDef note fill:#12151c,stroke:#2a2f3a,color:#9aa0aa,stroke-width:1px;
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Step → tool → coverage (all 17)</h2>
+    <table>
+      <thead><tr><th>#</th><th>Blog step</th><th>Tool</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Website crawl</td><td class="tool">TalkingToad</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>2</td><td>Organic traffic analysis</td><td class="tool">TalkingToad (GSC)</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>3</td><td>Meta titles &amp; descriptions</td><td class="tool">TalkingToad</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>4</td><td>Keyword cannibalization</td><td class="tool">TalkingToad <em>(proposed TT-2)</em></td><td><span class="tag t-gap">Gap</span></td></tr>
+        <tr><td>5</td><td>Indexing issues</td><td class="tool">TalkingToad</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>6</td><td>Duplicate content</td><td class="tool">TalkingToad</td><td><span class="tag t-part">Partial</span></td></tr>
+        <tr><td>7</td><td>Page speed</td><td class="tool">TalkingToad <em>(TT-3/TT-1)</em></td><td><span class="tag t-part">Partial</span></td></tr>
+        <tr><td>8</td><td>Core Web Vitals</td><td class="tool">TalkingToad <em>(proposed TT-1)</em></td><td><span class="tag t-gap">Gap</span></td></tr>
+        <tr><td>9</td><td>Mobile friendliness</td><td class="tool">TalkingToad <em>(TT-4)</em></td><td><span class="tag t-part">Partial</span></td></tr>
+        <tr><td>10</td><td>Broken links</td><td class="tool">TalkingToad</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>11</td><td>Competitive analysis</td><td class="tool">serp-discover + serp-compete</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>12</td><td>Sitemap analysis</td><td class="tool">TalkingToad</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>13</td><td>Content gap</td><td class="tool">serp-discover + serp-compete</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>14</td><td>Structured data</td><td class="tool">TalkingToad + serp-discover</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>15</td><td>E-E-A-T signals</td><td class="tool">All three</td><td><span class="tag t-ok">Covered</span></td></tr>
+        <tr><td>16</td><td>Backlink profile</td><td class="tool">— (decision X-4)</td><td><span class="tag t-gap">Out of scope</span></td></tr>
+        <tr><td>17</td><td>AI search visibility</td><td class="tool">serp-discover + TalkingToad</td><td><span class="tag t-ok">Covered</span></td></tr>
+      </tbody>
+    </table>
+    <p class="foot">Covered = often deeper than the post · Partial = proxy only · Gap = proposed enhancement. Full rationale and the ranked enhancement backlog are in the companion review document.</p>
+  </div>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: "dark", flowchart: { curve: "basis", htmlLabels: true } });
+</script>
+</body>
+</html>
