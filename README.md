@@ -214,9 +214,17 @@ The content brief uses two model calls:
 | Pass | Default model | Purpose |
 |------|-------------|---------|
 | Main report | `claude-opus-4-6` | Full per-keyword analysis and recommendations |
-| Advisory briefing | `claude-sonnet-4-20250514` | Executive framing |
+| Advisory briefing | `claude-opus-4-6` | Executive framing |
 
 You can override both in the GUI launcher or with `--llm-model` / `--advisory-model` CLI flags.
+
+The GUI model dropdowns are populated from the **live Anthropic model list** at
+startup (via the shared `../global-api-config` `llm_providers` module, if
+present), so retired model snapshots don't linger as selectable 404s. If that
+shared config or the network is unavailable, the dropdowns fall back to a static
+verified list (`report_models.DEFAULT_REPORT_MODELS`). If the preferred default
+above is ever retired, the GUI defaults to the first currently-available model
+instead.
 
 **Approximate LLM cost per run:** $0.08–$0.40 depending on model and keyword count.
 
