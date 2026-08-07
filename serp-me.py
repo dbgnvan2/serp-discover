@@ -23,7 +23,11 @@ from generate_domain_override_candidates import (
 )
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 from config_manager import ConfigManagerWindow
-from report_models import DEFAULT_REPORT_MODELS, get_report_model_options
+from report_models import (
+    DEFAULT_REPORT_MODELS,
+    get_report_model_options,
+    resolve_default,
+)
 
 
 def normalize_keyword_list(keywords):
@@ -299,15 +303,34 @@ class SerpLauncherApp:
 
         # Source the model dropdowns from the live Anthropic model list when
         # reachable (falls back to REPORT_MODEL_OPTIONS on any error/offline),
-        # so retired snapshots never linger in the dropdown.
+        # so retired snapshots never linger in the dropdown. NOTE: this makes a
+        # synchronous HTTP GET at startup (short timeout ceiling in
+        # report_models). on_error surfaces a real misconfiguration (bad keys
+        # file, auth failure) instead of it looking identical to being offline.
         self.report_model_options = get_report_model_options(
-            fallback=self.REPORT_MODEL_OPTIONS
+            fallback=self.REPORT_MODEL_OPTIONS,
+            on_error=lambda exc: print(
+                f"[report-models] live model list unavailable, using static "
+                f"fallback: {type(exc).__name__}: {exc}",
+                file=sys.stderr,
+            ),
+        )
+        # Derive the default *selection* from the live list too — if the
+        # preferred default was retired it is no longer in report_model_options,
+        # so defaulting to it would 404 the run even though the dropdown is
+        # clean. resolve_default keeps the preferred model when it is offered,
+        # else falls back to the first (guaranteed-live) option.
+        self.main_report_default = resolve_default(
+            self.MAIN_REPORT_DEFAULT_MODEL, self.report_model_options
+        )
+        self.advisory_default = resolve_default(
+            self.ADVISORY_DEFAULT_MODEL, self.report_model_options
         )
 
         model_frame = ttk.Frame(root)
         model_frame.pack(fill="x", padx=20, pady=(0, 6))
         ttk.Label(model_frame, text="Main Report Model:").pack(side="left", padx=(0, 6))
-        self.main_model_var = tk.StringVar(value=self.MAIN_REPORT_DEFAULT_MODEL)
+        self.main_model_var = tk.StringVar(value=self.main_report_default)
         self.main_model_combo = ttk.Combobox(
             model_frame,
             textvariable=self.main_model_var,
@@ -317,7 +340,7 @@ class SerpLauncherApp:
         self.main_model_combo.pack(side="left", padx=(0, 12))
 
         ttk.Label(model_frame, text="Advisory Model:").pack(side="left", padx=(0, 6))
-        self.advisory_model_var = tk.StringVar(value=self.ADVISORY_DEFAULT_MODEL)
+        self.advisory_model_var = tk.StringVar(value=self.advisory_default)
         self.advisory_model_combo = ttk.Combobox(
             model_frame,
             textvariable=self.advisory_model_var,
@@ -811,8 +834,8 @@ class SerpLauncherApp:
 
         cmd = [sys.executable, script_info["file"]]
         if script_info["file"] == "generate_content_brief.py":
-            main_model = self.main_model_var.get().strip() or self.MAIN_REPORT_DEFAULT_MODEL
-            advisory_model = self.advisory_model_var.get().strip() or self.ADVISORY_DEFAULT_MODEL
+            main_model = self.main_model_var.get().strip() or self.main_report_default
+            advisory_model = self.advisory_model_var.get().strip() or self.advisory_default
             cmd.extend([
                 "--json", run_context["input_json"],
                 "--list",

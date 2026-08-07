@@ -639,6 +639,7 @@ def list_recommendations(data, args):
             # succeeded. Catch API/runtime errors, report honestly, and skip the
             # advisory. `except Exception` does NOT catch SystemExit, so the
             # intentional sys.exit(2) validation failures below still abort.
+            advisory_report = None
             try:
                 advisory_report = run_llm_report(
                     system_prompt=advisory_system_prompt,
@@ -673,21 +674,25 @@ def list_recommendations(data, args):
                             print(f"- {issue}")
                         print(f"- Validation artifact written to {artifact_path}")
                         sys.exit(2)
-                with open(args.advisory_out, "w", encoding="utf-8") as f:
-                    f.write(advisory_report + "\n")
-                progress(f"[done] Advisory briefing written to {args.advisory_out}")
             except SystemExit:
                 raise
             except Exception as advisory_error:
+                advisory_report = None
                 print(
-                    "Warning: Advisory briefing SKIPPED — the LLM call failed: "
-                    f"{type(advisory_error).__name__}: {advisory_error}"
+                    "Warning: Advisory briefing SKIPPED — second-pass generation "
+                    f"failed: {type(advisory_error).__name__}: {advisory_error}"
                 )
                 print(
                     "  The main Content Opportunity report was written successfully; "
-                    "only the advisory second pass was skipped. Check the "
-                    "--advisory-model value if this is a 404/not_found error."
+                    "only the advisory second pass was skipped. If this is a "
+                    "404/not_found error, check the --advisory-model value."
                 )
+            # File write is OUTSIDE the try so a disk/permission error here is
+            # reported as itself, not mislabeled as an LLM/advisory-model failure.
+            if advisory_report is not None:
+                with open(args.advisory_out, "w", encoding="utf-8") as f:
+                    f.write(advisory_report + "\n")
+                progress(f"[done] Advisory briefing written to {args.advisory_out}")
 
     print("\nContent Opportunity Report generated.\n")
     print(f"Output: {args.report_out}")
