@@ -50,23 +50,27 @@ VALID_CONTENT_TYPES = {
 # never drift out of sync with the type list. The previous hardcoded set omitted
 # "publisher" (added for the Y.8 citation table), so a valid domain_overrides
 # entry mapping a domain to "publisher" failed validation. The literal set below
-# is only a fallback for when the taxonomy source can't be imported.
+# is the fallback when the taxonomy source is unavailable OR yields nothing —
+# an EMPTY set would reject every type, the opposite of the intended hardening.
+_LITERAL_ENTITY_TYPES = {
+    "counselling",
+    "legal",
+    "directory",
+    "nonprofit",
+    "government",
+    "media",
+    "publisher",
+    "professional_association",
+    "education",
+}
 try:
     from classifiers import ENTITY_TYPES as _ENTITY_TYPES
 
-    VALID_ENTITY_TYPES = set(_ENTITY_TYPES)
+    # `or` guards the empty case: a missing/corrupt classification_rules.json makes
+    # load_rules() return {} -> ENTITY_TYPES == [] -> set() (import still succeeds).
+    VALID_ENTITY_TYPES = set(_ENTITY_TYPES) or set(_LITERAL_ENTITY_TYPES)
 except Exception:  # pragma: no cover - taxonomy source unavailable
-    VALID_ENTITY_TYPES = {
-        "counselling",
-        "legal",
-        "directory",
-        "nonprofit",
-        "government",
-        "media",
-        "publisher",
-        "professional_association",
-        "education",
-    }
+    VALID_ENTITY_TYPES = set(_LITERAL_ENTITY_TYPES)
 
 VALID_LOCAL_PACK = {"yes", "no", "any"}
 VALID_DOMAIN_ROLE = {"client", "known_competitor", "other", "any"}

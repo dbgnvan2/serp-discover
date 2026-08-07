@@ -11,7 +11,11 @@ No tkinter: pure validator + taxonomy import.
 """
 
 from classifiers import ENTITY_TYPES
-from config_validators import VALID_ENTITY_TYPES, validate_domain_overrides
+from config_validators import (
+    VALID_ENTITY_TYPES,
+    _LITERAL_ENTITY_TYPES,
+    validate_domain_overrides,
+)
 
 
 def test_validator_covers_every_classifier_entity_type():
@@ -31,3 +35,34 @@ def test_bogus_type_still_rejected():
     """A genuinely invalid type is still rejected (validator not neutered)."""
     ok, errors, _ = validate_domain_overrides({"example.com": "not_a_real_type"})
     assert ok is False and errors
+
+
+def test_valid_types_never_empty():
+    """VALID_ENTITY_TYPES must never be empty — an empty set rejects everything."""
+    assert VALID_ENTITY_TYPES, "empty VALID_ENTITY_TYPES would reject all overrides"
+    assert "publisher" in VALID_ENTITY_TYPES
+
+
+def test_literal_fallback_is_complete():
+    """The literal fallback (used when the taxonomy source is empty/unavailable) covers all types."""
+    assert "publisher" in _LITERAL_ENTITY_TYPES
+    # Fallback must be a superset of the live taxonomy so an empty-source fallback stays valid.
+    missing = [t for t in ENTITY_TYPES if t not in _LITERAL_ENTITY_TYPES]
+    assert not missing, f"literal fallback missing real types: {missing}"
+
+
+def test_empty_taxonomy_falls_back():
+    """Re-deriving VALID_ENTITY_TYPES with an empty ENTITY_TYPES uses the literal fallback."""
+    import importlib
+    import classifiers
+    import config_validators as cv
+
+    original = classifiers.ENTITY_TYPES
+    try:
+        classifiers.ENTITY_TYPES = []  # simulate missing/corrupt classification_rules.json
+        reloaded = importlib.reload(cv)
+        assert reloaded.VALID_ENTITY_TYPES == set(reloaded._LITERAL_ENTITY_TYPES)
+        assert "publisher" in reloaded.VALID_ENTITY_TYPES
+    finally:
+        classifiers.ENTITY_TYPES = original  # restore BEFORE reloading cv
+        importlib.reload(cv)

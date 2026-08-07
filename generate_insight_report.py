@@ -358,7 +358,13 @@ def _order_briefs_by_opportunity(data: dict, strategic_recs: list, best_opportun
     ordered by: best opportunity keyword first, then by feasibility/intent ranking.
     """
     if not strategic_recs or not data.get("keyword_profiles"):
-        return list(enumerate((rec.get("Pattern_Name", ""), None, None) for rec in strategic_recs))
+        # Same 4-tuple contract as the normal return below
+        # (idx, pattern_name, most_rel_kw, rank_score) — the old 2-tuple shape
+        # here made callers that index [1]/[2]/[3] read a nested tuple and crash.
+        return [
+            (idx, rec.get("Pattern_Name", ""), None, (-1, 0, 0, ""))
+            for idx, rec in enumerate(strategic_recs)
+        ]
 
     config = _load_config()
     preferred_intents = config.get("client", {}).get("preferred_intents", ["informational"])
@@ -454,7 +460,12 @@ def generate_report(data, db_path=None, run_ts=None):
         keyword_feasibility,
         preferred_intents
     )
-    report.extend(_render_executive_summary(data, best_kw, best_reason))
+    # Isolate the Exec Summary too: a raise here (e.g. a malformed brief) must
+    # not abort the whole market_analysis_*.md write in serp_audit's swallowing try.
+    report.extend(_safe_section(
+        "0. Executive Summary",
+        lambda: _render_executive_summary(data, best_kw, best_reason),
+    ))
 
     # 1. Overview & Opportunity
     report.append("## 1. Market Overview")
