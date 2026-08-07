@@ -23,6 +23,7 @@ from generate_domain_override_candidates import (
 )
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 from config_manager import ConfigManagerWindow
+from report_models import DEFAULT_REPORT_MODELS, get_report_model_options
 
 
 def normalize_keyword_list(keywords):
@@ -57,19 +58,19 @@ class SerpLauncherApp:
         "nonprofit": {"background": "#f3e5f5"},
         "government": {"background": "#eceff1"},
         "media": {"background": "#fff8e1"},
+        "publisher": {"background": "#ede7f6"},
         "professional_association": {"background": "#e0f7fa"},
         "education": {"background": "#f1f8e9"},
         "unknown": {"background": "#f5f5f5"},
     }
-    REPORT_MODEL_OPTIONS = [
-        "claude-opus-4-6",
-        "claude-sonnet-4-20250514",
-        "claude-opus-4-1-20250805",
-        "claude-opus-4-20250514",
-        "claude-3-7-sonnet-20250219",
-    ]
+    # Static fallback for the report-model dropdowns. The effective list is
+    # sourced from the live Anthropic model list at startup (see __init__ and
+    # report_models.get_report_model_options) so retired snapshots such as
+    # claude-sonnet-4-20250514 can't reappear as 404 landmines; this list is
+    # used only when the shared global-api-config or network is unavailable.
+    REPORT_MODEL_OPTIONS = list(DEFAULT_REPORT_MODELS)
     MAIN_REPORT_DEFAULT_MODEL = "claude-opus-4-6"
-    ADVISORY_DEFAULT_MODEL = "claude-sonnet-4-20250514"
+    ADVISORY_DEFAULT_MODEL = "claude-opus-4-6"
 
     def __init__(self, root):
         self.root = root
@@ -296,6 +297,13 @@ class SerpLauncherApp:
         )
         self.deep_research_mode_chk.pack(side="left", padx=5)
 
+        # Source the model dropdowns from the live Anthropic model list when
+        # reachable (falls back to REPORT_MODEL_OPTIONS on any error/offline),
+        # so retired snapshots never linger in the dropdown.
+        self.report_model_options = get_report_model_options(
+            fallback=self.REPORT_MODEL_OPTIONS
+        )
+
         model_frame = ttk.Frame(root)
         model_frame.pack(fill="x", padx=20, pady=(0, 6))
         ttk.Label(model_frame, text="Main Report Model:").pack(side="left", padx=(0, 6))
@@ -303,7 +311,7 @@ class SerpLauncherApp:
         self.main_model_combo = ttk.Combobox(
             model_frame,
             textvariable=self.main_model_var,
-            values=self.REPORT_MODEL_OPTIONS,
+            values=self.report_model_options,
             width=28,
         )
         self.main_model_combo.pack(side="left", padx=(0, 12))
@@ -313,7 +321,7 @@ class SerpLauncherApp:
         self.advisory_model_combo = ttk.Combobox(
             model_frame,
             textvariable=self.advisory_model_var,
-            values=self.REPORT_MODEL_OPTIONS,
+            values=self.report_model_options,
             width=28,
         )
         self.advisory_model_combo.pack(side="left")
@@ -966,7 +974,7 @@ class SerpLauncherApp:
         overrides_path = os.path.join(os.getcwd(), paths["overrides"])
         started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.log("\n" + "=" * 68 + "\n")
-        self.log(f"[{started_at}] Starting: 6. Review Domain Override Candidates\n")
+        self.log(f"[{started_at}] Starting: 2. Review Domain Overrides\n")
         self.log(f"> JSON source: {json_path}\n")
         self.log(f"> Overrides file: {overrides_path}\n")
         self.log("-" * 68 + "\n")
@@ -1106,10 +1114,16 @@ class SerpLauncherApp:
         legend = ttk.LabelFrame(window, text="Category Colors")
         legend.pack(fill="x", padx=12, pady=(0, 8))
         for idx, entity_type in enumerate(ENTITY_TYPES):
+            # Fall back to the "unknown" style so a newly-added entity type
+            # (present in ENTITY_TYPES but not yet in this map) degrades to the
+            # default colour instead of KeyError-ing the whole review window.
+            style = self.DOMAIN_REVIEW_TAG_STYLES.get(
+                entity_type, self.DOMAIN_REVIEW_TAG_STYLES["unknown"]
+            )
             chip = tk.Label(
                 legend,
                 text=f" {entity_type} ",
-                bg=self.DOMAIN_REVIEW_TAG_STYLES[entity_type]["background"],
+                bg=style["background"],
                 padx=6,
                 pady=2,
                 relief="groove",
