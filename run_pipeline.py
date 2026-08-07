@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
 run_pipeline.py
-Orchestrates the full SERP audit pipeline:
-1. Run Audit (Fetch + Enrich + Store)
-2. Validate Output (XLSX vs JSON)
-3. Verify DB Enrichment
-4. Generate Domain Override Review Candidates
+GUI item 1 (Run Full Pipeline). Orchestrates four sub-steps, logged as
+Step 1.1-1.4 so they don't collide with the GUI's own item numbers 1-4:
+  1.1 Run Audit (Fetch + Enrich + Store)
+  1.2 Validate Output (XLSX vs JSON)
+  1.3 Verify DB Enrichment
+  1.4 Generate Domain Override Review Candidates
 """
 import subprocess
 import sys
@@ -33,7 +34,7 @@ def main():
 
     # 1. Run SERP Audit
     run_command([sys.executable, "serp_audit.py"],
-                "Step 1: SERP Audit & Enrichment")
+                "Step 1.1: SERP Audit & Enrichment")
 
     # Re-read config: serp_audit.py writes the actual output paths on completion.
     if os.path.exists("config.yml"):
@@ -52,13 +53,13 @@ def main():
             "--xlsx", xlsx_file,
             "--json", json_file,
             "--out", diff_file
-        ], "Step 2: Data Validation")
+        ], "Step 1.2: Data Validation")
     else:
         print("⚠️ Skipping validation: Output files not found.")
 
     # 3. Verify Database Enrichment
     run_command([sys.executable, "verify_enrichment.py"],
-                "Step 3: DB Enrichment Verification")
+                "Step 1.3: DB Enrichment Verification")
 
     # 4. Generate Domain Override Review Candidates
     if os.path.exists(json_file):
@@ -67,12 +68,14 @@ def main():
             "--json", json_file,
             "--overrides", files_cfg.get("domain_overrides", "domain_overrides.yml"),
             "--out", "domain_override_candidates.md",
-        ], "Step 4: Domain Override Candidate Report")
+        ], "Step 1.4: Domain Override Candidate Report")
     else:
         print("⚠️ Skipping domain override candidate report: JSON output not found.")
 
-    print("\n🎉 Pipeline Finished Successfully!")
-    print(f"   - Report: market_analysis_v2.md")
+    # Markdown report shares the JSON stem (same topic + timestamp).
+    md_file = json_file[:-5] + ".md" if json_file.endswith(".json") else "market_analysis.md"
+    print("\n🎉 Full Pipeline (item 1) Finished Successfully!")
+    print(f"   - Report: {md_file}")
     print(f"   - Excel:  {xlsx_file}")
     print(f"   - JSON:   {json_file}")
     print(f"   - DB:     serp_data.db")
