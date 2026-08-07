@@ -45,16 +45,28 @@ VALID_CONTENT_TYPES = {
     "any",
 }
 
-VALID_ENTITY_TYPES = {
-    "counselling",
-    "legal",
-    "directory",
-    "nonprofit",
-    "government",
-    "media",
-    "professional_association",
-    "education",
-}
+# Source the accepted entity types from the SAME taxonomy the classifier uses
+# (classification_rules.json via classifiers.ENTITY_TYPES) so this validator can
+# never drift out of sync with the type list. The previous hardcoded set omitted
+# "publisher" (added for the Y.8 citation table), so a valid domain_overrides
+# entry mapping a domain to "publisher" failed validation. The literal set below
+# is only a fallback for when the taxonomy source can't be imported.
+try:
+    from classifiers import ENTITY_TYPES as _ENTITY_TYPES
+
+    VALID_ENTITY_TYPES = set(_ENTITY_TYPES)
+except Exception:  # pragma: no cover - taxonomy source unavailable
+    VALID_ENTITY_TYPES = {
+        "counselling",
+        "legal",
+        "directory",
+        "nonprofit",
+        "government",
+        "media",
+        "publisher",
+        "professional_association",
+        "education",
+    }
 
 VALID_LOCAL_PACK = {"yes", "no", "any"}
 VALID_DOMAIN_ROLE = {"client", "known_competitor", "other", "any"}
