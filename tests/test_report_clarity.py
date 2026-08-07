@@ -182,13 +182,13 @@ class TestRC1ExecutiveSummary:
 
     # RC.1.2 — Content brief priority
     def test_rc1_write_first_priority(self, leila_report):
-        """RC.1.2: 'Write first' sentence links to best opportunity keyword."""
+        """RC.1.2: a concrete 'Write first' sentence is rendered (RC.8 wiring), not the old placeholder."""
         report = leila_report
         exec_summary_end = report.find("## 1.")
         exec_summary = report[:exec_summary_end]
-        # Should have instruction about which brief to write first
-        # Placeholder text: "Content brief prioritization will be added by RC.8."
-        assert "brief prioritization" in exec_summary.lower() or "write" in exec_summary.lower() or "## 0." in report
+        # The RC.8 placeholder must be gone, replaced by a real recommendation.
+        assert "will be added by RC.8" not in exec_summary
+        assert "**Write first:**" in exec_summary or "No content briefs available" in exec_summary
 
     def test_rc1_brief_fallback_first(self, leila_report):
         """RC.1.2: Falls back to first brief if no match to best keyword."""

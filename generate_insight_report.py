@@ -253,8 +253,26 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
     else:
         report.append(f"**Best keyword opportunity:** cannot be determined — {best_opportunity_reason}\n")
 
-    # RC.1.2 — Content brief priority (placeholder; will be filled by RC.8)
-    report.append("*Content brief prioritization will be added by RC.8.*\n")
+    # RC.1.2 — Content brief priority. Wires the RC.8 ordering
+    # (_order_briefs_by_opportunity) into the Executive Summary: the first
+    # ordered brief is the "write first" recommendation. Spec:
+    # report_clarity_spec.md#RC.1.2.
+    strategic_recs = data.get("strategic_recommendations", [])
+    ordered = _order_briefs_by_opportunity(data, strategic_recs, best_opportunity_kw)
+    if ordered:
+        first_idx = ordered[0][0]
+        first_pattern = ordered[0][1] if len(ordered[0]) > 1 else ""
+        first_kw = ordered[0][2] if len(ordered[0]) > 2 else None
+        rec = strategic_recs[first_idx] if 0 <= first_idx < len(strategic_recs) else {}
+        content_angle = (rec.get("Content_Angle") or first_pattern or "the top-priority brief").rstrip(". ")
+        pattern_name = rec.get("Pattern_Name", first_pattern or "")
+        line = f"**Write first:** {content_angle} (`{pattern_name}`)."
+        if not (best_opportunity_kw and first_kw == best_opportunity_kw):
+            # RC.1.2 fallback: no brief maps to the best opportunity keyword.
+            line += " *(No brief maps to the best-opportunity keyword; using the top-ranked brief.)*"
+        report.append(line + "\n")
+    else:
+        report.append("*No content briefs available to prioritize.*\n")
 
     # RC.1.3 — Keyword action table
     report.append("| Keyword | Intent | Confidence | Feasibility | Action |")
