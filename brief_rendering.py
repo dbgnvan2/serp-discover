@@ -632,42 +632,62 @@ def list_recommendations(data, args):
                 ),
                 market_report_text=report,
             )
-            advisory_report = run_llm_report(
-                system_prompt=advisory_system_prompt,
-                user_prompt=advisory_user,
-                model=advisory_model,
-                max_tokens=4000,
-            )
-            advisory_issues = validate_advisory_briefing(advisory_report, extracted)
-            if advisory_issues:
-                correction_msg = build_correction_message(
-                    advisory_issues,
-                    template_path=args.correction_prompt,
-                )
+            # The advisory briefing is a SECONDARY artifact — the main content
+            # opportunity report is already written (above). An LLM failure here
+            # (e.g. a retired/404 advisory model, a timeout) must not crash the
+            # whole step with an unhandled traceback after the primary deliverable
+            # succeeded. Catch API/runtime errors, report honestly, and skip the
+            # advisory. `except Exception` does NOT catch SystemExit, so the
+            # intentional sys.exit(2) validation failures below still abort.
+            try:
                 advisory_report = run_llm_report(
                     system_prompt=advisory_system_prompt,
                     user_prompt=advisory_user,
                     model=advisory_model,
                     max_tokens=4000,
-                    prior_response=advisory_report,
-                    correction_message=correction_msg,
                 )
                 advisory_issues = validate_advisory_briefing(advisory_report, extracted)
                 if advisory_issues:
-                    artifact_path = write_validation_artifact(
-                        args.advisory_out,
-                        "Advisory Briefing Validation Issues",
+                    correction_msg = build_correction_message(
                         advisory_issues,
-                        advisory_report,
+                        template_path=args.correction_prompt,
                     )
-                    print("Error: Advisory briefing failed validation.")
-                    for issue in advisory_issues:
-                        print(f"- {issue}")
-                    print(f"- Validation artifact written to {artifact_path}")
-                    sys.exit(2)
-            with open(args.advisory_out, "w", encoding="utf-8") as f:
-                f.write(advisory_report + "\n")
-            progress(f"[done] Advisory briefing written to {args.advisory_out}")
+                    advisory_report = run_llm_report(
+                        system_prompt=advisory_system_prompt,
+                        user_prompt=advisory_user,
+                        model=advisory_model,
+                        max_tokens=4000,
+                        prior_response=advisory_report,
+                        correction_message=correction_msg,
+                    )
+                    advisory_issues = validate_advisory_briefing(advisory_report, extracted)
+                    if advisory_issues:
+                        artifact_path = write_validation_artifact(
+                            args.advisory_out,
+                            "Advisory Briefing Validation Issues",
+                            advisory_issues,
+                            advisory_report,
+                        )
+                        print("Error: Advisory briefing failed validation.")
+                        for issue in advisory_issues:
+                            print(f"- {issue}")
+                        print(f"- Validation artifact written to {artifact_path}")
+                        sys.exit(2)
+                with open(args.advisory_out, "w", encoding="utf-8") as f:
+                    f.write(advisory_report + "\n")
+                progress(f"[done] Advisory briefing written to {args.advisory_out}")
+            except SystemExit:
+                raise
+            except Exception as advisory_error:
+                print(
+                    "Warning: Advisory briefing SKIPPED — the LLM call failed: "
+                    f"{type(advisory_error).__name__}: {advisory_error}"
+                )
+                print(
+                    "  The main Content Opportunity report was written successfully; "
+                    "only the advisory second pass was skipped. Check the "
+                    "--advisory-model value if this is a 404/not_found error."
+                )
 
     print("\nContent Opportunity Report generated.\n")
     print(f"Output: {args.report_out}")
