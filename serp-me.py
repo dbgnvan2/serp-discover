@@ -162,7 +162,16 @@ class SerpLauncherApp:
                     "  - Fetches SERP data (Google, Maps, AI)\n"
                     "  - Enriches data (HTML parsing, Entity Classification)\n"
                     "  - Generates Market Analysis reports\n"
-                    "  - Stores history in SQLite"
+                    "  - Stores history in SQLite\n\n"
+                    "OUTPUTS:\n"
+                    "  - output/market_analysis_<topic>_<ts>.json / .xlsx / .md\n"
+                    "  - output/competitor_handoff_<topic>_<ts>.json\n"
+                    "  - normalized/<ts>.serp_norm.json\n"
+                    "  - serp_data.db (updated)\n"
+                    "  - diff_report.json (xlsx-vs-json validation)\n"
+                    "  - domain_override_candidates.md\n\n"
+                    "NOTE: Intent-ranked only. Feasibility ranking and the content\n"
+                    "briefs come from items 3 and 4."
                 )
             },
 
@@ -177,7 +186,11 @@ class SerpLauncherApp:
                     "WHEN: After a pipeline run, if you want to improve entity classification.\n\n"
                     "WHY: Opens a checklist of domains to override (counselling, directory, etc).\n\n"
                     "NOTE: After approving overrides, the system will auto-run Market Analysis regeneration.\n"
-                    "You do NOT need to manually run a 'Refresh' step."
+                    "You do NOT need to manually run a 'Refresh' step.\n\n"
+                    "OUTPUTS:\n"
+                    "  - domain_overrides.yml (approved domains added)\n"
+                    "  - Refreshed output JSON + XLSX\n"
+                    "  - domain_override_candidates.md (regenerated)"
                 )
             },
 
@@ -193,8 +206,12 @@ class SerpLauncherApp:
                     "  - High / Moderate / Low Feasibility per keyword\n"
                     "  - Hyper-local pivot suggestions\n"
                     "  - Auto-regenerates Market Analysis with feasibility ranking\n\n"
-                    "NOTE: Must run BEFORE Content Opportunities (Step 4).\n"
-                    "Requires MOZ_TOKEN in .env (free tier: 50 rows/month)."
+                    "NOTE: Must run BEFORE Content Opportunities (item 4).\n"
+                    "Requires MOZ_TOKEN in .env (free tier: 50 rows/month).\n\n"
+                    "OUTPUTS:\n"
+                    "  - feasibility_<topic>_<ts>.md\n"
+                    "  - output/market_analysis_<topic>_<ts>.md (regenerated,\n"
+                    "    feasibility-ranked)"
                 )
             },
             {
@@ -209,7 +226,10 @@ class SerpLauncherApp:
                     "  - Keywords ordered by High → Moderate → Low feasibility\n"
                     "  - Strategic content angles per keyword\n"
                     "  - PAA questions and competitor analysis\n\n"
-                    "NOTE: Requires Anthropic API (ANTHROPIC_API_KEY)."
+                    "NOTE: Requires Anthropic API (ANTHROPIC_API_KEY).\n\n"
+                    "OUTPUTS:\n"
+                    "  - content_opportunities_<topic>_<ts>.md\n"
+                    "  - advisory_briefing_<topic>_<ts>.md"
                 )
             },
 
@@ -222,7 +242,10 @@ class SerpLauncherApp:
                 "desc": (
                     "WHEN: After accumulating several days of data.\n\n"
                     "WHY: Lists keywords tracked for rank volatility.\n\n"
-                    "CLI: python visualize_volatility.py --keyword 'Your Keyword' for chart"
+                    "CLI: python visualize_volatility.py --keyword 'Your Keyword' for chart\n\n"
+                    "OUTPUTS:\n"
+                    "  - Console: list of tracked keywords (no file written)\n"
+                    "  - CLI --keyword: volatility_<keyword>.png chart"
                 )
             },
             {
@@ -232,7 +255,9 @@ class SerpLauncherApp:
                 "args": [],
                 "desc": (
                     "WHEN: Monthly or for external analysis.\n\n"
-                    "WHY: Dumps SQLite data to CSV files in 'exports/' folder."
+                    "WHY: Dumps SQLite data to CSV files in 'exports/' folder.\n\n"
+                    "OUTPUTS:\n"
+                    "  - exports/<table>.csv (one file per database table)"
                 )
             },
             {
@@ -242,7 +267,9 @@ class SerpLauncherApp:
                 "args": [],
                 "desc": (
                     "WHEN: If you suspect data integrity issues.\n\n"
-                    "WHY: Validates SQLite enrichment tables are correctly populated."
+                    "WHY: Validates SQLite enrichment tables are correctly populated.\n\n"
+                    "OUTPUTS:\n"
+                    "  - Console: DB population report (no file written)"
                 )
             },
         ]
@@ -1073,18 +1100,31 @@ class SerpLauncherApp:
             if not json_path or not os.path.exists(json_path):
                 return
 
+            # Regenerate the MARKET ANALYSIS report that matches this JSON, in
+            # place (same stem, .md). Do NOT use output_names["report_out"] — that
+            # is the content_opportunities file, so the old code wrote the insight
+            # report to the wrong filename and left the user's market_analysis .md
+            # stale (still "feasibility data is missing") while creating a bogus
+            # content_opportunities_<ts>.md.
+            if json_path.endswith(".json"):
+                md_out = json_path[:-len(".json")] + ".md"
+            else:
+                md_out = self.current_run_context.get("output_names", {}).get("output_md", "")
+
             self.log("\n[Auto] Regenerating Market Analysis report with feasibility data...\n")
 
             cmd = [
                 sys.executable,
                 "generate_insight_report.py",
                 "--json", json_path,
-                "--out", self.current_run_context.get("output_names", {}).get("report_out", "")
+                "--out", md_out,
             ]
 
             result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
             if result.returncode == 0:
-                self.log("✓ Market Analysis report regenerated with feasibility ranking.\n")
+                self.log(
+                    f"✓ Market Analysis report regenerated with feasibility ranking: {md_out}\n"
+                )
             else:
                 self.log(f"⚠ Could not auto-regenerate report: {result.stderr}\n")
         except Exception as e:
