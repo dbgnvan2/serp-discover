@@ -547,7 +547,7 @@ When Serp-Discover recommends which keywords to target first, it ranks them usin
 
 #### What If Feasibility Data Is Missing?
 
-Domain Authority data comes from external APIs (DataForSEO or Moz). If those APIs fail or credentials aren't set up, feasibility data may be unavailable. In that case:
+Domain Authority data comes from external APIs (DataForSEO or Moz). Moz needs only `MOZ_TOKEN` in your `.env` — the audit previously looked for `MOZ_ACCESS_ID` and `MOZ_SECRET_KEY`, which this project never used, so Moz enrichment stayed off during audit runs no matter what was configured. It now runs whenever `MOZ_TOKEN` is set and `feasibility.enabled` is true, and the run log reports how many API rows each fetch billed (cache hits bill nothing). If those APIs fail or credentials aren't set up, feasibility data may be unavailable. In that case:
 - Intent match becomes the primary ranking factor (still required to pursue)
 - Confidence becomes the secondary ranking factor
 - You can still prioritize, but you should re-run with DA data as soon as possible to refine your priorities

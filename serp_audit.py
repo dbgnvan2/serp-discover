@@ -32,9 +32,8 @@ except ImportError:
     SERPAPI_AVAILABLE = False
 
 try:
-    from moz_client import MozClient
-    _moz_creds_present = bool(os.getenv("MOZ_ACCESS_ID") and os.getenv("MOZ_SECRET_KEY"))
-    MOZ_AVAILABLE = _moz_creds_present
+    from moz_client import MozClient, credentials_present
+    MOZ_AVAILABLE = credentials_present()
 except ImportError:
     MozClient = None
     MOZ_AVAILABLE = False
@@ -1422,7 +1421,7 @@ def main():
         except RuntimeError as e:
             print(f"--- MOZ DA enrichment: DISABLED ({e}) ---")
     elif FEASIBILITY_ENABLED:
-        print("--- MOZ DA enrichment: DISABLED (MOZ_ACCESS_ID / MOZ_SECRET_KEY not set) ---")
+        print("--- MOZ DA enrichment: DISABLED (MOZ_TOKEN not set in .env) ---")
 
     intent_classifier = IntentClassifier()
     print(f"--- Intent classifier: ENABLED ---")

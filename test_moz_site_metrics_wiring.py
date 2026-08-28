@@ -147,5 +147,117 @@ class TestSerpAuditSurface(unittest.TestCase):
         self.assertEqual(bare, [], "serp_audit.py builds a MozClient directly")
 
 
+class TestCredentialGate(unittest.TestCase):
+    """T.1 — the gate must name the credential this project actually uses.
+
+    serp_audit.py gated its whole DA block on MOZ_ACCESS_ID / MOZ_SECRET_KEY,
+    names that appear nowhere else in the repo, so MOZ_AVAILABLE was always
+    False and the Moz enrichment never ran from the audit path (P25).
+    """
+
+    def test_t1_credentials_present_reads_moz_token(self):
+        with patch.dict(os.environ, {"MOZ_TOKEN": "abc"}):
+            self.assertTrue(moz_client.credentials_present())
+
+    def test_t1_credentials_absent_when_moz_token_unset(self):
+        with patch.dict(os.environ, {"MOZ_TOKEN": ""}):
+            self.assertFalse(moz_client.credentials_present())
+
+    def test_t1_gate_does_not_depend_on_the_phantom_variables(self):
+        """MOZ_ACCESS_ID / MOZ_SECRET_KEY must not gate anything: setting them
+        without a token must not enable Moz, and a token alone must suffice."""
+        with patch.dict(os.environ,
+                        {"MOZ_TOKEN": "", "MOZ_ACCESS_ID": "a", "MOZ_SECRET_KEY": "b"}):
+            self.assertFalse(moz_client.credentials_present())
+        with patch.dict(os.environ,
+                        {"MOZ_TOKEN": "abc", "MOZ_ACCESS_ID": "", "MOZ_SECRET_KEY": ""}):
+            self.assertTrue(moz_client.credentials_present())
+
+    def test_t1_serp_audit_gates_on_the_shared_credential_check(self):
+        """The audit surface must use the shared check, not its own env read."""
+        with open("serp_audit.py", encoding="utf-8") as f:
+            tree = ast.parse(f.read())
+        assigns = [
+            node for node in ast.walk(tree)
+            if isinstance(node, ast.Assign)
+            and any(isinstance(t, ast.Name) and t.id == "MOZ_AVAILABLE"
+                    for t in node.targets)
+        ]
+        sources = [ast.unparse(node.value) for node in assigns]
+        self.assertIn("credentials_present()", sources)
+        for src in sources:
+            self.assertNotIn("MOZ_ACCESS_ID", src)
+            self.assertNotIn("MOZ_SECRET_KEY", src)
+
+    def test_t1_phantom_variables_are_gone_from_live_strings(self):
+        """No live string may still name them — the message did, too.
+
+        Docstrings are excluded: the code that fixed this describes the old
+        names to explain itself, and a check that trips on its own
+        explanation is the P19-corollary trap (a needle matching the prose
+        about the needle).
+        """
+        for path in ("serp_audit.py", "run_feasibility.py", "moz_client.py"):
+            with open(path, encoding="utf-8") as f:
+                tree = ast.parse(f.read())
+            docstrings = {
+                id(node.body[0].value)
+                for node in ast.walk(tree)
+                if isinstance(node, (ast.Module, ast.ClassDef,
+                                     ast.FunctionDef, ast.AsyncFunctionDef))
+                and node.body and isinstance(node.body[0], ast.Expr)
+                and isinstance(node.body[0].value, ast.Constant)
+                and isinstance(node.body[0].value.value, str)
+            }
+            live = [
+                node.value for node in ast.walk(tree)
+                if isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and id(node) not in docstrings
+            ]
+            for value in live:
+                self.assertNotIn("MOZ_ACCESS_ID", value, path)
+                self.assertNotIn("MOZ_SECRET_KEY", value, path)
+
+
+class TestRowsConsumedAccounting(unittest.TestCase):
+    """T.1 — the run log must state rows billed, never spend silently."""
+
+    def setUp(self):
+        self.env = patch.dict(os.environ, {"MOZ_TOKEN": "t"})
+        self.env.start()
+        self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.client = MozClient(db_path=self.tmp.name)
+
+    def tearDown(self):
+        self.env.stop()
+        os.unlink(self.tmp.name)
+
+    def test_t1_rows_consumed_starts_at_zero(self):
+        self.assertEqual(self.client.rows_consumed, 0)
+
+    @patch("moz_jsonrpc.requests.post")
+    def test_t1_rows_consumed_counts_fetched_targets(self, mock_post):
+        from test_moz_client import _make_moz_response
+        urls = ["https://a.com/", "https://b.com/"]
+        mock_post.return_value = _make_moz_response(urls)
+        self.client.get_moz_metrics(urls)
+        self.assertEqual(self.client.rows_consumed, 2)
+
+    @patch("moz_jsonrpc.requests.post")
+    def test_t1_cache_hits_bill_no_rows(self, mock_post):
+        """The 30-day cache is the whole quota argument — a hit must cost 0."""
+        from test_moz_client import _make_moz_response
+        urls = ["https://a.com/"]
+        mock_post.return_value = _make_moz_response(urls)
+        self.client.get_moz_metrics(urls)
+        first = self.client.rows_consumed
+
+        mock_post.reset_mock()
+        self.client.get_moz_metrics(urls)
+        mock_post.assert_not_called()
+        self.assertEqual(self.client.rows_consumed, first)
+
+
 if __name__ == "__main__":
     unittest.main()

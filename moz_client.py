@@ -116,6 +116,22 @@ DEFAULT_LINK_COUNT_FIELDS: tuple[str, ...] = (
 )
 
 
+def credentials_present() -> bool:
+    """Return whether Moz API credentials are configured.
+
+    Purpose: one place that knows what a Moz credential *is*, so a front end
+             cannot gate the feature on a variable this project never used.
+    Spec:    moz_api_upgrade_spec_v1.md#T.1
+    Tests:   test_moz_site_metrics_wiring.py::TestCredentialGate
+
+    Moz auth is a single ``MOZ_TOKEN``. ``serp_audit.py`` gated its whole DA
+    block on ``MOZ_ACCESS_ID`` and ``MOZ_SECRET_KEY`` — names that appear
+    nowhere else in this project — so the gate was never satisfied and the
+    enrichment silently never ran (learnings P25).
+    """
+    return bool(os.getenv("MOZ_TOKEN"))
+
+
 def _cache_key(url: str) -> str:
     """Return the scheme-stripped cache key for *url*.
 
@@ -180,6 +196,11 @@ class MozClient:
         self._link_count_fields = tuple(
             link_count_fields if link_count_fields else DEFAULT_LINK_COUNT_FIELDS
         )
+        #: Rows billed by Moz this session. 1 row ~= 1 object in a response,
+        #: so cache hits cost nothing and only fetched targets count. The spec
+        #: requires the run log to state rows consumed rather than spending
+        #: silently (moz_api_upgrade_spec_v1.md, "Quota budget").
+        self.rows_consumed = 0
         self._init_cache_table()
 
     @classmethod
@@ -285,6 +306,12 @@ class MozClient:
             if not target or not metrics:
                 continue
             results[target] = self._parse_site_metrics(metrics, fetched_at)
+
+        self.rows_consumed += len(results)
+        logger.info(
+            "Moz site metrics: %d target(s) fetched, %d row(s) billed this session",
+            len(results), self.rows_consumed,
+        )
 
         missing = [u for u in urls if u not in results]
         if missing:

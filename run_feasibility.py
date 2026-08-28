@@ -57,7 +57,7 @@ except ImportError:
     DATAFORSEO_AVAILABLE = False
 
 try:
-    from moz_client import MozClient
+    from moz_client import MozClient, credentials_present
     MOZ_AVAILABLE = True
 except ImportError:
     MOZ_AVAILABLE = False
@@ -272,7 +272,7 @@ def run_feasibility_analysis(
         except RuntimeError as exc:
             logger.warning("DataForSEO unavailable: %s", exc)
 
-    if da_client is None and MOZ_AVAILABLE and os.environ.get("MOZ_TOKEN"):
+    if da_client is None and MOZ_AVAILABLE and credentials_present():
         try:
             da_client = MozClient.from_config(config)
             da_source = "moz"
