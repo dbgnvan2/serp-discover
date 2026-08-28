@@ -101,11 +101,29 @@ def _load_config(config_path: str = "config.yml") -> dict:
 
 
 def _extract_domain(url: str) -> str:
+    """Return the bare domain for *url*, with or without a scheme.
+
+    ``urlparse`` puts everything in ``path`` when there is no ``//``, so a
+    scheme-less key such as ``"example.com/page"`` (the format the Moz cache
+    writes) would otherwise yield an empty domain.
+    """
     try:
-        return urlparse(url).netloc.lower().removeprefix("www.")
+        parsed = urlparse(url if "//" in url else "//" + url)
+        return parsed.netloc.lower().removeprefix("www.")
     except Exception:
         return ""
 
+
+# Every credential whose literal value must be scrubbed from a log line.
+# Hardening one provider's redaction and not its siblings is the P5 failure
+# mode: MOZ_TOKEN was absent here while Moz exceptions were being logged.
+_SECRET_ENV_VARS = (
+    "SERPAPI_KEY",
+    "MOZ_TOKEN",
+    "ANTHROPIC_API_KEY",
+    "DATAFORSEO_PASSWORD",
+    "GEMINI_API_KEY",
+)
 
 # Credential query-param names that must never reach a log line.
 _CREDENTIAL_PARAM_RE = re.compile(
@@ -124,9 +142,10 @@ def _scrub_secrets(text: object) -> str:
     Spec: seo_geo_review_20260704.md (chip B, B.3).
     """
     s = str(text)
-    key = os.environ.get("SERPAPI_KEY", "")
-    if key:
-        s = s.replace(key, "REDACTED")
+    for var in _SECRET_ENV_VARS:
+        value = os.environ.get(var, "")
+        if value:
+            s = s.replace(value, "REDACTED")
     s = _CREDENTIAL_PARAM_RE.sub(r"\1=REDACTED", s)
     return s
 
@@ -255,7 +274,7 @@ def run_feasibility_analysis(
 
     if da_client is None and MOZ_AVAILABLE and os.environ.get("MOZ_TOKEN"):
         try:
-            da_client = MozClient(cache_ttl_days=cache_ttl)
+            da_client = MozClient.from_config(config)
             da_source = "moz"
             logger.info("DA client: Moz (cache TTL: %d days)", cache_ttl)
         except RuntimeError as exc:
@@ -294,14 +313,17 @@ def run_feasibility_analysis(
     results: list[dict] = []
     pivot_jobs: list[dict] = []
 
-    # Build a domain-to-DA map for lookup since Moz returns domain paths,
-    # not full URLs. Maps domain to first matching cached entry.
+    # Build a domain-to-DA map for lookup. Both DA providers key their results
+    # by URL, so the domain has to be parsed out — `split('/')[0]` yielded
+    # "https:" for every DataForSEO key (it keys by the caller's input URL,
+    # scheme included), collapsing the whole map onto one bogus entry and
+    # leaving `avg_serp_da` None on every keyword. `lstrip('www.')` was a
+    # second defect: it strips *characters*, so "worldbank.org" became
+    # "orldbank.org". `_extract_domain` handles both key formats correctly.
     domain_to_da: dict[str, dict] = {}
     for cached_url, metrics in da_metrics.items():
-        # cached_url format: domain.com or domain.com/path
-        # Extract just the domain part
-        domain_part = cached_url.split('/')[0].lower().lstrip('www.')
-        if domain_part not in domain_to_da:
+        domain_part = _extract_domain(cached_url)
+        if domain_part and domain_part not in domain_to_da:
             domain_to_da[domain_part] = metrics
 
     keywords = sorted(urls_by_kw.keys())

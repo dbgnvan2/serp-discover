@@ -45,6 +45,20 @@ moz:
   # figure. Re-probe with `quota.lookup` if the plan changes; the API reports
   # `allotted` and `used`, and rows remaining is derived from the two.
   rows_per_month: 3000
+  # Site metrics (data.site.metrics.fetch.multiple). `scope` must be one of
+  # domain, subdomain, subfolder, url — `url` reproduces the page-level PA the
+  # legacy endpoint returned. `link_count_fields` is editorial: which of Moz's
+  # ~40 link-count fields are kept on each result and cached.
+  site_metrics:
+    scope: url
+    batch_size: 50
+    link_count_fields:
+    - root_domains_to_root_domain
+    - external_pages_to_root_domain
+    - nofollow_root_domains_to_root_domain
+    - root_domains_to_page
+    - external_pages_to_page
+    - pages_to_page
 situational_probes:
   enabled: false
   max_probes_per_run: 6

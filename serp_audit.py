@@ -1417,7 +1417,7 @@ def main():
     moz_client = None
     if FEASIBILITY_ENABLED and MOZ_AVAILABLE:
         try:
-            moz_client = MozClient(db_path="serp_data.db", cache_ttl_days=MOZ_CACHE_TTL_DAYS)
+            moz_client = MozClient.from_config(CONFIG, db_path="serp_data.db")
             print(f"--- MOZ DA enrichment: ENABLED (client_da={FEASIBILITY_CLIENT_DA}) ---")
         except RuntimeError as e:
             print(f"--- MOZ DA enrichment: DISABLED ({e}) ---")

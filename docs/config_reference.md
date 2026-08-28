@@ -7,6 +7,9 @@
 - `app.*` — API mode flags (`balanced_mode`, `deep_research_mode`)
 - `moz.cache_ttl_days` — DA cache lifetime in days (default 30)
 - `moz.enabled` — master switch for the Moz Data API (`api.moz.com/jsonrpc`); default `true`. Per-method flags gate spend independently (see moz_api_upgrade_spec_v1.md T.0)
+- `moz.site_metrics.scope` — Moz site-query scope: `domain`, `subdomain`, `subfolder` or `url` (default `url`, which reproduces the page-level Page Authority the legacy endpoint returned)
+- `moz.site_metrics.batch_size` — targets per `data.site.metrics.fetch.multiple` request (default 50)
+- `moz.site_metrics.link_count_fields` — **editorial**: which of Moz's link-count fields are kept on each result and cached. Every kept field costs nothing extra (they arrive in the same response); the list controls what downstream code and the cache see
 - `moz.rows_per_month` — the account's monthly data-row allowance, read from the live `quota.lookup` rather than hardcoded from the plan tier (3,000 on the Starter Medium plan, probed 2026-08-27). The API reports `allotted` and `used`; rows remaining is derived from the two by `moz_jsonrpc.parse_quota`
 - `feasibility.*` — DA gap thresholds, client DA, neighbourhoods, pivot settings
 - `audit_targets.n` — top-N organic URLs per keyword exported to competitor handoff (default 10)

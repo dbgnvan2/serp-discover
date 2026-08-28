@@ -339,6 +339,16 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 
 **What:** Moz's metric (0–100) predicting how well a domain will rank in Google. Higher DA = more "authority votes" from backlinks.
 
+**Also collected alongside DA (Moz only):** each URL looked up through Moz now also
+records a **Spam Score** (0–100 — Moz's estimate of how closely a site resembles sites
+that have been penalised; lower is better) and a set of **link counts** (how many pages
+and how many distinct domains link to the page and to the root domain). These are
+context, not scoring inputs: they do **not** change the feasibility calculation. Use
+them to sanity-check a competitor — a high DA next to a high Spam Score is a weaker
+target than DA alone suggests. Which link-count fields are kept is editorial and lives
+in `config.yml` under `moz.site_metrics.link_count_fields`. When Moz has no Spam Score
+for a URL the field is blank rather than 0, so "no data" is never shown as "clean".
+
 **In Serp-Discover:** Used as a proxy for ranking difficulty. If competitors have DA 50+ and Living Systems has DA 35, ranking is harder.
 
 **Important:** DA is a heuristic, not a guarantee. It's useful for comparison but not absolute truth. A DA 40 domain with great content might outrank DA 50 with weak content.
@@ -1262,7 +1272,10 @@ DA gap analysis:
 
 **Solution:**
 - Results are cached for 30 days; try Step 7 (Feasibility) again tomorrow
-- If DA remains unavailable, use MOZ fallback (free tier: 50 rows/month)
+- If DA remains unavailable, use the Moz fallback. The account is the Starter Medium
+  API plan, not the free tier; the real monthly row allowance is read at runtime via
+  `quota.lookup` and recorded as `moz.rows_per_month` in `config.yml` (3,000 rows as
+  of 2026-08-27, 1 row per URL looked up)
 - Mark the domain as "unknown feasibility" and manually estimate
 
 ### "Intent classification confidence is low"
