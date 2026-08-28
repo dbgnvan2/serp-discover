@@ -37,6 +37,14 @@ app:
   - enter_cautiously
 moz:
   cache_ttl_days: 30
+  # Master switch for the Moz Data API (api.moz.com/jsonrpc). Per-method
+  # flags are added by their own tasks and gate spend independently.
+  enabled: true
+  # Monthly data-row allowance for this account, read from the live
+  # `quota.lookup` on 2026-08-27 (Starter Medium plan) — NOT a hardcoded plan
+  # figure. Re-probe with `quota.lookup` if the plan changes; the API reports
+  # `allotted` and `used`, and rows remaining is derived from the two.
+  rows_per_month: 3000
 situational_probes:
   enabled: false
   max_probes_per_run: 6

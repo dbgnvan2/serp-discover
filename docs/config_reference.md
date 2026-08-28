@@ -6,6 +6,8 @@
 - `enrichment.*` — URL enrichment settings (`eeat_scan_chars` — how many leading body-text characters are scanned for author credentials and review markers, default 8000; see seo_geo_deferred G.3)
 - `app.*` — API mode flags (`balanced_mode`, `deep_research_mode`)
 - `moz.cache_ttl_days` — DA cache lifetime in days (default 30)
+- `moz.enabled` — master switch for the Moz Data API (`api.moz.com/jsonrpc`); default `true`. Per-method flags gate spend independently (see moz_api_upgrade_spec_v1.md T.0)
+- `moz.rows_per_month` — the account's monthly data-row allowance, read from the live `quota.lookup` rather than hardcoded from the plan tier (3,000 on the Starter Medium plan, probed 2026-08-27). The API reports `allotted` and `used`; rows remaining is derived from the two by `moz_jsonrpc.parse_quota`
 - `feasibility.*` — DA gap thresholds, client DA, neighbourhoods, pivot settings
 - `audit_targets.n` — top-N organic URLs per keyword exported to competitor handoff (default 10)
 - `audit_targets.omit_from_audit` — domains excluded from the handoff (never sent to Tool 2)

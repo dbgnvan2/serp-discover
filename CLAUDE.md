@@ -57,7 +57,11 @@ keyword feasibility via Domain Authority gap analysis.
 - `ANTHROPIC_API_KEY` — required for content brief generation.
 - `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` — primary DA provider
   (pay-per-use).
-- `MOZ_TOKEN` — fallback DA provider (free tier: 50 rows/month).
+- `MOZ_TOKEN` — fallback DA provider, and the credential for the full Moz
+  Data API (`api.moz.com/jsonrpc`). The account is the **Starter Medium**
+  API plan, *not* the free tier. The real row allowance is read at runtime
+  via `quota.lookup` (`moz_jsonrpc.quota_lookup`) and recorded in
+  `config.yml` as `moz.rows_per_month` — never hardcode a plan figure.
 - `GEMINI_API_KEY` — **optional**; enables the Gemini engine in
   `probe_ai_visibility.py` (G.1). Missing key = engine skipped with a
   warning, never an abort.

@@ -10,7 +10,9 @@ Gap = avg competitor DA − client DA. Thresholds:
 
 **DA providers** (tried in order):
 1. **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) — `POST /v3/backlinks/bulk_ranks/live`, up to 1000 domains/call, pay-per-use
-2. **Moz** (`MOZ_TOKEN`) — `POST /v2/url_metrics`, up to 50 URLs/call, free tier 50 rows/month
+2. **Moz** (`MOZ_TOKEN`) — `POST /v2/url_metrics`, up to 50 URLs/call. The account is the
+   Starter Medium API plan; the monthly row allowance is read at runtime via `quota.lookup`
+   and recorded as `moz.rows_per_month` in `config.yml` (3,000 rows/month as of 2026-08-27)
 
 Both cache results in SQLite (`da_cache` and `moz_cache` tables) for 30 days. Re-running within the cache window costs nothing.
 
