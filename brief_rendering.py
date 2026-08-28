@@ -467,6 +467,43 @@ def _dedupe_question_records(paa_questions):
     return out
 
 
+def _fetch_moz_keyword_metrics(data, config):
+    """Fetch Moz keyword metrics for the run's root keywords.
+
+    Purpose: pre-compute the T.2 signal block before extraction so the
+             extractor stays free of network calls.
+    Spec:    moz_api_upgrade_spec_v1.md#T.2
+    Tests:   test_moz_keywords.py::TestBriefWiring
+
+    Returns ``{}`` when the feature is off or the client cannot be built —
+    extraction then records ``status: "not_fetched"`` per keyword, which is
+    distinguishable from "Moz has no record" (learnings P2).
+    """
+    moz_cfg = (config.get("moz", {}) if isinstance(config, dict) else {}) or {}
+    kw_cfg = moz_cfg.get("keyword_metrics", {}) or {}
+    if not moz_cfg.get("enabled", True) or not kw_cfg.get("enabled", True):
+        return {}
+    try:
+        from moz_keywords import MozKeywordClient
+    except ImportError:
+        return {}
+
+    keywords = sorted({
+        row.get("Source_Keyword")
+        for row in (data.get("organic_results") or [])
+        if row.get("Query_Label") == "A" and row.get("Source_Keyword")
+    })
+    if not keywords:
+        return {}
+
+    progress(f"      Fetching Moz keyword metrics for {len(keywords)} keyword(s).")
+    try:
+        return MozKeywordClient.from_config(config).fetch(keywords)
+    except Exception as exc:  # never let an optional signal abort the brief
+        progress(f"      Moz keyword metrics unavailable: {exc}")
+        return {}
+
+
 def list_recommendations(data, args):
     config = load_yaml_config(args.config)
     progress("[3/7] Resolving client context from YAML...")
@@ -482,6 +519,7 @@ def list_recommendations(data, args):
     preferred_intents = client_cfg.get("preferred_intents", [])
     geo_cfg = config.get("geo", {}) if isinstance(config, dict) else {}
     outreach_entity_types = geo_cfg.get("outreach_entity_types")
+    moz_keyword_metrics = _fetch_moz_keyword_metrics(data, config)
     extracted = extract_analysis_data_from_json(
         data,
         client_domain=context["client_domain"],
@@ -491,6 +529,7 @@ def list_recommendations(data, args):
         serp_intent_thresholds=intent_thresholds,
         preferred_intents=preferred_intents,
         outreach_entity_types=outreach_entity_types,
+        moz_keyword_metrics=moz_keyword_metrics,
     )
     # Optional GSC feed-forward (Spec: seo_geo_deferred_spec_v1.md#G.4):
     # when config gsc.feed_strategic_flags is true and run_gsc_analysis.py

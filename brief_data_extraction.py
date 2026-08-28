@@ -1078,6 +1078,7 @@ def extract_analysis_data_from_json(
     outreach_entity_types=None,
     play_routing=None,
     service_like_tokens=None,
+    moz_keyword_metrics=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
 
@@ -1662,6 +1663,13 @@ def extract_analysis_data_from_json(
         title_patterns = compute_title_patterns(kw_titles, brand_aliases=title_brand_aliases)
 
         keyword_profiles[kw] = {
+            # Moz demand/competition metrics, pre-computed and passed in by the
+            # caller (Spec: moz_api_upgrade_spec_v1.md#T.2). Always present:
+            # when Moz has no record the block says so rather than reporting
+            # zeros, so the LLM can never read "volume 0" as "no demand".
+            "moz": (moz_keyword_metrics or {}).get(kw) or {
+                "data_available": False, "status": "not_fetched",
+            },
             "total_results": total_results_by_kw.get(kw, 0),
             "serp_modules": modules_list,
             "has_ai_overview": aio_analysis.get(kw, {}).get("has_aio", False),

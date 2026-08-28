@@ -42,6 +42,14 @@ KNOWN_UNVALIDATED = frozenset({
                         # credential counts per page); descriptive counts
                         # with no enforceable claim shape
                         # (seo_geo_deferred G.3)
+    "moz",              # Moz keyword metrics (volume / difficulty /
+                        # organic_ctr / priority) used as a demand evidence
+                        # anchor. Descriptive integers quoted from a third
+                        # party with no enforceable claim shape; the binding
+                        # rule (never read absent data as zero) is enforced
+                        # in the producer, moz_keywords.py, which omits a
+                        # metric rather than zeroing it
+                        # (moz_api_upgrade_spec_v1.md T.2)
     "client_rank",      # Section 4 Google-vs-Bing comparison quotes the
                         # client's pre-computed Google rank next to the
                         # bing_visibility client_rank; a descriptive

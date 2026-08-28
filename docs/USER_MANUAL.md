@@ -339,6 +339,30 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 
 **What:** Moz's metric (0–100) predicting how well a domain will rank in Google. Higher DA = more "authority votes" from backlinks.
 
+**Keyword demand metrics (Moz).** Each root keyword is also looked up in Moz's
+keyword index, and the result is handed to the report as data:
+
+- **Volume** — estimated monthly searches.
+- **Difficulty** (0–100) — how hard the first page is to break into.
+- **Organic CTR** (0–100) — the share of searches that click an organic result.
+  A low value means the SERP answers the question itself, so ranking wins less
+  traffic than the volume suggests.
+- **Priority** (0–100) — Moz's blend of the three above.
+
+**When Moz has no record, the report says so and stops there.** Many local and
+low-volume phrases genuinely aren't in Moz's index — in this client's own data,
+"family counselling north vancouver" returns metrics while "bowen family systems
+therapy" has no record at all. That is reported as *no data*, never as a volume
+of 0: "Moz has no record" and "nobody searches this" are different claims, and
+only the first one is supported. The report is instructed not to make demand
+claims for those keywords.
+
+This costs API quota — 4 rows per keyword that has data, nothing for keywords
+with no record — so it is capped by `moz.keyword_metrics.max_keywords` (default
+50) and stops early rather than exceeding your monthly allowance, naming the
+keywords it skipped. Results are cached for 30 days, so re-running a report
+costs nothing.
+
 **Also collected alongside DA (Moz only):** each URL looked up through Moz now also
 records a **Spam Score** (0–100 — Moz's estimate of how closely a site resembles sites
 that have been penalised; lower is better) and a set of **link counts** (how many pages

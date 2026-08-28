@@ -93,7 +93,20 @@ class MozRpcError(RuntimeError):
     """A Moz Data API call failed (network, HTTP, protocol, or JSON-RPC error).
 
     The message is already redacted — it is safe to log directly.
+
+    ``status`` (HTTP) and ``code`` (JSON-RPC) are carried so callers can tell
+    failures apart. Moz answers "I have no data for this target" with HTTP 404
+    and code -32655, which is a *terminal but legitimate* answer, not an
+    outage — conflating it with a 5xx would either fabricate a negative or
+    retry forever (learnings P1/P2). Both are ``None`` when the failure
+    happened below the HTTP layer.
     """
+
+    def __init__(self, message: str, *, status: int | None = None,
+                 code: int | None = None) -> None:
+        super().__init__(message)
+        self.status = status
+        self.code = code
 
 
 # ---------------------------------------------------------------------------
@@ -212,7 +225,9 @@ def moz_call(
     if not response.ok:
         raise MozRpcError(
             f"Moz API HTTP {response.status_code} for method {method!r}: "
-            f"{_redact(_body_snippet(response))}"
+            f"{_redact(_body_snippet(response))}",
+            status=response.status_code,
+            code=_error_code(response),
         )
 
     try:
@@ -230,7 +245,9 @@ def moz_call(
     error = payload.get("error")
     if error:
         raise MozRpcError(
-            f"Moz API error for method {method!r}: {_redact(error)}"
+            f"Moz API error for method {method!r}: {_redact(error)}",
+            status=error.get("status") if isinstance(error, dict) else None,
+            code=error.get("code") if isinstance(error, dict) else None,
         )
 
     result = payload.get("result")
@@ -239,6 +256,18 @@ def moz_call(
             f"Moz API response for method {method!r} carried no 'result' object"
         )
     return result
+
+
+def _error_code(response) -> int | None:
+    """Return the JSON-RPC error code from an error response, if readable."""
+    try:
+        payload = response.json()
+    except (ValueError, AttributeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    error = payload.get("error")
+    return error.get("code") if isinstance(error, dict) else None
 
 
 def _body_snippet(response) -> str:

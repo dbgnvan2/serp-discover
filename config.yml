@@ -49,6 +49,19 @@ moz:
   # domain, subdomain, subfolder, url — `url` reproduces the page-level PA the
   # legacy endpoint returned. `link_count_fields` is editorial: which of Moz's
   # ~40 link-count fields are kept on each result and cached.
+  # Keyword metrics (data.keyword.metrics.fetch). ON by default (gate D-2).
+  # One API call per keyword — Moz has no batch variant for this method — and
+  # a successful fetch bills 4 rows, not 1 (measured live 2026-08-28), so
+  # max_keywords is a real spend control: 50 keywords ~= 200 rows.
+  # engine/locale/device are all required by the API and all change the
+  # answer; en-CA matches the client's market.
+  keyword_metrics:
+    enabled: true
+    engine: google
+    locale: en-CA
+    device: desktop
+    max_keywords: 50
+    rows_per_call: 4
   site_metrics:
     scope: url
     batch_size: 50

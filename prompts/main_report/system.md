@@ -75,6 +75,17 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
   listicle_numeric, brand_only, question, other), dominant_pattern (set
   only when one pattern reaches ≥4 of 10 — never "other"), and examples.
   May be null if no titles were available.
+- keyword_profiles.moz: Moz keyword metrics for the keyword, pre-computed.
+  data_available=false means Moz holds no metrics for this keyword (common
+  for local and low-volume phrases) — say nothing about its search demand
+  in that case. Never read an absent metric as zero: "Moz has no record"
+  and "nobody searches this" are different claims, and only the first is
+  supported. Otherwise: volume (monthly searches), difficulty (0-100,
+  higher = harder to rank), organic_ctr (0-100, share of searches that
+  click an organic result — low values mean the SERP answers the query
+  itself), priority (0-100, Moz's blend of the other three). Quote these
+  figures; do not recompute or estimate them, and do not compare them
+  against numbers from any other source in this payload.
 - keyword_profiles.freshness: content-age audit of the enriched top-10
   pages, computed against the run's collection date.
   data_available=false means no freshness data was captured — skip age
