@@ -746,14 +746,75 @@ For each run, Serp-Discover produces 7 files:
 ### Reading Each File
 
 #### market_analysis_*.md
-Summary of what was analyzed:
-- Total keywords processed
-- SERP intent distribution (informational: 50%, local: 30%, etc.)
-- Feasibility breakdown (high: 40%, moderate: 45%, low: 15%)
-- Top 10 keywords by search volume
-- Top 10 keywords by feasibility
 
-**How to use:** Quick snapshot of the market landscape.
+The main report. It opens with what to write and works backwards to the evidence.
+
+| Section | What it gives you |
+|---|---|
+| 0. Executive Summary | The single best keyword, and the first thing to write |
+| **1. What To Write** | The ranked content plan — one numbered option per keyword |
+| 1b. Market Overview | Which search-page features appeared, and on how many keywords |
+| 2. The 'Anxiety Loop' | Real questions searchers ask, to use as page headings |
+| 3. The Words Competitors Use | Vocabulary already on the results page |
+| 4. Strategic Recommendations | The Bowen argument the page should make |
+| 5–5f | The underlying data: competitor mix, intent, feasibility, AI Overview exposure, commodity risk |
+| 6. Market Volatility | Rank movement since the last run of the same keywords |
+| **A. Glossary** | Plain-English definition of every term of art used above |
+
+**How to use:** read Section 1, write the page, and drop into the numbered
+sections when you want the evidence behind a recommendation.
+
+##### Section 1 — What To Write
+
+One numbered **Option** per analysed keyword, best first. The order is the same
+ranking the Executive Summary uses, so Option 1 is always the keyword named at
+the top of the report — the two can never disagree.
+
+Each option answers seven questions:
+
+- **Page type** — a guide, a local service page, a rewrite, or nothing at all.
+  Derived from the recommended play plus whether the search shows local intent.
+- **Why this one** — the Domain Authority comparison in plain terms, plus
+  whether an AI Overview appears and whether it cites you.
+- **Target search** — the keyword to write for.
+- **What the page must do** — the play's instruction. Where the play was decided
+  without some of its inputs, the caveat is printed underneath it, and where the
+  play contradicts the measured feasibility in Section 5c, the report says so
+  explicitly rather than presenting both as fact.
+- **Questions to use as headings** — real People Also Ask questions for *that*
+  keyword. Use them word-for-word.
+- **Terms to work in** — vocabulary from that keyword's own results page.
+- **Success looks like** — organic rank, or AI Overview citation. These are
+  different goals and they are written differently.
+
+If a keyword has no PAA questions or no distinct vocabulary, the option says so.
+It never invents filler, and a two-keyword run produces two options, not three.
+
+##### Writing directives
+
+Sections 1b through 5e each carry a **"When you write:"** line explaining how
+that section's data should change the page. The text is editorial and lives in
+`report_writing_directives.yml` — edit that file, not Python, to reword it.
+
+##### Section 3 — a note on what it can and cannot tell you
+
+The phrases come from the text *Google displayed* — result snippets, the AI
+Overview, ad copy, related searches and autocomplete — not from the full body
+text of competitor pages. Phrases that merely restate your own search term are
+excluded, because the search term appearing in the results says nothing about
+how competitors write.
+
+On a small keyword set that exclusion can empty the list. When it does, the
+report says "no distinct competitor vocabulary" rather than padding the section
+with restatements of your keyword. That is a real finding: analyse more
+keywords, or a wider set of related terms, to get a usable vocabulary list.
+
+##### Section A — Glossary
+
+Every term of art in the report, defined in plain English, and *only* the terms
+this particular run actually used. Definitions live in `glossary.yml`. A
+standing test fails the build if a guarded term appears in the report with no
+definition, so the report cannot quietly reacquire unexplained jargon.
 
 #### content_opportunities_*.md
 Per-keyword content roadmap. For each keyword:

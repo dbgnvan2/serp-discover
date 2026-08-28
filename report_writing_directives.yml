@@ -1,0 +1,103 @@
+# report_writing_directives.yml — "how this shapes the writing" lines for
+# market_analysis_*.md
+#
+# Spec: report_content_direction_spec.md#CD.2
+#
+# Editorial content. Reword any directive freely — no Python change needed.
+#
+# Each analytical section of the report renders its directive immediately under the
+# section heading, in a "**When you write:**" line. A section whose key is missing
+# here simply renders without a directive — a missing or malformed file never aborts
+# the report (CD.2.3).
+#
+# Keys map to report sections:
+#   section_1b  Market Overview
+#   section_2   The 'Anxiety Loop' (User Intent)
+#   section_3   Competitor Language
+#   section_4   Strategic Recommendations
+#   section_5   SERP Composition
+#   section_5b  Per-Keyword SERP Intent
+#   section_5c  Keyword Feasibility
+#   section_5d  AI Overview Exposure
+#   section_5e  Query Commodity / AI-Absorption Risk
+
+# Page-type labels for the "What To Write" content plan (CD.1).
+#
+# Keyed by the recommended play. Each play has a default label, and an optional
+# `local` variant used when the search shows a map pack or local intent — the same
+# play calls for a different kind of page when the searcher wants somebody nearby.
+#
+# `unknown` covers a keyword with no play verdict: say so plainly rather than
+# guessing a page type the data does not support.
+page_types:
+  rank_play:
+    default: In-depth guide page, written to rank
+    local: Local service page, written to rank
+  extraction_play:
+    default: Answer-first guide page, written to be quoted
+    local: Local service page with an answer-first FAQ section
+  reformat_play:
+    default: Rewrite of an existing page into answer-first form
+    local: Rewrite of an existing service page into answer-first form
+  local_pivot_play:
+    default: Hyper-local service page for a named neighbourhood
+    local: Hyper-local service page for a named neighbourhood
+  deprioritize:
+    default: No page recommended for this search
+    local: No page recommended for this search
+  unknown:
+    default: Page type undetermined — no play verdict for this keyword
+    local: Page type undetermined — no play verdict for this keyword
+
+directives:
+  section_1b: >-
+    Check which features appear before choosing a format. A map pack means the top of
+    the page belongs to Google Business Profiles, not to your article — the ordinary
+    results start lower and get fewer clicks, so an informational page needs to earn
+    its place further down.
+
+  section_2: >-
+    Use these questions verbatim as headings on the page, one question per heading,
+    and answer each one in the two or three sentences directly underneath it before
+    you elaborate. Do not paraphrase them into statements — the matching wording is
+    what gets the page picked up for the question, both by Google's People Also Ask
+    box and by AI answer engines.
+
+  section_3: >-
+    Work the frequent terms into your headings and opening paragraphs so the page is
+    unmistakably about this topic. Do not stop there: matching this vocabulary makes
+    you eligible, it does not make you distinctive. Section 4 is where you say the
+    thing the competing pages are not saying.
+
+  section_4: >-
+    This is the argument the page exists to make. Put the content angle in the opening
+    two or three sentences, before any background, and let the reframe carry the body
+    of the piece. The status-quo line is what your reader already believes when they
+    arrive — name it, then take it apart.
+
+  section_5: >-
+    Match the format that is winning, not the format you would prefer to write. If
+    guides dominate, a service page will not break in however well written; write the
+    guide and route the reader to the service page from inside it.
+
+  section_5b: >-
+    Write for the primary intent. Where intent is mixed, the strategy line tells you
+    which side of the blend to target — mixed intent means two different pages can
+    both rank, so pick the underserved side rather than fighting for the crowded one.
+
+  section_5c: >-
+    A ranking target and a citation target are written differently. For a ranking
+    target, depth and completeness win. For a citation target, structure wins: a
+    direct answer in the first fifty words under every question heading, short
+    self-contained paragraphs, no build-up before the payoff.
+
+  section_5d: >-
+    Where the AI Overview appears and does not cite you, the page needs to be quotable
+    rather than merely good. Lead each section with a complete, standalone sentence
+    that answers the heading — an AI engine lifts sentences, not arguments.
+
+  section_5e: >-
+    The higher the score, the less a competent generic page is worth here. Earn the
+    difference with something an AI summary cannot reproduce: your own case detail,
+    your specific method, named local context, a position the other pages avoid
+    taking.

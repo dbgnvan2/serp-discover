@@ -6,15 +6,24 @@ Generates a Markdown summary report from the SERP analysis JSON.
 
 Sections
 --------
-1. Market Overview
+0. Executive Summary
+1. What To Write  ← NEW (CD.1) — the ranked content plan
+1b. Market Overview
 2. The 'Anxiety Loop' (PAA Analysis)
-3. The 'Status Quo' (Competitor Language)
+3. The Words Competitors Use  ← retitled (CD.6.3)
 4. Strategic Recommendations (The Bridge)
 5. SERP Composition (Entity + Content Dominance)
 5b. Per-Keyword SERP Intent  ← NEW (M1.A)
 5c. Keyword Feasibility & Pivot Recommendations
 5d. AI Overview Exposure  ← NEW (D1 / AV.1)
+5e. Query Commodity / AI-Absorption Risk
+5f. Demand vs Clicks
 6. Market Volatility
+A. Glossary  ← NEW (CD.4)
+
+Sections 2-5f each carry a "**When you write:**" directive sourced from
+report_writing_directives.yml (CD.2). Glossary definitions live in glossary.yml
+(CD.4). Both are editorial content — edit the YAML, not this module.
 
 Usage
 -----
@@ -26,12 +35,14 @@ import argparse
 import json
 import logging
 import os
+import re
 import sys
 from datetime import datetime
 
 import yaml
 
-from play_rendering import format_play_cell, format_play_line
+import pattern_matching
+from play_rendering import format_play_cell, format_play_line, load_play_vocab
 
 import aio_exposure
 import commodity_score
@@ -96,6 +107,408 @@ def _load_config():
             return yaml.safe_load(f) or {}
     except Exception:
         return {}
+
+
+# Domain Authority points below which a gap is treated as "level" rather than a
+# direction. DA is a 0-100 third-party estimate; a point or two is not a finding.
+# Overridable via config.yml report.da_gap_noise_floor.
+_DA_GAP_NOISE_FLOOR = float(
+    (_load_config().get("report") or {}).get("da_gap_noise_floor", 2.0))
+
+_DIRECTIVES_CACHE: dict | None = None
+_GLOSSARY_CACHE: list | None = None
+
+
+def _load_directives() -> dict:
+    """Load report_writing_directives.yml.
+
+    Purpose: Supply the editorial "when you write" lines and page-type labels.
+    Spec:    report_content_direction_spec.md#CD.2
+    Tests:   tests/test_report_content_direction.py::test_cd2_2_directive_text_sourced_from_yaml
+             tests/test_report_content_direction.py::test_cd2_3_missing_yaml_degrades_safely
+
+    A missing or malformed file returns {} so the report renders without
+    directives. Guidance text disappearing is a cosmetic loss; the report failing
+    to write at all would cost the run its content briefs, so this degrades rather
+    than raises.
+    """
+    global _DIRECTIVES_CACHE
+    if _DIRECTIVES_CACHE is not None:
+        return _DIRECTIVES_CACHE
+    path = os.path.join(_REPO_ROOT, "report_writing_directives.yml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        if not isinstance(loaded, dict):
+            raise ValueError(f"expected a mapping, got {type(loaded).__name__}")
+        _DIRECTIVES_CACHE = loaded
+    except Exception as exc:
+        logging.warning(
+            "report_writing_directives.yml unavailable (%s) — sections will "
+            "render without writing directives.", exc)
+        _DIRECTIVES_CACHE = {}
+    return _DIRECTIVES_CACHE
+
+
+def _directive(key: str) -> list:
+    """Return the '**When you write:**' line for a section, or [] if absent."""
+    text = (_load_directives().get("directives") or {}).get(key)
+    if not text or not str(text).strip():
+        return []
+    return ["", f"**When you write:** {str(text).strip()}", ""]
+
+
+def _with_directive(lines: list, key: str) -> list:
+    """Insert a section's writing directive just under its heading.
+
+    Purpose: Attach CD.2 directives to sections rendered by other modules
+             (aio_exposure, commodity_score) without importing report config there.
+    Spec:    report_content_direction_spec.md#CD.2.1
+    Tests:   tests/test_report_content_direction.py::test_cd2_1_directive_present_each_section
+
+    Returns `lines` unchanged when there is no directive or no heading to anchor
+    to, so a section can never lose its content to a failed insertion.
+    """
+    directive = _directive(key)
+    if not directive or not lines:
+        return lines
+    for idx, line in enumerate(lines):
+        if str(line).lstrip().startswith("## "):
+            return lines[:idx + 1] + [""] + directive + lines[idx + 1:]
+    return lines
+
+
+def _page_type_label(play_id: str | None, is_local: bool) -> str:
+    """Map a play verdict to a plain-English page type (CD.1)."""
+    page_types = _load_directives().get("page_types") or {}
+    entry = page_types.get(play_id or "unknown") or page_types.get("unknown") or {}
+    if not isinstance(entry, dict):
+        return "Page type undetermined"
+    variant = "local" if is_local else "default"
+    return entry.get(variant) or entry.get("default") or "Page type undetermined"
+
+
+def _load_glossary() -> list:
+    """Load glossary.yml as a list of term entries.
+
+    Purpose: Supply plain-English definitions for the report's jargon.
+    Spec:    report_content_direction_spec.md#CD.4
+    Tests:   tests/test_report_content_direction.py::test_cd4_4_definitions_sourced_from_yaml
+
+    Degrades to [] on a missing or malformed file, for the same reason as
+    _load_directives: no glossary is better than no report.
+    """
+    global _GLOSSARY_CACHE
+    if _GLOSSARY_CACHE is not None:
+        return _GLOSSARY_CACHE
+    path = os.path.join(_REPO_ROOT, "glossary.yml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        entries = loaded.get("terms") or []
+        _GLOSSARY_CACHE = [
+            e for e in entries
+            if isinstance(e, dict) and e.get("term") and e.get("definition")
+        ]
+    except Exception as exc:
+        logging.warning("glossary.yml unavailable (%s) — no glossary rendered.", exc)
+        _GLOSSARY_CACHE = []
+    return _GLOSSARY_CACHE
+
+
+def glossary_term_aliases(entry: dict) -> list:
+    """Every spelling that counts as 'this term appears in the report'."""
+    aliases = entry.get("aliases") or [entry["term"]]
+    return [str(a) for a in aliases if str(a).strip()]
+
+
+def term_appears_in(text: str, entry: dict) -> bool:
+    """Whole-word, case-insensitive test for a glossary term in report text.
+
+    Substring matching would fire on prose that merely contains the letters (P19's
+    corollary), so every alias is anchored to word boundaries.
+    """
+    for alias in glossary_term_aliases(entry):
+        if re.search(r'(?<!\w)' + re.escape(alias) + r'(?!\w)', text, re.IGNORECASE):
+            return True
+    return False
+
+
+def _render_glossary(body_text: str) -> list:
+    """Render the glossary appendix for terms actually used in this report.
+
+    Purpose: Define every term of art the reader just met, and nothing else.
+    Spec:    report_content_direction_spec.md#CD.4
+    Tests:   tests/test_report_content_direction.py::test_cd4_*
+
+    `body_text` is the report rendered so far, deliberately excluding this
+    section — otherwise every term would define itself into existence.
+    """
+    entries = _load_glossary()
+    used = [e for e in entries if term_appears_in(body_text, e)]
+    if not used:
+        return []
+
+    out = ["## A. Glossary", ""]
+    out.append(
+        "Every term of art used above, in plain English. Terms that did not come "
+        "up in this run are not listed.\n")
+    for entry in sorted(used, key=lambda e: e["term"].lower()):
+        definition = " ".join(str(entry["definition"]).split())
+        out.append(f"**{entry['term']}** — {definition}\n")
+    return out
+
+
+def _display_phrases_for_keyword(data: dict, keyword: str) -> list:
+    """Readable competitor phrases drawn from ONE keyword's own results.
+
+    Purpose: Give each content option its own vocabulary.
+    Spec:    report_content_direction_spec.md#CD.1.4
+    Tests:   tests/test_report_content_direction.py::test_cd1_7_terms_are_per_keyword
+
+    The stored serp_display_phrases key is run-wide, so it is deliberately not
+    used here — repeating one global list under every option would read as
+    per-keyword advice while being nothing of the kind.
+    """
+    texts = pattern_matching.collect_snippet_texts(
+        overview=data.get("overview") or [],
+        competitors=data.get("competitors_ads") or [],
+        expansion=(data.get("related_searches") or [])
+                  + (data.get("derived_expansions") or []),
+        autocomplete=data.get("autocomplete_suggestions") or [],
+        keyword=keyword,
+    )
+    if not texts:
+        return []
+    return pattern_matching.get_display_phrases(
+        texts, keywords=list((data.get("keyword_profiles") or {}).keys()))
+
+
+def _display_phrases_for_report(data: dict) -> list:
+    """Readable competitor phrases, from the JSON or recomputed from it.
+
+    Purpose: Feed §3 and the content plan with phrases a person can read.
+    Spec:    report_content_direction_spec.md#CD.3.6
+    Tests:   tests/test_report_content_direction.py::test_cd3_6_display_phrases_wired_to_report
+
+    Prefers the `serp_display_phrases` key serp_audit now writes. Falls back to
+    recomputing from the same snippet fields via the shared collector, so a report
+    re-rendered from a JSON written before CD.3 still shows readable phrases
+    instead of an empty section.
+    """
+    return _display_phrases_with_source(data)[0]
+
+
+def _display_phrases_with_source(data: dict) -> tuple:
+    """(phrases, had_source_text) for the whole run.
+
+    The second element is what lets §3 distinguish "no competitor text was
+    captured" from "text was captured but every repeated phrase was the search
+    term". Collapsing those two into one empty list would make a failed run look
+    like a analysed-but-unremarkable one (P2).
+    """
+    texts = pattern_matching.collect_snippet_texts(
+        overview=data.get("overview") or [],
+        competitors=data.get("competitors_ads") or [],
+        expansion=(data.get("related_searches") or [])
+                  + (data.get("derived_expansions") or []),
+        autocomplete=data.get("autocomplete_suggestions") or [],
+    )
+    had_text = bool(texts) or bool(data.get("serp_language_patterns")
+                                   or data.get("bad_advice_patterns"))
+
+    stored = data.get("serp_display_phrases")
+    if isinstance(stored, list) and stored:
+        return stored, True
+    if not texts:
+        return [], had_text
+    return pattern_matching.get_display_phrases(
+        texts, keywords=list((data.get("keyword_profiles") or {}).keys())), had_text
+
+
+def _content_plan_order(keyword_profiles: dict, keyword_feasibility: list,
+                        preferred_intents: list, best_kw: str | None) -> list:
+    """Keyword order for the content plan, guaranteed to agree with §0.
+
+    Purpose: Order the numbered content options.
+    Spec:    report_content_direction_spec.md#CD.1.3
+    Tests:   tests/test_report_content_direction.py::test_cd1_3_option_order_matches_exec_summary
+
+    Uses the same _rank_keywords helper the Executive Summary uses, then pins the
+    Executive Summary's chosen keyword to the front. The pin matters: §0 ranks only
+    keywords that HAVE feasibility data, while the plan lists every keyword, and
+    when every feasibility status is "Not Measured" the two subsets can tie and
+    break alphabetically in different directions. A report that recommends one
+    keyword in §0 and a different Option 1 in §1 would be worse than no plan, so
+    agreement is enforced by construction rather than left to coincide.
+    """
+    ranked = _rank_keywords(keyword_profiles, keyword_feasibility, preferred_intents)
+    order = [row[0] for row in ranked]
+    if best_kw and best_kw in order:
+        order.remove(best_kw)
+        order.insert(0, best_kw)
+    return order
+
+
+def _why_this_keyword(feas_record: dict, profile: dict, aio_row: dict | None) -> str:
+    """Plain-English reason this keyword sits where it does in the plan (CD.1)."""
+    bits = []
+    status = feas_record.get("feasibility_status")
+    client_da = feas_record.get("client_da")
+    avg_da = feas_record.get("avg_serp_da")
+    gap = feas_record.get("gap")
+
+    if status and client_da is not None and avg_da is not None and gap is not None:
+        against = (f"your site scores {client_da} against an average of "
+                   f"{round(float(avg_da), 1)} for the sites currently ranking")
+        # Domain Authority is a third-party estimate on a 0-100 scale, so a gap of
+        # a point or two is noise. Calling a direction on it would contradict the
+        # feasibility status for no reason a reader could act on.
+        if abs(float(gap)) < _DA_GAP_NOISE_FLOOR:
+            strength = f"{against} — effectively level"
+        elif gap < 0:
+            strength = f"{against}, so you are the stronger site here"
+        else:
+            strength = f"{against}, so they are stronger than you"
+        bits.append(f"{status} — {strength}.")
+    elif status:
+        bits.append(f"{status}.")
+    else:
+        bits.append("No Domain Authority comparison was available for this keyword.")
+
+    if profile.get("has_ai_overview"):
+        if profile.get("client_aio_cited"):
+            bits.append("Google's AI Overview appears and already cites you.")
+        else:
+            bits.append(
+                "Google's AI Overview appears for this search and does not cite you.")
+
+    if profile.get("has_local_pack"):
+        bits.append(
+            "A map pack sits above the ordinary results, so those results start "
+            "lower down the page.")
+
+    return " ".join(bits)
+
+
+def _render_content_plan(data: dict, order: list, preferred_intents: list) -> list:
+    """Render §1, the ranked list of pages to write.
+
+    Purpose: Turn the analysis into "here is the content you should create".
+    Spec:    report_content_direction_spec.md#CD.1
+    Tests:   tests/test_report_content_direction.py::test_cd1_*
+    """
+    profiles = data.get("keyword_profiles") or {}
+    feas_map = {
+        r.get("Keyword"): r
+        for r in (data.get("keyword_feasibility") or [])
+        if r.get("Query_Label") != "P"
+    }
+    vocab = load_play_vocab()
+
+    out = ["## 1. What To Write", ""]
+
+    if not order:
+        out.append(
+            "*No keywords were analysed in this run, so there is nothing to "
+            "recommend writing.*\n")
+        return out
+
+    out.append(
+        f"{len(order)} search{'es' if len(order) != 1 else ''} were analysed, so "
+        f"there {'are' if len(order) != 1 else 'is'} {len(order)} "
+        f"page{'s' if len(order) != 1 else ''} to consider below, best first. "
+        "Each block says what kind of page to write and what has to be in it. "
+        "The sections after this one are the evidence behind these calls.\n")
+
+    for position, keyword in enumerate(order, start=1):
+        profile = profiles.get(keyword) or {}
+        feas_record = feas_map.get(keyword) or {}
+        serp_intent = profile.get("serp_intent") or {}
+        play_obj = profile.get("recommended_play") or {}
+        play_id = play_obj.get("play")
+
+        is_local = bool(
+            profile.get("has_local_pack")
+            or serp_intent.get("primary_intent") == "local"
+            or "local" in (serp_intent.get("mixed_components") or [])
+        )
+
+        out.append(f"### Option {position} — {keyword}")
+        out.append("")
+        out.append(f"- **Page type:** {_page_type_label(play_id, is_local)}")
+        out.append(
+            f"- **Why this one:** {_why_this_keyword(feas_record, profile, None)}")
+        out.append(f"- **Target search:** `{keyword}`")
+
+        strategy = play_obj.get("strategy_text")
+        if strategy:
+            out.append(f"- **What the page must do:** "
+                       f"{' '.join(str(strategy).split())}")
+            # The play verdict carries its own honesty note when it was routed
+            # without some of its inputs. Dropping that note here would present a
+            # low-confidence verdict as settled fact (P2/P14), which matters most
+            # in exactly the case below: a play routed without DA data can assert
+            # "high DA gap" while §5c reports High Feasibility from the DA data
+            # the router never saw. Surface both, and name the disagreement.
+            note = play_obj.get("note")
+            if note:
+                out.append(f"    - *Caveat: {' '.join(str(note).split())}.*")
+            feasibility_missing = not (
+                (play_obj.get("data_available") or {}).get("feasibility", True))
+            status = feas_record.get("feasibility_status") or ""
+            if feasibility_missing and ("High" in status or "Moderate" in status):
+                out.append(
+                    f"    - *These two disagree: this verdict was decided without "
+                    f"Domain Authority data, while Section 5c measured "
+                    f"\"{status}\" for this keyword. Treat the ranking half of "
+                    f"the advice above as unverified and trust Section 5c on "
+                    f"feasibility.*")
+        else:
+            out.append(
+                "- **What the page must do:** No play verdict was produced for "
+                "this keyword, so there is no pre-computed instruction here. "
+                "Section 5b shows what was and was not measured.")
+
+        questions = [q for q in (profile.get("paa_questions") or []) if str(q).strip()]
+        if questions:
+            out.append("- **Questions to use as headings:**")
+            for question in questions[:5]:
+                out.append(f"    - {question}")
+        else:
+            out.append(
+                "- **Questions to use as headings:** None captured for this "
+                "search — Google showed no People Also Ask box. Use the questions "
+                "in Section 2 from the other searches, or your own client "
+                "questions.")
+
+        phrases = [row.get("Phrase")
+                   for row in _display_phrases_for_keyword(data, keyword)
+                   if row.get("Phrase")]
+        if phrases:
+            out.append("- **Terms to work in:** "
+                       + ", ".join(f"`{p}`" for p in phrases[:6]))
+        else:
+            out.append(
+                "- **Terms to work in:** No distinct competitor vocabulary was "
+                "found for this search — every repeated phrase was a restatement "
+                "of the search term. See Section 3.")
+
+        metric = (vocab.get("play_success_metric") or {}).get(play_id)
+        if metric:
+            out.append(f"- **Success looks like:** {metric}")
+        else:
+            out.append(
+                "- **Success looks like:** Not determined — no play verdict for "
+                "this keyword.")
+
+        out.append("")
+        out.append(
+            "*Section 4 carries the argument this page should make. Use its "
+            "content angle as the opening, not as a closing thought.*")
+        out.append("")
+
+    return out
 
 
 def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_intents: list):
@@ -467,19 +880,62 @@ def generate_report(data, db_path=None, run_ts=None):
         lambda: _render_executive_summary(data, best_kw, best_reason),
     ))
 
-    # 1. Overview & Opportunity
-    report.append("## 1. Market Overview")
+    # 1. What To Write (CD.1) — the content plan, before the evidence behind it.
+    plan_order = _content_plan_order(
+        data.get("keyword_profiles", {}),
+        keyword_feasibility,
+        preferred_intents,
+        best_kw,
+    )
+    report.extend(_safe_section(
+        "1. What To Write",
+        lambda: _render_content_plan(data, plan_order, preferred_intents),
+    ))
+
+    # 1b. Overview & Opportunity
+    report.append("## 1b. Market Overview")
     if overview:
         report.append(f"- **Keywords Analyzed:** {len(overview)}")
 
-        # Top SERP Features
-        features = [o.get("SERP_Features")
-                    for o in overview if o.get("SERP_Features")]
-        if features:
-            unique_features = sorted(
-                list(set(", ".join(features).split(", "))))
+        # CD.6.1 — count how many keywords showed each feature instead of
+        # unioning them under a "Dominant" label the data does not support: the
+        # union is not frequency-weighted, so it cannot establish dominance.
+        # CD.6.2 — "Standard Organic" is serp_audit's fallback string for "none of
+        # the seven detected features present", not a feature. It is reported as
+        # the null result it is, never listed alongside real features.
+        feature_counts = {}
+        plain_keyword_count = 0
+        measured_keyword_count = 0
+        for row in overview:
+            raw = row.get("SERP_Features")
+            if not raw:
+                continue
+            measured_keyword_count += 1
+            names = [n.strip() for n in str(raw).split(",") if n.strip()]
+            real_features = [n for n in names if n != "Standard Organic"]
+            if not real_features:
+                plain_keyword_count += 1
+                continue
+            for name in real_features:
+                feature_counts[name] = feature_counts.get(name, 0) + 1
+
+        if measured_keyword_count:
+            total = measured_keyword_count
             report.append(
-                f"- **Dominant SERP Features:** {', '.join(unique_features)}")
+                "- **Search page features found** *(what Google showed besides "
+                "the plain list of links)*:")
+            if feature_counts:
+                for name, count in sorted(
+                        feature_counts.items(), key=lambda kv: (-kv[1], kv[0])):
+                    report.append(
+                        f"    - {name} — {count} of {total} "
+                        f"keyword{'s' if total != 1 else ''}")
+            if plain_keyword_count:
+                report.append(
+                    f"    - No extra features — {plain_keyword_count} of {total} "
+                    f"keyword{'s' if total != 1 else ''} returned nothing but the "
+                    "plain list of links")
+    report.extend(_directive("section_1b"))
     report.append("\n")
 
     # 2. The "Anxiety Loop" (PAA Analysis) (RC.3 — PAA improvements)
@@ -487,6 +943,7 @@ def generate_report(data, db_path=None, run_ts=None):
     report.append(
         "These are the questions your audience is already asking. Use them as "
         "headings, FAQ items, or opening hooks in content targeting these keywords.")
+    report.extend(_directive("section_2"))
 
     paa = data.get("paa_questions", [])
     if paa:
@@ -557,29 +1014,50 @@ def generate_report(data, db_path=None, run_ts=None):
         report.append("_No PAA data found._")
     report.append("\n")
 
-    # 3. The "Status Quo" (Competitor Language)
-    report.append("## 3. The 'Status Quo' (Competitor Language)")
+    # 3. Competitor Language
+    # CD.6.3 — the old heading ("The 'Status Quo'") and its subtitle ("The dominant
+    # narrative in the market (Medical Model vs. Systemic)") promised the narrative
+    # contrast that Section 4 actually performs. This section produces a term list.
+    # It is now titled and introduced as one, and points at Section 4 for the rest.
+    report.append("## 3. The Words Competitors Use")
     report.append(
-        "The dominant narrative in the market (Medical Model vs. Systemic).")
+        "The vocabulary already on this results page. Matching it makes your page "
+        "recognisably about the topic; it does not make it different. Section 4 is "
+        "where the Medical Model vs. Systemic contrast is drawn.")
+    report.extend(_directive("section_3"))
 
-    # Handle key rename compatibility (serp_language_patterns vs bad_advice_patterns)
-    patterns = data.get("serp_language_patterns") or data.get(
-        "bad_advice_patterns", [])
+    # CD.3 — readable phrases. serp_language_patterns is still produced and still
+    # feeds the Bowen trigger matcher, but its phrases have their stop words
+    # stripped before joining ("family of origin" → "family origin"), so they are
+    # not fit to show a reader.
+    display_phrases, had_source_text = _display_phrases_with_source(data)
 
-    if patterns:
-        report.append("\n### Top Recurring Phrases")
-        # Filter for Bigrams/Trigrams and sort by count
-        top_patterns = sorted(
-            patterns, key=lambda x: x["Count"], reverse=True)[:10]
-        for p in top_patterns:
-            report.append(f"- **{p['Phrase']}** ({p['Count']} occurrences)")
+    if display_phrases:
+        report.append("\n### Most repeated phrases")
+        report.append(
+            "*Counted across the snippets, ads, related searches and autocomplete "
+            "Google displayed — not the full text of competitor pages. Phrases "
+            "that just restate your search term are excluded.*\n")
+        for row in display_phrases:
+            report.append(f"- **{row['Phrase']}** ({row['Count']} occurrences)")
+    elif had_source_text:
+        # Zero-from-non-empty is a real finding here, not a failure to report: on a
+        # small keyword set nearly every repeated phrase IS the search term. Say
+        # that plainly rather than padding the list back out with echoes (P19).
+        report.append(
+            "\n*No distinct competitor vocabulary found. Every phrase repeated "
+            "often enough to count was a restatement of the search terms "
+            "themselves, which says nothing about how competitors write. Analyse "
+            "more keywords, or a wider set of related terms, to get a usable "
+            "vocabulary list.*")
     else:
-        report.append("_No language patterns found._")
+        report.append("\n*No competitor text was captured in this run.*")
     report.append("\n")
 
     # 4. Strategic Bridge
     report.append("## 4. Strategic Recommendations (The Bridge)")
     report.append("How to differentiate using Bowen Theory.")
+    report.extend(_directive("section_4"))
 
     # M1.B — Mixed-Intent Strategic Note callouts above Bowen pattern blocks
     _kw_profiles = data.get("keyword_profiles", {})
@@ -672,6 +1150,7 @@ def generate_report(data, db_path=None, run_ts=None):
             dominance = metrics.get_entity_dominance(_run_id)
             if dominance:
                 report.append("\n## 5. SERP Composition (Enriched Data)")
+                report.extend(_directive("section_5"))
 
                 ents = dominance.get("entity_dominance", {})
                 if ents:
@@ -697,6 +1176,7 @@ def generate_report(data, db_path=None, run_ts=None):
 
     # 5c. Keyword Feasibility & Pivot Recommendations (RC.5 — always render)
     report.append("## 5c. Keyword Feasibility & Pivot Recommendations\n")
+    report.extend(_directive("section_5c"))
 
     feasibility_rows = data.get("keyword_feasibility", [])
     if feasibility_rows:
@@ -801,12 +1281,12 @@ def generate_report(data, db_path=None, run_ts=None):
     _kp = data.get("keyword_profiles", {})
     report.extend(_safe_section(
         "5d. AI Overview Exposure",
-        lambda: aio_exposure.build_aio_exposure_report(
-            _kp, config, db_path=db_path, run_ts=run_ts)))
+        lambda: _with_directive(aio_exposure.build_aio_exposure_report(
+            _kp, config, db_path=db_path, run_ts=run_ts), "section_5d")))
     report.extend(_safe_section(
         "5e. Query Commodity / AI-Absorption Risk",
-        lambda: commodity_score.build_commodity_report(
-            _kp, data, config, db_path=db_path, run_ts=run_ts)))
+        lambda: _with_directive(commodity_score.build_commodity_report(
+            _kp, data, config, db_path=db_path, run_ts=run_ts), "section_5e")))
     report.extend(_safe_section(
         "5f. Demand vs Clicks",
         lambda: demand_dashboard.build_dashboard(_kp, config, db_path=db_path)))
@@ -860,6 +1340,12 @@ def generate_report(data, db_path=None, run_ts=None):
                             report.append(
                                 f"- **{l['url']}** ({l['rank_delta']} positions) for '{l['keyword_text']}'")
                 report.append("\n")
+
+    # A. Glossary (CD.4) — appended last so it can be built from the finished body:
+    # only terms the reader actually met above get defined, and the glossary's own
+    # headwords are excluded from the scan so nothing defines itself into the list.
+    body_text = "\n".join(report)
+    report.extend(_safe_section("A. Glossary", lambda: _render_glossary(body_text)))
 
     return "\n".join(report)
 
@@ -977,6 +1463,7 @@ def _render_serp_intent_section(keyword_profiles: dict) -> list:
         return []
 
     lines = ["\n## 5b. Per-Keyword SERP Intent", ""]
+    lines.extend(_directive("section_5b"))
 
     for kw, profile in keyword_profiles.items():
         si = profile.get("serp_intent") or {}

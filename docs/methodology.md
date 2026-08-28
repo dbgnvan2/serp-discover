@@ -32,6 +32,87 @@ Both `serp_audit.py` (stop words, client DA/domain/location, omitted-domains pat
 
 **Input:** `market_analysis_*.json`.
 
+### Section 1 — Content plan ordering
+
+`generate_insight_report.py` renders **1. What To Write** as one numbered option
+per analysed keyword. Order comes from `_content_plan_order()`, which calls the
+same `_rank_keywords()` helper the Executive Summary uses and then pins the
+Executive Summary's chosen keyword to the front.
+
+The pin is load-bearing, not belt-and-braces. `_get_best_opportunity_keyword()`
+ranks only keywords present in the feasibility table; the content plan lists
+every keyword in `keyword_profiles`. When every feasibility status scores zero
+(all "Not Measured", or some keywords absent from the table entirely) the two
+rankings tie on every numeric component and break the tie alphabetically over
+*different sets*, so they can select different keywords. Pinning makes the
+agreement structural rather than incidental.
+
+Each option's "What the page must do" line renders `recommended_play.strategy_text`
+plus, where present, the play's own `note`. When `recommended_play.data_available.feasibility`
+is false while Section 5c reports High or Moderate feasibility, the report prints
+an explicit disagreement notice: the play was routed without the DA data Section
+5c measured, so its ranking claim is unverified.
+
+*Spec: report_content_direction_spec.md#CD.1. Implemented 2026-08-28.*
+
+### Section 1b — SERP feature counts
+
+Features are counted per keyword (`Local Map Pack — 1 of 2 keywords`) rather than
+unioned under a "Dominant" label. The union carries no frequency weighting, so it
+could not establish dominance at any keyword count. `"Standard Organic"` is
+`serp_audit.py`'s fallback string for "none of the seven detected features
+present" and is reported as that null result, never listed as a feature.
+
+*Spec: report_content_direction_spec.md#CD.6.1, #CD.6.2. Implemented 2026-08-28.*
+
+### Section 3 — Display phrases
+
+Section 3 shows phrases from `pattern_matching.get_display_phrases()`, which is
+**separate from** `get_ngrams()`. `get_ngrams()` deletes stop words before joining
+words into n-grams — correct for the Bowen trigger matcher and the word cloud,
+which want a dense haystack, but it produces non-phrases for a reader ("family of
+origin" → "family origin"; "Family Institute at Greater Vancouver" → "family
+greater", which nobody wrote).
+
+`get_display_ngrams()` spans the raw word sequence instead, so every phrase is a
+contiguous quote from the source, then drops spans that begin or end on a stop
+word. `get_display_phrases()` counts those and removes keyword echo — any phrase
+that is a contiguous sub-span of an analysed keyword, which is a fact about the
+query rather than about competitors.
+
+Both passes read the same text via `pattern_matching.collect_snippet_texts()`,
+which `serp_audit.py` and `generate_insight_report.py` share so the producer and
+consumer cannot drift on which fields hold competitor text. Snippet sources:
+organic/featured/AI-Overview snippets, paid-ad copy, related searches, derived
+expansions, autocomplete. `serp_audit.py` writes the result to the
+`serp_display_phrases` JSON key; the report recomputes it when reading a JSON
+written before that key existed.
+
+Where every repeated phrase was keyword echo, Section 3 states that no distinct
+vocabulary was found rather than rendering a padded list. "No competitor text was
+captured" and "text was captured but nothing distinct survived" are separate
+messages.
+
+*Spec: report_content_direction_spec.md#CD.3, #CD.6.3. Implemented 2026-08-28.*
+
+### Writing directives and glossary
+
+Sections 1b–5e render a "When you write:" directive from
+`report_writing_directives.yml`, which also holds the content plan's page-type
+labels. The report ends with **A. Glossary**, built from `glossary.yml` and
+filtered to the terms the rendered body actually used — matched on whole words so
+prose containing the letters does not count as a use.
+
+Both files are editorial content. A missing or malformed file degrades to
+rendering without directives or without the glossary; it never aborts the report,
+because `serp_audit` wraps the report write in a swallowing try and a raise here
+would cost the run its content briefs.
+
+`tests/test_report_content_direction.py::TestCD5JargonGuard` fails the build when
+a guarded term appears in the report body with no glossary entry.
+
+*Spec: report_content_direction_spec.md#CD.2, #CD.4, #CD.5. Implemented 2026-08-28.*
+
 ### Section 4 — Pattern keyword selection
 
 Each Section 4 Bowen pattern block shows a *SERP intent context* line anchoring the pattern to the most relevant keyword in the run. The keyword is selected by `_get_most_relevant_keyword()` in `generate_insight_report.py` using a three-component scoring formula:

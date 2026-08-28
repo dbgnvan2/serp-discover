@@ -64,6 +64,36 @@ Rule ordering is load-bearing: `reformat_play` must precede `extraction_play`, a
 
 Generation is deterministic (templates ordered, no randomness), pure, and makes no network/LLM call — it is template filling, so a no-cost preview of the exact questions is available in Settings before any paid run.
 
+**`glossary.yml`** (report_content_direction CD.4) — plain-English definitions for
+every term of art the market report uses. Fields per entry: `term` (the glossary
+heading), `aliases` (other spellings that count as a use of the term; defaults to
+`[term]`, matched case-insensitively on whole words), `definition` (required), and
+optional `guard` (default true — whether the CD.5 jargon guard fails the build when
+this term appears in the report undefined). `generate_insight_report.py` renders
+`## A. Glossary` with only the terms that run's report body actually used. A missing
+or malformed file drops the glossary and warns; it never aborts the report.
+
+**`report_writing_directives.yml`** (report_content_direction CD.1/CD.2) — two blocks:
+
+- `directives` — the "**When you write:**" line rendered under each analytical
+  report section. Keys: `section_1b`, `section_2`, `section_3`, `section_4`,
+  `section_5`, `section_5b`, `section_5c`, `section_5d`, `section_5e`. A key with no
+  matching section fails `test_cd2_1b_all_yaml_directives_are_reachable`, so editorial
+  text cannot sit in the file unreachable by any reader (P25).
+- `page_types` — page-type labels for the §1 content plan, keyed by play id
+  (`rank_play`, `extraction_play`, `reformat_play`, `local_pivot_play`,
+  `deprioritize`, `unknown`). Each has a `default` label and an optional `local`
+  variant used when the search shows a map pack or local intent.
+
+A missing or malformed file renders the report without directives rather than
+raising.
+
+### `config.yml` — `report` block (optional)
+
+| Key | Default | Meaning |
+|---|---|---|
+| `report.da_gap_noise_floor` | `2.0` | Domain Authority points below which the §1 content plan calls a gap "effectively level" instead of naming a stronger side. DA is a 0–100 third-party estimate, so a gap of a point or two is noise; without this floor a 0.6-point gap would be reported as "they are stronger than you" directly under a "High Feasibility" status. |
+
 ---
 
 ## Shared config (`shared_config.json`, out-of-repo)

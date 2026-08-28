@@ -1,6 +1,7 @@
 # Report Content Direction — spec + implementation plan (v1)
 
-**Status:** plan, awaiting approval. No implementation code written yet.
+**Status:** implemented 2026-08-28. All CD.1-CD.6 criteria done; see
+`docs/spec_coverage.md` rows CD.1.1-CD.6.3 and the status report below.
 **Date:** 2026-08-28
 **Prefix:** `CD` (Content Direction)
 
@@ -40,8 +41,8 @@ jargon defined in the report itself.
 
 **In:** `market_analysis_*.md` (the markdown report from `generate_insight_report.py`).
 **Out:** the `.xlsx` workbook, the `.docx` exports, and `generate_content_brief.py`'s
-separate per-keyword briefs. Flagged: the xlsx carries the same undefined jargon in
-its column headers. Not fixed here — separate change, noted in the backlog.
+separate per-keyword briefs. The xlsx carries the same undefined jargon in its column
+headers; deferred by the user to a later plan (2026-08-28).
 
 ---
 
@@ -168,6 +169,32 @@ on an explicit allowlist fails the test.
 | CD.5.1 | Report body contains no jargon term lacking a glossary entry | `tests/test_report_content_direction.py::test_cd5_1_no_undefined_jargon` |
 | CD.5.2 | The guard's term set is exact-membership, and fails if `glossary.yml` loses an entry still used in the body | `::test_cd5_2_guard_catches_removed_definition` |
 
+### CD.6 — Honest section-1 and section-3 labelling
+
+Approved 2026-08-28 from the "adjacent issues" list (items 1, 2, 4). Item 3, the
+xlsx headers, is deferred to a later plan.
+
+**CD.6.1 — §1b feature list stops claiming dominance.** Today
+`generate_insight_report.py:478` unions `SERP_Features` across every keyword and
+labels the result "Dominant SERP Features". The union does not weight by frequency,
+so "dominant" is unearned at any keyword count. Replaced with a per-feature count of
+how many keywords showed it: `Local Map Pack — 1 of 2 keywords`.
+
+**CD.6.2 — "Standard Organic" stops posing as a feature.** It is the fallback string
+for "none of the seven detected features present" (`serp_audit.py:859`). In the
+report it renders as a plain-English null result, not as a named feature in a list.
+
+**CD.6.3 — §3's heading stops promising analysis it does not perform.** "The dominant
+narrative in the market (Medical Model vs. Systemic)" describes §4's job. §3 is
+retitled to what it delivers — the wording competitors actually use — and points to
+§4 for the narrative contrast.
+
+| ID | Criterion | Test |
+|---|---|---|
+| CD.6.1 | §1b renders per-feature keyword counts; the string "Dominant SERP Features" is absent | `::test_cd6_1_feature_counts_not_dominance_claim` |
+| CD.6.2 | With no features on any keyword, §1b states the null result in plain English and never lists "Standard Organic" as a feature | `::test_cd6_2_standard_organic_rendered_as_null_result` |
+| CD.6.3 | §3 heading and intro describe a term list; the "Medical Model vs. Systemic" promise appears only where §4 delivers it | `::test_cd6_3_section3_heading_matches_content` |
+
 ---
 
 ## Not code-testable — flagged
@@ -193,7 +220,7 @@ and you read the output. Sign-off on readability is yours, not a test's.
 | 4 | CD.3 `get_display_phrases` + CD.3.1–3.6 incl. the unchanged-`get_ngrams` guard | 2 | low — isolated new function |
 | 5 | CD.4 glossary rendering + CD.5 jargon guard | 2 | low — additive appendix |
 | 6 | CD.1 content plan section + section renumber to `1b` | 3, 4 | **highest** — new section, renumber |
-| 7 | CD.2 directives | 2, 6 | low |
+| 7 | CD.2 directives + CD.6 honest labelling | 2, 6 | low |
 | 8 | Docs: `USER_MANUAL.md`, `methodology.md`, `CLAUDE.md` editorial list, `docs/spec_coverage.md` | 6, 7 | — |
 | 9 | Re-render report from existing JSON; human readability review | 8 | — |
 
@@ -228,11 +255,11 @@ Per the "old code is not someone else's problem" rule — flagged, not silently 
    keyword count, since the union does not weight by frequency.
 2. **"Standard Organic" is a null result rendered as a feature name**
    (`serp_audit.py:859`). It means "none of the seven detected features present".
-3. **The xlsx workbook carries the same undefined jargon** in its column headers and
-   is out of scope here.
+3. **The xlsx workbook carries the same undefined jargon** in its column headers.
+   Deferred by the user to a later plan (2026-08-28) — not addressed here.
 4. **§3's heading promises analysis it does not perform.** "The dominant narrative in
    the market (Medical Model vs. Systemic)" describes what §4 actually does. Even
    with CD.3's phrase fix, §3 delivers a term list, not a narrative contrast.
 
-Items 1, 2 and 4 are cheap to fix inside CD.2/CD.3's edits to those same sections.
-Say the word and I fold them in; otherwise they stay flagged and untouched.
+**Resolution (2026-08-28):** items 1, 2 and 4 approved and folded in as **CD.6**.
+Item 3 (xlsx headers) deferred to a later plan.

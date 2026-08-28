@@ -25,7 +25,9 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py tests/ -q`
-  (currently 476 passing, 27 skipped). Note: skipped tests are GUI tests requiring
+  (currently 1229 passing, 66 skipped). Judge the result by the **exit code**,
+  not by grepping the summary line — `2 failed, 1227 passed` contains the word
+  "passed" (P24). Note: skipped tests are GUI tests requiring
   tkinter (not available in venv, but run when tkinter is available).
 - **Never `git add .`** — the repo accumulates output and draft files that
   must stay local. Only commit files intentionally changed for the current
@@ -119,6 +121,16 @@ Editorial content currently lives in:
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
 - `serp_vocab.yml` — SERP audit vocabulary: stop words, PAA category triggers, service tokens, AI-alternative query templates (added seo_geo_review C.4); `eeat_signals` credential tokens and review markers (added seo_geo_deferred G.3); `situational_templates` probe query templates — persona-keyed map `{persona_label: [templates...]}` supporting an optional `{service}` placeholder (added seo_geo_deferred T.5; restructured to persona-keyed by yoast_geo_upgrade Y.4)
+- `glossary.yml` — plain-English definitions for every term of art the market
+  report uses (SERP, PAA, AIO, DA gap, extraction play, commodity score...). The
+  report renders `## A. Glossary` containing only the terms that run actually
+  used. A standing guard (`tests/test_report_content_direction.py::TestCD5JargonGuard`)
+  fails the build when a guarded term appears in the report with no entry here
+  (added report_content_direction CD.4/CD.5)
+- `report_writing_directives.yml` — the "**When you write:**" line rendered under
+  each analytical report section, plus the `page_types` labels used by the
+  "What To Write" content plan. Missing/malformed file degrades to no directives,
+  never an aborted report (added report_content_direction CD.1/CD.2)
 - `play_routing.yml` — "Recommended Play" decision table: ordered, first-match-wins rules mapping pre-computed keyword signals to one of five plays (rank / extraction / reformat / local_pivot / deprioritize), plus each play's label + strategy_text (added seo_geo_review chip A)
 - `engine_profiles.yml` — per-engine (chatgpt/`openai`, perplexity, gemini, claude) source-bias profiles: `retrieval_backend`, `source_bias` phrases, indicative+dated `avg_citations`, `reach_tier`/`referral_click_tier`, and the editorial `recommended_content_moves` list joined by `engine_recommendations.py` to produce per-engine "what to change here" advice. This is the ONLY place engine advice lives — no engine advice is hardcoded in Python. Vendor/temporal confidence caveat is binding: directional findings are high confidence, the numbers are indicative and shift over time — re-measure (added yoast_geo_upgrade Y.10)
 - `client_profiles.yml` — per-client profile blocks (keyed by client slug) driving persona-segmented AI-visibility question generation: `brand_name`, `domain`, `location`, `primary_city`, `secondary_cities`, `service_description`, and `personas` (each with `label`, `needs`, verbatim `seed_questions`, and per-city-expanding `templates` under open, per-client funnel/intent tiers). Edited in the GUI "Client Profile & Queries" tab (added yoast_geo_upgrade Y.1 / Y.13)

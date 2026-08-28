@@ -1,0 +1,204 @@
+# glossary.yml — plain-English definitions for terms used in market_analysis_*.md
+#
+# Spec: report_content_direction_spec.md#CD.4
+#
+# Editorial content. Reword any definition freely — no Python change needed.
+#
+# How this is used
+# ----------------
+# generate_insight_report.py renders "## A. Glossary" at the end of the report,
+# containing ONLY the terms that actually appear in that run's report body. A term
+# never used in the report is never defined.
+#
+# A standing test (CD.5) fails the build if a term listed here under `guard: true`
+# appears in the report body with no definition — that is the protection against
+# new undefined jargon creeping back into the report.
+#
+# Fields per entry
+# ----------------
+#   term        the heading shown in the glossary (required)
+#   aliases     other spellings that count as "this term appears in the report".
+#               Matched case-insensitively on whole words. Defaults to [term].
+#   definition  plain English, no jargon-inside-the-jargon (required)
+#   guard       true = CD.5 fails if this appears undefined. Default true.
+
+terms:
+  - term: SERP
+    aliases: [SERP, SERPs]
+    definition: >-
+      Search Engine Results Page — the Google page you get after searching. Everything
+      on it, not just the list of links.
+
+  - term: SERP feature
+    aliases: ["SERP feature", "SERP features", "search page feature", "search page features"]
+    definition: >-
+      Any box Google puts on the results page besides the plain list of blue links —
+      a map, a video row, an answer box, an image strip. Features push the ordinary
+      results further down the page.
+
+  - term: Local Map Pack
+    aliases: ["Local Map Pack", "map pack"]
+    definition: >-
+      The map with roughly three business listings pinned to it, near the top of the
+      page. It appears when Google thinks the searcher wants a nearby business. It
+      takes a large share of the clicks, and you get into it through your Google
+      Business Profile, not through your website.
+
+  - term: Featured Snippet
+    aliases: ["Featured Snippet", "answer box", "position 0"]
+    definition: >-
+      The boxed answer Google lifts out of one page and shows above the results. Won
+      by answering a question directly and early on the page.
+
+  - term: Knowledge Panel
+    definition: >-
+      The information box about a person, place or organisation, usually on the right.
+      Google builds it from what it already believes about that entity.
+
+  - term: People Also Ask
+    aliases: ["People Also Ask", "PAA"]
+    definition: >-
+      The expandable list of related questions in the middle of the results page.
+      These are real questions Google has seen people ask, which makes them a reliable
+      source of headings for your own page.
+
+  - term: AI Overview
+    aliases: ["AI Overview", "AI Overviews", "AIO"]
+    definition: >-
+      The AI-written summary Google places above the results. It answers the question
+      on the page itself, so fewer people click through to any website. It cites a
+      handful of sources — being one of them is the goal.
+
+  - term: cited-share
+    aliases: ["cited-share", "client cited", "cited in the AIO"]
+    definition: >-
+      The share of your keywords where the AI Overview quotes your site as one of its
+      sources. Zero means the AI is answering your topic without crediting you.
+
+  - term: CTR
+    aliases: [CTR, "click-through rate"]
+    definition: >-
+      Click-through rate — of everyone who sees your listing, the percentage who click
+      it. "Estimated CTR loss" is a modelled guess at the clicks the AI Overview is
+      absorbing, not a measurement of your actual traffic.
+
+  - term: Domain Authority
+    aliases: ["Domain Authority", "DA"]
+    definition: >-
+      A 0–100 third-party score estimating how much ranking strength a whole website
+      has, based largely on who links to it. Moz's invention, not Google's, so treat
+      it as a rough comparison between sites rather than a fact about your site.
+
+  - term: DA gap
+    aliases: ["DA gap", "Gap", "Avg Comp DA"]
+    definition: >-
+      Your Domain Authority minus the average of the sites currently ranking. A
+      negative gap means you are stronger than the page you would be competing with,
+      so ranking is realistic. A positive gap means they are stronger.
+
+  - term: organic position
+    aliases: ["organic position", "organic rank", "organic results"]
+    definition: >-
+      Where your page sits in the ordinary, unpaid list of results. Position 1 is the
+      top link. A dash means you were not found in the results checked.
+
+  - term: search intent
+    aliases: ["search intent", "SERP intent", "primary intent"]
+    definition: >-
+      What the searcher is actually trying to do. This report uses four: informational
+      (wants to understand something), local (wants somebody nearby), transactional
+      (ready to book or buy), and mixed (the results page shows a blend, so Google is
+      hedging).
+
+  - term: mixed intent
+    aliases: ["mixed intent", "is_mixed"]
+    definition: >-
+      Google is showing a blend of result types because it is unsure what searchers
+      want. It usually means two different pages could both rank, which is an opening.
+
+  - term: backdoor strategy
+    aliases: ["backdoor", "backdoor strategy"]
+    definition: >-
+      Where a keyword has mixed intent, deliberately writing for the less-served side
+      of the blend. You avoid the crowded fight and still appear on the same page.
+
+  - term: rank play
+    aliases: ["rank play", "rank_play", "Ranking play"]
+    definition: >-
+      The verdict that this keyword is worth chasing a top-ten position on, because
+      your site is strong enough relative to who is already there. Success is measured
+      in position.
+
+  - term: extraction play
+    aliases: ["extraction play", "extraction_play", "Extraction play"]
+    definition: >-
+      The verdict that ranking is unrealistic but being quoted is not. You format the
+      page so an AI can lift a clean answer out of it — question headings, the answer
+      immediately underneath. Success is measured in citations, not position.
+
+  - term: GEO
+    definition: >-
+      Generative Engine Optimisation — writing so AI answer engines can quote you,
+      as opposed to writing to climb the ordinary rankings. The two overlap but the
+      scoreboard is different.
+
+  - term: FAQPage markup
+    aliases: ["FAQPage markup", "FAQPage", "schema markup", "structured data"]
+    definition: >-
+      Invisible labelling in the page's code that tells machines "this is a question,
+      and this is its answer". It does not change what a human reads; it makes the
+      question-and-answer structure unambiguous to Google and to AI engines.
+
+  - term: commodity score
+    aliases: ["commodity score", "Commodity", "AI-absorption risk"]
+    definition: >-
+      A 0–100 estimate of how easily one AI paragraph could replace the entire results
+      page for this search. High means everyone is saying the same thing, so a generic
+      page is worth little — say something the others do not.
+
+  - term: SERP homogeneity
+    aliases: ["SERP homogeneity", "SERP homog."]
+    definition: >-
+      How alike the competing pages are to each other in type and origin. High
+      homogeneity means the whole page is one kind of result, which is either a wall
+      to climb or a gap to exploit.
+
+  - term: answer similarity
+    aliases: ["answer similarity", "Answer sim."]
+    definition: >-
+      How much the top results reuse the same wording. It compares words, not meaning,
+      so pages that make the same point in different words score as less similar than
+      they really are. Read it as a floor.
+
+  - term: entity dominance
+    aliases: ["entity dominance", "Entity Dominance"]
+    definition: >-
+      What kinds of organisation own the results — private practices, directories,
+      government, nonprofits. It tells you who you are actually up against, which is
+      often a directory rather than a competing counsellor.
+
+  - term: content type
+    aliases: ["content type", "Content Type Dominance"]
+    definition: >-
+      What kind of page is ranking — a guide, a news item, a service page. It tells
+      you what format to write in. If guides dominate, a service page will struggle
+      however good it is.
+
+  - term: title pattern
+    aliases: ["title pattern", "title patterns", "dominant pattern"]
+    definition: >-
+      The recurring shape of the ranking page titles — "how to…", "best…", "X vs Y",
+      a numbered list. Where one shape dominates, it is the format Google is
+      rewarding. "No dominant pattern" means titles are varied and the format is open.
+
+  - term: volatility
+    aliases: [volatility, "Market Volatility", "rank change"]
+    definition: >-
+      How much the rankings moved since the last run of the same keywords. It needs
+      two runs of the same keyword list to mean anything.
+
+  - term: local pack presence
+    aliases: ["Local pack present", "local pack"]
+    definition: >-
+      Whether the map-and-listings box appeared for this search. When it does, the
+      ordinary results start lower down the page and get fewer clicks.

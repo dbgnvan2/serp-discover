@@ -1854,31 +1854,15 @@ def main():
     # --- N-GRAM ANALYSIS (SERP Language Patterns) ---
     print("Running N-Gram Analysis (SERP Language Patterns)...")
 
-    all_snippets = []
-
-    # 1. Organic & Featured Snippets
-    for m in all_metrics:
-        keys = ["Featured_Snippet_Snippet", "AI_Overview", "Rank_1_Snippet",
-                "Rank_2_Snippet", "Rank_3_Snippet"]
-        for k in keys:
-            val = m.get(k)
-            if val and val != "N/A":
-                all_snippets.append(val)
-
-    # 2. Paid Ads (Skip Map Pack ratings as they are just numbers)
-    for c in all_competitors:
-        if c.get("Type") == "Paid Ad" and c.get("Snippet"):
-            all_snippets.append(c["Snippet"])
-
-    # 3. PASF & Related Searches (The Anxiety Loop)
-    for e in all_expansion:
-        if e.get("Term"):
-            all_snippets.append(e["Term"])
-
-    # 4. Autocomplete Suggestions
-    for a in all_autocomplete:
-        if a.get("Suggestion"):
-            all_snippets.append(a["Suggestion"])
+    # Snippet collection lives in pattern_matching so the report generator can
+    # reproduce it exactly from a saved JSON (CD.3). Sources: organic/featured/AIO
+    # snippets, paid-ad copy, related searches + derived expansions, autocomplete.
+    all_snippets = pattern_matching.collect_snippet_texts(
+        overview=all_metrics,
+        competitors=all_competitors,
+        expansion=all_expansion,
+        autocomplete=all_autocomplete,
+    )
 
     bigrams = []
     trigrams = []
@@ -1894,6 +1878,18 @@ def main():
     for term, count in Counter(trigrams).most_common():
         ngram_results.append(
             {"Type": "Trigram", "Phrase": term, "Count": count})
+
+    # Display phrases (CD.3): a SEPARATE, human-readable pass over the same
+    # snippets. ngram_results above stays exactly as it was — it feeds the Bowen
+    # trigger matcher and the word cloud, both of which want stop words stripped.
+    # This pass keeps stop words inside the phrase so the report shows quotes a
+    # person can read, and drops phrases that merely restate the search term.
+    # Spec: report_content_direction_spec.md#CD.3
+    display_phrases = pattern_matching.get_display_phrases(
+        all_snippets, keywords=keywords)
+    print(f"Display phrases: {len(display_phrases)} kept "
+          f"from {len(all_snippets)} snippets "
+          f"(keyword-echo phrases excluded).")
 
     # --- STRATEGIC ANALYSIS (The Bridge) ---
     print("Generating Strategic Recommendations...")
@@ -1950,6 +1946,7 @@ def main():
         "derived_expansions": derived_expansions_data,
         "competitors_ads": all_competitors,
         "serp_language_patterns": ngram_results,
+        "serp_display_phrases": display_phrases,
         "strategic_recommendations": strategic_recs,
         "local_pack_and_maps": all_local_pack,
         "ai_overview_citations": all_ai_citations,

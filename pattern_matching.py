@@ -68,6 +68,190 @@ def get_ngrams(text, n):
     return [" ".join(words[i:i+n]) for i in range(len(words)-n+1)]
 
 
+def get_display_ngrams(text, n):
+    """Extract n-grams that read as English, for display to a human.
+
+    Purpose: Produce readable competitor phrases for the market report's
+             "words the competitors use" section.
+    Spec:    report_content_direction_spec.md#CD.3
+    Tests:   tests/test_report_content_direction.py::test_cd3_1_internal_stopwords_preserved
+             tests/test_report_content_direction.py::test_cd3_2_no_cross_connector_phrases
+
+    This is deliberately NOT get_ngrams(). get_ngrams deletes stop words *before*
+    joining, which is correct for trigger matching (a smaller, denser haystack) but
+    produces non-phrases for display: "family of origin" collapses to "family
+    origin", and "Family Institute at Greater Vancouver" yields the phrase
+    "family greater", which nobody wrote.
+
+    Here the span is taken over the RAW word sequence, so a phrase is always a
+    contiguous quote from the source text. Stop words are then used only to decide
+    which spans are worth showing:
+
+      - a span starting or ending on a stop word is dropped ("of origin work")
+      - a span needs at least two content words, so "the of a" style spans go
+      - content words of two characters or fewer are dropped, matching get_ngrams'
+        len(w) > 2 rule, so initials and stray letters do not become "phrases"
+
+    get_ngrams is left exactly as it is: it feeds analyze_strategic_opportunities'
+    trigger matching and the word cloud, and changing a shared function to fix one
+    consumer's display is a regression waiting to happen.
+    """
+    if not isinstance(text, str):
+        return []
+    cleaned = re.sub(r'[^\w\s]', ' ', text.lower())
+    words = cleaned.split()
+
+    spans = []
+    for i in range(len(words) - n + 1):
+        span = words[i:i + n]
+        if span[0] in STOP_WORDS or span[-1] in STOP_WORDS:
+            continue
+        content = [w for w in span if w not in STOP_WORDS]
+        if len(content) < 2:
+            continue
+        if any(len(w) <= 2 for w in content):
+            continue
+        spans.append(" ".join(span))
+    return spans
+
+
+SNIPPET_OVERVIEW_KEYS = [
+    "Featured_Snippet_Snippet", "AI_Overview",
+    "Rank_1_Snippet", "Rank_2_Snippet", "Rank_3_Snippet",
+]
+
+
+def _row_matches_keyword(row, keyword):
+    """True when a snippet row belongs to `keyword` (None = accept every row)."""
+    if keyword is None:
+        return True
+    for field in ("Source_Keyword", "Root_Keyword"):
+        value = row.get(field)
+        if value and str(value).strip().lower() == str(keyword).strip().lower():
+            return True
+    return False
+
+
+def collect_snippet_texts(overview=None, competitors=None, expansion=None,
+                          autocomplete=None, keyword=None):
+    """Gather every piece of SERP-visible text used for phrase analysis.
+
+    Purpose: One definition of "which fields are competitor text", shared by the
+             producer (serp_audit) and the report generator.
+    Spec:    report_content_direction_spec.md#CD.3
+    Tests:   tests/test_report_content_direction.py::test_cd3_6_display_phrases_wired_to_report
+
+    serp_audit calls this with its in-flight lists while building the run; the
+    report generator calls it with the same lists read back off the JSON, so a
+    report rendered from an older JSON (written before serp_display_phrases
+    existed) still produces the same phrases. Keeping one definition is the point:
+    two copies of "which keys hold snippet text" is exactly how a producer and its
+    consumer drift apart without either one erroring.
+
+    Note this is SERP-visible text — the snippets, ads, related searches and
+    autocomplete Google displays — not the body text of competitor pages.
+
+    Pass `keyword` to restrict the result to rows from that search, which is how
+    the content plan gives each option its own vocabulary rather than repeating one
+    global list under every keyword. Rows match on Source_Keyword, falling back to
+    Root_Keyword. `keyword=None` — the default, and what serp_audit uses for the
+    run-wide analysis — accepts every row.
+    """
+    texts = []
+
+    for row in overview or []:
+        if not _row_matches_keyword(row, keyword):
+            continue
+        for key in SNIPPET_OVERVIEW_KEYS:
+            val = row.get(key)
+            if val and val != "N/A":
+                texts.append(val)
+
+    # Paid ads only: map-pack rows carry ratings, which are just numbers.
+    for row in competitors or []:
+        if not _row_matches_keyword(row, keyword):
+            continue
+        if row.get("Type") == "Paid Ad" and row.get("Snippet"):
+            texts.append(row["Snippet"])
+
+    for row in expansion or []:
+        if not _row_matches_keyword(row, keyword):
+            continue
+        if row.get("Term"):
+            texts.append(row["Term"])
+
+    for row in autocomplete or []:
+        if not _row_matches_keyword(row, keyword):
+            continue
+        if row.get("Suggestion"):
+            texts.append(row["Suggestion"])
+
+    return texts
+
+
+def _tokenize_for_echo(text):
+    """Lowercase word list used to compare a phrase against a search keyword."""
+    if not isinstance(text, str):
+        return []
+    return re.sub(r'[^\w\s]', ' ', text.lower()).split()
+
+
+def is_keyword_echo(phrase, keywords):
+    """True when `phrase` is just the search term handed back.
+
+    Purpose: Stop the competitor-language section reporting the keyword as its own
+             finding.
+    Spec:    report_content_direction_spec.md#CD.3.3
+    Tests:   tests/test_report_content_direction.py::test_cd3_3_keyword_echo_suppressed
+
+    A phrase is an echo when its words appear as a contiguous run inside any
+    analysed keyword. Searching "family of origin work" makes "family of origin"
+    an echo — true of the query, and therefore no evidence about competitors.
+    """
+    phrase_tokens = _tokenize_for_echo(phrase)
+    if not phrase_tokens:
+        return False
+    for kw in keywords or []:
+        kw_tokens = _tokenize_for_echo(kw)
+        span = len(phrase_tokens)
+        for i in range(len(kw_tokens) - span + 1):
+            if kw_tokens[i:i + span] == phrase_tokens:
+                return True
+    return False
+
+
+def get_display_phrases(texts, keywords=None, min_count=2, limit=10):
+    """Count readable competitor phrases across `texts`, minus keyword echo.
+
+    Purpose: Build the market report's competitor-vocabulary list.
+    Spec:    report_content_direction_spec.md#CD.3
+    Tests:   tests/test_report_content_direction.py::test_cd3_*
+
+    Returns a list of {"Phrase": str, "Count": int} sorted by count descending then
+    alphabetically, capped at `limit`.
+
+    Returning [] is a real answer, not a failure: on a small keyword set almost
+    every recurring phrase IS the keyword, and the honest output is an empty list
+    that the report renders as "not enough distinct competitor language" rather
+    than a padded list of restated search terms. The caller distinguishes the two
+    cases by whether `texts` was empty to begin with.
+    """
+    from collections import Counter
+
+    counter = Counter()
+    for text in texts or []:
+        for n in (2, 3):
+            counter.update(get_display_ngrams(text, n))
+
+    kept = [
+        {"Phrase": phrase, "Count": count}
+        for phrase, count in counter.items()
+        if count >= min_count and not is_keyword_echo(phrase, keywords)
+    ]
+    kept.sort(key=lambda row: (-row["Count"], row["Phrase"]))
+    return kept[:limit]
+
+
 def count_syllables(word):
     word = word.lower()
     count = 0
