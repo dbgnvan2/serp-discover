@@ -190,16 +190,28 @@ class TestCD8RunFeasibilityWiring:
         # test must fail loudly rather than patch a ghost and skip itself.
         monkeypatch.setattr(
             run_feasibility, "run_feasibility_analysis", lambda *a, **k: rows)
+
+        # Capture what the report generator is HANDED, rather than replacing it
+        # with a stub that discards its arguments. The original stub
+        # (lambda *a, **k: "# stub report") threw away keyword_profiles, which
+        # is precisely why it could not see that the report was being rendered
+        # from pre-DA plays. Intercept the boundary and inspect the value (P25).
+        seen = {}
+
+        def _capture(feasibility_rows, config, json_path_arg, keyword_profiles=None):
+            seen["keyword_profiles"] = keyword_profiles
+            seen["feasibility_rows"] = feasibility_rows
+            return "# stub report\n"
+
         monkeypatch.setattr(
-            run_feasibility, "generate_feasibility_report",
-            lambda *a, **k: "# stub report\n")
+            run_feasibility, "generate_feasibility_report", _capture)
         monkeypatch.setattr(
             sys, "argv",
             ["run_feasibility.py", "--json", str(json_path),
              "--out", str(tmp_path / "feas.md")])
 
         run_feasibility.main()
-        return json.loads(json_path.read_text(encoding="utf-8"))
+        return json.loads(json_path.read_text(encoding="utf-8")), seen
 
     def test_cd8_3_run_feasibility_reroutes_on_writeback(self, tmp_path, monkeypatch):
         """CD.8.3 — running the feasibility pass corrects the stale plays in the
@@ -215,7 +227,7 @@ class TestCD8RunFeasibilityWiring:
             "organic_results": [],
             "overview": [],
         }
-        result = self._run_writeback(tmp_path, monkeypatch, payload)
+        result, seen = self._run_writeback(tmp_path, monkeypatch, payload)
 
         written = result["keyword_profiles"][kw]["recommended_play"]
         assert written["data_available"]["feasibility"] is True, (
@@ -223,14 +235,61 @@ class TestCD8RunFeasibilityWiring:
         assert written["play"] != stale_play
         assert result["keyword_feasibility"], "feasibility rows must still be written"
 
-    def test_cd8_3b_writeback_calls_the_shared_router(self, monkeypatch):
-        """CD.8.3 — a call-site guard that survives CLI refactors.
+    def test_cd8_3c_feasibility_report_is_rendered_from_rerouted_plays(
+            self, tmp_path, monkeypatch):
+        """CD.8.3 — the feasibility .md gets the CORRECTED plays, not the stale ones.
 
-        Asserts by behaviour: replace the shared router with a spy and confirm
-        run_feasibility reaches for it, rather than grepping source (P19
-        corollary).
+        The re-route originally ran AFTER generate_feasibility_report had already
+        been called and its output written, so feasibility_*.md kept printing the
+        pre-DA "Recommended Play" beside the DA-derived "Status" — the exact
+        contradiction CD.8 exists to remove, on the one page that shows both in
+        the same table row. Nothing regenerates that file afterwards.
+        """
+        kw = "family of origin counselling"
+        stale_profiles = {kw: _profile()}
+        brief_data_extraction.attach_recommended_plays(stale_profiles, [])
+        stale_play = stale_profiles[kw]["recommended_play"]["play"]
+
+        payload = {
+            "keyword_profiles": json.loads(json.dumps(stale_profiles)),
+            "organic_results": [],
+            "overview": [],
+        }
+        _, seen = self._run_writeback(tmp_path, monkeypatch, payload)
+
+        handed = seen.get("keyword_profiles")
+        assert handed, "generate_feasibility_report was given no keyword_profiles"
+        play = handed[kw]["recommended_play"]
+        assert play["data_available"]["feasibility"] is True, (
+            "the feasibility report was rendered from plays routed without DA")
+        assert play["play"] != stale_play
+
+    def test_cd8_3b_writeback_calls_the_shared_router(self, tmp_path, monkeypatch):
+        """CD.8.3 — run_feasibility actually calls the shared router.
+
+        The earlier form asserted only that
+        run_feasibility.brief_data_extraction.attach_recommended_plays IS
+        brief_data_extraction.attach_recommended_plays, which holds for any
+        module that imports it and stays green with the call site deleted.
+        Replace the router with a spy and require it to be invoked.
         """
         import run_feasibility
-        assert run_feasibility.brief_data_extraction.attach_recommended_plays \
-            is brief_data_extraction.attach_recommended_plays, (
-                "run_feasibility no longer resolves the shared play router")
+        calls = []
+        real = brief_data_extraction.attach_recommended_plays
+
+        def _spy(profiles, rows, **kwargs):
+            calls.append((dict(profiles), list(rows)))
+            return real(profiles, rows, **kwargs)
+
+        monkeypatch.setattr(
+            brief_data_extraction, "attach_recommended_plays", _spy)
+
+        kw = "alpha topic"
+        payload = {"keyword_profiles": {kw: _profile()},
+                   "organic_results": [], "overview": []}
+        self._run_writeback(tmp_path, monkeypatch, payload)
+
+        assert calls, (
+            "run_feasibility never called attach_recommended_plays — the plays "
+            "it writes will not reflect the Domain Authority it just fetched")
+        assert calls[0][1], "the router was called with no feasibility rows"

@@ -188,3 +188,104 @@ ai_alternative_templates:
   default:
     - "what are the best options for {base}?"
     - "how much does {base} cost in {city}?"
+
+# display_stop_words — generic English function words ONLY.
+#
+# Spec: report_content_direction_spec.md#CD.3 (added by the CD.11 fix)
+#
+# WHY THIS IS SEPARATE FROM stop_words
+# ------------------------------------
+# `stop_words` above is a DOMAIN NOISE list: it deliberately contains the
+# market's own nouns — counselling, therapy, clinic, vancouver, bc, service —
+# so that get_ngrams() strips them and the Bowen trigger words stand out in a
+# denser haystack. That is exactly right for trigger matching.
+#
+# It is exactly WRONG for deciding where a human-readable phrase may begin and
+# end. get_display_ngrams() drops a span that starts or ends on a stop word, so
+# reusing the list above made the report's "words competitors use" section
+# structurally incapable of ever showing `family counselling`, `couples
+# therapy`, or `north vancouver` — the very vocabulary the section exists to
+# surface. It also truncated "Couple & Family Therapy" into `couple family`.
+#
+# So: keep this list to words that carry no topic meaning in ANY market —
+# articles, prepositions, conjunctions, auxiliaries, pronouns, possessives.
+#
+# Do NOT add question words (how, what, why, when, where, which, who). A phrase
+# may legitimately start with one ("how therapy works"), and listing them here
+# would delete that whole class.
+#
+# Do NOT add topic nouns here. If a word describes the subject matter, it
+# belongs in stop_words above, not in this list.
+display_stop_words:
+  - a
+  - an
+  - and
+  - any
+  - are
+  - as
+  - at
+  - be
+  - been
+  - being
+  - both
+  - but
+  - by
+  - did
+  - do
+  - does
+  - each
+  - for
+  - from
+  - had
+  - has
+  - have
+  - he
+  - her
+  - hers
+  - him
+  - his
+  - i
+  - if
+  - in
+  - into
+  - is
+  - it
+  - its
+  - me
+  - my
+  - nor
+  - not
+  - of
+  - on
+  - or
+  - our
+  - ours
+  - per
+  - she
+  - so
+  - some
+  - such
+  - than
+  - that
+  - the
+  - their
+  - theirs
+  - them
+  - then
+  - there
+  - these
+  - they
+  - this
+  - those
+  - to
+  - us
+  - via
+  - was
+  - we
+  - were
+  - will
+  - with
+  - would
+  - you
+  - your
+  - yours

@@ -1329,14 +1329,11 @@ build_competitor_handoff = handoff_writer.build_competitor_handoff
 from moz_competitor import build_handoff_block as moz_competitor_block
 
 
-def build_help_rows():
-    """Guidance rows for why specific sheets may be empty.
-
-    Text lives in glossary.yml under `sheet_guidance` — it is reader-facing
-    editorial content, not logic (CLAUDE.md: editorial content in config files).
-    Spec: report_content_direction_spec.md#CD.9
-    """
-    return generate_insight_report.load_sheet_guidance()
+# Guidance rows for why specific sheets may be empty. Reader-facing editorial
+# text, not logic, so it lives in glossary.yml under `sheet_guidance`
+# (CLAUDE.md: editorial content in config files).
+# Spec: report_content_direction_spec.md#CD.9
+build_help_rows = generate_insight_report.load_sheet_guidance
 
 
 
@@ -1861,12 +1858,9 @@ def main():
         ngram_results.append(
             {"Type": "Trigram", "Phrase": term, "Count": count})
 
-    # Display phrases (CD.3): a SEPARATE, human-readable pass over the same
-    # snippets. ngram_results above stays exactly as it was — it feeds the Bowen
-    # trigger matcher and the word cloud, both of which want stop words stripped.
-    # This pass keeps stop words inside the phrase so the report shows quotes a
-    # person can read, and drops phrases that merely restate the search term.
-    # Spec: report_content_direction_spec.md#CD.3
+    # Display phrases (CD.3): a SEPARATE human-readable pass over the same
+    # snippets. ngram_results above is unchanged — it feeds the Bowen trigger
+    # matcher and the word cloud, which want stop words stripped.
     display_phrases = pattern_matching.get_display_phrases(
         all_snippets, keywords=keywords)
     print(f"Display phrases: {len(display_phrases)} kept "
@@ -1929,6 +1923,10 @@ def main():
         "competitors_ads": all_competitors,
         "serp_language_patterns": ngram_results,
         "serp_display_phrases": display_phrases,
+        # The keyword list echo suppression used. Without it a re-render falls
+        # back to keyword_profiles.keys(), missing any keyword that produced no
+        # profile, and can print phrases this run suppressed (CD.11.3).
+        "analysed_keywords": list(keywords or []),
         "strategic_recommendations": strategic_recs,
         "local_pack_and_maps": all_local_pack,
         "ai_overview_citations": all_ai_citations,
@@ -2080,13 +2078,19 @@ def main():
                 writer, sheet_name="AIO_Logs", index=False)
             pd.DataFrame(all_autocomplete).to_excel(
                 writer, sheet_name="Autocomplete_Suggestions", index=False)
+            # This content was a Python literal until CD.9 and could not fail.
+            # It now comes through a swallowing loader, so an empty result is a
+            # silent loss of pre-existing content, not a cosmetic one — say so
+            # (the Glossary sibling below already does).
+            if not help_rows:
+                logging.warning(
+                    "glossary.yml sheet_guidance produced no rows — the workbook "
+                    "ships without its Help sheet content.")
             pd.DataFrame(help_rows).to_excel(
                 writer, sheet_name="Help", index=False)
-            # CD.9 — carry the meaning of the workbook's machine field names with
-            # the file. Headers are NOT renamed: the JSON and the workbook share
-            # one field vocabulary that validate_xlsx_vs_json.py checks column by
-            # column, so renaming would break that contract and any formulas built
-            # on it. A definitions sheet adds meaning without moving the data.
+            # CD.9 — carry the field names' meaning with the file. Headers are
+            # NOT renamed: validate_xlsx_vs_json.py checks JSON/xlsx parity
+            # column by column, and formulas depend on them.
             _glossary_rows = generate_insight_report.build_glossary_rows()
             if _glossary_rows:
                 pd.DataFrame(_glossary_rows).to_excel(

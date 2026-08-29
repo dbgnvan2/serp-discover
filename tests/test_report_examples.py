@@ -23,6 +23,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.dirname(__file__))
 
 import generate_insight_report as gir
+from test_report_content_direction import _reset_gir_caches  # noqa: E402
 from generate_insight_report import generate_report
 
 from test_report_content_direction import (  # noqa: E402
@@ -32,19 +33,13 @@ from test_report_content_direction import (  # noqa: E402
 
 @pytest.fixture(autouse=True)
 def _clear_caches():
-    gir._DIRECTIVES_CACHE = None
-    gir._GLOSSARY_CACHE = None
-    gir._PATTERN_EXAMPLE_CACHE = None
+    _reset_gir_caches()
     yield
-    gir._DIRECTIVES_CACHE = None
-    gir._GLOSSARY_CACHE = None
-    gir._PATTERN_EXAMPLE_CACHE = None
+    _reset_gir_caches()
 
 
 @pytest.fixture
 def real_report():
-    if not os.path.exists(REAL_JSON):
-        pytest.skip(f"Real-run fixture not found: {REAL_JSON}")
     with open(REAL_JSON, encoding="utf-8") as f:
         return generate_report(json.load(f))
 
@@ -232,8 +227,6 @@ class TestCD7Section5Examples:
         exercise the filter. Force "N/A" to the top: a naive max() would then
         tell the reader they are writing against "N/A pages".
         """
-        if not os.path.exists(REAL_JSON):
-            pytest.skip("fixture missing")
         monkeypatch.setattr(
             gir.metrics, "get_entity_dominance",
             lambda run_id: {
@@ -262,8 +255,6 @@ class TestCD7Section5Examples:
         monkeypatch.setattr(
             gir, "_unwritable_content_types", lambda: {"other", "guide", "news",
                                                        "service", "n/a"})
-        if not os.path.exists(REAL_JSON):
-            pytest.skip("fixture missing")
         with open(REAL_JSON, encoding="utf-8") as f:
             report = generate_report(json.load(f))
         section = _section(report, "## 5. SERP Composition (Enriched Data)")
@@ -275,8 +266,6 @@ class TestCD7ExamplesAreGrounded:
 
     def test_cd7_6_example_values_come_from_the_keyword(self):
         """Values are that keyword's own question and vocabulary."""
-        if not os.path.exists(REAL_JSON):
-            pytest.skip("fixture missing")
         with open(REAL_JSON, encoding="utf-8") as f:
             data = json.load(f)
         kw = "family of origin work"
@@ -285,8 +274,6 @@ class TestCD7ExamplesAreGrounded:
         assert vals["question"] in data["keyword_profiles"][kw]["paa_questions"]
 
     def test_cd7_6b_unknown_keyword_yields_blank_values_not_a_crash(self):
-        if not os.path.exists(REAL_JSON):
-            pytest.skip("fixture missing")
         with open(REAL_JSON, encoding="utf-8") as f:
             data = json.load(f)
         vals = gir._example_values(data, "no such keyword")

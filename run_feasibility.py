@@ -696,19 +696,15 @@ def main() -> None:
         logger.warning("No feasibility data generated — check that organic_results are present in the JSON.")
         sys.exit(1)
 
-    out_path = args.out or _derive_output_path(args.json)
-    report = generate_feasibility_report(
-        feasibility_rows, config, args.json,
-        keyword_profiles=data.get("keyword_profiles", {}),
-    )
-
-    with open(out_path, "w", encoding="utf-8") as f:
-        f.write(report)
-
-    # Write feasibility data back to JSON so report generation can access it
+    # Write feasibility data back onto the in-memory data BEFORE anything reads
+    # it, and re-route the plays BEFORE the report is rendered. Ordering is the
+    # whole point of this fix: the feasibility report prints "Recommended Play"
+    # and DA-derived "Status" in the same table row, so rendering it with
+    # pre-DA plays reproduces the exact contradiction CD.8 exists to remove, on
+    # the one page that shows both side by side.
     data["keyword_feasibility"] = feasibility_rows
 
-    # CD.8 — and re-route the plays now that Domain Authority actually exists.
+    # CD.8 — re-route the plays now that Domain Authority actually exists.
     # serp_audit.py builds keyword_profiles (recommended_play included) while
     # writing the audit JSON. When feasibility is computed here instead — a
     # separate pass, after that write — every play was routed against empty
@@ -744,6 +740,15 @@ def main() -> None:
             "Could not re-route recommended plays after computing feasibility "
             "(%s). The feasibility data below IS written; the play verdicts in "
             "the report remain those computed without it.", exc)
+
+    out_path = args.out or _derive_output_path(args.json)
+    report = generate_feasibility_report(
+        feasibility_rows, config, args.json,
+        keyword_profiles=data.get("keyword_profiles", {}),
+    )
+
+    with open(out_path, "w", encoding="utf-8") as f:
+        f.write(report)
 
     with open(args.json, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)

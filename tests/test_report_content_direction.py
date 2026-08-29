@@ -28,11 +28,42 @@ from generate_insight_report import generate_report
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# The real run that prompted this spec. Used wherever a criterion has to hold
-# against a genuine artifact rather than an idealised fixture (P19).
-REAL_JSON = os.path.join(
+# A real run, used wherever a criterion has to hold against a genuine artifact
+# rather than an idealised fixture (P19).
+#
+# tests/fixtures/ holds a COMMITTED trim of the 2026-08-26 run that prompted this
+# spec — same keys, same keywords, same feasibility rows and strategic
+# recommendations, with the long result arrays cut down. It is committed because
+# output/ is gitignored: gating on the original meant every real_data test
+# skipped on any machine but the one that produced it, including the two the
+# spec calls standing guards (the jargon guard and the get_ngrams regression).
+# A guard that runs on one machine is close to no guard, and it reads as green
+# everywhere else (P25/P29).
+#
+# The full artifact is preferred when present, so local runs still exercise the
+# untrimmed data.
+FIXTURE_JSON = os.path.join(
+    REPO_ROOT, "tests", "fixtures", "market_analysis_reference_run.json")
+FULL_RUN_JSON = os.path.join(
     REPO_ROOT, "output",
     "market_analysis_family_of_origin_work_20260826_2004.json")
+REAL_JSON = FULL_RUN_JSON if os.path.exists(FULL_RUN_JSON) else FIXTURE_JSON
+
+
+def _reset_gir_caches():
+    """Clear every module-level cache a patched _REPO_ROOT can poison.
+
+    Several tests point gir._REPO_ROOT at a tmp_path. That redirects FIVE
+    loaders, not two: the pattern-intent and keyword-hint loaders do NOT swallow
+    and would raise FileNotFoundError on a cold cache under a patched root, and
+    any of the five can be populated from tmp_path and leak into later tests.
+    Today only the fixtures' shape keeps that latent (P8).
+    """
+    gir._DIRECTIVES_CACHE = None
+    gir._GLOSSARY_CACHE = None
+    gir._PATTERN_EXAMPLE_CACHE = None
+    gir._PATTERN_INTENT_CLASS_CACHE = None
+    gir._KEYWORD_HINTS_CACHE = None
 
 
 @pytest.fixture(autouse=True)
@@ -43,19 +74,36 @@ def _clear_config_caches():
     in module globals. Tests that point those loaders at temporary files must not
     leak a patched cache into the next test, in either direction.
     """
-    gir._DIRECTIVES_CACHE = None
-    gir._GLOSSARY_CACHE = None
+    _reset_gir_caches()
     yield
-    gir._DIRECTIVES_CACHE = None
-    gir._GLOSSARY_CACHE = None
+    _reset_gir_caches()
 
 
 @pytest.fixture
 def real_data():
-    if not os.path.exists(REAL_JSON):
-        pytest.skip(f"Real-run fixture not found: {REAL_JSON}")
+    # No skip: FIXTURE_JSON is committed, so this always has an artifact to read.
+    # A missing file here is a repo problem and must fail, not skip.
     with open(REAL_JSON, encoding="utf-8") as f:
         return json.load(f)
+
+
+def test_cd11_6_reference_fixture_is_committed():
+    """CD.11.6 — the guards' artifact is in the repo, not only on one machine.
+
+    output/ is gitignored. Gating the standing guards on a file that lives there
+    meant they skipped everywhere else and still reported green (P25/P29).
+    """
+    assert os.path.exists(FIXTURE_JSON), (
+        "tests/fixtures/market_analysis_reference_run.json is missing — the "
+        "real-artifact guards will skip on every clone")
+    with open(FIXTURE_JSON, encoding="utf-8") as f:
+        data = json.load(f)
+    # The fixture must still carry what the guards actually assert on.
+    assert len(data["keyword_profiles"]) == 2
+    assert len(data["keyword_feasibility"]) == 2
+    assert data["serp_language_patterns"]
+    assert {r["Pattern_Name"] for r in data["strategic_recommendations"]} == {
+        "The Medical Model Trap", "The Resource Trap"}
 
 
 @pytest.fixture
@@ -573,18 +621,40 @@ class TestCD3DisplayPhrases:
         assert "serp_display_phrases" not in real_data
         rows = gir._display_phrases_for_report(real_data)
         assert rows, "fallback recompute produced nothing"
-        assert all("greater" not in r["Phrase"].split()[0:1] for r in rows)
+        phrases = {r["Phrase"] for r in rows}
+        # The defect this names is a phrase whose words were only made adjacent
+        # by deleting a connector. Assert against that phrase, not against the
+        # word "greater" — "greater vancouver" is a real contiguous quote, and
+        # the earlier form checked only the FIRST word, so "family greater"
+        # (the actual defect) would have passed.
+        assert "family greater" not in phrases
+        for phrase in phrases:
+            assert phrase not in ("family origin", "origin family"), (
+                f"{phrase!r} is a stop-word-stripped artifact, not a quote")
 
     def test_cd3_7_collector_is_shared_by_producer_and_consumer(self):
         """CD.3 — serp_audit and the report generator use ONE snippet collector,
         so the two cannot drift apart on which fields hold competitor text (P19)."""
+        import ast
         import serp_audit
-        src = open(os.path.join(REPO_ROOT, "serp_audit.py"), encoding="utf-8").read()
         # Behavioural half: the same function object is reachable from both.
         assert serp_audit.pattern_matching.collect_snippet_texts \
             is pattern_matching.collect_snippet_texts
-        # And serp_audit actually calls it rather than keeping its own copy.
-        assert "collect_snippet_texts(" in src
+        # And serp_audit actually calls it. Parse for the call node rather than
+        # grepping for a substring, which a comment mentioning the name would
+        # satisfy just as well (P19 corollary).
+        src = open(os.path.join(REPO_ROOT, "serp_audit.py"), encoding="utf-8").read()
+        called = set()
+        for node in ast.walk(ast.parse(src)):
+            if isinstance(node, ast.Call):
+                func = node.func
+                if isinstance(func, ast.Attribute):
+                    called.add(func.attr)
+                elif isinstance(func, ast.Name):
+                    called.add(func.id)
+        assert "collect_snippet_texts" in called, (
+            "serp_audit.py has no call to collect_snippet_texts — it has its "
+            "own copy of the snippet-field list, which will drift")
 
 
 # ---------------------------------------------------------------- CD.4 / CD.5
@@ -812,3 +882,179 @@ class TestCD6HonestLabelling:
         pointer in §3, while §4 is the section that actually delivers it."""
         section4 = _section(real_report, "## 4. Strategic Recommendations (The Bridge)")
         assert "Medical Model" in section4
+
+# ---------------------------------------------------------------- CD.11
+
+
+class TestCD11SweepFixes:
+    """CD.11 — fixes for the pre-push sweep findings on CD.1-CD.10."""
+
+    def test_cd11_1_display_boundary_uses_generic_stop_words(self):
+        """CD.11.1 — the market's own nouns must not block a phrase boundary.
+
+        `stop_words` in serp_vocab.yml is a DOMAIN noise list — it contains
+        counselling, therapy, clinic, vancouver, bc — because get_ngrams wants
+        them stripped so Bowen triggers stand out. Using it as the display
+        boundary rule made the "words competitors use" section structurally
+        unable to emit the market's core vocabulary. This is the case the
+        original CD.3 tests missed: "family of origin" passes under BOTH lists,
+        because "of" is generic, so it could not detect the confusion.
+        """
+        text = "Family counselling services in North Vancouver for couples therapy."
+        produced = set(pattern_matching.get_display_ngrams(text, 2))
+        for phrase in ("family counselling", "couples therapy", "north vancouver"):
+            assert phrase in produced, (
+                f"{phrase!r} cannot be produced — the display boundary is using "
+                "the domain noise list, not generic English")
+
+    def test_cd11_1b_domain_terms_still_stripped_for_trigger_matching(self):
+        """CD.11.1 — get_ngrams keeps the domain list. Both behaviours coexist."""
+        grams = pattern_matching.get_ngrams(
+            "family counselling services vancouver", 2)
+        assert not any("counselling" in g for g in grams), (
+            "get_ngrams should still strip domain nouns for trigger matching")
+
+    def test_cd11_1c_display_list_holds_no_topic_nouns(self):
+        """CD.11.1 — guard the editorial file against the same confusion."""
+        display = pattern_matching.DISPLAY_STOP_WORDS
+        for noun in ("counselling", "counseling", "counsellor", "therapy",
+                     "therapist", "clinic", "centre", "center", "vancouver",
+                     "bc", "british", "columbia", "north", "west", "canada",
+                     "service", "services", "support", "help"):
+            assert noun not in display, (
+                f"{noun!r} is a topic noun and must not be a display stop word — "
+                "it would delete every phrase beginning or ending on it")
+
+    def test_cd11_1d_question_words_are_not_display_stop_words(self):
+        """CD.11.1 — a phrase may legitimately start with a question word."""
+        for word in ("how", "what", "why", "when", "where", "which", "who"):
+            assert word not in pattern_matching.DISPLAY_STOP_WORDS
+
+    def test_cd11_1e_short_content_word_no_longer_kills_the_span(self):
+        """CD.11.1 — one short-but-meaningful token must not delete the phrase."""
+        assert "counselling bc" in pattern_matching.get_display_ngrams(
+            "counselling bc directory", 2)
+
+    def test_cd11_2_empty_result_states_the_real_cause(self):
+        """CD.11.2 — "nothing repeated" is not "everything was the search term".
+
+        The single all-echo message was printed for every empty outcome, which
+        states a confident wrong cause as if it were a finding (P14).
+        """
+        nothing_repeated = gir._no_phrases_message(
+            {"texts": 8, "candidates": 12, "met_min_count": 0,
+             "echo_suppressed": 0, "kept": 0, "min_count": 2})
+        assert "No phrase appeared at least 2 times" in nothing_repeated
+        assert "restatement" not in nothing_repeated
+
+        all_echo = gir._no_phrases_message(
+            {"texts": 8, "candidates": 12, "met_min_count": 4,
+             "echo_suppressed": 4, "kept": 0, "min_count": 2})
+        assert "restatements of the search terms" in all_echo
+
+        nothing_captured = gir._no_phrases_message(
+            {"texts": 0, "candidates": 0, "met_min_count": 0,
+             "echo_suppressed": 0, "kept": 0, "min_count": 2})
+        assert "No competitor text was captured" in nothing_captured
+
+    def test_cd11_2b_stats_reflect_what_was_dropped(self):
+        """CD.11.2 — the counts the message relies on are real."""
+        stats = {}
+        texts = ["family of origin work matters"] * 4 + ["emotional cutoff runs deep"] * 3
+        pattern_matching.get_display_phrases(
+            texts, keywords=["family of origin work"], stats=stats)
+        assert stats["texts"] == 7
+        assert stats["met_min_count"] >= 1
+        assert stats["echo_suppressed"] >= 1
+        assert stats["kept"] == stats["met_min_count"] - stats["echo_suppressed"]
+
+    def test_cd11_3_stored_empty_list_is_respected(self):
+        """CD.11.3 — an explicitly-stored empty result is a fact, not a gap.
+
+        Truthiness made "the producer ran and honestly found nothing"
+        indistinguishable from "this JSON predates the key", sending an honest
+        empty result back through a recompute that could then print phrases the
+        producer had deliberately suppressed (P2/P19).
+        """
+        data = _mock_data(["alpha topic"])
+        data["overview"][0]["Rank_1_Snippet"] = (
+            "emotional cutoff and emotional cutoff again emotional cutoff")
+        data["serp_display_phrases"] = []
+        rows, stats = gir._display_phrases_with_source(data)
+        assert rows == [], "a stored empty list was overridden by a recompute"
+        assert stats["stored"] is True
+
+    def test_cd11_3b_absent_key_still_recomputes(self):
+        """CD.11.3 — and the fallback for older JSONs still works."""
+        data = _mock_data(["alpha topic"])
+        data["overview"][0]["Rank_1_Snippet"] = (
+            "emotional cutoff and emotional cutoff again emotional cutoff")
+        data.pop("serp_display_phrases", None)
+        rows, stats = gir._display_phrases_with_source(data)
+        assert stats["stored"] is False
+        assert rows, "the recompute fallback produced nothing"
+
+    def test_cd11_3c_echo_vocabulary_prefers_the_analysed_keywords(self):
+        """CD.11.3 — producer and consumer share ONE echo vocabulary.
+
+        serp_audit suppresses echo against the CSV keyword list; the report used
+        keyword_profiles.keys(). A keyword that produced no profile was missing
+        from the consumer's set, so the report could print phrases the producer
+        had suppressed, under a caption promising they were excluded.
+        """
+        data = _mock_data(["alpha topic"])
+        data["analysed_keywords"] = ["alpha topic", "family of origin work"]
+        assert gir._analysed_keywords(data) == [
+            "alpha topic", "family of origin work"]
+
+        data.pop("analysed_keywords")
+        assert gir._analysed_keywords(data) == ["alpha topic"]
+
+    def test_cd11_4_bad_config_value_degrades(self, monkeypatch):
+        """CD.11.4 — a typo'd config number must not abort the run.
+
+        The threshold was a module-level float() over a user-edited config, and
+        serp_audit imports this module at top level, so `da_gap_noise_floor: ""`
+        aborted the whole audit before a single SerpAPI call.
+        """
+        monkeypatch.setattr(
+            gir, "_load_config",
+            lambda: {"report": {"da_gap_noise_floor": "",
+                                "phrase_min_count": "not a number"}})
+        assert gir._da_gap_noise_floor() == gir._DA_GAP_NOISE_FLOOR_DEFAULT
+        assert gir._phrase_min_count() == gir._PHRASE_MIN_COUNT_DEFAULT
+
+    def test_cd11_4b_negative_config_value_degrades(self, monkeypatch):
+        monkeypatch.setattr(
+            gir, "_load_config", lambda: {"report": {"phrase_limit": -5}})
+        assert gir._phrase_limit() == gir._PHRASE_LIMIT_DEFAULT
+
+    def test_cd11_4c_valid_config_value_is_honoured(self, monkeypatch):
+        monkeypatch.setattr(
+            gir, "_load_config", lambda: {"report": {"da_gap_noise_floor": 7.5}})
+        assert gir._da_gap_noise_floor() == 7.5
+
+    def test_cd11_5_string_gap_does_not_break_the_plan(self):
+        """CD.11.5 — a numeric-string gap must not collapse the content plan.
+
+        One branch coerced with float() and the next compared the raw value, so
+        a string gap raised TypeError inside _safe_section and replaced the
+        whole of section 1 with "Section unavailable this run".
+        """
+        data = _mock_data(["alpha topic"])
+        data["keyword_feasibility"][0]["gap"] = "-15.0"
+        report = generate_report(data)
+        assert "Section unavailable" not in report
+        plan = _section(report, "## 1. What To Write")
+        assert "### Option 1 — alpha topic" in plan
+        assert "stronger site here" in plan
+
+    def test_cd11_5b_unparseable_gap_omits_the_direction(self):
+        """CD.11.5 — an unusable gap drops the claim rather than guessing."""
+        data = _mock_data(["alpha topic"])
+        data["keyword_feasibility"][0]["gap"] = "not a number"
+        report = generate_report(data)
+        assert "Section unavailable" not in report
+        plan = _section(report, "## 1. What To Write")
+        assert "stronger site here" not in plan
+        assert "effectively level" not in plan

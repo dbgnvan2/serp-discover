@@ -13,6 +13,11 @@ output/
 exports/
 diff_report.json
 market_analysis_*
+# ...except the committed test fixture. output/ and market_analysis_* keep run
+# artifacts out of git, which is right — but it meant every real-artifact guard
+# in the CD suite skipped on any machine but the one that produced the run, and
+# reported green while doing so. This one trimmed run is tracked deliberately.
+!tests/fixtures/market_analysis_*.json
 competitor_handoff_*
 advisory_briefing_*
 content_opportunities_*

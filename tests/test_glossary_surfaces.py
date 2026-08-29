@@ -26,8 +26,10 @@ import pytest
 import yaml
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+sys.path.insert(0, os.path.dirname(__file__))
 
 import generate_insight_report as gir
+from test_report_content_direction import _reset_gir_caches  # noqa: E402
 
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -35,9 +37,9 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 @pytest.fixture(autouse=True)
 def _clear_caches():
-    gir._GLOSSARY_CACHE = None
+    _reset_gir_caches()
     yield
-    gir._GLOSSARY_CACHE = None
+    _reset_gir_caches()
 
 
 class TestCD9WorkbookGlossary:

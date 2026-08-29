@@ -22,6 +22,7 @@ _VOCAB_REQUIRED_KEYS = {
     "ai_alternative_templates",
     "eeat_signals",
     "situational_templates",
+    "display_stop_words",
 }
 
 
@@ -53,6 +54,14 @@ def load_serp_vocab(path=_SERP_VOCAB_PATH):
 
 SERP_VOCAB = load_serp_vocab()
 STOP_WORDS = set(SERP_VOCAB["stop_words"])
+
+# Generic English function words, used ONLY to decide where a human-readable
+# phrase may begin and end. Deliberately NOT STOP_WORDS: that list is a domain
+# noise list containing the market's own nouns (counselling, therapy, clinic,
+# vancouver), which is right for trigger matching and catastrophic here — it
+# made the competitor-vocabulary section unable to show "family counselling" or
+# "couples therapy". See serp_vocab.yml for the full rationale.
+DISPLAY_STOP_WORDS = set(SERP_VOCAB["display_stop_words"])
 
 _STRATEGIC_PATTERNS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "strategic_patterns.yml")
 
@@ -87,10 +96,19 @@ def get_display_ngrams(text, n):
     contiguous quote from the source text. Stop words are then used only to decide
     which spans are worth showing:
 
-      - a span starting or ending on a stop word is dropped ("of origin work")
+      - a span starting or ending on a DISPLAY stop word is dropped
+        ("of origin work")
       - a span needs at least two content words, so "the of a" style spans go
-      - content words of two characters or fewer are dropped, matching get_ngrams'
-        len(w) > 2 rule, so initials and stray letters do not become "phrases"
+      - at least one content word must be longer than two characters, so stray
+        initials cannot form a "phrase"
+
+    The boundary rule uses DISPLAY_STOP_WORDS, never STOP_WORDS. STOP_WORDS is a
+    domain noise list that contains the market's own nouns — counselling,
+    therapy, clinic, vancouver, bc — because get_ngrams wants them stripped so
+    Bowen triggers stand out. Using it here made this function structurally
+    unable to emit "family counselling", "couples therapy" or "north vancouver",
+    which are precisely the phrases the report section exists to show, and
+    truncated "Couple & Family Therapy" to "couple family".
 
     get_ngrams is left exactly as it is: it feeds analyze_strategic_opportunities'
     trigger matching and the word cloud, and changing a shared function to fix one
@@ -104,12 +122,16 @@ def get_display_ngrams(text, n):
     spans = []
     for i in range(len(words) - n + 1):
         span = words[i:i + n]
-        if span[0] in STOP_WORDS or span[-1] in STOP_WORDS:
+        if span[0] in DISPLAY_STOP_WORDS or span[-1] in DISPLAY_STOP_WORDS:
             continue
-        content = [w for w in span if w not in STOP_WORDS]
+        content = [w for w in span if w not in DISPLAY_STOP_WORDS]
         if len(content) < 2:
             continue
-        if any(len(w) <= 2 for w in content):
+        # At least one content word must be more than two characters. The
+        # earlier rule killed the whole span if ANY content word was short,
+        # which deleted every phrase ending in a short but meaningful token
+        # ("counselling bc"). Junk still needs a real word to ride in on.
+        if not any(len(w) > 2 for w in content):
             continue
         spans.append(" ".join(span))
     return spans
@@ -220,7 +242,7 @@ def is_keyword_echo(phrase, keywords):
     return False
 
 
-def get_display_phrases(texts, keywords=None, min_count=2, limit=10):
+def get_display_phrases(texts, keywords=None, min_count=2, limit=10, stats=None):
     """Count readable competitor phrases across `texts`, minus keyword echo.
 
     Purpose: Build the market report's competitor-vocabulary list.
@@ -233,8 +255,14 @@ def get_display_phrases(texts, keywords=None, min_count=2, limit=10):
     Returning [] is a real answer, not a failure: on a small keyword set almost
     every recurring phrase IS the keyword, and the honest output is an empty list
     that the report renders as "not enough distinct competitor language" rather
-    than a padded list of restated search terms. The caller distinguishes the two
-    cases by whether `texts` was empty to begin with.
+    than a padded list of restated search terms.
+
+    Pass a dict as `stats` to learn WHY the list came out the size it did. It is
+    filled with `texts`, `candidates`, `met_min_count`, `echo_suppressed` and
+    `kept`. The caller needs this to describe an empty result accurately: "no
+    phrase repeated at all" and "every repeated phrase was the search term" are
+    different findings, and reporting one as the other states a confident wrong
+    cause (P14).
     """
     from collections import Counter
 
@@ -243,12 +271,23 @@ def get_display_phrases(texts, keywords=None, min_count=2, limit=10):
         for n in (2, 3):
             counter.update(get_display_ngrams(text, n))
 
+    repeated = {p: c for p, c in counter.items() if c >= min_count}
     kept = [
         {"Phrase": phrase, "Count": count}
-        for phrase, count in counter.items()
-        if count >= min_count and not is_keyword_echo(phrase, keywords)
+        for phrase, count in repeated.items()
+        if not is_keyword_echo(phrase, keywords)
     ]
     kept.sort(key=lambda row: (-row["Count"], row["Phrase"]))
+
+    if stats is not None:
+        stats.update({
+            "texts": len(texts or []),
+            "candidates": len(counter),
+            "met_min_count": len(repeated),
+            "echo_suppressed": len(repeated) - len(kept),
+            "kept": len(kept),
+            "min_count": min_count,
+        })
     return kept[:limit]
 
 

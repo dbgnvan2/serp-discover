@@ -109,11 +109,74 @@ def _load_config():
         return {}
 
 
-# Domain Authority points below which a gap is treated as "level" rather than a
-# direction. DA is a 0-100 third-party estimate; a point or two is not a finding.
-# Overridable via config.yml report.da_gap_noise_floor.
-_DA_GAP_NOISE_FLOOR = float(
-    (_load_config().get("report") or {}).get("da_gap_noise_floor", 2.0))
+_DA_GAP_NOISE_FLOOR_DEFAULT = 2.0
+# Phrase-display thresholds. Below min_count a phrase is not "recurring"; limit
+# caps the rendered list. Both are report presentation choices, so they are
+# config, not literals buried in three call sites (P4).
+_PHRASE_MIN_COUNT_DEFAULT = 2
+_PHRASE_LIMIT_DEFAULT = 10
+
+
+def _report_number(key: str, default):
+    """Read config.yml `report.<key>` as a number, degrading to `default`.
+
+    Purpose: Keep an editorial typo in config.yml from aborting a run.
+    Spec:    report_content_direction_spec.md#CD.11
+    Tests:   tests/test_report_content_direction.py::test_cd11_*
+
+    This was a module-level `float(...)` at import. config.yml is user-edited and
+    serp_audit imports this module at top level, so `report: {da_gap_noise_floor: ""}`
+    raised before a single SerpAPI call, with a traceback naming neither the key
+    nor the file. Every other config read here degrades; this one now does too.
+    """
+    raw = (_load_config().get("report") or {}).get(key, default)
+    try:
+        value = type(default)(raw)
+    except (TypeError, ValueError):
+        logging.warning(
+            "config.yml report.%s is %r, which is not a number — using %r.",
+            key, raw, default)
+        return default
+    if value < 0:
+        logging.warning(
+            "config.yml report.%s is %r, which is negative — using %r.",
+            key, raw, default)
+        return default
+    return value
+
+
+def _da_gap_noise_floor() -> float:
+    """DA points below which a gap reads as "level" rather than a winner."""
+    return _report_number("da_gap_noise_floor", _DA_GAP_NOISE_FLOOR_DEFAULT)
+
+
+def _phrase_min_count() -> int:
+    return _report_number("phrase_min_count", _PHRASE_MIN_COUNT_DEFAULT)
+
+
+def _phrase_limit() -> int:
+    return _report_number("phrase_limit", _PHRASE_LIMIT_DEFAULT)
+
+
+def _analysed_keywords(data: dict) -> list:
+    """The keyword list a run actually analysed, for keyword-echo suppression.
+
+    Purpose: Give producer and consumer ONE echo vocabulary.
+    Spec:    report_content_direction_spec.md#CD.11
+    Tests:   tests/test_report_content_direction.py::test_cd11_3*
+
+    serp_audit suppresses echo against the CSV keyword list; the report used
+    keyword_profiles.keys(). Any keyword that failed to produce a profile was
+    absent from the consumer's set, so a re-render could print phrases the
+    producer had suppressed — under a caption promising they were excluded (P19).
+    serp_audit now persists `analysed_keywords`; profile keys remain the fallback
+    for JSONs written before it did.
+    """
+    stored = data.get("analysed_keywords")
+    if isinstance(stored, list) and stored:
+        return [str(k) for k in stored if str(k).strip()]
+    return list((data.get("keyword_profiles") or {}).keys())
+
 
 _DIRECTIVES_CACHE: dict | None = None
 _GLOSSARY_CACHE: list | None = None
@@ -481,6 +544,44 @@ def _render_glossary(body_text: str) -> list:
     return out
 
 
+def _no_phrases_message(stats: dict) -> str:
+    """Explain an empty phrase list by what actually happened.
+
+    Purpose: Never state a cause the numbers do not support.
+    Spec:    report_content_direction_spec.md#CD.11
+    Tests:   tests/test_report_content_direction.py::test_cd11_2*
+    """
+    texts = stats.get("texts", 0)
+    candidates = stats.get("candidates", 0)
+    repeated = stats.get("met_min_count", 0)
+    echoed = stats.get("echo_suppressed", 0)
+    minimum = stats.get("min_count", 2)
+
+    if stats.get("stored"):
+        return ("*The run recorded no competitor vocabulary for this keyword "
+                "set.*")
+    if not texts:
+        return "*No competitor text was captured in this run.*"
+    if not candidates:
+        return (f"*No readable phrases could be formed from the {texts} pieces "
+                "of competitor text captured. This usually means the snippets "
+                "were very short or mostly punctuation.*")
+    if not repeated:
+        return (f"*No phrase appeared at least {minimum} times across the "
+                f"{texts} pieces of competitor text captured "
+                f"({candidates} distinct phrases were seen once each), so there "
+                "is no recurring vocabulary to report. Analyse more keywords to "
+                "build a usable list.*")
+    if echoed and echoed == repeated:
+        return (f"*No distinct competitor vocabulary found. All {echoed} "
+                "phrases repeated often enough to count were restatements of "
+                "the search terms themselves, which says nothing about how "
+                "competitors write. Analyse more keywords, or a wider set of "
+                "related terms, to get a usable vocabulary list.*")
+    return ("*No distinct competitor vocabulary survived filtering for this "
+            "keyword set.*")
+
+
 def _display_phrases_for_keyword(data: dict, keyword: str) -> list:
     """Readable competitor phrases drawn from ONE keyword's own results.
 
@@ -503,7 +604,8 @@ def _display_phrases_for_keyword(data: dict, keyword: str) -> list:
     if not texts:
         return []
     return pattern_matching.get_display_phrases(
-        texts, keywords=list((data.get("keyword_profiles") or {}).keys()))
+        texts, keywords=_analysed_keywords(data),
+        min_count=_phrase_min_count(), limit=_phrase_limit())
 
 
 def _display_phrases_for_report(data: dict) -> list:
@@ -522,12 +624,12 @@ def _display_phrases_for_report(data: dict) -> list:
 
 
 def _display_phrases_with_source(data: dict) -> tuple:
-    """(phrases, had_source_text) for the whole run.
+    """(phrases, stats) for the whole run.
 
-    The second element is what lets §3 distinguish "no competitor text was
-    captured" from "text was captured but every repeated phrase was the search
-    term". Collapsing those two into one empty list would make a failed run look
-    like a analysed-but-unremarkable one (P2).
+    `stats` is what lets §3 say WHY a list is empty rather than guessing. "No
+    competitor text was captured", "nothing repeated at all" and "everything
+    repeated was the search term" are three different findings; reporting one as
+    another states a confident wrong cause (P14).
     """
     texts = pattern_matching.collect_snippet_texts(
         overview=data.get("overview") or [],
@@ -536,16 +638,29 @@ def _display_phrases_with_source(data: dict) -> tuple:
                   + (data.get("derived_expansions") or []),
         autocomplete=data.get("autocomplete_suggestions") or [],
     )
-    had_text = bool(texts) or bool(data.get("serp_language_patterns")
-                                   or data.get("bad_advice_patterns"))
+    stats = {"texts": len(texts), "candidates": 0, "met_min_count": 0,
+             "echo_suppressed": 0, "kept": 0,
+             "min_count": _phrase_min_count(), "stored": False}
 
-    stored = data.get("serp_display_phrases")
-    if isinstance(stored, list) and stored:
-        return stored, True
+    # Key PRESENCE, not truthiness: an explicitly-stored empty list means the
+    # producer ran and honestly found nothing, which is a different fact from
+    # "this JSON predates the key". Treating them alike sent an honest empty
+    # result back through a recompute (P2).
+    if "serp_display_phrases" in data:
+        stored = data.get("serp_display_phrases")
+        if isinstance(stored, list):
+            stats.update({"stored": True, "kept": len(stored)})
+            return stored, stats
+
     if not texts:
-        return [], had_text
+        return [], stats
     return pattern_matching.get_display_phrases(
-        texts, keywords=list((data.get("keyword_profiles") or {}).keys())), had_text
+        texts,
+        keywords=_analysed_keywords(data),
+        min_count=_phrase_min_count(),
+        limit=_phrase_limit(),
+        stats=stats,
+    ), stats
 
 
 def _content_plan_order(keyword_profiles: dict, keyword_feasibility: list,
@@ -572,7 +687,27 @@ def _content_plan_order(keyword_profiles: dict, keyword_feasibility: list,
     return order
 
 
-def _why_this_keyword(feas_record: dict, profile: dict, aio_row: dict | None) -> str:
+def _as_float(value):
+    """Coerce a feasibility number, or None if it cannot be one.
+
+    Purpose: One coercion for DA figures that arrive from JSON as strings.
+    Spec:    report_content_direction_spec.md#CD.11.5
+    Tests:   tests/test_report_content_direction.py::test_cd11_5*
+
+    These come from an on-disk JSON whose producers have varied, so a value that
+    "is not None" is not necessarily a number. Formatting one with :+.0f raises
+    ValueError, and §5c is NOT wrapped in _safe_section, so it takes the whole
+    report down rather than degrading one section.
+    """
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _why_this_keyword(feas_record: dict, profile: dict) -> str:
     """Plain-English reason this keyword sits where it does in the plan (CD.1)."""
     bits = []
     status = feas_record.get("feasibility_status")
@@ -581,14 +716,24 @@ def _why_this_keyword(feas_record: dict, profile: dict, aio_row: dict | None) ->
     gap = feas_record.get("gap")
 
     if status and client_da is not None and avg_da is not None and gap is not None:
+        # Coerce ONCE, via the shared helper. The first branch used float(gap)
+        # and the second compared the raw value, so a gap arriving as a numeric
+        # string passed the first test and raised on the second — collapsing the
+        # whole content plan to "Section unavailable this run".
+        gap_value = _as_float(gap)
+        avg_da_value = _as_float(avg_da)
+        if avg_da_value is None:
+            return f"{status}."
         against = (f"your site scores {client_da} against an average of "
-                   f"{round(float(avg_da), 1)} for the sites currently ranking")
+                   f"{round(avg_da_value, 1)} for the sites currently ranking")
         # Domain Authority is a third-party estimate on a 0-100 scale, so a gap of
         # a point or two is noise. Calling a direction on it would contradict the
         # feasibility status for no reason a reader could act on.
-        if abs(float(gap)) < _DA_GAP_NOISE_FLOOR:
+        if gap_value is None:
+            strength = against
+        elif abs(gap_value) < _da_gap_noise_floor():
             strength = f"{against} — effectively level"
-        elif gap < 0:
+        elif gap_value < 0:
             strength = f"{against}, so you are the stronger site here"
         else:
             strength = f"{against}, so they are stronger than you"
@@ -613,7 +758,7 @@ def _why_this_keyword(feas_record: dict, profile: dict, aio_row: dict | None) ->
     return " ".join(bits)
 
 
-def _render_content_plan(data: dict, order: list, preferred_intents: list) -> list:
+def _render_content_plan(data: dict, order: list) -> list:
     """Render §1, the ranked list of pages to write.
 
     Purpose: Turn the analysis into "here is the content you should create".
@@ -660,7 +805,7 @@ def _render_content_plan(data: dict, order: list, preferred_intents: list) -> li
         out.append("")
         out.append(f"- **Page type:** {_page_type_label(play_id, is_local)}")
         out.append(
-            f"- **Why this one:** {_why_this_keyword(feas_record, profile, None)}")
+            f"- **Why this one:** {_why_this_keyword(feas_record, profile)}")
         out.append(f"- **Target search:** `{keyword}`")
 
         strategy = play_obj.get("strategy_text")
@@ -681,11 +826,14 @@ def _render_content_plan(data: dict, order: list, preferred_intents: list) -> li
             status = feas_record.get("feasibility_status") or ""
             if feasibility_missing and ("High" in status or "Moderate" in status):
                 out.append(
-                    f"    - *These two disagree: this verdict was decided without "
-                    f"Domain Authority data, while Section 5c measured "
-                    f"\"{status}\" for this keyword. Treat the ranking half of "
-                    f"the advice above as unverified and trust Section 5c on "
-                    f"feasibility.*")
+                    f"    - *These two disagree: this verdict was decided "
+                    f"without Domain Authority data, while Section 5c measured "
+                    f"\"{status}\" for this keyword. **Page type** and "
+                    f"**Success looks like** above are derived from the same "
+                    f"unverified verdict, so treat all three as provisional and "
+                    f"trust Section 5c on feasibility. Re-running the "
+                    f"feasibility step on this run's JSON re-routes the verdict "
+                    f"against the measured data.*")
         else:
             out.append(
                 "- **What the page must do:** No play verdict was produced for "
@@ -1111,7 +1259,7 @@ def generate_report(data, db_path=None, run_ts=None):
     )
     report.extend(_safe_section(
         "1. What To Write",
-        lambda: _render_content_plan(data, plan_order, preferred_intents),
+        lambda: _render_content_plan(data, plan_order),
     ))
     # Section 5's worked examples speak about the keyword the reader was just
     # told to write first, so the two sections stay about the same page.
@@ -1255,7 +1403,7 @@ def generate_report(data, db_path=None, run_ts=None):
     # feeds the Bowen trigger matcher, but its phrases have their stop words
     # stripped before joining ("family of origin" → "family origin"), so they are
     # not fit to show a reader.
-    display_phrases, had_source_text = _display_phrases_with_source(data)
+    display_phrases, phrase_stats = _display_phrases_with_source(data)
 
     if display_phrases:
         report.append("\n### Most repeated phrases")
@@ -1265,18 +1413,13 @@ def generate_report(data, db_path=None, run_ts=None):
             "that just restate your search term are excluded.*\n")
         for row in display_phrases:
             report.append(f"- **{row['Phrase']}** ({row['Count']} occurrences)")
-    elif had_source_text:
-        # Zero-from-non-empty is a real finding here, not a failure to report: on a
-        # small keyword set nearly every repeated phrase IS the search term. Say
-        # that plainly rather than padding the list back out with echoes (P19).
-        report.append(
-            "\n*No distinct competitor vocabulary found. Every phrase repeated "
-            "often enough to count was a restatement of the search terms "
-            "themselves, which says nothing about how competitors write. Analyse "
-            "more keywords, or a wider set of related terms, to get a usable "
-            "vocabulary list.*")
     else:
-        report.append("\n*No competitor text was captured in this run.*")
+        # Zero-from-non-empty is a real finding, not a failure to report (P19) —
+        # but WHICH finding matters. "Nothing was captured", "nothing repeated"
+        # and "everything repeated was the search term" are three different
+        # causes, and the earlier code asserted the third for all of them, which
+        # is a confident wrong cause presented as an insight (P14).
+        report.append("\n" + _no_phrases_message(phrase_stats))
     report.append("\n")
 
     # 4. Strategic Bridge
@@ -1480,8 +1623,13 @@ def generate_report(data, db_path=None, run_ts=None):
             avg_da   = row.get("avg_serp_da")
             gap      = row.get("gap")
             status   = STATUS_ICONS.get(row.get("feasibility_status", ""), row.get("feasibility_status", "—"))
-            avg_da_str = f"{avg_da:.0f}" if avg_da is not None else "—"
-            gap_str    = f"{gap:+.0f}" if gap is not None else "—"
+            # Coerce before formatting: these arrive from JSON and a string
+            # here raises ValueError. §5c is NOT inside _safe_section, so that
+            # takes the entire report down (same class as CD.11.5).
+            avg_da_num = _as_float(avg_da)
+            gap_num    = _as_float(gap)
+            avg_da_str = f"{avg_da_num:.0f}" if avg_da_num is not None else "—"
+            gap_str    = f"{gap_num:+.0f}" if gap_num is not None else "—"
 
             play_cell = format_play_cell((feas_kw_profiles.get(kw) or {}).get("recommended_play"))
 
