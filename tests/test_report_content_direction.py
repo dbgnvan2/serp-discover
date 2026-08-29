@@ -925,6 +925,41 @@ class TestCD11SweepFixes:
                 f"{noun!r} is a topic noun and must not be a display stop word — "
                 "it would delete every phrase beginning or ending on it")
 
+    def test_cd11_1c2_display_list_holds_the_function_words(self):
+        """CD.11.1 — a one-directional guard misses a word going MISSING.
+
+        test_cd11_1c only asserts words are absent, so it stayed green when
+        `- on` was parsed by YAML 1.1 as the boolean True and silently dropped
+        out of the set — while the fix (quoting) was already three lines above
+        in the same file for stop_words. Assert presence too.
+        """
+        display = pattern_matching.DISPLAY_STOP_WORDS
+        for word in ("a", "an", "and", "at", "by", "for", "from", "in", "of",
+                     "on", "or", "the", "to", "with"):
+            assert word in display, (
+                f"{word!r} missing from display_stop_words — if it is written "
+                "bare in the YAML, quote it: YAML 1.1 reads on/off/yes/no as "
+                "booleans")
+
+    def test_cd11_1c3_vocab_rejects_non_string_words(self, tmp_path):
+        """CD.11.1 — the loader REFUSES a vocab file with a YAML-boolean word.
+
+        Asserting only that today's data is all strings passes with the guard
+        deleted, because the YAML is now quoted. Feed the loader the bad shape.
+        """
+        assert all(isinstance(w, str) for w in pattern_matching.DISPLAY_STOP_WORDS)
+
+        good = yaml.safe_load(
+            open(os.path.join(REPO_ROOT, "serp_vocab.yml"), encoding="utf-8"))
+        good["display_stop_words"] = ["the", True, "of"]   # `- on` unquoted
+        bad_path = tmp_path / "serp_vocab.yml"
+        bad_path.write_text(yaml.safe_dump(good), encoding="utf-8")
+
+        with pytest.raises(ValueError) as exc:
+            pattern_matching.load_serp_vocab(str(bad_path))
+        assert "non-string" in str(exc.value)
+        assert "display_stop_words" in str(exc.value)
+
     def test_cd11_1d_question_words_are_not_display_stop_words(self):
         """CD.11.1 — a phrase may legitimately start with a question word."""
         for word in ("how", "what", "why", "when", "where", "which", "who"):
@@ -947,6 +982,15 @@ class TestCD11SweepFixes:
         assert "No phrase appeared at least 2 times" in nothing_repeated
         assert "restatement" not in nothing_repeated
 
+        # min_count is configurable, so the message must not hardcode "once
+        # each" — with a threshold of 5, phrases seen 2-4 times are counted in
+        # `candidates` and describing them as seen once is a stated wrong cause.
+        higher = gir._no_phrases_message(
+            {"texts": 8, "candidates": 12, "met_min_count": 0,
+             "echo_suppressed": 0, "kept": 0, "min_count": 5})
+        assert "fewer than 5 times" in higher
+        assert "once each" not in higher
+
         all_echo = gir._no_phrases_message(
             {"texts": 8, "candidates": 12, "met_min_count": 4,
              "echo_suppressed": 4, "kept": 0, "min_count": 2})
@@ -961,12 +1005,36 @@ class TestCD11SweepFixes:
         """CD.11.2 — the counts the message relies on are real."""
         stats = {}
         texts = ["family of origin work matters"] * 4 + ["emotional cutoff runs deep"] * 3
-        pattern_matching.get_display_phrases(
+        rows = pattern_matching.get_display_phrases(
             texts, keywords=["family of origin work"], stats=stats)
+
+        # Exact counts for this fixture, not floors (P29), and never a relation
+        # between the stats themselves: `kept == met_min_count -
+        # echo_suppressed` is how echo_suppressed is DEFINED, so it reduces to
+        # kept == kept and cannot fail for any defect (P27).
         assert stats["texts"] == 7
-        assert stats["met_min_count"] >= 1
-        assert stats["echo_suppressed"] >= 1
-        assert stats["kept"] == stats["met_min_count"] - stats["echo_suppressed"]
+        assert stats["candidates"] == 9
+        assert stats["met_min_count"] == 9
+        assert stats["echo_suppressed"] == 2
+        assert stats["kept"] == 7
+        # And the reported count matches what the caller actually received.
+        assert stats["kept"] == len(rows)
+
+        # And when `limit` truncates, `kept` must report what was RETURNED.
+        # Counting pre-slice let a truncated list be described downstream as one
+        # where nothing survived filtering.
+        capped = {}
+        capped_rows = pattern_matching.get_display_phrases(
+            texts, keywords=["family of origin work"], limit=3, stats=capped)
+        assert len(capped_rows) == 3
+        assert capped["kept"] == 3, (
+            "kept was recorded before the limit slice")
+
+        # The two suppressed phrases are the ones inside the search keyword.
+        phrases = {r["Phrase"] for r in rows}
+        assert "family of origin" not in phrases
+        assert "origin work" not in phrases
+        assert "emotional cutoff" in phrases
 
     def test_cd11_3_stored_empty_list_is_respected(self):
         """CD.11.3 — an explicitly-stored empty result is a fact, not a gap.
@@ -1049,6 +1117,48 @@ class TestCD11SweepFixes:
         assert "### Option 1 — alpha topic" in plan
         assert "stronger site here" in plan
 
+    def test_cd11_5c_unparseable_avg_da_keeps_the_other_sentences(self):
+        """CD.11.5 — an unusable avg_serp_da must not delete unrelated findings.
+
+        The first fix for this used an early `return f"{status}."`, which exited
+        the WHOLE function and silently dropped the AI-Overview and map-pack
+        sentences that follow. That made a merely-unparseable value produce LESS
+        information than a missing one, since None fell through and kept them.
+        """
+        data = _mock_data(["alpha topic"])
+        data["keyword_feasibility"][0]["avg_serp_da"] = "N/A"
+        data["keyword_profiles"]["alpha topic"]["has_local_pack"] = True
+        report = generate_report(data)
+        plan = _section(report, "## 1. What To Write")
+
+        assert "Section unavailable" not in plan
+        assert "High Feasibility" in plan
+        assert "AI Overview appears for this search" in plan, (
+            "an unparseable avg_serp_da deleted the AI-Overview finding")
+        assert "map pack sits above" in plan, (
+            "an unparseable avg_serp_da deleted the map-pack finding")
+        # And it must not invent a comparison it cannot make.
+        assert "against an average of" not in plan
+
+    def test_cd11_5d_unparseable_avg_da_matches_missing_avg_da(self):
+        """CD.11.5 — unusable and absent must not disagree.
+
+        A strictly worse data state (None) previously yielded MORE information
+        than a merely unparseable one.
+        """
+        def _plan_for(avg):
+            data = _mock_data(["alpha topic"])
+            data["keyword_feasibility"][0]["avg_serp_da"] = avg
+            data["keyword_profiles"]["alpha topic"]["has_local_pack"] = True
+            return _section(generate_report(data), "## 1. What To Write")
+
+        unparseable = _plan_for("N/A")
+        missing = _plan_for(None)
+        for marker in ("AI Overview appears for this search", "map pack sits above"):
+            assert (marker in unparseable) == (marker in missing), (
+                f"{marker!r} differs between an unparseable and a missing "
+                "avg_serp_da")
+
     def test_cd11_5b_unparseable_gap_omits_the_direction(self):
         """CD.11.5 — an unusable gap drops the claim rather than guessing."""
         data = _mock_data(["alpha topic"])
@@ -1058,3 +1168,7 @@ class TestCD11SweepFixes:
         plan = _section(report, "## 1. What To Write")
         assert "stronger site here" not in plan
         assert "effectively level" not in plan
+        assert "they are stronger than you" not in plan
+        # The DA comparison itself must still be stated — dropping the direction
+        # is not the same as dropping the numbers.
+        assert "against an average of" in plan

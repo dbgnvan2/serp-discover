@@ -49,6 +49,18 @@ def load_serp_vocab(path=_SERP_VOCAB_PATH):
         raise ValueError(
             f"serp_vocab.yml is missing required key(s): {', '.join(sorted(missing))}"
         )
+    # YAML 1.1 turns bare on/off/yes/no/true/false into booleans, so a word list
+    # can silently lose an entry: `- on` becomes True, which matches no token and
+    # disables that word's rule with no error anywhere. Caught in review after it
+    # shipped into display_stop_words — while the fix (quoting) was already three
+    # lines above in the same file for stop_words.
+    for key in ("stop_words", "display_stop_words"):
+        bad = [v for v in (data.get(key) or []) if not isinstance(v, str)]
+        if bad:
+            raise ValueError(
+                f"serp_vocab.yml {key} contains non-string value(s) {bad!r} — "
+                "quote YAML 1.1 booleans, e.g. \"on\" rather than on."
+            )
     return data
 
 
@@ -285,8 +297,12 @@ def get_display_phrases(texts, keywords=None, min_count=2, limit=10, stats=None)
             "candidates": len(counter),
             "met_min_count": len(repeated),
             "echo_suppressed": len(repeated) - len(kept),
-            "kept": len(kept),
+            # Count what is actually RETURNED. Recording the pre-slice length let
+            # a limit-truncated result be described as "nothing survived
+            # filtering" when it had survived and been truncated.
+            "kept": len(kept[:limit]),
             "min_count": min_count,
+            "limit": limit,
         })
     return kept[:limit]
 

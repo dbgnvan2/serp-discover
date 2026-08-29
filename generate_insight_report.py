@@ -132,6 +132,13 @@ def _report_number(key: str, default):
     raw = (_load_config().get("report") or {}).get(key, default)
     try:
         value = type(default)(raw)
+        # int(3.7) is 3, silently. The string "3.7" raises and warns, so the
+        # more plausible typo was the quiet one. Warn on any lossy coercion.
+        if isinstance(raw, (int, float)) and not isinstance(raw, bool) \
+                and float(value) != float(raw):
+            logging.warning(
+                "config.yml report.%s is %r but this setting is a whole number "
+                "— using %r.", key, raw, value)
     except (TypeError, ValueError):
         logging.warning(
             "config.yml report.%s is %r, which is not a number — using %r.",
@@ -569,9 +576,9 @@ def _no_phrases_message(stats: dict) -> str:
     if not repeated:
         return (f"*No phrase appeared at least {minimum} times across the "
                 f"{texts} pieces of competitor text captured "
-                f"({candidates} distinct phrases were seen once each), so there "
-                "is no recurring vocabulary to report. Analyse more keywords to "
-                "build a usable list.*")
+                f"({candidates} distinct phrases were each seen fewer than "
+                f"{minimum} times), so there is no recurring vocabulary to "
+                "report. Analyse more keywords to build a usable list.*")
     if echoed and echoed == repeated:
         return (f"*No distinct competitor vocabulary found. All {echoed} "
                 "phrases repeated often enough to count were restatements of "
@@ -722,8 +729,18 @@ def _why_this_keyword(feas_record: dict, profile: dict) -> str:
         # whole content plan to "Section unavailable this run".
         gap_value = _as_float(gap)
         avg_da_value = _as_float(avg_da)
-        if avg_da_value is None:
-            return f"{status}."
+    else:
+        avg_da_value = None
+
+    # Append and fall through — never return here. An early return exited the
+    # WHOLE function, so an unparseable avg_serp_da silently dropped the
+    # AI-Overview and map-pack sentences below, making a merely-unusable value
+    # produce LESS information than a missing one (None still fell through).
+    if not (status and client_da is not None and avg_da is not None
+            and gap is not None and avg_da_value is not None):
+        bits.append(f"{status}." if status else
+                    "No Domain Authority comparison was available for this keyword.")
+    else:
         against = (f"your site scores {client_da} against an average of "
                    f"{round(avg_da_value, 1)} for the sites currently ranking")
         # Domain Authority is a third-party estimate on a 0-100 scale, so a gap of
@@ -738,10 +755,6 @@ def _why_this_keyword(feas_record: dict, profile: dict) -> str:
         else:
             strength = f"{against}, so they are stronger than you"
         bits.append(f"{status} — {strength}.")
-    elif status:
-        bits.append(f"{status}.")
-    else:
-        bits.append("No Domain Authority comparison was available for this keyword.")
 
     if profile.get("has_ai_overview"):
         if profile.get("client_aio_cited"):

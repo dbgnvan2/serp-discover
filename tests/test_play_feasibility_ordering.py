@@ -35,9 +35,13 @@ from play_routing import load_play_routing
 
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+# The committed trim, not the gitignored run. Pointing this at output/ meant the
+# guard whose docstring says "the real artifact that exposed this bug is
+# corrected" skipped on every machine but the one that produced the run — and
+# reported green while doing so (P25). The committed fixture satisfies it
+# unchanged.
 REAL_JSON = os.path.join(
-    REPO_ROOT, "output",
-    "market_analysis_family_of_origin_work_20260826_2004.json")
+    REPO_ROOT, "tests", "fixtures", "market_analysis_reference_run.json")
 
 
 def _profile(intent="local", is_mixed=False, has_aio=True, local_pack=True):
@@ -150,8 +154,8 @@ class TestCD8PlayRoutingSeesFeasibility:
         (P19): both keywords must leave extraction_play once their own DA data
         is applied.
         """
-        if not os.path.exists(REAL_JSON):
-            pytest.skip(f"Real-run fixture not found: {REAL_JSON}")
+        # No skip: the fixture is committed, so a missing file is a repo
+        # problem that must fail rather than quietly pass.
         with open(REAL_JSON, encoding="utf-8") as f:
             data = json.load(f)
 

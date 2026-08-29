@@ -1329,10 +1329,9 @@ build_competitor_handoff = handoff_writer.build_competitor_handoff
 from moz_competitor import build_handoff_block as moz_competitor_block
 
 
-# Guidance rows for why specific sheets may be empty. Reader-facing editorial
-# text, not logic, so it lives in glossary.yml under `sheet_guidance`
-# (CLAUDE.md: editorial content in config files).
-# Spec: report_content_direction_spec.md#CD.9
+# Why specific sheets may be empty. Editorial text, so it lives in glossary.yml
+# under `sheet_guidance` (CD.9). Binds at import: patch serp_audit.build_help_rows
+# or gir._REPO_ROOT, not generate_insight_report.load_sheet_guidance.
 build_help_rows = generate_insight_report.load_sheet_guidance
 
 
