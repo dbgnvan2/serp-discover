@@ -28,6 +28,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install a virtual display
+        # setup-python ships tkinter, so the GUI tests are no longer skipped
+        # here — they try to run and die with "no display name and no $DISPLAY".
+        # Giving them a display runs them instead of hiding them: 26 tests that
+        # have never executed anywhere but a developer's desktop.
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
       - name: Run the full suite
         # No API keys, deliberately. Every external call in the suite is mocked
         # (CLAUDE.md: "Tests do not require API keys"), so a failure here for
@@ -36,4 +43,4 @@ jobs:
         #
         # Judged by the exit code, not by grepping the summary line:
         # "2 failed, 1394 passed" contains the word "passed" (P24).
-        run: python -m pytest test_*.py tests/ -q
+        run: xvfb-run -a python -m pytest test_*.py tests/ -q

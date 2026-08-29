@@ -13,9 +13,12 @@ import pytest
 try:
     import tkinter as tk
     from tkinter import ttk
-    TKINTER_AVAILABLE = True
 except (ImportError, ModuleNotFoundError):
-    TKINTER_AVAILABLE = False
+    tk = ttk = None
+from tk_probe import tkinter_usable
+
+# Not "is tkinter importable" — "can a window actually be created here".
+TKINTER_AVAILABLE = tkinter_usable()
 
 # Non-GUI tests can run without tkinter
 from config_manager import (

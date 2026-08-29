@@ -4,11 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-try:
-    import tkinter  # noqa: F401
-    TKINTER_AVAILABLE = True
-except ModuleNotFoundError:
-    TKINTER_AVAILABLE = False
+from tk_probe import tkinter_usable
+
+# Not "is tkinter importable" — "can a window actually be created here".
+TKINTER_AVAILABLE = tkinter_usable()
 
 MODULE_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "serp-me.py")
 
