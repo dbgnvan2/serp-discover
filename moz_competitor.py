@@ -126,6 +126,7 @@ class MozCompetitorClient:
         ranking_keyword_limit: int = DEFAULT_RANKING_KEYWORD_LIMIT,
         anchor_text_limit: int = DEFAULT_ANCHOR_TEXT_LIMIT,
         brand_authority: bool = False,
+        client_anchor_texts: bool = False,
         link_momentum: bool = False,
         link_momentum_limit: int = DEFAULT_LINK_MOMENTUM_LIMIT,
     ) -> None:
@@ -137,6 +138,7 @@ class MozCompetitorClient:
         self._ranking_keyword_limit = int(ranking_keyword_limit)
         self._anchor_text_limit = int(anchor_text_limit)
         self._brand_authority = bool(brand_authority)
+        self._client_anchor_texts = bool(client_anchor_texts)
         self._link_momentum = bool(link_momentum)
         self._link_momentum_limit = int(link_momentum_limit)
         self.rows_consumed = 0
@@ -166,6 +168,8 @@ class MozCompetitorClient:
                 comp_cfg.get("anchor_text_limit") or DEFAULT_ANCHOR_TEXT_LIMIT),
             brand_authority=bool(
                 (moz_cfg.get("brand_authority", {}) or {}).get("enabled", False)),
+            client_anchor_texts=bool(
+                comp_cfg.get("client_anchor_texts", False)),
             link_momentum=bool(
                 (moz_cfg.get("link_momentum", {}) or {}).get("enabled", False)),
             link_momentum_limit=int(
@@ -336,6 +340,30 @@ class MozCompetitorClient:
             for entry in raw if isinstance(entry, dict)
         ][:self._anchor_text_limit]
         return self._page_block(items, raw, status), len(raw) * ROWS_PER_OBJECT
+
+    def anchor_texts_for(self, domain: str) -> dict:
+        """Fetch the anchor-text distribution for one domain — the client's own.
+
+        Purpose: let Tool 2's anchor-spam detector see the client's own inbound
+                 anchors, which is the case that would surface negative SEO
+                 aimed at the client.
+        Spec:    moz_api_upgrade_spec_v1.md#T.4
+        Tests:   test_moz_competitor.py::TestClientAnchorTexts
+
+        The client is deliberately absent from ``moz.domains`` — the handoff
+        excludes it by design — so its anchors travel in the ``moz.client``
+        entry instead. Without this the own-site branch of Tool 2's detector
+        could never fire: the capability was tested and documented but had no
+        data path (learnings P21).
+
+        Uncached, like :meth:`brand_authority_for`: one domain per run.
+        """
+        if not domain:
+            return {"status": "not_fetched", "data_available": False,
+                    "items": [], "returned": 0, "truncated": False}
+        block, rows = self._fetch_anchor_text(domain.lower())
+        self.rows_consumed += rows
+        return block
 
     def brand_authority_for(self, domain: str) -> dict:
         """Fetch Brand Authority for one domain — typically the client's own.
@@ -658,12 +686,18 @@ def build_handoff_block(config, all_organic, client_domain,
         "scope": client._scope,
         "domains": results,
     }
-    # The client's own Brand Authority, so the competitor scores have a
-    # reference point rather than being absolute numbers with nothing to
-    # compare against. Omitted entirely when Brand Authority is off.
+    # The client's own signals, so the competitor numbers have a reference
+    # point and so Tool 2's own-site checks have data to run on. The client is
+    # never added to `domains` — the handoff excludes it by design, and a
+    # reference point is not a competitor entry.
+    client_entry = {}
     if client_domain and client._brand_authority:
-        block["client"] = {
-            "domain": client_domain.lower(),
-            "brand_authority": client.brand_authority_for(client_domain),
-        }
+        client_entry["brand_authority"] = client.brand_authority_for(client_domain)
+    if client_domain and client._client_anchor_texts:
+        # Without this the client's anchors never leave Tool 1, so Tool 2's
+        # own-site anchor-spam branch — the one that would reveal a negative-SEO
+        # campaign aimed at the client — had no data path at all (P21).
+        client_entry["anchor_texts"] = client.anchor_texts_for(client_domain)
+    if client_entry:
+        block["client"] = {"domain": client_domain.lower(), **client_entry}
     return block

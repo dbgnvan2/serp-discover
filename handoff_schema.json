@@ -159,6 +159,10 @@
             },
             "brand_authority": {
               "type": "object"
+            },
+            "anchor_texts": {
+              "type": "object",
+              "description": "The client's own inbound anchor-text distribution. Present only when moz.competitor.client_anchor_texts is enabled. Carried here rather than in `domains` because the handoff excludes the client by design."
             }
           }
         }

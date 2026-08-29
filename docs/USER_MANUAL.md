@@ -377,6 +377,14 @@ It costs 1 API row per item returned, and the limits are sent as the API's own
 page controls, so lowering them genuinely lowers the bill. `moz.competitor.max_competitors` (default 3) caps how many domains
 are fetched per run, and results cache for 30 days.
 
+**Your own domain is checked too.** Because your site is excluded from the competitor list,
+its anchor text is sent separately (`moz.competitor.client_anchor_texts`, on by default,
+one extra anchor page per run). This is what lets Tool 2 tell you if **someone else is
+pointing spam links at you** — and on the first live run it found exactly that: the same
+paid-link network that targets bowencenter.org is also pointing PBN anchors at
+livingsystems.ca from 4 domains. That is a scraper working the whole niche, not something
+anyone bought, which is why the report says links *received*.
+
 Locale matters here too: bowencenter.org returns ranking keywords under `en-US`
 but **none** under `en-CA`. If a competitor's ranking list looks empty, the
 locale is the first thing to check.

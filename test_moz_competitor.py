@@ -701,6 +701,9 @@ class TestClientBrandAuthority(unittest.TestCase):
             "bowencenter.org": {"data_available": True, "status": STATUS_OK}}
         fake._locale, fake._scope = "en-CA", "domain"
         fake._brand_authority = brand_authority
+        # Explicit: an auto-created MagicMock attribute is truthy, so leaving
+        # this unset would silently switch the feature on inside the tests.
+        fake._client_anchor_texts = False
         fake.brand_authority_for.return_value = {
             "status": STATUS_OK, "data_available": True, "score": ba_score}
         return fake
@@ -715,8 +718,11 @@ class TestClientBrandAuthority(unittest.TestCase):
         self.assertEqual(block["client"]["domain"], "livingsystems.ca")
         self.assertEqual(block["client"]["brand_authority"]["score"], 19)
 
-    def test_t5_client_entry_is_omitted_when_brand_authority_is_off(self):
+    def test_t5_brand_authority_omitted_from_client_entry_when_off(self):
+        """The entry itself may still exist for the client's anchor texts —
+        it is no longer gated on Brand Authority alone."""
         fake = self._fake_client(brand_authority=False)
+        fake._client_anchor_texts = False
         with patch.object(MozCompetitorClient, "from_config", return_value=fake):
             block = build_handoff_block(
                 {"moz": {"competitor": {"enabled": True}}},
@@ -765,6 +771,116 @@ class TestClientBrandAuthorityFetch(_CompCase):
         client = MozCompetitorClient(db_path=self.tmp.name, brand_authority=True)
         self.assertFalse(client.brand_authority_for("")["data_available"])
         mock_post.assert_not_called()
+
+
+class TestClientAnchorTexts(_CompCase):
+    """The own-site path: the client's anchors must actually leave Tool 1.
+
+    Tool 1 excludes the client from `moz.domains` by design, so before this
+    the own-site branch of Tool 2's anchor-spam detector was tested and
+    documented but had no data path at all (learnings P21).
+    """
+
+    @patch(POST_TARGET)
+    def test_client_anchors_are_fetched_and_attached(self, mock_post):
+        mock_post.side_effect = _by_method()
+        client = MozCompetitorClient(db_path=self.tmp.name,
+                                     client_anchor_texts=True)
+        block = client.anchor_texts_for("LivingSystems.ca")
+        self.assertEqual(len(block["items"]), 3)
+        self.assertEqual(block["items"][0]["text"], "bowen center")
+
+    @patch(POST_TARGET)
+    def test_client_anchor_fetch_queries_the_client_domain(self, mock_post):
+        mock_post.side_effect = _by_method()
+        client = MozCompetitorClient(db_path=self.tmp.name,
+                                     client_anchor_texts=True)
+        client.anchor_texts_for("LivingSystems.ca")
+        envelope = next(c.kwargs["json"] for c in mock_post.call_args_list
+                        if c.kwargs["json"]["method"]
+                        == moz_competitor.ANCHOR_TEXT_METHOD)
+        self.assertEqual(
+            envelope["params"]["data"]["site_query"]["query"], "livingsystems.ca")
+
+    @patch(POST_TARGET)
+    def test_client_anchor_fetch_bills_rows(self, mock_post):
+        mock_post.side_effect = _by_method()
+        client = MozCompetitorClient(db_path=self.tmp.name,
+                                     client_anchor_texts=True)
+        client.anchor_texts_for("livingsystems.ca")
+        self.assertEqual(client.rows_consumed, 3)
+
+    @patch(POST_TARGET)
+    def test_empty_client_domain_makes_no_call(self, mock_post):
+        client = MozCompetitorClient(db_path=self.tmp.name,
+                                     client_anchor_texts=True)
+        block = client.anchor_texts_for("")
+        mock_post.assert_not_called()
+        self.assertEqual(block["items"], [])
+
+
+class TestClientBlockAssembly(unittest.TestCase):
+    """What the handoff's `moz.client` entry contains, per config."""
+
+    ORGANIC = [{"Query_Label": "A", "Link": "https://bowencenter.org/x"}]
+
+    def _block(self, config, brand=True, anchors=True):
+        fake = MagicMock()
+        fake.fetch.return_value = {"bowencenter.org": {"data_available": True,
+                                                       "status": STATUS_OK}}
+        fake._locale, fake._scope = "en-CA", "domain"
+        fake._brand_authority = brand
+        fake._client_anchor_texts = anchors
+        fake.brand_authority_for.return_value = {"status": STATUS_OK,
+                                                 "data_available": True, "score": 1}
+        fake.anchor_texts_for.return_value = {"status": STATUS_OK, "items": [
+            {"text": "buy backlinks", "external_root_domains": 9}],
+            "returned": 1, "truncated": False}
+        with patch.object(MozCompetitorClient, "from_config", return_value=fake):
+            return build_handoff_block(config, self.ORGANIC, "livingsystems.ca"), fake
+
+    def test_client_entry_carries_anchor_texts(self):
+        block, fake = self._block({"moz": {"competitor": {"enabled": True}}})
+        fake.anchor_texts_for.assert_called_once_with("livingsystems.ca")
+        self.assertEqual(block["client"]["domain"], "livingsystems.ca")
+        self.assertEqual(len(block["client"]["anchor_texts"]["items"]), 1)
+
+    def test_client_anchors_omitted_when_disabled(self):
+        block, fake = self._block({"moz": {"competitor": {"enabled": True}}},
+                                  anchors=False)
+        fake.anchor_texts_for.assert_not_called()
+        self.assertNotIn("anchor_texts", block["client"])
+        self.assertIn("brand_authority", block["client"])
+
+    def test_client_entry_present_for_anchors_alone(self):
+        """The entry must not depend on Brand Authority being on — that gate
+        was why the client block existed at all before."""
+        block, fake = self._block({"moz": {"competitor": {"enabled": True}}},
+                                  brand=False)
+        self.assertIn("anchor_texts", block["client"])
+        self.assertNotIn("brand_authority", block["client"])
+
+    def test_no_client_entry_when_neither_signal_is_on(self):
+        block, _ = self._block({"moz": {"competitor": {"enabled": True}}},
+                               brand=False, anchors=False)
+        self.assertNotIn("client", block)
+
+    def test_client_never_appears_among_the_competitor_domains(self):
+        block, _ = self._block({"moz": {"competitor": {"enabled": True}}})
+        self.assertNotIn("livingsystems.ca", block["domains"])
+
+    def test_shipped_config_enables_client_anchor_texts(self):
+        import yaml
+        with open("config.yml", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        self.assertTrue(cfg["moz"]["competitor"]["client_anchor_texts"])
+
+    def test_from_config_reads_the_flag(self):
+        with tempfile.NamedTemporaryFile(suffix=".db") as f:
+            c = MozCompetitorClient.from_config(
+                {"moz": {"competitor": {"client_anchor_texts": True}}},
+                db_path=f.name)
+        self.assertTrue(c._client_anchor_texts)
 
 
 if __name__ == "__main__":

@@ -141,9 +141,11 @@ moz:
   generated_at: ISO-8601
   locale: en-CA          # the Moz query context these signals were fetched under
   scope: domain
-  client:                # optional; present only when moz.brand_authority is on
+  client:                # optional; present when brand_authority and/or
+                         # competitor.client_anchor_texts is on
     domain: <client domain>
     brand_authority: {status, data_available, score}
+    anchor_texts:    {status, items[], returned, truncated}
   domains:
     <competitor domain>:
       data_available: bool
@@ -164,10 +166,13 @@ otherwise unchanged: it ignores the block, and its full suite (158 tests) passes
 schema. `test_moz_competitor.py::TestHandoffContract` validates a generated v1.1 handoff
 against **Tool 2's real schema file on disk**, so the two drifting apart fails a test here.
 
-The `client` entry carries the client's own Brand Authority so the competitor scores have a
-reference point rather than being absolute numbers with nothing to compare against
-(livingsystems.ca scores 1; psychologytoday.com scores 73). The client is **not** added to
-`domains` — the handoff excludes the client by design.
+The `client` entry carries the client's own signals. Brand Authority gives the competitor
+scores a reference point rather than being absolute numbers with nothing to compare against
+(livingsystems.ca scores 1; psychologytoday.com scores 73). Its `anchor_texts` exist so Tool 2 can run its
+anchor-spam check against the client's own inbound links — the case that reveals a
+**negative-SEO campaign aimed at the client**, which is otherwise invisible. The client is
+**not** added to `domains` — the handoff excludes the client by design, and Tool 2 tags a
+hit on it `is_own_site` rather than filing it as competitor intel.
 
 **Follow-up for serp-compete (not done in this spec):** nothing consumes the block yet.
 `convert_handoff_to_targets` drops it, which is correct and safe. Using the anchor-text and

@@ -45,10 +45,6 @@ moz:
   # figure. Re-probe with `quota.lookup` if the plan changes; the API reports
   # `allotted` and `used`, and rows remaining is derived from the two.
   rows_per_month: 3000
-  # Site metrics (data.site.metrics.fetch.multiple). `scope` must be one of
-  # domain, subdomain, subfolder, url — `url` reproduces the page-level PA the
-  # legacy endpoint returned. `link_count_fields` is editorial: which of Moz's
-  # ~40 link-count fields are kept on each result and cached.
   # Keyword metrics (data.keyword.metrics.fetch). ON by default (gate D-2).
   # One API call per keyword — Moz has no batch variant for this method — and
   # a successful fetch bills 4 rows, not 1 (measured live 2026-08-28), so
@@ -88,13 +84,6 @@ moz:
       navigational: navigational
       local: transactional
       uncategorised: null
-  # Competitor signals for the Tool 2 handoff (data.site.ranking.keyword.list
-  # + data.site.anchor.text.list). The spec's default was false; enabled here
-  # at the user's instruction (2026-08-28). 1 row per object returned, so cost
-  # scales with what each competitor actually has — a full anchor-text page is
-  # 25 rows, ranking keywords cost 1 per keyword found.
-  # Adding this block moves the handoff to schema_version 1.1; serp-compete's
-  # own handoff_schema.json must allow it or Tool 2 hard-exits on validation.
   # T.5 Brand Authority — Moz's 0-100 measure of how established a brand is,
   # independent of link authority. ENABLED here at the user's instruction
   # (the spec's default was false). 1 row per domain. Rides on the competitor
@@ -112,13 +101,29 @@ moz:
   link_momentum:
     enabled: false
     limit: 10
+  # Competitor signals for the Tool 2 handoff (data.site.ranking.keyword.list
+  # + data.site.anchor.text.list). The spec's default was false; enabled here
+  # at the user's instruction (2026-08-28). 1 row per object returned, so cost
+  # scales with what each competitor actually has — a full anchor-text page is
+  # 25 rows, ranking keywords cost 1 per keyword found.
+  # Adding this block moves the handoff to schema_version 1.1; serp-compete's
+  # own handoff_schema.json must allow it or Tool 2 hard-exits on validation.
   competitor:
     enabled: true
+    # Fetch the CLIENT's own anchor text too, so Tool 2's own-site spam check
+    # has data. The client is excluded from the competitor list by design, so
+    # without this its anchors never leave this tool and Tool 2's negative-SEO
+    # branch cannot fire. Costs one extra anchor page (anchor_text_limit rows).
+    client_anchor_texts: true
     scope: domain
     locale: en-CA
     max_competitors: 3
     ranking_keyword_limit: 50
     anchor_text_limit: 25
+  # Site metrics (data.site.metrics.fetch.multiple). `scope` must be one of
+  # domain, subdomain, subfolder, url — `url` reproduces the page-level PA the
+  # legacy endpoint returned. `link_count_fields` is editorial: which of Moz's
+  # ~40 link-count fields are kept on each result and cached.
   site_metrics:
     scope: url
     batch_size: 50
