@@ -351,3 +351,21 @@ Criteria whose Test cell is `manual` require human review. Each is listed below 
 | CM.6.3 | Open `config_manager.py`. Search for `create_field_with_help`. Confirm method adds `?` button to fields. |
 | CM.6.4 | Open `config_manager.py`. Search for `HELP_BY_FILE["brief_pattern_routing.yml"]`. Confirm text contains PURPOSE, STRUCTURE, EXAMPLE. |
 | CM.6.5 | Open `config_manager.py`. Search for `HELP_BY_FILE["intent_classifier_triggers.yml"]`. Confirm text contains PURPOSE, STRUCTURE, EXAMPLE. |
+
+
+## moz_api_upgrade_spec_v1.md (2026-08-27/28)
+
+| Task | Status | Commit |
+|---|---|---|
+| T.0 JSON-RPC client + quota probe | done | `36902b6` |
+| T.1 Site metrics (Spam Score + link counts) | done | `485c3c7`, `5b30cf5` |
+| T.2 Keyword metrics | done | `49f96c9` |
+| T.3 Search-intent cross-check | done | `c58d154` |
+| T.4 Competitor signals in the handoff (schema v1.1) | done | `dd59b0d` |
+| T.5 Brand Authority | done | this commit |
+| T.5 60-day link momentum | **not done — capability absent from the API** | — |
+
+Full criterion-by-criterion mapping, the API corrections found while implementing, and the
+open follow-ups are in `docs/moz_api_upgrade_status_2026-08-28.md`. Three method names given
+in the spec do not exist on this API, and the spec's quota estimate for keyword metrics is
+4x low; both are documented there with the measured values.

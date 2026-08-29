@@ -95,6 +95,23 @@ moz:
   # 25 rows, ranking keywords cost 1 per keyword found.
   # Adding this block moves the handoff to schema_version 1.1; serp-compete's
   # own handoff_schema.json must allow it or Tool 2 hard-exits on validation.
+  # T.5 Brand Authority — Moz's 0-100 measure of how established a brand is,
+  # independent of link authority. ENABLED here at the user's instruction
+  # (the spec's default was false). 1 row per domain. Rides on the competitor
+  # fetch, so it needs moz.competitor.enabled too.
+  # Real method is data.site.metrics.brand.authority.fetch — the spec's
+  # `...metrics.brand_authority.fetch` does not exist on this API.
+  brand_authority:
+    enabled: true
+  # T.5 link momentum. OFF by default and deliberately NOT what the spec
+  # described: Moz exposes no recently-gained / recently-lost filter and no
+  # time window at all on this plan (the allowed filters are external,
+  # follow, nofollow, deleted, not_deleted). What this reports is linking
+  # domains lost at some point vs currently live — no 60-day window exists.
+  # Costs 2 pages per domain, so `limit` is the real spend control.
+  link_momentum:
+    enabled: false
+    limit: 10
   competitor:
     enabled: true
     scope: domain

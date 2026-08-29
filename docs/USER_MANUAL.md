@@ -339,6 +339,25 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 
 **What:** Moz's metric (0–100) predicting how well a domain will rank in Google. Higher DA = more "authority votes" from backlinks.
 
+**Brand Authority (Moz, on).** Each competitor domain also gets a **Brand
+Authority** score, 0-100: Moz's measure of how established a brand is,
+separate from its link authority. It is a useful counterweight to Domain
+Authority — a site can accumulate links without being a brand anyone searches
+for. In your own market the spread is wide: psychologytoday.com scores **73**,
+bowencenter.org scores **1**. Costs 1 API row per domain.
+
+A domain Moz has no score for is reported as *no data*, never as 0 — on a
+0-100 scale, 0 is a real and damning value, so inventing one would be a
+substantive false claim rather than a harmless placeholder.
+
+**Link momentum (off, and narrower than it sounds).** Moz does **not** expose
+recently-gained or recently-lost links on this plan — there is no time filter
+of any kind. What can be had is linking domains *lost at some point* versus
+*currently live*, with no window. That is what this optional signal reports,
+under the names `lost` and `live` and with an explicit `window: none`, so it
+cannot be mistaken for 60-day momentum. It is off by default; turning it on
+costs two pages per competitor.
+
 **Competitor signals in the Tool 2 handoff (Moz).** For each competitor domain
 found in your SERP results, the handoff now carries what that domain actually
 ranks for (keyword, the page that ranks, position, difficulty, volume) and how
@@ -349,8 +368,8 @@ include several paid-backlink PBN phrases.
 
 Limits worth knowing: this takes the **top page** from each method, not the
 complete history, and each block says `truncated: true` when there was more.
-It costs 1 API row per item returned, so a full anchor-text page is 25 rows per
-competitor. `moz.competitor.max_competitors` (default 3) caps how many domains
+It costs 1 API row per item returned, and the limits are sent as the API's own
+page controls, so lowering them genuinely lowers the bill. `moz.competitor.max_competitors` (default 3) caps how many domains
 are fetched per run, and results cache for 30 days.
 
 Locale matters here too: bowencenter.org returns ranking keywords under `en-US`

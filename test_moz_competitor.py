@@ -491,5 +491,199 @@ class TestAuditWiring(unittest.TestCase):
             self.assertIn("moz_competitor", {kw.arg for kw in call.keywords})
 
 
+class TestBrandAuthority(_CompCase):
+    """T.5 — Brand Authority, enabled at the user's instruction."""
+
+    @staticmethod
+    def _ba(score=42):
+        return _resp({"site_metrics": {"brand_authority_score": score},
+                      "site_query": {"query": "https://bowencenter.org"}})
+
+    def _client(self, **kw):
+        return MozCompetitorClient(db_path=self.tmp.name, locale="en-US",
+                                   brand_authority=True, **kw)
+
+    def _routed(self, brand=None):
+        def side_effect(*args, **kwargs):
+            method = kwargs["json"]["method"]
+            if method == moz_competitor.BRAND_AUTHORITY_METHOD:
+                return brand() if callable(brand) else self._ba()
+            if method == moz_competitor.RANKING_KEYWORDS_METHOD:
+                return _resp(REAL_RANKING)
+            return _resp(REAL_ANCHORS)
+        return side_effect
+
+    @patch(POST_TARGET)
+    def test_t5_uses_the_real_method_name(self, mock_post):
+        """The spec's `...metrics.brand_authority.fetch` does not exist —
+        the API answered "Action not found: DataSiteMetricsBrand_authorityFetch"."""
+        mock_post.side_effect = self._routed()
+        self._client().fetch(["bowencenter.org"])
+        methods = {c.kwargs["json"]["method"] for c in mock_post.call_args_list}
+        self.assertIn("data.site.metrics.brand.authority.fetch", methods)
+        self.assertNotIn("data.site.metrics.brand_authority.fetch", methods)
+
+    @patch(POST_TARGET)
+    def test_t5_score_is_parsed(self, mock_post):
+        mock_post.side_effect = self._routed()
+        block = self._client().fetch(["bowencenter.org"])["bowencenter.org"]
+        self.assertTrue(block["brand_authority"]["data_available"])
+        self.assertEqual(block["brand_authority"]["score"], 42)
+
+    @patch(POST_TARGET)
+    def test_t5_zero_is_a_real_score_and_is_kept(self, mock_post):
+        """0 is a legitimate Brand Authority value, not a missing one."""
+        mock_post.side_effect = self._routed(brand=lambda: self._ba(0))
+        block = self._client().fetch(["bowencenter.org"])["bowencenter.org"]
+        self.assertTrue(block["brand_authority"]["data_available"])
+        self.assertEqual(block["brand_authority"]["score"], 0)
+
+    @patch(POST_TARGET)
+    def test_t5_absent_score_is_not_reported_as_zero(self, mock_post):
+        """Design principle 3 — on a 0-100 scale a fabricated 0 is a damning
+        claim, not a neutral placeholder."""
+        mock_post.side_effect = self._routed(
+            brand=lambda: _resp({"site_metrics": {}}))
+        block = self._client().fetch(["bowencenter.org"])["bowencenter.org"]
+        ba = block["brand_authority"]
+        self.assertFalse(ba["data_available"])
+        self.assertNotIn("score", ba)
+
+    @patch(POST_TARGET)
+    def test_t5_bills_one_row_per_domain(self, mock_post):
+        """Measured live: brand authority costs 1 row."""
+        mock_post.side_effect = self._routed()
+        client = self._client()
+        client.fetch(["bowencenter.org"])
+        # 2 ranking keywords + 3 anchors + 1 brand authority
+        self.assertEqual(client.rows_consumed, 6)
+
+    @patch(POST_TARGET)
+    def test_t5_disabled_makes_no_call(self, mock_post):
+        mock_post.side_effect = self._routed()
+        MozCompetitorClient(db_path=self.tmp.name).fetch(["bowencenter.org"])
+        methods = {c.kwargs["json"]["method"] for c in mock_post.call_args_list}
+        self.assertNotIn(moz_competitor.BRAND_AUTHORITY_METHOD, methods)
+
+    @patch(POST_TARGET)
+    def test_t5_brand_authority_survives_the_cache(self, mock_post):
+        mock_post.side_effect = self._routed()
+        client = self._client()
+        client.fetch(["bowencenter.org"])
+        mock_post.reset_mock()
+        block = client.fetch(["bowencenter.org"])["bowencenter.org"]
+        mock_post.assert_not_called()
+        self.assertEqual(block["brand_authority"]["score"], 42)
+
+    def test_t5_shipped_config_enables_brand_authority(self):
+        import yaml
+        with open("config.yml", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f)
+        self.assertTrue(cfg["moz"]["brand_authority"]["enabled"])
+        self.assertFalse(cfg["moz"]["link_momentum"]["enabled"])
+
+    def test_t5_from_config_reads_both_flags(self):
+        with tempfile.NamedTemporaryFile(suffix=".db") as f:
+            c = MozCompetitorClient.from_config(
+                {"moz": {"brand_authority": {"enabled": True},
+                         "link_momentum": {"enabled": True, "limit": 4}}},
+                db_path=f.name)
+        self.assertTrue(c._brand_authority)
+        self.assertTrue(c._link_momentum)
+        self.assertEqual(c._link_momentum_limit, 4)
+
+
+class TestLinkMomentum(_CompCase):
+    """T.5 — the nearest real signal, named for what it actually is."""
+
+    LINKING = {"linking_domains": [
+        {"site_metrics": {"root_domain": "indeed.com", "domain_authority": 91}},
+        {"site_metrics": {"root_domain": "ask.com", "domain_authority": 88}},
+    ]}
+
+    def _routed(self):
+        def side_effect(*args, **kwargs):
+            method = kwargs["json"]["method"]
+            if method == moz_competitor.LINKING_DOMAIN_METHOD:
+                return _resp(self.LINKING)
+            if method == moz_competitor.RANKING_KEYWORDS_METHOD:
+                return _resp(REAL_RANKING)
+            return _resp(REAL_ANCHORS)
+        return side_effect
+
+    def _client(self):
+        return MozCompetitorClient(db_path=self.tmp.name, locale="en-US",
+                                   link_momentum=True, link_momentum_limit=2)
+
+    @patch(POST_TARGET)
+    def test_t5_uses_the_allowed_filter_values_only(self, mock_post):
+        """`recently_gained` / `recently_lost` are not valid: the API allows
+        only external, follow, nofollow, deleted, not_deleted."""
+        mock_post.side_effect = self._routed()
+        self._client().fetch(["bowencenter.org"])
+        allowed = {"external", "follow", "nofollow", "deleted", "not_deleted"}
+        sent = [c.kwargs["json"] for c in mock_post.call_args_list
+                if c.kwargs["json"]["method"] == moz_competitor.LINKING_DOMAIN_METHOD]
+        self.assertTrue(sent)
+        for envelope in sent:
+            filters = set(envelope["params"]["data"]["options"]["filters"])
+            self.assertTrue(filters <= allowed, f"invalid filters: {filters}")
+
+    @patch(POST_TARGET)
+    def test_t5_reports_lost_and_live_not_gained(self, mock_post):
+        """No gained/recent naming may leak in — the data cannot support it."""
+        mock_post.side_effect = self._routed()
+        block = self._client().fetch(["bowencenter.org"])["bowencenter.org"]
+        momentum = block["link_momentum"]
+        self.assertIn("lost", momentum)
+        self.assertIn("live", momentum)
+        self.assertNotIn("gained", momentum)
+        self.assertNotIn("recently_gained", momentum)
+        self.assertIn("none", momentum["window"])
+
+    @patch(POST_TARGET)
+    def test_t5_limit_is_sent_as_offset_limit(self, mock_post):
+        """`offset.limit` is what reduces the bill on this method."""
+        mock_post.side_effect = self._routed()
+        self._client().fetch(["bowencenter.org"])
+        sent = [c.kwargs["json"] for c in mock_post.call_args_list
+                if c.kwargs["json"]["method"] == moz_competitor.LINKING_DOMAIN_METHOD]
+        for envelope in sent:
+            self.assertEqual(envelope["params"]["data"]["offset"]["limit"], 2)
+
+    @patch(POST_TARGET)
+    def test_t5_disabled_makes_no_call(self, mock_post):
+        mock_post.side_effect = self._routed()
+        MozCompetitorClient(db_path=self.tmp.name).fetch(["bowencenter.org"])
+        methods = {c.kwargs["json"]["method"] for c in mock_post.call_args_list}
+        self.assertNotIn(moz_competitor.LINKING_DOMAIN_METHOD, methods)
+
+
+class TestPageLimitsReduceTheBill(_CompCase):
+    """T.5 fix — a cap that trims the list after paying full price is not a
+    cap. `page.limit` and `offset.limit` are what constrain the response."""
+
+    @patch(POST_TARGET)
+    def test_t5_ranking_keywords_send_page_limit(self, mock_post):
+        mock_post.side_effect = _by_method()
+        client = MozCompetitorClient(db_path=self.tmp.name,
+                                     ranking_keyword_limit=7)
+        client.fetch(["bowencenter.org"])
+        envelope = next(c.kwargs["json"] for c in mock_post.call_args_list
+                        if c.kwargs["json"]["method"]
+                        == moz_competitor.RANKING_KEYWORDS_METHOD)
+        self.assertEqual(envelope["params"]["data"]["page"]["limit"], 7)
+
+    @patch(POST_TARGET)
+    def test_t5_anchor_text_sends_offset_limit(self, mock_post):
+        mock_post.side_effect = _by_method()
+        client = MozCompetitorClient(db_path=self.tmp.name, anchor_text_limit=4)
+        client.fetch(["bowencenter.org"])
+        envelope = next(c.kwargs["json"] for c in mock_post.call_args_list
+                        if c.kwargs["json"]["method"]
+                        == moz_competitor.ANCHOR_TEXT_METHOD)
+        self.assertEqual(envelope["params"]["data"]["offset"]["limit"], 4)
+
+
 if __name__ == "__main__":
     unittest.main()

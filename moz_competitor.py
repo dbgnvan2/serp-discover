@@ -65,6 +65,25 @@ except ImportError:
 RANKING_KEYWORDS_METHOD = "data.site.ranking.keyword.list"
 ANCHOR_TEXT_METHOD = "data.site.anchor.text.list"
 
+#: T.5. The spec named `data.site.metrics.brand_authority.fetch` and
+#: `data.site.linking.domain.filter.recently_gained` / `.recently_lost`.
+#: Neither exists: the API CamelCases each dot-segment, so it answered
+#: "Action not found: DataSiteMetricsBrand_authorityFetch". The real names
+#: were found by probing (invalid method names cost no rows).
+BRAND_AUTHORITY_METHOD = "data.site.metrics.brand.authority.fetch"
+LINKING_DOMAIN_METHOD = "data.site.linking.domain.list"
+
+#: Allowed `options.filters` values, from the API's own error message:
+#: external, follow, nofollow, deleted, not_deleted. There is **no**
+#: recently-gained/recently-lost filter and no time window of any kind, so
+#: the spec's "60-day momentum" cannot be computed from this endpoint. What
+#: is available is lost-at-some-point vs currently-live, which is what this
+#: module reports — under names that say so.
+LOST_LINK_FILTERS = ("external", "deleted")
+LIVE_LINK_FILTERS = ("external", "not_deleted")
+
+DEFAULT_LINK_MOMENTUM_LIMIT = 10
+
 CACHE_TABLE = "moz_competitor_cache"
 
 DEFAULT_SCOPE = "domain"
@@ -106,6 +125,9 @@ class MozCompetitorClient:
         max_competitors: int = DEFAULT_MAX_COMPETITORS,
         ranking_keyword_limit: int = DEFAULT_RANKING_KEYWORD_LIMIT,
         anchor_text_limit: int = DEFAULT_ANCHOR_TEXT_LIMIT,
+        brand_authority: bool = False,
+        link_momentum: bool = False,
+        link_momentum_limit: int = DEFAULT_LINK_MOMENTUM_LIMIT,
     ) -> None:
         self._db_path = db_path
         self._cache_ttl = timedelta(days=cache_ttl_days)
@@ -114,6 +136,9 @@ class MozCompetitorClient:
         self._max_competitors = int(max_competitors)
         self._ranking_keyword_limit = int(ranking_keyword_limit)
         self._anchor_text_limit = int(anchor_text_limit)
+        self._brand_authority = bool(brand_authority)
+        self._link_momentum = bool(link_momentum)
+        self._link_momentum_limit = int(link_momentum_limit)
         self.rows_consumed = 0
         self._init_cache_table()
 
@@ -139,6 +164,13 @@ class MozCompetitorClient:
                 or DEFAULT_RANKING_KEYWORD_LIMIT),
             anchor_text_limit=int(
                 comp_cfg.get("anchor_text_limit") or DEFAULT_ANCHOR_TEXT_LIMIT),
+            brand_authority=bool(
+                (moz_cfg.get("brand_authority", {}) or {}).get("enabled", False)),
+            link_momentum=bool(
+                (moz_cfg.get("link_momentum", {}) or {}).get("enabled", False)),
+            link_momentum_limit=int(
+                (moz_cfg.get("link_momentum", {}) or {}).get("limit")
+                or DEFAULT_LINK_MOMENTUM_LIMIT),
         )
 
     @staticmethod
@@ -186,6 +218,10 @@ class MozCompetitorClient:
         # Worst case per domain: a full page from each method.
         per_domain = (self._ranking_keyword_limit + self._anchor_text_limit) \
             * ROWS_PER_OBJECT
+        if self._brand_authority:
+            per_domain += 1
+        if self._link_momentum:
+            per_domain += 2 * self._link_momentum_limit * ROWS_PER_OBJECT
         budget = row_budget(len(to_fetch) * per_domain, "competitor") \
             if to_fetch else None
 
@@ -232,32 +268,44 @@ class MozCompetitorClient:
         """
         ranking, ranking_rows = self._fetch_ranking_keywords(domain)
         anchors, anchor_rows = self._fetch_anchor_text(domain)
+        brand, brand_rows = self._fetch_brand_authority(domain)
+        momentum, momentum_rows = self._fetch_link_momentum(domain)
+        extra_rows = brand_rows + momentum_rows
 
-        available = bool(ranking.get("items")) or bool(anchors.get("items"))
+        available = (bool(ranking.get("items")) or bool(anchors.get("items"))
+                     or bool(brand.get("data_available")))
         if not available:
             statuses = {ranking.get("status"), anchors.get("status")}
             status = STATUS_ERROR if STATUS_ERROR in statuses else STATUS_NO_RECORD
             block = absent(status, "no ranking keywords or anchor text returned")
             block["ranking_keywords"] = ranking
             block["anchor_texts"] = anchors
-            return block, ranking_rows + anchor_rows
+            block["brand_authority"] = brand
+            block["link_momentum"] = momentum
+            return block, ranking_rows + anchor_rows + extra_rows
 
         return {
             "data_available": True,
             "status": STATUS_OK,
             "ranking_keywords": ranking,
             "anchor_texts": anchors,
-        }, ranking_rows + anchor_rows
+            "brand_authority": brand,
+            "link_momentum": momentum,
+        }, ranking_rows + anchor_rows + extra_rows
 
     def _fetch_ranking_keywords(self, domain: str) -> tuple[dict, int]:
         """Keywords *domain* ranks for. `locale` belongs inside target_query."""
+        # `page.limit` is what constrains the response — and therefore the
+        # bill. A bare top-level `limit` is ignored: the call still returns a
+        # full page and still costs a row per object, so the cap would trim
+        # the list after paying for all of it (learnings P9).
         data = {
             "target_query": {
                 "query": domain,
                 "scope": self._scope,
                 "locale": self._locale,
             },
-            "limit": self._ranking_keyword_limit,
+            "page": {"limit": self._ranking_keyword_limit},
         }
         result, status = self._call(RANKING_KEYWORDS_METHOD, data, domain)
         if result is None:
@@ -272,7 +320,12 @@ class MozCompetitorClient:
 
     def _fetch_anchor_text(self, domain: str) -> tuple[dict, int]:
         """Anchor-text distribution pointing at *domain*."""
-        data = {"site_query": {"query": domain, "scope": self._scope}}
+        # This method pages via `offset.limit`, not `page.limit` — see the
+        # note in _fetch_ranking_keywords about caps that do not cap the cost.
+        data = {
+            "site_query": {"query": domain, "scope": self._scope},
+            "offset": {"limit": self._anchor_text_limit},
+        }
         result, status = self._call(ANCHOR_TEXT_METHOD, data, domain)
         if result is None:
             return self._page_block([], [], status), 0
@@ -283,6 +336,82 @@ class MozCompetitorClient:
             for entry in raw if isinstance(entry, dict)
         ][:self._anchor_text_limit]
         return self._page_block(items, raw, status), len(raw) * ROWS_PER_OBJECT
+
+    def _fetch_brand_authority(self, domain: str) -> tuple[dict, int]:
+        """Moz Brand Authority for *domain* (T.5). One row per call.
+
+        Off unless ``moz.brand_authority.enabled``. Absent-safe: a domain Moz
+        has no score for reports ``data_available: False`` and carries no
+        score field, never a 0 — Brand Authority is a 0-100 scale on which 0
+        is a real and damning value, so a fabricated one would be a
+        substantive false claim (spec design principle 3).
+        """
+        if not self._brand_authority:
+            return {"status": "disabled", "data_available": False}, 0
+
+        data = {"site_query": {"query": domain, "scope": self._scope}}
+        result, status = self._call(BRAND_AUTHORITY_METHOD, data, domain)
+        if result is None:
+            return {"status": status, "data_available": False}, 0
+
+        score = (result.get("site_metrics") or {}).get("brand_authority_score")
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            return {
+                "status": STATUS_NO_RECORD, "data_available": False,
+                "reason": "Moz returned no brand authority score",
+            }, ROWS_PER_OBJECT
+        return {
+            "status": STATUS_OK, "data_available": True, "score": score,
+        }, ROWS_PER_OBJECT
+
+    def _fetch_link_momentum(self, domain: str) -> tuple[dict, int]:
+        """Lost vs currently-live linking domains for *domain* (T.5).
+
+        Off unless ``moz.link_momentum.enabled``.
+
+        **This is not the 60-day gained/lost momentum the spec described.**
+        That does not exist on this API: ``data.site.linking.domain.list``
+        accepts only ``external, follow, nofollow, deleted, not_deleted``
+        (the API's own error message enumerates them), and there is no time
+        window on any of them. What is reported here is "lost at some point"
+        against "currently live", which is the nearest real signal — named
+        `lost` and `live` rather than `gained`/`recently_*` so it cannot be
+        read as something it is not.
+        """
+        if not self._link_momentum:
+            return {"status": "disabled", "data_available": False}, 0
+
+        blocks, rows = {}, 0
+        for key, filters in (("lost", LOST_LINK_FILTERS),
+                             ("live", LIVE_LINK_FILTERS)):
+            data = {
+                "site_query": {"query": domain, "scope": self._scope},
+                "offset": {"limit": self._link_momentum_limit},
+                "options": {"filters": list(filters)},
+            }
+            result, status = self._call(LINKING_DOMAIN_METHOD, data, domain)
+            if result is None:
+                blocks[key] = self._page_block([], [], status)
+                continue
+            raw = result.get("linking_domains") or []
+            items = [
+                {
+                    "root_domain": (entry.get("site_metrics") or {}).get("root_domain"),
+                    "domain_authority": (entry.get("site_metrics") or {}).get(
+                        "domain_authority"),
+                }
+                for entry in raw if isinstance(entry, dict)
+            ][:self._link_momentum_limit]
+            blocks[key] = self._page_block(items, raw, status)
+            rows += len(raw) * ROWS_PER_OBJECT
+
+        available = any(b.get("items") for b in blocks.values())
+        return {
+            "status": STATUS_OK if available else STATUS_NO_RECORD,
+            "data_available": available,
+            "window": "none — Moz exposes no time-filtered link data on this plan",
+            **blocks,
+        }, rows
 
     @staticmethod
     def _page_block(items: list, raw: list, status: str) -> dict:
@@ -334,6 +463,16 @@ class MozCompetitorClient:
                     PRIMARY KEY (domain, scope, locale)
                 )
             """)
+            # Idempotent migration for the T.5 columns, mirroring the
+            # CREATE TABLE IF NOT EXISTS discipline used elsewhere.
+            existing = {
+                row[1] for row in
+                conn.execute(f"PRAGMA table_info({CACHE_TABLE})").fetchall()
+            }
+            for column in ("brand_authority", "link_momentum"):
+                if column not in existing:
+                    conn.execute(
+                        f"ALTER TABLE {CACHE_TABLE} ADD COLUMN {column} TEXT")
             conn.commit()
 
     def _cache_lookup(self, domains: list[str]) -> tuple[dict[str, dict], list[str]]:
@@ -347,12 +486,14 @@ class MozCompetitorClient:
                 placeholders = ",".join("?" * len(chunk))
                 rows.extend(conn.execute(
                     f"SELECT domain, status, ranking_keywords, anchor_texts, "
-                    f"fetched_at FROM {CACHE_TABLE} "
+                    f"fetched_at, brand_authority, link_momentum "
+                    f"FROM {CACHE_TABLE} "
                     f"WHERE scope=? AND locale=? AND domain IN ({placeholders})",
                     [self._scope, self._locale, *chunk],
                 ).fetchall())
 
-        for domain, status, ranking, anchors, fetched_at in rows:
+        for (domain, status, ranking, anchors, fetched_at,
+             brand, momentum) in rows:
             if not fetched_at or fetched_at < cutoff:
                 continue
             if status == STATUS_NO_RECORD:
@@ -366,6 +507,8 @@ class MozCompetitorClient:
                 "status": STATUS_OK,
                 "ranking_keywords": _decode(ranking),
                 "anchor_texts": _decode(anchors),
+                "brand_authority": _decode_signal(brand),
+                "link_momentum": _decode_signal(momentum),
             }
 
         to_fetch = [d for d in domains if d not in cached]
@@ -379,6 +522,8 @@ class MozCompetitorClient:
                 json.dumps(block.get("ranking_keywords") or {}),
                 json.dumps(block.get("anchor_texts") or {}),
                 fetched_at,
+                json.dumps(block.get("brand_authority") or {}),
+                json.dumps(block.get("link_momentum") or {}),
             )
             for domain, block in results.items()
             if block.get("status") in _CACHEABLE
@@ -389,10 +534,25 @@ class MozCompetitorClient:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {CACHE_TABLE} "
                 f"(domain, scope, locale, status, ranking_keywords, "
-                f"anchor_texts, fetched_at) VALUES (?,?,?,?,?,?,?)",
+                f"anchor_texts, fetched_at, brand_authority, link_momentum) "
+                f"VALUES (?,?,?,?,?,?,?,?,?)",
                 rows,
             )
             conn.commit()
+
+
+def _decode_signal(raw) -> dict:
+    """Decode a cached T.5 sub-block, degrading to an honest absent block."""
+    if not raw:
+        return {"status": "not_fetched", "data_available": False}
+    try:
+        decoded = json.loads(raw)
+    except (ValueError, TypeError):
+        logger.warning("Unreadable T.5 blob in %s — treating as absent", CACHE_TABLE)
+        decoded = None
+    if not isinstance(decoded, dict):
+        return {"status": "not_fetched", "data_available": False}
+    return decoded
 
 
 def _decode(raw) -> dict:
