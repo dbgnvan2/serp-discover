@@ -245,6 +245,7 @@ class MozCompetitorClient:
                     )
                 break
             block, billed = self._fetch_one(domain)
+            block["fetched_at"] = datetime.now(_UTC).isoformat()
             fresh[domain] = block
             self.rows_consumed += billed
             if budget is not None:
@@ -552,6 +553,12 @@ class MozCompetitorClient:
             cached[domain] = {
                 "data_available": True,
                 "status": STATUS_OK,
+                # When these signals were actually collected, not when the
+                # handoff was assembled. A cached block can be up to
+                # cache_ttl_days old; without this the consumer can only see
+                # the assembly timestamp and would read 27-day-old anchors as
+                # same-day observations (P6).
+                "fetched_at": fetched_at,
                 "ranking_keywords": _decode(ranking),
                 "anchor_texts": _decode(anchors),
                 "brand_authority": _decode_signal(brand),
@@ -681,6 +688,8 @@ def build_handoff_block(config, all_organic, client_domain,
         return None
 
     block = {
+        # Assembly time, NOT collection time — per-domain `fetched_at` carries
+        # that, because a cached domain can be far older than this timestamp.
         "generated_at": datetime.now(_UTC).isoformat(),
         "locale": client._locale,
         "scope": client._scope,
@@ -698,6 +707,7 @@ def build_handoff_block(config, all_organic, client_domain,
         # own-site anchor-spam branch — the one that would reveal a negative-SEO
         # campaign aimed at the client — had no data path at all (P21).
         client_entry["anchor_texts"] = client.anchor_texts_for(client_domain)
+        client_entry["fetched_at"] = datetime.now(_UTC).isoformat()
     if client_entry:
         block["client"] = {"domain": client_domain.lower(), **client_entry}
     return block

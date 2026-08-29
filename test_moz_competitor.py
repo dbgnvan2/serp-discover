@@ -883,5 +883,36 @@ class TestClientBlockAssembly(unittest.TestCase):
         self.assertTrue(c._client_anchor_texts)
 
 
+class TestCollectionFreshness(_CompCase):
+    """Each domain block must say when it was actually collected.
+
+    `generated_at` is assembly time. A block served from the 30-day cache can
+    be far older, and a consumer with only the assembly timestamp would report
+    stale anchors as same-day observations (P6).
+    """
+
+    @patch(POST_TARGET)
+    def test_fresh_fetch_carries_fetched_at(self, mock_post):
+        mock_post.side_effect = _by_method()
+        block = self.client.fetch(["bowencenter.org"])["bowencenter.org"]
+        self.assertIn("fetched_at", block)
+        self.assertTrue(block["fetched_at"])
+
+    @patch(POST_TARGET)
+    def test_cached_block_reports_when_it_was_collected_not_now(self, mock_post):
+        """The whole point: a cache hit must not look freshly fetched."""
+        import sqlite3
+        mock_post.side_effect = _by_method()
+        self.client.fetch(["bowencenter.org"])
+        stale = "2026-08-01T09:00:00+00:00"
+        with sqlite3.connect(self.tmp.name) as conn:
+            conn.execute("UPDATE moz_competitor_cache SET fetched_at=?", (stale,))
+            conn.commit()
+        mock_post.reset_mock()
+        block = self.client.fetch(["bowencenter.org"])["bowencenter.org"]
+        mock_post.assert_not_called()
+        self.assertEqual(block["fetched_at"], stale)
+
+
 if __name__ == "__main__":
     unittest.main()
