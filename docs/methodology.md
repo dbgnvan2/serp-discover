@@ -76,7 +76,14 @@ greater", which nobody wrote).
 
 `get_display_ngrams()` spans the raw word sequence instead, so every phrase is a
 contiguous quote from the source, then drops spans that begin or end on a stop
-word. `get_display_phrases()` counts those and removes keyword echo — any phrase
+word — from **`display_stop_words`**, a separate generic-English list, never
+`stop_words`. That distinction is load-bearing: `stop_words` is a domain noise
+list containing the market's own nouns (`counselling`, `therapy`, `clinic`,
+`vancouver`, `bc`) so that `get_ngrams` strips them and Bowen triggers stand out.
+Used as a phrase boundary it makes this section unable to emit `family
+counselling` or `couples therapy`, the vocabulary it exists to show. Both lists
+are validated at load time to contain only strings, because YAML 1.1 parses a
+bare `on`/`off`/`yes`/`no` as a boolean and would silently drop that word. `get_display_phrases()` counts those and removes keyword echo — any phrase
 that is a contiguous sub-span of an analysed keyword, which is a fact about the
 query rather than about competitors.
 

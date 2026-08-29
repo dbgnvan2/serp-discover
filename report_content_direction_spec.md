@@ -1,7 +1,7 @@
 # Report Content Direction — spec + implementation plan (v1)
 
-**Status:** implemented 2026-08-28. All CD.1-CD.10 criteria done; see
-`docs/spec_coverage.md` rows CD.1.1-CD.10.3 and the status report below.
+**Status:** implemented 2026-08-28. All CD.1-CD.11 criteria done; see
+`docs/spec_coverage.md` rows CD.1.1-CD.11.8 and the status report below.
 **Date:** 2026-08-28
 **Prefix:** `CD` (Content Direction)
 
@@ -287,6 +287,44 @@ no tokens and no API call at any surface.
 | CD.10.1 | The document contains every term and the column table | `tests/test_glossary_surfaces.py::test_cd10_1*`, `::test_cd10_2*` |
 | CD.10.2 | The checked-in `docs/glossary.md` is current; table rows well-formed with pipes escaped | `::test_cd10_4_checked_in_doc_is_current`, `::test_cd10_3*` |
 | CD.10.3 | `--glossary-out` needs no `--json`; a report still requires both | `::test_cd10_5*`, `::test_cd10_6*` |
+
+
+### CD.11 — Sweep fixes
+
+Two `learning-qa` sweeps ran before push. The first, over CD.1–CD.10, returned
+11 findings (2 high). The second, over that fix commit, returned 8 (3 high) —
+**all three high findings were defects introduced by the fixes themselves**,
+which is what P26's corollary predicts about fix commits.
+
+The two that mattered most, both verified against the real run before fixing:
+
+**The display boundary used the wrong stop list.** `serp_vocab.yml`'s
+`stop_words` is a *domain noise* list — it contains `counselling`, `therapy`,
+`clinic`, `vancouver`, `bc` — because `get_ngrams` strips them so Bowen triggers
+stand out. Reused as a phrase-boundary rule, it made §3 structurally unable to
+emit `family counselling`, `couples therapy` or `north vancouver`: the exact
+vocabulary the section exists to surface. It also truncated "Couple & Family
+Therapy" to `couple family`. The CD.3 tests could not catch it because
+"family of origin" passes under both lists.
+
+**`- on` was a YAML boolean.** The generic list written to fix the above had one
+bare `on`, which YAML 1.1 parses as `True`, so "on" silently left the set and
+`focused on` / `based on` leaked through. Line 27 of the same file already
+carried the fix and the warning comment, for `stop_words`.
+
+| ID | Criterion | Test |
+|---|---|---|
+| CD.11.1 | Display boundary uses generic English only; domain nouns and question words excluded; function words present; loader rejects non-string words; short content word no longer kills the span | `tests/test_report_content_direction.py::TestCD11SweepFixes::test_cd11_1*` (6 tests) |
+| CD.11.2 | An empty phrase list states the actual cause (nothing captured / nothing repeated / all echo), parametrised by the configured threshold; `kept` counted post-slice | `::test_cd11_2*` |
+| CD.11.3 | Stored empty result respected (key presence, not truthiness); producer and consumer share one echo vocabulary via `analysed_keywords` | `::test_cd11_3*` |
+| CD.11.4 | A typo'd config number degrades with a warning instead of aborting the audit at import; lossy coercion warns | `::test_cd11_4*` |
+| CD.11.5 | Feasibility numbers coerced once via `_as_float`; an unparseable value never deletes unrelated findings, and matches a missing one | `::test_cd11_5*` (4 tests) |
+| CD.11.6 | The real-artifact guards run on a committed fixture, not a gitignored file | `::test_cd11_6_reference_fixture_is_committed`; verified by running the suite with the local artifact moved away (1383 both ways) |
+| CD.11.7 | §5c coerces before formatting — a pre-existing sibling crash, fixed as a class (P5) | `::test_cd11_5_string_gap_does_not_break_the_plan` |
+| CD.11.8 | The feasibility report is rendered from re-routed plays, not stale ones | `tests/test_play_feasibility_ordering.py::test_cd8_3c_feasibility_report_is_rendered_from_rerouted_plays` |
+
+Findings graded below medium were recorded in `TODO.md` rather than fixed, per
+the bound-the-loop rule.
 
 ---
 

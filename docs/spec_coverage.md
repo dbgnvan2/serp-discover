@@ -294,6 +294,14 @@
 | CD.10.1 | content_direction | Standalone glossary document contains every term and the column table | `generate_insight_report.py::build_glossary_document`, `docs/glossary.md` | `::test_cd10_1*`, `::test_cd10_2*` | done |
 | CD.10.2 | content_direction | Checked-in docs/glossary.md is current; table rows well-formed, pipes escaped | `docs/glossary.md` | `::test_cd10_4_checked_in_doc_is_current`, `::test_cd10_3*` | done |
 | CD.10.3 | content_direction | `--glossary-out` needs no `--json`; a report still requires both | `generate_insight_report.py::main` | `::test_cd10_5*`, `::test_cd10_6*` | done |
+| CD.11.1 | content_direction | Display phrase boundary uses generic English, not the domain noise list; loader rejects YAML-boolean words | `serp_vocab.yml` `display_stop_words`, `pattern_matching.py::get_display_ngrams`, `::load_serp_vocab` | `tests/test_report_content_direction.py::TestCD11SweepFixes::test_cd11_1*` (6 tests) | done |
+| CD.11.2 | content_direction | Empty phrase list states the real cause, parametrised by the configured threshold; `kept` counted post-slice | `pattern_matching.py::get_display_phrases`, `generate_insight_report.py::_no_phrases_message` | `::test_cd11_2*` | done |
+| CD.11.3 | content_direction | Stored empty result respected; one echo vocabulary via `analysed_keywords` | `serp_audit.py`, `generate_insight_report.py::_analysed_keywords` | `::test_cd11_3*` | done |
+| CD.11.4 | content_direction | Config numbers degrade with a warning instead of aborting the audit at import | `generate_insight_report.py::_report_number` | `::test_cd11_4*` | done |
+| CD.11.5 | content_direction | Feasibility numbers coerced once; an unusable value never deletes unrelated findings | `generate_insight_report.py::_as_float`, `::_why_this_keyword` | `::test_cd11_5*` (4 tests) | done |
+| CD.11.6 | content_direction | Real-artifact guards run on a committed fixture, not a gitignored file | `tests/fixtures/market_analysis_reference_run.json`, `.gitignore` | `::test_cd11_6_reference_fixture_is_committed` | done |
+| CD.11.7 | content_direction | §5c coerces before formatting (pre-existing sibling crash, fixed as a class) | `generate_insight_report.py` (§5c table) | `::test_cd11_5_string_gap_does_not_break_the_plan` | done |
+| CD.11.8 | content_direction | Feasibility report rendered from re-routed plays | `run_feasibility.py::main` | `tests/test_play_feasibility_ordering.py::test_cd8_3c_feasibility_report_is_rendered_from_rerouted_plays` | done |
 
 ---
 

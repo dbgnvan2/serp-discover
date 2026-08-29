@@ -97,6 +97,10 @@ raising.
 | Key | Default | Meaning |
 |---|---|---|
 | `report.da_gap_noise_floor` | `2.0` | Domain Authority points below which the §1 content plan calls a gap "effectively level" instead of naming a stronger side. DA is a 0–100 third-party estimate, so a gap of a point or two is noise; without this floor a 0.6-point gap would be reported as "they are stronger than you" directly under a "High Feasibility" status. |
+| `report.phrase_min_count` | `2` | How many times a phrase must appear before report §3 calls it recurring. Below this it is not listed, and §3 says so. |
+| `report.phrase_limit` | `10` | Maximum phrases listed in report §3. |
+
+All three degrade with a warning if set to something that is not a non-negative number — a typo here must never abort a run, since `serp_audit` imports the report module at start-up.
 
 ---
 
