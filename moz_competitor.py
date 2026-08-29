@@ -337,6 +337,25 @@ class MozCompetitorClient:
         ][:self._anchor_text_limit]
         return self._page_block(items, raw, status), len(raw) * ROWS_PER_OBJECT
 
+    def brand_authority_for(self, domain: str) -> dict:
+        """Fetch Brand Authority for one domain — typically the client's own.
+
+        Purpose: give the handoff the client's own Brand Authority next to its
+                 competitors', so the score has a reference point.
+        Spec:    moz_api_upgrade_spec_v1.md#T.5
+        Tests:   test_moz_competitor.py::TestClientBrandAuthority
+
+        Deliberately uncached. One row per run is cheaper than a fourth cache
+        table and its own staleness rules, and at roughly one run a week that
+        is ~4 rows a month. Returns the same absent-safe block shape as the
+        competitor path, so a missing score is never a 0.
+        """
+        if not domain:
+            return {"status": "not_fetched", "data_available": False}
+        block, rows = self._fetch_brand_authority(domain.lower())
+        self.rows_consumed += rows
+        return block
+
     def _fetch_brand_authority(self, domain: str) -> tuple[dict, int]:
         """Moz Brand Authority for *domain* (T.5). One row per call.
 
@@ -632,9 +651,19 @@ def build_handoff_block(config, all_organic, client_domain,
         return None
     if not results:
         return None
-    return {
+
+    block = {
         "generated_at": datetime.now(_UTC).isoformat(),
         "locale": client._locale,
         "scope": client._scope,
         "domains": results,
     }
+    # The client's own Brand Authority, so the competitor scores have a
+    # reference point rather than being absolute numbers with nothing to
+    # compare against. Omitted entirely when Brand Authority is off.
+    if client_domain and client._brand_authority:
+        block["client"] = {
+            "domain": client_domain.lower(),
+            "brand_authority": client.brand_authority_for(client_domain),
+        }
+    return block

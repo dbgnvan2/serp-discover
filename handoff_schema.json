@@ -145,6 +145,22 @@
               }
             }
           }
+        },
+        "client": {
+          "type": "object",
+          "description": "The client's own Moz signals, for reference against the competitor scores. Optional; present only when moz.brand_authority is enabled.",
+          "additionalProperties": false,
+          "required": [
+            "domain"
+          ],
+          "properties": {
+            "domain": {
+              "type": "string"
+            },
+            "brand_authority": {
+              "type": "object"
+            }
+          }
         }
       }
     }

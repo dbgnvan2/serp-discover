@@ -103,6 +103,7 @@ serp-compete — the established workflow there. Tool 2's code is untouched and 
 | `config.yml` flags | **partial** | `link_momentum.enabled: false` per spec; `brand_authority.enabled: true` at the user's instruction |
 | Documented in `docs/USER_MANUAL.md` as optional signals | done | `docs/USER_MANUAL.md` |
 | Brand Authority | done | real method is `data.site.metrics.brand.authority.fetch`, 1 row |
+| Client-domain Brand Authority (spec budget line: 1 + 3 competitors) | done | `moz.client` entry in the handoff; `TestClientBrandAuthority`. livingsystems.ca 1 vs psychologytoday.com 73 |
 | 60-day gained/lost link momentum | **not done — the capability does not exist** | see below |
 
 **Neither method named in the spec exists.** `data.site.metrics.brand_authority.fetch` and
@@ -142,11 +143,9 @@ Every paid signal checks live remaining quota before spending and stops, naming 
 
 ## Follow-ups (not done, deliberately)
 
-1. **serp-compete's `handoff_schema.json` change is uncommitted.** Made and verified in that repo,
-   left uncommitted pending the user's decision, since committing there was not requested.
+1. **serp-compete's `handoff_schema.json` is synced and committed** in that repo, at the user's
+   instruction. It carries both the T.4 `moz` block and the T.5 `client` entry. Tool 2's code is
+   otherwise untouched and its full suite (158 tests) passes.
 2. **Nothing in Tool 2 consumes the `moz` block yet.** `convert_handoff_to_targets` drops it, which
    is correct and safe. Using the data in Tool 2's audit is separate work.
-3. **Client-domain Brand Authority.** The spec's budget line implies client + competitors; only
-   competitor domains are fetched, because adding a `client` key to the handoff `moz` block would
-   require a second cross-tool schema sync while decision (1) is open.
-4. **`docs/spec_coverage.md`** regenerated separately per `CLAUDE.md`.
+3. **`docs/spec_coverage.md`** regenerated separately per `CLAUDE.md`.

@@ -346,6 +346,11 @@ Authority — a site can accumulate links without being a brand anyone searches
 for. In your own market the spread is wide: psychologytoday.com scores **73**,
 bowencenter.org scores **1**. Costs 1 API row per domain.
 
+Your own domain's Brand Authority is included too, so the competitor numbers have
+something to sit against: livingsystems.ca scores **1** against
+psychologytoday.com's **73**. That gap is the point — it says the brand-search
+signal is where the distance lies, not just the link profile.
+
 A domain Moz has no score for is reported as *no data*, never as 0 — on a
 0-100 scale, 0 is a real and damning value, so inventing one would be a
 substantive false claim rather than a harmless placeholder.

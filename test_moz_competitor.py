@@ -403,6 +403,11 @@ class TestHandoffContract(unittest.TestCase):
         "generated_at": "2026-08-28T12:00:00+00:00",
         "locale": "en-CA",
         "scope": "domain",
+        "client": {
+            "domain": "livingsystems.ca",
+            "brand_authority": {"status": "ok", "data_available": True,
+                                "score": 19},
+        },
         "domains": {
             "bowencenter.org": {
                 "data_available": True, "status": STATUS_OK,
@@ -683,6 +688,83 @@ class TestPageLimitsReduceTheBill(_CompCase):
                         if c.kwargs["json"]["method"]
                         == moz_competitor.ANCHOR_TEXT_METHOD)
         self.assertEqual(envelope["params"]["data"]["offset"]["limit"], 4)
+
+
+class TestClientBrandAuthority(unittest.TestCase):
+    """T.5 — the client's own Brand Authority, as a reference point."""
+
+    ORGANIC = [{"Query_Label": "A", "Link": "https://bowencenter.org/x"}]
+
+    def _fake_client(self, ba_score=19, brand_authority=True):
+        fake = MagicMock()
+        fake.fetch.return_value = {
+            "bowencenter.org": {"data_available": True, "status": STATUS_OK}}
+        fake._locale, fake._scope = "en-CA", "domain"
+        fake._brand_authority = brand_authority
+        fake.brand_authority_for.return_value = {
+            "status": STATUS_OK, "data_available": True, "score": ba_score}
+        return fake
+
+    def test_t5_client_brand_authority_is_in_the_block(self):
+        fake = self._fake_client()
+        with patch.object(MozCompetitorClient, "from_config", return_value=fake):
+            block = build_handoff_block(
+                {"moz": {"competitor": {"enabled": True}}},
+                self.ORGANIC, "LivingSystems.ca")
+        fake.brand_authority_for.assert_called_once_with("LivingSystems.ca")
+        self.assertEqual(block["client"]["domain"], "livingsystems.ca")
+        self.assertEqual(block["client"]["brand_authority"]["score"], 19)
+
+    def test_t5_client_entry_is_omitted_when_brand_authority_is_off(self):
+        fake = self._fake_client(brand_authority=False)
+        with patch.object(MozCompetitorClient, "from_config", return_value=fake):
+            block = build_handoff_block(
+                {"moz": {"competitor": {"enabled": True}}},
+                self.ORGANIC, "livingsystems.ca")
+        self.assertNotIn("client", block)
+        fake.brand_authority_for.assert_not_called()
+
+    def test_t5_client_is_not_added_to_the_competitor_domains(self):
+        """The handoff excludes the client by design; its Brand Authority is a
+        reference point, not a competitor entry."""
+        fake = self._fake_client()
+        with patch.object(MozCompetitorClient, "from_config", return_value=fake):
+            block = build_handoff_block(
+                {"moz": {"competitor": {"enabled": True}}},
+                self.ORGANIC, "livingsystems.ca")
+        self.assertNotIn("livingsystems.ca", block["domains"])
+
+
+class TestClientBrandAuthorityFetch(_CompCase):
+
+    @patch(POST_TARGET)
+    def test_t5_brand_authority_for_bills_one_row(self, mock_post):
+        mock_post.return_value = _resp(
+            {"site_metrics": {"brand_authority_score": 19}})
+        client = MozCompetitorClient(db_path=self.tmp.name, brand_authority=True)
+        block = client.brand_authority_for("livingsystems.ca")
+        self.assertEqual(block["score"], 19)
+        self.assertEqual(client.rows_consumed, 1)
+
+    @patch(POST_TARGET)
+    def test_t5_brand_authority_for_is_absent_safe(self, mock_post):
+        mock_post.return_value = _resp({"site_metrics": {}})
+        client = MozCompetitorClient(db_path=self.tmp.name, brand_authority=True)
+        block = client.brand_authority_for("livingsystems.ca")
+        self.assertFalse(block["data_available"])
+        self.assertNotIn("score", block)
+
+    @patch(POST_TARGET)
+    def test_t5_brand_authority_for_makes_no_call_when_disabled(self, mock_post):
+        client = MozCompetitorClient(db_path=self.tmp.name)
+        client.brand_authority_for("livingsystems.ca")
+        mock_post.assert_not_called()
+
+    @patch(POST_TARGET)
+    def test_t5_empty_domain_is_handled(self, mock_post):
+        client = MozCompetitorClient(db_path=self.tmp.name, brand_authority=True)
+        self.assertFalse(client.brand_authority_for("")["data_available"])
+        mock_post.assert_not_called()
 
 
 if __name__ == "__main__":

@@ -141,6 +141,9 @@ moz:
   generated_at: ISO-8601
   locale: en-CA          # the Moz query context these signals were fetched under
   scope: domain
+  client:                # optional; present only when moz.brand_authority is on
+    domain: <client domain>
+    brand_authority: {status, data_available, score}
   domains:
     <competitor domain>:
       data_available: bool
@@ -160,6 +163,11 @@ its previous commit is "Sync handoff_schema.json from serp-discover"). serp-comp
 otherwise unchanged: it ignores the block, and its full suite (158 tests) passes with the new
 schema. `test_moz_competitor.py::TestHandoffContract` validates a generated v1.1 handoff
 against **Tool 2's real schema file on disk**, so the two drifting apart fails a test here.
+
+The `client` entry carries the client's own Brand Authority so the competitor scores have a
+reference point rather than being absolute numbers with nothing to compare against
+(livingsystems.ca scores 1; psychologytoday.com scores 73). The client is **not** added to
+`domains` — the handoff excludes the client by design.
 
 **Follow-up for serp-compete (not done in this spec):** nothing consumes the block yet.
 `convert_handoff_to_targets` drops it, which is correct and safe. Using the anchor-text and
