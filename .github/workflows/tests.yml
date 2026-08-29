@@ -1,0 +1,39 @@
+name: tests
+
+# The value here is the blank machine: no venv accumulated over months, no keys
+# in the environment, none of the packages installed by hand and forgotten.
+# That is what catches "works on this Mac" — and this repo is shared between
+# two of them.
+on:
+  push:
+    branches: [main, "fix/**", "feat/**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          # The version both Macs run. requirements.txt pins ranges rather than
+          # exact versions, so a resolver change shows up here first.
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run the full suite
+        # No API keys, deliberately. Every external call in the suite is mocked
+        # (CLAUDE.md: "Tests do not require API keys"), so a failure here for
+        # want of a secret is fixed by stubbing the dependency — never by
+        # putting keys in the repo or in Actions secrets to make it pass.
+        #
+        # Judged by the exit code, not by grepping the summary line:
+        # "2 failed, 1394 passed" contains the word "passed" (P24).
+        run: python -m pytest test_*.py tests/ -q
