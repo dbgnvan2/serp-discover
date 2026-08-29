@@ -149,3 +149,27 @@ Every paid signal checks live remaining quota before spending and stops, naming 
 2. **Nothing in Tool 2 consumes the `moz` block yet.** `convert_handoff_to_targets` drops it, which
    is correct and safe. Using the data in Tool 2's audit is separate work.
 3. **`docs/spec_coverage.md`** regenerated separately per `CLAUDE.md`.
+
+---
+
+## CI follow-ups (2026-08-29)
+
+Both repos now run their suites on a clean checkout. Two items the first runs
+surfaced, recorded rather than fixed:
+
+1. **The section-5 CD.7 tests skip on CI.** They need entity-dominance rows in
+   `serp_data.db`, which is not committed, so a clean checkout cannot render
+   `## 5. SERP Composition` at all. They now skip with that reason instead of
+   failing. Restoring the coverage means seeding a temporary database in the
+   fixture — CD.7 territory, and it needs the `metrics` schema.
+2. **`serp-discover`'s cross-tool contract test skips on CI.** It validates a
+   generated handoff against serp-compete's `handoff_schema.json` on disk and
+   skips when that repo is absent. It runs on either Mac, where both are
+   checked out. Making it run in CI would mean checking out the sibling repo in
+   the workflow.
+
+Worth noting what CI caught on its first two runs, since that is the argument
+for having it: 26 GUI tests that had never executed anywhere but a developer's
+desktop (the skip condition tested whether tkinter *imports*, not whether a
+window can be built), and three tests with an undeclared dependency on an
+uncommitted database.
