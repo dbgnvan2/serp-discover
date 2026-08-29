@@ -467,6 +467,15 @@ def _dedupe_question_records(paa_questions):
     return out
 
 
+def _root_keywords(data):
+    """Return the run's root (Query_Label "A") keywords, sorted."""
+    return sorted({
+        row.get("Source_Keyword")
+        for row in (data.get("organic_results") or [])
+        if row.get("Query_Label") == "A" and row.get("Source_Keyword")
+    })
+
+
 def _fetch_moz_keyword_metrics(data, config):
     """Fetch Moz keyword metrics for the run's root keywords.
 
@@ -488,11 +497,7 @@ def _fetch_moz_keyword_metrics(data, config):
     except ImportError:
         return {}
 
-    keywords = sorted({
-        row.get("Source_Keyword")
-        for row in (data.get("organic_results") or [])
-        if row.get("Query_Label") == "A" and row.get("Source_Keyword")
-    })
+    keywords = _root_keywords(data)
     if not keywords:
         return {}
 
@@ -501,6 +506,43 @@ def _fetch_moz_keyword_metrics(data, config):
         return MozKeywordClient.from_config(config).fetch(keywords)
     except Exception as exc:  # never let an optional signal abort the brief
         progress(f"      Moz keyword metrics unavailable: {exc}")
+        return {}
+
+
+def _moz_intent_mapping(config):
+    """Return the editorial repo-intent → Moz-label mapping from config."""
+    moz_cfg = (config.get("moz", {}) if isinstance(config, dict) else {}) or {}
+    intent_cfg = moz_cfg.get("search_intent", {}) or {}
+    return intent_cfg.get("repo_to_moz_intent") or None
+
+
+def _fetch_moz_intent(data, config):
+    """Fetch Moz search-intent scores for the run's root keywords.
+
+    Purpose: pre-compute the T.3 cross-check signal before extraction.
+    Spec:    moz_api_upgrade_spec_v1.md#T.3
+    Tests:   test_moz_intent.py::TestBriefWiring
+
+    OFF by default — this is a second opinion on a classification the repo
+    already makes, so it should not spend quota unless asked.
+    """
+    moz_cfg = (config.get("moz", {}) if isinstance(config, dict) else {}) or {}
+    intent_cfg = moz_cfg.get("search_intent", {}) or {}
+    if not moz_cfg.get("enabled", True) or not intent_cfg.get("enabled", False):
+        return {}
+    try:
+        from moz_keywords import MozIntentClient
+    except ImportError:
+        return {}
+
+    keywords = _root_keywords(data)
+    if not keywords:
+        return {}
+    progress(f"      Fetching Moz search intent for {len(keywords)} keyword(s).")
+    try:
+        return MozIntentClient.from_config(config).fetch(keywords)
+    except Exception as exc:  # never let an optional signal abort the brief
+        progress(f"      Moz search intent unavailable: {exc}")
         return {}
 
 
@@ -520,6 +562,7 @@ def list_recommendations(data, args):
     geo_cfg = config.get("geo", {}) if isinstance(config, dict) else {}
     outreach_entity_types = geo_cfg.get("outreach_entity_types")
     moz_keyword_metrics = _fetch_moz_keyword_metrics(data, config)
+    moz_intent_metrics = _fetch_moz_intent(data, config)
     extracted = extract_analysis_data_from_json(
         data,
         client_domain=context["client_domain"],
@@ -530,6 +573,8 @@ def list_recommendations(data, args):
         preferred_intents=preferred_intents,
         outreach_entity_types=outreach_entity_types,
         moz_keyword_metrics=moz_keyword_metrics,
+        moz_intent_metrics=moz_intent_metrics,
+        moz_intent_mapping=_moz_intent_mapping(config),
     )
     # Optional GSC feed-forward (Spec: seo_geo_deferred_spec_v1.md#G.4):
     # when config gsc.feed_strategic_flags is true and run_gsc_analysis.py

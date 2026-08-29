@@ -339,6 +339,22 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 
 **What:** Moz's metric (0–100) predicting how well a domain will rank in Google. Higher DA = more "authority votes" from backlinks.
 
+**Search-intent cross-check (Moz, optional and off by default).** The tool
+classifies each keyword's intent with its own rule table (`intent_mapping.yml`),
+which you control. Moz can also be asked what *it* thinks the intent is, and the
+two are shown side by side.
+
+Moz never overrides your rules. Where the two agree, that is a confidence
+signal. Where they disagree, the report flags it as an open question worth a
+human look and quotes both readings — it does not pick a winner. The two use
+different vocabularies (Moz has four labels; this tool also has
+`commercial_investigation`, `local` and `uncategorised`), so a mapping table in
+`config.yml` translates between them; a keyword whose intent cannot be compared
+is reported as **not comparable**, which is different from a disagreement.
+
+Turn it on with `moz.search_intent.enabled: true`. It costs 1 API row per
+keyword.
+
 **Keyword demand metrics (Moz).** Each root keyword is also looked up in Moz's
 keyword index, and the result is handed to the report as data:
 

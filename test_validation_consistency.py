@@ -42,6 +42,14 @@ KNOWN_UNVALIDATED = frozenset({
                         # credential counts per page); descriptive counts
                         # with no enforceable claim shape
                         # (seo_geo_deferred G.3)
+    "moz_intent",       # Moz search-intent cross-check. Descriptive scores
+                        # from a third party plus a pre-computed `agrees`
+                        # flag; the binding rule (serp_intent stays the
+                        # verdict, and agrees=null is "not comparable", not
+                        # disagreement) is enforced in the producer,
+                        # moz_keywords.crosscheck_intent, which never
+                        # overrides the repo's classification
+                        # (moz_api_upgrade_spec_v1.md T.3)
     "moz",              # Moz keyword metrics (volume / difficulty /
                         # organic_ctr / priority) used as a demand evidence
                         # anchor. Descriptive integers quoted from a third

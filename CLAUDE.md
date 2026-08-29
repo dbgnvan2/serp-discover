@@ -134,6 +134,11 @@ Editorial content currently lives in:
 - `play_routing.yml` — "Recommended Play" decision table: ordered, first-match-wins rules mapping pre-computed keyword signals to one of five plays (rank / extraction / reformat / local_pivot / deprioritize), plus each play's label + strategy_text (added seo_geo_review chip A)
 - `engine_profiles.yml` — per-engine (chatgpt/`openai`, perplexity, gemini, claude) source-bias profiles: `retrieval_backend`, `source_bias` phrases, indicative+dated `avg_citations`, `reach_tier`/`referral_click_tier`, and the editorial `recommended_content_moves` list joined by `engine_recommendations.py` to produce per-engine "what to change here" advice. This is the ONLY place engine advice lives — no engine advice is hardcoded in Python. Vendor/temporal confidence caveat is binding: directional findings are high confidence, the numbers are indicative and shift over time — re-measure (added yoast_geo_upgrade Y.10)
 - `client_profiles.yml` — per-client profile blocks (keyed by client slug) driving persona-segmented AI-visibility question generation: `brand_name`, `domain`, `location`, `primary_city`, `secondary_cities`, `service_description`, and `personas` (each with `label`, `needs`, verbatim `seed_questions`, and per-city-expanding `templates` under open, per-client funnel/intent tiers). Edited in the GUI "Client Profile & Queries" tab (added yoast_geo_upgrade Y.1 / Y.13)
+- `config.yml` `moz.search_intent.repo_to_moz_intent` — maps this repo's
+  intent labels onto Moz's four so the two classifications can be compared.
+  Editorial: Moz has no `local` label, and `null` means "not comparable"
+  rather than "disagrees". Cross-check only — `intent_mapping.yml` stays the
+  verdict (added moz_api_upgrade_spec_v1.md T.3)
 - `config.yml` `moz.keyword_metrics.locale` / `engine` / `device` — the Moz
   keyword-metrics query context. Editorial: `locale` decides which market's
   demand figures the brief quotes (`en-CA` for this client) and changes which

@@ -86,6 +86,18 @@ PER-KEYWORD PROFILES (primary data source for Section 2):
   itself), priority (0-100, Moz's blend of the other three). Quote these
   figures; do not recompute or estimate them, and do not compare them
   against numbers from any other source in this payload.
+- keyword_profiles.moz_intent: Moz's independent read of the keyword's
+  search intent, provided as a CROSS-CHECK on keyword_profiles.serp_intent.
+  serp_intent remains the verdict — never restate Moz's label as the
+  keyword's intent, and never re-classify a keyword because Moz disagrees.
+  data_available=false means Moz has no intent scores for this keyword;
+  say nothing about Moz intent in that case. Otherwise: primary_intents
+  (Moz's own labels), scores (all four labels 0-1), repo_intent (this
+  tool's verdict), agrees (true / false / null). agrees=null means the two
+  are NOT COMPARABLE — a mixed-intent keyword or a label Moz has no
+  equivalent for — and must never be described as disagreement. Where
+  agrees=false, report the divergence as an open question worth a human
+  look, quoting both readings; do not resolve it.
 - keyword_profiles.freshness: content-age audit of the enriched top-10
   pages, computed against the run's collection date.
   data_available=false means no freshness data was captured — skip age

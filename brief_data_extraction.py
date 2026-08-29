@@ -1066,6 +1066,29 @@ def _build_feasibility_summary(feasibility_rows):
     }
 
 
+def _build_moz_intent(serp_intent, moz_block, mapping):
+    """Attach Moz's intent scores next to the repo's verdict.
+
+    Purpose: report agreement or divergence per keyword without overriding
+             the repo's rule-based classification.
+    Spec:    moz_api_upgrade_spec_v1.md#T.3
+    Tests:   test_moz_intent.py::TestBriefWiring
+
+    A mixed-intent keyword has no single repo verdict to compare, so the
+    repo intent is passed as None and the cross-check reports "not
+    comparable" rather than inventing a disagreement.
+    """
+    if moz_block is None:
+        return {"data_available": False, "status": "not_fetched"}
+    profile = serp_intent or {}
+    repo_intent = None if profile.get("is_mixed") else profile.get("primary_intent")
+    try:
+        from moz_keywords import crosscheck_intent
+    except ImportError:
+        return dict(moz_block)
+    return crosscheck_intent(repo_intent, moz_block, mapping)
+
+
 def extract_analysis_data_from_json(
     data,
     client_domain,
@@ -1079,6 +1102,8 @@ def extract_analysis_data_from_json(
     play_routing=None,
     service_like_tokens=None,
     moz_keyword_metrics=None,
+    moz_intent_metrics=None,
+    moz_intent_mapping=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
 
@@ -1670,6 +1695,12 @@ def extract_analysis_data_from_json(
             "moz": (moz_keyword_metrics or {}).get(kw) or {
                 "data_available": False, "status": "not_fetched",
             },
+            # Moz's independent intent read, compared with — never
+            # substituted for — the repo's own intent_mapping.yml verdict
+            # (Spec: moz_api_upgrade_spec_v1.md#T.3).
+            "moz_intent": _build_moz_intent(
+                serp_intent, (moz_intent_metrics or {}).get(kw), moz_intent_mapping
+            ),
             "total_results": total_results_by_kw.get(kw, 0),
             "serp_modules": modules_list,
             "has_ai_overview": aio_analysis.get(kw, {}).get("has_aio", False),

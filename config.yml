@@ -62,6 +62,32 @@ moz:
     device: desktop
     max_keywords: 50
     rows_per_call: 4
+  # Search intent (data.keyword.search.intent.fetch) — a CROSS-CHECK on the
+  # repo's own intent_mapping.yml classifier, never a replacement. OFF by
+  # default: it is a second opinion on a call the repo already makes, so it
+  # should not spend quota unless asked. 1 row per keyword (measured live
+  # 2026-08-28), unlike keyword_metrics at 4.
+  search_intent:
+    enabled: false
+    engine: google
+    locale: en-CA
+    device: desktop
+    max_keywords: 50
+    rows_per_call: 1
+    # Editorial: the two vocabularies differ. Moz has four labels; this repo
+    # also emits commercial_investigation, local and uncategorised. This table
+    # maps a repo verdict onto Moz's vocabulary so the two can be compared at
+    # all. `local` has no Moz equivalent — Moz scores local service queries
+    # transactional ("family counselling north vancouver" → transactional,
+    # 0.45). An entry of `null` means "not comparable", which is reported as
+    # such rather than as a disagreement.
+    repo_to_moz_intent:
+      informational: informational
+      commercial_investigation: commercial
+      transactional: transactional
+      navigational: navigational
+      local: transactional
+      uncategorised: null
   site_metrics:
     scope: url
     batch_size: 50
