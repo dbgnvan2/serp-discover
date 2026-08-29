@@ -111,7 +111,55 @@ would cost the run its content briefs.
 `tests/test_report_content_direction.py::TestCD5JargonGuard` fails the build when
 a guarded term appears in the report body with no glossary entry.
 
+The same `glossary.yml` serves two further surfaces (CD.9/CD.10): a **Glossary
+sheet** in the `.xlsx`, built from its `columns:` block, and the standalone
+`docs/glossary.md`, regenerated with
+`python3 generate_insight_report.py --glossary-out docs/glossary.md` and checked
+by a test that fails when it goes stale. Workbook headers are deliberately **not**
+renamed — the JSON and the workbook share one field vocabulary that
+`validate_xlsx_vs_json.py` checks column by column. The workbook's "Help" sheet
+text also lives in `glossary.yml`, under `sheet_guidance`.
+
+None of this involves an LLM: the glossary is a dictionary lookup and costs
+nothing to render at any surface.
+
 *Spec: report_content_direction_spec.md#CD.2, #CD.4, #CD.5. Implemented 2026-08-28.*
+
+### Worked examples (sections 4 and 5)
+
+Each piece of generic advice is followed by a "**Here's an example:**" line
+filling an editorial template with this run's own keyword, People Also Ask
+question and competitor vocabulary. Templates: `mixed_intent_strategies` and
+`examples` in `report_writing_directives.yml`; `Content_Angle_Example` per
+pattern in `strategic_patterns.yml`.
+
+`fill_example()` drops any sentence whose placeholder has no value for the run,
+so an example never renders a blank slot or the word "None". A template with an
+unknown placeholder loses that sentence and logs a warning rather than raising.
+
+Section 5's examples skip labels listed under `unwritable_content_types` — the
+classifier's catch-all buckets. This is load-bearing: in the 2026-08-26 run
+`other` is the *largest* content type (51.1%) and `N/A` the second-largest entity
+type, so a naive maximum would have told the reader to "write more 'other'".
+
+*Spec: report_content_direction_spec.md#CD.7. Implemented 2026-08-28.*
+
+### Recommended-play ordering (why feasibility must be re-applied)
+
+`recommended_play` depends on Domain Authority, and DA does not always exist when
+the play is first computed. `serp_audit.py` builds `keyword_profiles` while
+writing the audit JSON; `run_feasibility.py` computes DA in a separate pass
+afterwards. Before CD.8 that second pass wrote `keyword_feasibility` back into
+the JSON without revisiting the plays, so the file held real DA data alongside
+verdicts routed against none — the 2026-08-26 run carried "Ranking is unlikely
+(high DA gap)" directly above a measured High Feasibility and a gap of −14.
+
+`brief_data_extraction.attach_recommended_plays()` is the single definition of
+routing the plays. Both producers call it, and `run_feasibility.py` logs how many
+verdicts changed. **Any new pass that adds or revises `keyword_feasibility` must
+call it too**, or the plays it leaves behind will be stale in the same way.
+
+*Spec: report_content_direction_spec.md#CD.8. Implemented 2026-08-28.*
 
 ### Section 4 — Pattern keyword selection
 

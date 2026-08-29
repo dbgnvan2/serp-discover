@@ -25,6 +25,20 @@
 # --------------------
 # Append an entry with all five required fields. No Python changes needed.
 # Field names must match exactly — they are written directly into the JSON output.
+#
+# CONTENT_ANGLE_EXAMPLE (optional, CD.7)
+# --------------------------------------
+# Content_Angle states the argument in the abstract. Content_Angle_Example turns
+# it into a concrete opening the writer can start from — two or three sentences
+# showing what the angle sounds like on the page, not a whole post.
+#
+# It may use these placeholders, filled from the run this pattern fired on:
+#   {keyword}   the keyword the pattern was anchored to
+#   {question}  a real People Also Ask question from that keyword
+#   {term}      that keyword's most repeated competitor phrase
+# A placeholder with no data for the run drops the sentence containing it, so an
+# example never renders with an empty slot. A pattern with no example simply
+# renders without one.
 
 - Pattern_Name: The Medical Model Trap
   Relevant_Intent_Class: External Locus
@@ -43,6 +57,13 @@
     you need a map of your emotional system.
   Content_Angle: >-
     Why turning relationship problems into a diagnosis keeps you stuck.
+  Content_Angle_Example: >-
+    Opening it might sound like: "Someone searching '{keyword}' has usually
+    already been handed a label — for themselves, or for a family member. The
+    label explains the person. It does not explain the pattern the person is
+    caught in, which is why treating the label so often leaves the pattern
+    exactly where it was." Then take the reader through one pattern instead of
+    one diagnosis.
 
 - Pattern_Name: The Fusion Trap
   Triggers:
@@ -60,6 +81,12 @@
     increases reactivity and deepens cutoff.
   Content_Angle: >-
     Why trying to force reconnection may deepen the cutoff.
+  Content_Angle_Example: >-
+    Opening it might sound like: "The instinct when a family relationship goes
+    quiet is to close the distance — more contact, a longer message, one more
+    attempt to be understood. That instinct is what usually widens the gap,
+    because the pursuit is carrying the anxiety rather than resolving it."
+    Then show what steady, lower-intensity contact looks like instead.
 
 - Pattern_Name: The Resource Trap
   Triggers:
@@ -77,6 +104,13 @@
     structural change.
   Content_Angle: >-
     When short-term relief becomes a substitute for working the family pattern.
+  Content_Angle_Example: >-
+    Answer the cost question honestly and early — people searching "{question}"
+    will not read past a page that dodges it. Then: "The more useful question is
+    what you are buying. Relief that gets you through the week is worth having,
+    and it is a different purchase from changing a pattern that has been running
+    for three generations. Confusing the two is what makes counselling feel
+    expensive and ineffective at the same time."
 
 - Pattern_Name: The Blame/Reactivity Trap
   Relevant_Intent_Class: External Locus
@@ -94,3 +128,9 @@
     Focus on self-regulation. You cannot change them, only your response to them.
   Content_Angle: >-
     Stop diagnosing the other person and start observing your own reactivity.
+  Content_Angle_Example: >-
+    Opening it might sound like: "Most people arrive with a diagnosis already
+    made, and it is about somebody else. That diagnosis may even be accurate. It
+    is still the least useful place to start, because it puts the one thing you
+    can actually change — your own part in the exchange — outside the frame."
+    Then walk through noticing one reaction, in one recurring conversation.

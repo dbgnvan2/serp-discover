@@ -49,6 +49,78 @@ page_types:
     default: Page type undetermined — no play verdict for this keyword
     local: Page type undetermined — no play verdict for this keyword
 
+# Mixed-intent strategy descriptions (CD.7).
+#
+# Moved out of generate_insight_report.py's _STRATEGY_DESCRIPTIONS dict — these
+# are editorial judgements about how to play a split results page, not code.
+#
+# `description` is the generic advice. `example` is the same advice translated
+# into this run's actual data, rendered under a "Here's an example:" line.
+#
+# Placeholders available in `example`:
+#   {keyword}     the keyword this note is about
+#   {components}  the mixed intent components, e.g. "informational + local"
+#   {question}    that keyword's first People Also Ask question
+#   {term}        that keyword's most repeated competitor phrase
+# A placeholder with no data for this run drops the sentence containing it, so
+# an example never renders with an empty slot.
+mixed_intent_strategies:
+  compete_on_dominant:
+    description: >-
+      Match the dominant intent format directly. The client's existing content
+      posture aligns with the most-represented intent in this SERP.
+    example: >-
+      For "{keyword}" that means writing the same kind of page the results are
+      already full of, and winning on depth rather than on format. Answer
+      "{question}" more completely than anyone on page one does, and use
+      "{term}" where they use it, so nothing about your page reads as off-topic.
+  backdoor:
+    description: >-
+      Produce content matching a non-dominant but client-aligned intent. Likely
+      to outrank head-on competitors via differentiation.
+    example: >-
+      For "{keyword}" the results split across {components}. You cannot outrank
+      the local half with an article — that space belongs to Google Business
+      Profiles. So write for the other half: a guide that opens by answering
+      "{question}" directly, which competes in the ordinary results underneath
+      the map, where the service pages are not trying to rank.
+  avoid:
+    description: >-
+      No good fit for the client's content capabilities. Skip this keyword.
+    example: >-
+      For "{keyword}", nothing you can publish changes the outcome — the page is
+      held by result types a content page does not compete with. Spend the effort
+      on a keyword in Section 1 instead.
+
+# Worked examples for the analytical sections (CD.7).
+#
+# Each entry renders under a "**Here's an example:**" line after the generic
+# advice, translating it into this run's data. Same placeholder rules as above.
+# Content-type labels that are classifier buckets rather than formats a person
+# could write. The section-5 example skips these when naming a format to write —
+# "write more 'other'" is not advice. Add a label here if the classifier grows a
+# new catch-all. Matched case-insensitively.
+unwritable_content_types:
+  - other
+  - unknown
+  - uncategorised
+  - uncategorized
+  - n/a
+
+examples:
+  # {entity} dominant entity type, {pct} its share, {keyword} the top keyword.
+  entity_dominance: >-
+    Concretely: {pct}% of the results for "{keyword}" are {entity} pages. That is
+    who you are actually writing against — not a general-interest publisher, so
+    do not pitch the page at a general audience. Say what you do that the {entity}
+    pages on page one do not.
+  # {content_type} dominant content type, {pct} its share.
+  content_type_dominance: >-
+    Concretely: {pct}% of what ranks is "{content_type}" content. Write that
+    format. A service page will not break into a results page made of
+    {content_type} pages however good the service is — publish the {content_type}
+    and link to the service page from inside it.
+
 directives:
   section_1b: >-
     Check which features appear before choosing a format. A map pack means the top of

@@ -1,7 +1,7 @@
 # Report Content Direction — spec + implementation plan (v1)
 
-**Status:** implemented 2026-08-28. All CD.1-CD.6 criteria done; see
-`docs/spec_coverage.md` rows CD.1.1-CD.6.3 and the status report below.
+**Status:** implemented 2026-08-28. All CD.1-CD.10 criteria done; see
+`docs/spec_coverage.md` rows CD.1.1-CD.10.3 and the status report below.
 **Date:** 2026-08-28
 **Prefix:** `CD` (Content Direction)
 
@@ -195,6 +195,99 @@ retitled to what it delivers — the wording competitors actually use — and po
 | CD.6.2 | With no features on any keyword, §1b states the null result in plain English and never lists "Standard Organic" as a feature | `::test_cd6_2_standard_organic_rendered_as_null_result` |
 | CD.6.3 | §3 heading and intro describe a term list; the "Medical Model vs. Systemic" promise appears only where §4 delivers it | `::test_cd6_3_section3_heading_matches_content` |
 
+
+### CD.7 — Worked examples
+
+Sections 4 and 5 stated advice in the abstract and left the reader to work out
+what it meant for their keywords. Each now renders a **"Here's an example:"**
+line translating the advice into this run's own keyword, People Also Ask
+question and competitor vocabulary.
+
+Templates are editorial: mixed-intent strategy examples and section-5 examples
+in `report_writing_directives.yml`, per-pattern examples as
+`Content_Angle_Example` in `strategic_patterns.yml`.
+
+`_STRATEGY_DESCRIPTIONS` — three strategy descriptions hardcoded in
+`generate_insight_report.py` — moved to YAML in the same change, rather than
+leaving old editorial content in Python while new content moves out.
+
+| ID | Criterion | Test |
+|---|---|---|
+| CD.7.1 | Placeholder filling drops any sentence whose data is missing; never renders `{}`, a blank, or `None`; unknown placeholder drops the sentence, not the report; closing quotes stay with their sentence | `tests/test_report_examples.py::TestCD7FillExample` (7 tests) |
+| CD.7.2 | §4 mixed-intent note renders a worked example; descriptions + examples sourced from YAML | `::TestCD7Section4Examples::test_cd7_2_mixed_intent_example_rendered`, `::test_cd7_2b_strategy_descriptions_come_from_yaml`, `::test_cd7_2c_no_hardcoded_strategy_text_remains` |
+| CD.7.3 | Every Bowen pattern carries a worked opening; read from YAML so older JSONs still show it; a pattern without one degrades quietly | `::TestCD7Section4Examples::test_cd7_3*` (4 tests) |
+| CD.7.4 | §5 entity and content-type examples render with this run's numbers | `::TestCD7Section5Examples::test_cd7_4*` |
+| CD.7.5 | Classifier buckets (`other`, `N/A`) are never named as a format to write or a competitor to beat; the list is editorial config | `::TestCD7Section5Examples::test_cd7_5*` (4 tests) |
+| CD.7.6 | Example values come from the named keyword; unknown keyword yields blanks, not a crash; no rendered example leaks a placeholder | `::TestCD7ExamplesAreGrounded` (3 tests) |
+
+**CD.7.5 matters more than it looks.** In the real run `other` is the *largest*
+content type at 51.1% and would have produced "write more 'other' content"; `N/A`
+is the second-largest entity type. A naive `max()` turns the classifier's unknown
+bucket into advice.
+
+### CD.8 — Plays must see the Domain Authority data that exists
+
+**The bug.** `serp_audit.py` builds `keyword_profiles` — `recommended_play`
+included — while writing the audit JSON. `run_feasibility.py` computes Domain
+Authority in a *separate* pass afterwards and wrote `keyword_feasibility` back
+into that same JSON without revisiting the plays. The file therefore held real DA
+data alongside verdicts routed against none.
+
+Not a confidence nuance: re-routing the 2026-08-26 run against its own
+feasibility rows flips **both** keywords from `extraction_play` ("ranking is
+unlikely, high DA gap", confidence low) to `rank_play` (confidence high) — while
+§5c on the same page reported High Feasibility and a gap of **−14**.
+
+P8 (state persisting between passes, read stale on the second) and P21's
+corollary (a computation that runs on the wrong side of a dependency).
+
+**The fix.** `brief_data_extraction.attach_recommended_plays()` — one definition
+of "route the plays", called by both producers. `run_feasibility.py` calls it
+after writing feasibility back, and logs how many verdicts changed.
+
+| ID | Criterion | Test |
+|---|---|---|
+| CD.8.1 | Feasibility changes the routed play; the real run re-routes to `rank_play` with no missing-input note | `tests/test_play_feasibility_ordering.py::test_cd8_1_feasibility_changes_the_verdict`, `::test_cd8_7_real_run_reroutes_to_rank_play` |
+| CD.8.2 | A stale play is corrected on a second pass (dirty state); the change count is honest | `::test_cd8_2_stale_play_is_rerouted`, `::test_cd8_3_change_count_is_honest` |
+| CD.8.3 | `run_feasibility.py` re-routes on writeback — asserted end to end, not at the library | `::TestCD8RunFeasibilityWiring` (2 tests) |
+| CD.8.4 | Pivot rows never supply a keyword's verdict; duplicates resolve deterministically; empty input is a no-op | `::test_cd8_4*`, `::test_cd8_5*`, `::test_cd8_6*` |
+
+### CD.9 — Workbook glossary
+
+The `.xlsx` headers are machine field names (`avg_serp_da`, `Params_Hash`,
+`Rank_Delta`). They are **not renamed**: the JSON and the workbook share one
+field vocabulary that `validate_xlsx_vs_json.py` checks column by column, so
+renaming would break that contract and any user formulas. A **Glossary sheet**
+carries the meaning instead, built from a `columns:` block in `glossary.yml`.
+
+`build_help_rows()`'s 30 lines of hardcoded reader-facing text moved to
+`glossary.yml` as `sheet_guidance` in the same change — editorial content in
+config, and it brought `serp_audit.py` back under its 2200-line guard honestly
+rather than by raising the ceiling.
+
+| ID | Criterion | Test |
+|---|---|---|
+| CD.9.1 | Rows cover both columns and terms; exact count, not a floor | `tests/test_glossary_surfaces.py::test_cd9_1*` |
+| CD.9.2 | The specific unguessable headers are defined | `::test_cd9_2_jargon_columns_are_defined` |
+| CD.9.3 | The sheet reaches a written `.xlsx`; `serp_audit` calls the builder (AST call-site check) | `::test_cd9_4_sheet_written_to_workbook`, `::test_cd9_5_serp_audit_calls_the_builder` |
+| CD.9.4 | Headers unchanged; Glossary stays out of the JSON parity contract | `::test_cd9_6_headers_are_not_renamed` |
+| CD.9.5 | Help text sourced from YAML, behaviourally | `::test_cd9_7*` |
+
+### CD.10 — Standalone glossary document
+
+`docs/glossary.md`, generated from `glossary.yml` and checked in, so the
+definitions can be read and shared without opening a run's report. Unlike the
+in-report glossary it is unfiltered.
+
+**Note on cost:** the glossary is a dictionary lookup, not LLM output. It costs
+no tokens and no API call at any surface.
+
+| ID | Criterion | Test |
+|---|---|---|
+| CD.10.1 | The document contains every term and the column table | `tests/test_glossary_surfaces.py::test_cd10_1*`, `::test_cd10_2*` |
+| CD.10.2 | The checked-in `docs/glossary.md` is current; table rows well-formed with pipes escaped | `::test_cd10_4_checked_in_doc_is_current`, `::test_cd10_3*` |
+| CD.10.3 | `--glossary-out` needs no `--json`; a report still requires both | `::test_cd10_5*`, `::test_cd10_6*` |
+
 ---
 
 ## Not code-testable — flagged
@@ -256,7 +349,9 @@ Per the "old code is not someone else's problem" rule — flagged, not silently 
 2. **"Standard Organic" is a null result rendered as a feature name**
    (`serp_audit.py:859`). It means "none of the seven detected features present".
 3. **The xlsx workbook carries the same undefined jargon** in its column headers.
-   Deferred by the user to a later plan (2026-08-28) — not addressed here.
+   Initially deferred; then approved and delivered as **CD.9** (2026-08-28) — a
+   Glossary sheet rather than renamed headers, so the JSON/xlsx field contract
+   and any user formulas survive.
 4. **§3's heading promises analysis it does not perform.** "The dominant narrative in
    the market (Medical Model vs. Systemic)" describes what §4 actually does. Even
    with CD.3's phrase fix, §3 delivers a term list, not a narrative contrast.

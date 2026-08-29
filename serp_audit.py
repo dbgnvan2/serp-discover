@@ -1329,33 +1329,14 @@ build_competitor_handoff = handoff_writer.build_competitor_handoff
 
 
 def build_help_rows():
-    """Guidance rows for why specific sheets may be empty."""
-    return [
-        {
-            "Tab": "AI_Overview_Citations",
-            "Trigger": "Google returns AI Overview with references/citations.",
-            "Likely_Query_Type": "Informational queries like 'how to choose a counsellor' or 'how much does counselling cost'.",
-            "Why_Empty": "Local/commercial intent (e.g., 'best', 'near me', 'in [city]') often shows maps/ads/organic instead of AI Overview."
-        },
-        {
-            "Tab": "Rich_Features",
-            "Trigger": "SERP contains modules like videos, top stories, image pack, shopping, or knowledge graph.",
-            "Likely_Query_Type": "News/video/image/product/entity intent queries.",
-            "Why_Empty": "Local service intent often returns map pack + PAA without these modules."
-        },
-        {
-            "Tab": "Autocomplete_Suggestions",
-            "Trigger": "Autocomplete endpoint returns suggestion strings.",
-            "Likely_Query_Type": "Shorter seed phrases like 'stress counselling' or 'help with stress'.",
-            "Why_Empty": "Long-tail full phrases can return no autocomplete suggestions."
-        },
-        {
-            "Tab": "AI_Query_Generator (GUI Option)",
-            "Trigger": "Enable 'Run 2 AI-likely alternatives (A.1, A.2)' in the launcher.",
-            "Likely_Query_Type": "Local seed query A plus two informational alternatives A.1/A.2.",
-            "Why_Empty": "If disabled, only base query A runs; fewer chances to trigger AI Overview."
-        }
-    ]
+    """Guidance rows for why specific sheets may be empty.
+
+    Text lives in glossary.yml under `sheet_guidance` — it is reader-facing
+    editorial content, not logic (CLAUDE.md: editorial content in config files).
+    Spec: report_content_direction_spec.md#CD.9
+    """
+    return generate_insight_report.load_sheet_guidance()
+
 
 
 def load_keywords(input_file):
@@ -2096,6 +2077,19 @@ def main():
                 writer, sheet_name="Autocomplete_Suggestions", index=False)
             pd.DataFrame(help_rows).to_excel(
                 writer, sheet_name="Help", index=False)
+            # CD.9 — carry the meaning of the workbook's machine field names with
+            # the file. Headers are NOT renamed: the JSON and the workbook share
+            # one field vocabulary that validate_xlsx_vs_json.py checks column by
+            # column, so renaming would break that contract and any formulas built
+            # on it. A definitions sheet adds meaning without moving the data.
+            _glossary_rows = generate_insight_report.build_glossary_rows()
+            if _glossary_rows:
+                pd.DataFrame(_glossary_rows).to_excel(
+                    writer, sheet_name="Glossary", index=False)
+            else:
+                logging.warning(
+                    "glossary.yml produced no rows — the workbook ships without "
+                    "a Glossary sheet.")
             if all_feasibility:
                 pd.DataFrame(all_feasibility).to_excel(
                     writer, sheet_name="Keyword_Feasibility", index=False)

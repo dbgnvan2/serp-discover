@@ -22,6 +22,170 @@
 #   definition  plain English, no jargon-inside-the-jargon (required)
 #   guard       true = CD.5 fails if this appears undefined. Default true.
 
+# Column-name definitions for the .xlsx workbook (CD.9).
+#
+# The workbook's headers are machine field names — `avg_serp_da`, `Params_Hash`,
+# `Rank_Delta`. They are NOT renamed: the JSON and the workbook share one field
+# vocabulary that validate_xlsx_vs_json.py checks, and renaming headers would
+# break that contract and any formulas built on them. Instead serp_audit.py
+# writes a "Glossary" sheet from this list, so the meaning travels with the file.
+#
+# Each entry: `column` (the header exactly as written), `sheet` (where it appears,
+# free text), `definition` (plain English).
+# Workbook sheet guidance (CD.9) — why a given sheet may be empty.
+#
+# Moved out of serp_audit.py's build_help_rows(), which held this reader-facing
+# text as a Python literal. It is editorial content: a non-developer may well
+# want to reword it, and none of it is logic. Written to the workbook's "Help"
+# sheet.
+#
+# Each entry: Tab, Trigger, Likely_Query_Type, Why_Empty.
+sheet_guidance:
+- Tab: AI_Overview_Citations
+  Trigger: Google returns AI Overview with references/citations.
+  Likely_Query_Type: Informational queries like 'how to choose a counsellor' or 'how much
+    does counselling cost'.
+  Why_Empty: Local/commercial intent (e.g., 'best', 'near me', 'in [city]') often shows maps/ads/organic
+    instead of AI Overview.
+- Tab: Rich_Features
+  Trigger: SERP contains modules like videos, top stories, image pack, shopping, or knowledge
+    graph.
+  Likely_Query_Type: News/video/image/product/entity intent queries.
+  Why_Empty: Local service intent often returns map pack + PAA without these modules.
+- Tab: Autocomplete_Suggestions
+  Trigger: Autocomplete endpoint returns suggestion strings.
+  Likely_Query_Type: Shorter seed phrases like 'stress counselling' or 'help with stress'.
+  Why_Empty: Long-tail full phrases can return no autocomplete suggestions.
+- Tab: AI_Query_Generator (GUI Option)
+  Trigger: Enable 'Run 2 AI-likely alternatives (A.1, A.2)' in the launcher.
+  Likely_Query_Type: Local seed query A plus two informational alternatives A.1/A.2.
+  Why_Empty: If disabled, only base query A runs; fewer chances to trigger AI Overview.
+
+columns:
+  - column: Run_ID
+    sheet: all
+    definition: >-
+      Timestamp identifying one run of the tool. Every row from the same run
+      carries the same value, so you can separate runs when sheets are combined.
+  - column: Root_Keyword / Source_Keyword
+    sheet: most
+    definition: >-
+      The keyword from your CSV that this row came from. Source_Keyword is the
+      specific search executed; Root_Keyword is the original seed it derived from.
+  - column: Query_Label
+    sheet: Overview, Keyword_Feasibility
+    definition: >-
+      Which variant of the search this row is. "A" is the keyword as you supplied
+      it; "P" is a hyper-local pivot variant the tool generated. Pivot rows are
+      suggestions, not measurements of your keyword.
+  - column: Executed_Query
+    sheet: most
+    definition: >-
+      The exact text sent to Google, after any location or variant handling. Check
+      this when results look unrelated to the keyword you entered.
+  - column: Params_Hash
+    sheet: most
+    definition: >-
+      A fingerprint of the search parameters used. Two rows with the same hash were
+      fetched under identical conditions and are directly comparable.
+  - column: SERP_Features
+    sheet: Overview
+    definition: >-
+      Which boxes Google showed besides the plain links (map pack, video row, answer
+      box). "Standard Organic" is not a feature — it means none were found.
+  - column: Rank
+    sheet: Organic_Results
+    definition: >-
+      Position in the unpaid results. 1 is the top link.
+  - column: Rank_Delta
+    sheet: Organic_Results
+    definition: >-
+      How many positions this URL moved since the previous run of the same keyword.
+      Positive is an improvement. Blank means no comparable earlier run.
+  - column: Entity_Type
+    sheet: Organic_Results
+    definition: >-
+      What kind of organisation owns the page — counselling practice, directory,
+      government, nonprofit, publisher. "N/A" means the classifier could not tell,
+      not that the page has no owner.
+  - column: Content_Type
+    sheet: Organic_Results
+    definition: >-
+      What kind of page it is — guide, news, service page. "other" is the
+      classifier's unknown bucket, not a format you can write.
+  - column: FAQ_Present / Schema_Types
+    sheet: Organic_Results
+    definition: >-
+      Whether the page carries machine-readable question-and-answer labelling, and
+      which schema.org types it declares. Pages with FAQ markup are easier for AI
+      answer engines to quote.
+  - column: Question_Heading_Count / Question_Headings
+    sheet: Organic_Results
+    definition: >-
+      How many of the page's headings are phrased as questions, and what they are.
+      A high count on competitors is a sign the topic rewards answer-first format.
+  - column: Credential_Hits / Author_Present / Review_Marker_Present
+    sheet: Organic_Results
+    definition: >-
+      Trust signals found on the page — professional credentials named, a bylined
+      author, visible reviews. These are the E-E-A-T markers Google associates with
+      expertise.
+  - column: Intro_Text_Length
+    sheet: Organic_Results
+    definition: >-
+      Characters of prose before the page's first substantive heading. A large
+      number means the answer is buried, which makes the page hard to quote.
+  - column: client_da
+    sheet: Keyword_Feasibility
+    definition: >-
+      Your site's Domain Authority — a 0-100 third-party estimate of ranking
+      strength, based largely on who links to you.
+  - column: avg_serp_da
+    sheet: Keyword_Feasibility
+    definition: >-
+      The average Domain Authority of the sites currently ranking for this keyword.
+      This is what you are being compared against.
+  - column: gap
+    sheet: Keyword_Feasibility
+    definition: >-
+      avg_serp_da minus client_da. Negative means you are the stronger site and
+      ranking is realistic. Positive means they are stronger. Within about two
+      points, treat it as level — the underlying score is an estimate.
+  - column: feasibility_score / feasibility_status
+    sheet: Keyword_Feasibility
+    definition: >-
+      The gap turned into a normalised score and a High / Moderate / Low verdict.
+      "Not Measured" means Domain Authority could not be fetched, which is different
+      from a low score.
+  - column: pivot_status / suggested_keyword / all_variants
+    sheet: Keyword_Feasibility
+    definition: >-
+      Whether the tool suggests targeting a narrower neighbourhood-level keyword
+      instead, which one, and every variant it considered. Only generated for
+      service-type keywords.
+  - column: Client_In_Local_Pack
+    sheet: Keyword_Feasibility
+    definition: >-
+      Whether your business appeared in the map box. Blank means the check could not
+      be run — not that you were absent.
+  - column: Type / Phrase / Count
+    sheet: SERP_Language_Patterns
+    definition: >-
+      Repeated two- and three-word phrases from the SERP text, with how often each
+      appeared. Stop words are stripped before counting here, so phrases read oddly
+      ("family origin"). The readable version is in the Markdown report, Section 3.
+  - column: Has_Main_AI_Overview / Has_PAA_AI_Overview
+    sheet: Overview
+    definition: >-
+      Whether Google showed an AI-written summary at the top of the page, and
+      whether one appeared inside the People Also Ask box.
+  - column: AI_Sentiment / AI_Subjectivity / AI_Reading_Level
+    sheet: Overview
+    definition: >-
+      Automated readings of the AI Overview's tone, opinion level and reading
+      difficulty. Indicative only — useful for comparing runs, not as absolute
+      measures.
+
 terms:
   - term: SERP
     aliases: [SERP, SERPs]

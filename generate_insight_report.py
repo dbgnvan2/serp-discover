@@ -158,6 +158,126 @@ def _directive(key: str) -> list:
     return ["", f"**When you write:** {str(text).strip()}", ""]
 
 
+_PATTERN_EXAMPLE_CACHE: dict | None = None
+
+
+def _pattern_examples() -> dict:
+    """Pattern_Name -> Content_Angle_Example, from strategic_patterns.yml.
+
+    Purpose: Supply §4's worked examples.
+    Spec:    report_content_direction_spec.md#CD.7
+    Tests:   tests/test_report_examples.py::test_cd7_4_pattern_example_rendered
+
+    Read from the YAML rather than only from the run's stored
+    strategic_recommendations, so a report re-rendered from a JSON written before
+    an example was authored still shows it. Editorial text should come from the
+    current editorial file, not a frozen copy.
+    """
+    global _PATTERN_EXAMPLE_CACHE
+    if _PATTERN_EXAMPLE_CACHE is not None:
+        return _PATTERN_EXAMPLE_CACHE
+    path = os.path.join(_REPO_ROOT, "strategic_patterns.yml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            patterns = yaml.safe_load(f) or []
+        _PATTERN_EXAMPLE_CACHE = {
+            entry["Pattern_Name"]: entry.get("Content_Angle_Example")
+            for entry in patterns
+            if isinstance(entry, dict) and entry.get("Pattern_Name")
+        }
+    except Exception as exc:
+        logging.warning("strategic_patterns.yml unreadable for examples (%s).", exc)
+        _PATTERN_EXAMPLE_CACHE = {}
+    return _PATTERN_EXAMPLE_CACHE
+
+
+def fill_example(template: str, values: dict) -> str:
+    """Fill an example template, dropping sentences whose data is missing.
+
+    Purpose: Render worked examples without empty slots or "None" in the prose.
+    Spec:    report_content_direction_spec.md#CD.7
+    Tests:   tests/test_report_examples.py::test_cd7_*
+
+    An example is editorial prose with {placeholders}. Where a placeholder has no
+    value for this run — no PAA question captured, no competitor phrase survived
+    — the whole sentence containing it is dropped rather than rendered with a
+    blank or the word "None". Half a sentence about nothing is worse than one
+    fewer sentence, and a literal "None" in advice reads as a bug (P14: never let
+    a missing value flow into displayed text).
+
+    Returns "" when nothing survives, so callers can skip the example entirely.
+    """
+    if not template:
+        return ""
+    text = " ".join(str(template).split())
+
+    # Split on sentence ends, keeping the terminator with its sentence.
+    sentences = re.findall(r'[^.!?]*[.!?]+["\')\]]*|[^.!?]+$', text)
+    kept = []
+    for sentence in sentences:
+        needed = re.findall(r'\{(\w+)\}', sentence)
+        if any(not str(values.get(name) or "").strip() for name in needed):
+            continue
+        try:
+            kept.append(sentence.format(**values))
+        except (KeyError, IndexError):
+            # An unknown placeholder is an editorial typo in the YAML, not a
+            # reason to lose the report: drop that sentence and carry on.
+            logging.warning("Example sentence has an unknown placeholder: %r",
+                            sentence.strip())
+    return " ".join(part.strip() for part in kept).strip()
+
+
+def _example_block(template: str, values: dict) -> list:
+    """Render a filled example as its own '**Here\'s an example:**' block."""
+    filled = fill_example(template, values)
+    if not filled:
+        return []
+    return ["", f"**Here's an example:** {filled}", ""]
+
+
+def _example_values(data: dict, keyword: str | None) -> dict:
+    """Placeholder values for `keyword`, drawn from this run's own data."""
+    profiles = data.get("keyword_profiles") or {}
+    profile = (profiles.get(keyword) or {}) if keyword else {}
+    serp_intent = profile.get("serp_intent") or {}
+
+    questions = [q for q in (profile.get("paa_questions") or []) if str(q).strip()]
+    phrases = [row.get("Phrase")
+               for row in _display_phrases_for_keyword(data, keyword)
+               if row.get("Phrase")] if keyword else []
+    components = serp_intent.get("mixed_components") or []
+
+    return {
+        "keyword": keyword or "",
+        "question": questions[0] if questions else "",
+        "term": phrases[0] if phrases else "",
+        "components": " + ".join(components) if components else "",
+    }
+
+
+def _examples_config() -> dict:
+    return _load_directives().get("examples") or {}
+
+
+def _unwritable_content_types() -> set:
+    """Content-type labels that name a classifier bucket, not a writable format.
+
+    Spec: report_content_direction_spec.md#CD.7.5
+    """
+    raw = _load_directives().get("unwritable_content_types") or []
+    return {str(v).strip().lower() for v in raw if str(v).strip()}
+
+
+def _mixed_intent_strategies() -> dict:
+    """Editorial descriptions + examples for each mixed-intent strategy.
+
+    Lives in report_writing_directives.yml, not in a Python dict — it is an
+    editorial judgement about how to play a split results page (CD.7).
+    """
+    return _load_directives().get("mixed_intent_strategies") or {}
+
+
 def _with_directive(lines: list, key: str) -> list:
     """Insert a section's writing directive just under its heading.
 
@@ -214,6 +334,108 @@ def _load_glossary() -> list:
         logging.warning("glossary.yml unavailable (%s) — no glossary rendered.", exc)
         _GLOSSARY_CACHE = []
     return _GLOSSARY_CACHE
+
+
+def _load_glossary_columns() -> list:
+    """Column-name definitions for the workbook, from glossary.yml (CD.9)."""
+    path = os.path.join(_REPO_ROOT, "glossary.yml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        return [
+            e for e in (loaded.get("columns") or [])
+            if isinstance(e, dict) and e.get("column") and e.get("definition")
+        ]
+    except Exception as exc:
+        logging.warning("glossary.yml columns unavailable (%s).", exc)
+        return []
+
+
+def load_sheet_guidance() -> list:
+    """Workbook "Help" sheet rows, from glossary.yml `sheet_guidance` (CD.9).
+
+    Tests: tests/test_glossary_surfaces.py::test_cd9_7_sheet_guidance_from_yaml
+    """
+    path = os.path.join(_REPO_ROOT, "glossary.yml")
+    try:
+        with open(path, encoding="utf-8") as f:
+            loaded = yaml.safe_load(f) or {}
+        return [e for e in (loaded.get("sheet_guidance") or [])
+                if isinstance(e, dict) and e.get("Tab")]
+    except Exception as exc:
+        logging.warning("glossary.yml sheet_guidance unavailable (%s).", exc)
+        return []
+
+
+def build_glossary_rows() -> list:
+    """Rows for the workbook's "Glossary" sheet.
+
+    Purpose: Carry the meaning of the workbook's machine field names with the
+             file, so the .xlsx is readable away from the Markdown report.
+    Spec:    report_content_direction_spec.md#CD.9
+    Tests:   tests/test_glossary_surfaces.py::test_cd9_*
+
+    Headers are deliberately NOT renamed. The JSON and the workbook share one
+    field vocabulary that validate_xlsx_vs_json.py checks column by column, so
+    renaming would break that contract and every formula a user has built on it.
+    A definitions sheet adds the meaning without moving the data.
+
+    Returns rows of {Item, Where, Meaning} covering both the workbook's columns
+    and the report's terms of art, so one sheet answers both kinds of question.
+    """
+    rows = []
+    for entry in _load_glossary_columns():
+        rows.append({
+            "Item": str(entry["column"]),
+            "Where": f"Column — {entry.get('sheet', '')}".rstrip(" —"),
+            "Meaning": " ".join(str(entry["definition"]).split()),
+        })
+    for entry in _load_glossary():
+        rows.append({
+            "Item": str(entry["term"]),
+            "Where": "Term",
+            "Meaning": " ".join(str(entry["definition"]).split()),
+        })
+    return rows
+
+
+def build_glossary_document() -> str:
+    """The full glossary as a standalone Markdown document (CD.10).
+
+    Every term and column, unconditionally — unlike the in-report glossary, which
+    is filtered to the terms that run actually used.
+    """
+    out = [
+        "# Glossary",
+        "",
+        "Plain-English definitions for the SERP Intelligence tool's reports and "
+        "workbook.",
+        "",
+        "Generated from `glossary.yml`. Edit that file, not this one — regenerate "
+        "with:",
+        "",
+        "```bash",
+        "python3 generate_insight_report.py --glossary-out docs/glossary.md",
+        "```",
+        "",
+        "## Terms used in the report",
+        "",
+    ]
+    for entry in sorted(_load_glossary(), key=lambda e: e["term"].lower()):
+        out.append(f"**{entry['term']}** — "
+                   f"{' '.join(str(entry['definition']).split())}")
+        out.append("")
+
+    columns = _load_glossary_columns()
+    if columns:
+        out += ["## Columns in the .xlsx workbook", "",
+                "| Column | Sheet | Meaning |", "|---|---|---|"]
+        for entry in columns:
+            meaning = " ".join(str(entry["definition"]).split()).replace("|", "\\|")
+            out.append(f"| `{entry['column']}` | {entry.get('sheet', '')} "
+                       f"| {meaning} |")
+        out.append("")
+    return "\n".join(out)
 
 
 def glossary_term_aliases(entry: dict) -> list:
@@ -891,6 +1113,9 @@ def generate_report(data, db_path=None, run_ts=None):
         "1. What To Write",
         lambda: _render_content_plan(data, plan_order, preferred_intents),
     ))
+    # Section 5's worked examples speak about the keyword the reader was just
+    # told to write first, so the two sections stay about the same page.
+    _plan_top_keyword = plan_order[0] if plan_order else None
 
     # 1b. Overview & Opportunity
     report.append("## 1b. Market Overview")
@@ -1061,16 +1286,12 @@ def generate_report(data, db_path=None, run_ts=None):
 
     # M1.B — Mixed-Intent Strategic Note callouts above Bowen pattern blocks
     _kw_profiles = data.get("keyword_profiles", {})
+    # CD.7 — descriptions and their worked examples are editorial content and live
+    # in report_writing_directives.yml, not in a dict here.
+    _strategies = _mixed_intent_strategies()
     _STRATEGY_DESCRIPTIONS = {
-        "compete_on_dominant": (
-            "Match the dominant intent format directly. The client's existing "
-            "content posture aligns with the most-represented intent in this SERP."
-        ),
-        "backdoor": (
-            "Produce content matching a non-dominant but client-aligned intent. "
-            "Likely to outrank head-on competitors via differentiation."
-        ),
-        "avoid": "No good fit for the client's content capabilities. Skip this keyword.",
+        key: " ".join(str((entry or {}).get("description") or "").split())
+        for key, entry in _strategies.items()
     }
     _mixed_kws = [
         (kw, p)
@@ -1091,6 +1312,10 @@ def generate_report(data, db_path=None, run_ts=None):
         report.append("")
         if _desc:
             report.append(_desc)
+        # CD.7 — translate the generic strategy into this keyword's own data.
+        report.extend(_example_block(
+            (_strategies.get(_strategy) or {}).get("example"),
+            _example_values(data, _kw)))
 
     _organic_results = data.get("organic_results", [])
     _paa_questions = data.get("paa_questions", [])
@@ -1106,6 +1331,16 @@ def generate_report(data, db_path=None, run_ts=None):
             report.append(
                 f"- **Bowen Reframe (template):** {rec.get('Bowen_Bridge_Reframe')}")
             report.append(f"- **Content Angle (template):** *{rec.get('Content_Angle')}*")
+
+            # CD.7 — turn the angle into a concrete opening, using this run's own
+            # keyword, question and competitor vocabulary.
+            _pattern_kw = _get_most_relevant_keyword(
+                rec, _organic_results, _kw_profiles, _paa_questions)
+            _angle_example = (
+                rec.get("Content_Angle_Example")
+                or _pattern_examples().get(rec.get("Pattern_Name")))
+            report.extend(_example_block(
+                _angle_example, _example_values(data, _pattern_kw)))
 
             # RC.4.1 — Add evidence block if triggers found
             if rec.get("Detected_Triggers") and rec.get("Detected_Triggers") != "N/A":
@@ -1163,11 +1398,35 @@ def generate_report(data, db_path=None, run_ts=None):
                     interpretation = _get_entity_dominance_interpretation(ents, config)
                     report.append(f"\n*{interpretation}*")
 
+                    # CD.7 — the same point, in this run's numbers.
+                    _named_ents = {
+                        k: v for k, v in ents.items()
+                        if str(k).strip().lower() not in _unwritable_content_types()
+                    }
+                    if _named_ents:
+                        _top_entity, _top_pct = max(
+                            _named_ents.items(), key=lambda kv: kv[1])
+                        _vals = _example_values(data, _plan_top_keyword)
+                        _vals.update({"entity": _top_entity, "pct": _top_pct})
+                        report.extend(_example_block(
+                            _examples_config().get("entity_dominance"), _vals))
+
                 conts = dominance.get("content_dominance", {})
                 if conts:
                     report.append("\n### Content Type Dominance (Top 10)")
                     for k, v in sorted(conts.items(), key=lambda x: x[1], reverse=True):
                         report.append(f"- **{k}:** {v}%")
+
+                    # CD.7 — "other" is the classifier's unknown bucket, not a
+                    # format anyone can write, so it must never become advice.
+                    _named = {k: v for k, v in conts.items()
+                              if str(k).strip().lower() not in _unwritable_content_types()}
+                    if _named:
+                        _top_type, _type_pct = max(_named.items(), key=lambda kv: kv[1])
+                        _vals = _example_values(data, _plan_top_keyword)
+                        _vals.update({"content_type": _top_type, "pct": _type_pct})
+                        report.extend(_example_block(
+                            _examples_config().get("content_type_dominance"), _vals))
                 report.append("\n")
 
     # 5b. Per-Keyword SERP Intent (M1.A — always rendered when keyword_profiles present)
@@ -1533,15 +1792,34 @@ def _render_serp_intent_section(keyword_profiles: dict) -> list:
 def main():
     parser = argparse.ArgumentParser(
         description="Generate Marketing Insights Report")
-    parser.add_argument("--json", required=True,
+    parser.add_argument("--json", required=False,
                         help="Path to serp_norm.json or market_analysis_v2.json")
-    parser.add_argument("--out", required=True,
+    parser.add_argument("--out", required=False,
                         help="Output Markdown file path")
+    parser.add_argument("--glossary-out", default=None,
+                        help="Write the standalone glossary (CD.10) to this path "
+                             "and exit. Needs no --json: the glossary is built "
+                             "from glossary.yml, not from a run.")
     parser.add_argument("--db", default="serp_data.db",
                         help="SQLite DB for AI-Overview exposure trend (D1 / AV.1).")
     parser.add_argument("--run-ts", default=None,
                         help="Run timestamp YYYYMMDD_HHMM; default parsed from --json.")
     args = parser.parse_args()
+
+    # CD.10 — the glossary is editorial content, not run output: it needs no JSON
+    # and costs nothing to produce.
+    if args.glossary_out:
+        try:
+            with open(args.glossary_out, "w", encoding="utf-8") as f:
+                f.write(build_glossary_document())
+            print(f"Glossary written: {args.glossary_out}")
+        except Exception as exc:
+            print(f"Error writing glossary: {exc}")
+            sys.exit(1)
+        return
+
+    if not args.json or not args.out:
+        parser.error("--json and --out are required unless --glossary-out is given")
 
     data = load_data(args.json)
     # D1: persist AIO exposure under the run's identity (parsed from the

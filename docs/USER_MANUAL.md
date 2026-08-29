@@ -797,6 +797,12 @@ Each option answers seven questions:
   without some of its inputs, the caveat is printed underneath it, and where the
   play contradicts the measured feasibility in Section 5c, the report says so
   explicitly rather than presenting both as fact.
+
+  Reports generated before 2026-08-28 can show that contradiction, because the
+  play verdict used to be computed before Domain Authority was fetched and was
+  never revisited afterwards. Runs from that date on route the plays again once
+  DA data exists, so the two agree. An older `market_analysis_*.json` still
+  carries the stale verdict — re-run the feasibility step on it to correct it.
 - **Questions to use as headings** — real People Also Ask questions for *that*
   keyword. Use them word-for-word.
 - **Terms to work in** — vocabulary from that keyword's own results page.
@@ -825,12 +831,53 @@ report says "no distinct competitor vocabulary" rather than padding the section
 with restatements of your keyword. That is a real finding: analyse more
 keywords, or a wider set of related terms, to get a usable vocabulary list.
 
+##### Worked examples in sections 4 and 5
+
+Every piece of general advice is followed by a **"Here's an example:"** line that
+translates it into your data — your keyword, a real question from your results
+page, your competitors' vocabulary. It is not a written post; it is the advice
+made specific enough to start from.
+
+The example text is editorial and lives in config, so you can rewrite it in your
+own voice without touching code:
+
+- Mixed-intent strategy examples and the section-5 examples:
+  `report_writing_directives.yml`
+- Per-pattern openings (the Bowen blocks): `Content_Angle_Example` in
+  `strategic_patterns.yml`
+
+Templates use placeholders like `{keyword}` and `{question}`. If a run has no
+data for a placeholder, the sentence containing it is dropped rather than
+rendered with a blank — so an example is always complete, just sometimes shorter.
+
+One deliberate exclusion: section 5's examples never tell you to write "other"
+or compete with "N/A" pages. Those are the classifier's unknown buckets, not
+formats or competitors. In your 2026-08-26 run "other" was the *largest* content
+type at 51.1%, so a naive reading would have recommended writing it.
+
 ##### Section A — Glossary
 
 Every term of art in the report, defined in plain English, and *only* the terms
 this particular run actually used. Definitions live in `glossary.yml`. A
 standing test fails the build if a guarded term appears in the report with no
 definition, so the report cannot quietly reacquire unexplained jargon.
+
+The glossary costs nothing to produce — it is a lookup from `glossary.yml`, not
+generated text, so there is no API call and no token cost at any surface. The
+same file feeds two other places:
+
+- **The `.xlsx` workbook** gets a **Glossary sheet** explaining its column
+  headers (`avg_serp_da`, `gap`, `Params_Hash`, `Rank_Delta` and the rest). The
+  headers themselves are deliberately not renamed — the JSON and the workbook
+  share one set of field names that a validator checks, and renaming them would
+  break that check and any formulas you have built on the file.
+- **`docs/glossary.md`** is the whole glossary as a standalone document, terms
+  and columns, for reading or sharing on its own. Regenerate it after editing
+  `glossary.yml`:
+
+```bash
+python3 generate_insight_report.py --glossary-out docs/glossary.md
+```
 
 #### content_opportunities_*.md
 Per-keyword content roadmap. For each keyword:

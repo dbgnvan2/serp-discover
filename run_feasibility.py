@@ -37,6 +37,7 @@ from urllib.parse import urlparse
 
 import yaml
 
+import brief_data_extraction
 from play_rendering import format_play_cell
 
 logging.basicConfig(
@@ -706,6 +707,44 @@ def main() -> None:
 
     # Write feasibility data back to JSON so report generation can access it
     data["keyword_feasibility"] = feasibility_rows
+
+    # CD.8 — and re-route the plays now that Domain Authority actually exists.
+    # serp_audit.py builds keyword_profiles (recommended_play included) while
+    # writing the audit JSON. When feasibility is computed here instead — a
+    # separate pass, after that write — every play was routed against empty
+    # feasibility and never revisited, so the JSON ended up holding real DA data
+    # alongside verdicts that had never seen it. That is not a confidence
+    # nuance: on the 2026-08-26 run it flipped both keywords from
+    # extraction_play ("ranking is unlikely, high DA gap") to rank_play, while
+    # the feasibility table on the same page read High Feasibility, gap -14.
+    try:
+        profiles = data.get("keyword_profiles") or {}
+        if profiles:
+            changed = brief_data_extraction.attach_recommended_plays(
+                profiles, feasibility_rows)
+            data["keyword_profiles"] = profiles
+            if changed:
+                logger.info(
+                    "Re-routed recommended_play for %d of %d keyword(s) now that "
+                    "Domain Authority data is available.", changed, len(profiles))
+            else:
+                logger.info(
+                    "Recommended plays unchanged after adding Domain Authority "
+                    "data (%d keyword(s) checked).", len(profiles))
+        else:
+            logger.warning(
+                "No keyword_profiles in %s — recommended plays not re-routed. "
+                "The report's play verdicts will not reflect this DA data.",
+                args.json)
+    except Exception as exc:
+        # Never lose the feasibility write over a routing failure: the DA data is
+        # the point of this run. Say so loudly rather than leaving stale plays
+        # looking freshly computed.
+        logger.error(
+            "Could not re-route recommended plays after computing feasibility "
+            "(%s). The feasibility data below IS written; the play verdicts in "
+            "the report remain those computed without it.", exc)
+
     with open(args.json, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2)
 

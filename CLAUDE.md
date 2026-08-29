@@ -25,7 +25,7 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py tests/ -q`
-  (currently 1229 passing, 66 skipped). Judge the result by the **exit code**,
+  (currently 1308 passing, 66 skipped). Judge the result by the **exit code**,
   not by grepping the summary line — `2 failed, 1227 passed` contains the word
   "passed" (P24). Note: skipped tests are GUI tests requiring
   tkinter (not available in venv, but run when tkinter is available).
@@ -90,7 +90,7 @@ underscores). The GUI auto-updates `config.yml` with the latest paths.
   top of file = highest priority. Edit this file to refine intent rules; do
   not push exceptions into Python.
 - `clinical_dictionary.json` — Bowen vs medical-model vocabulary tiers.
-- `strategic_patterns.yml` — Bowen pattern definitions (triggers, reframes, content angles). Add patterns here; no Python required.
+- `strategic_patterns.yml` — Bowen pattern definitions (triggers, reframes, content angles, and the optional `Content_Angle_Example` worked opening rendered in report section 4). Add patterns here; no Python required.
 
 ## Editorial content lives in config files
 
@@ -126,11 +126,20 @@ Editorial content currently lives in:
   report renders `## A. Glossary` containing only the terms that run actually
   used. A standing guard (`tests/test_report_content_direction.py::TestCD5JargonGuard`)
   fails the build when a guarded term appears in the report with no entry here
-  (added report_content_direction CD.4/CD.5)
+  (added report_content_direction CD.4/CD.5). Also holds `columns:` — plain-English
+  meanings for the .xlsx headers, written to the workbook's Glossary sheet — and
+  `sheet_guidance`, the workbook Help text (both CD.9). Regenerate the standalone
+  `docs/glossary.md` with
+  `python3 generate_insight_report.py --glossary-out docs/glossary.md`; a test
+  fails when it is stale. Workbook headers are never renamed: the JSON/xlsx field
+  vocabulary is a contract `validate_xlsx_vs_json.py` checks
 - `report_writing_directives.yml` — the "**When you write:**" line rendered under
   each analytical report section, plus the `page_types` labels used by the
-  "What To Write" content plan. Missing/malformed file degrades to no directives,
-  never an aborted report (added report_content_direction CD.1/CD.2)
+  "What To Write" content plan, the `mixed_intent_strategies` descriptions +
+  worked examples (moved out of a Python dict in CD.7), the section-5 `examples`,
+  and `unwritable_content_types` (classifier buckets like "other"/"N/A" that must
+  never be named as a format to write). Missing/malformed file degrades to no
+  directives, never an aborted report (added report_content_direction CD.1/CD.2/CD.7)
 - `play_routing.yml` — "Recommended Play" decision table: ordered, first-match-wins rules mapping pre-computed keyword signals to one of five plays (rank / extraction / reformat / local_pivot / deprioritize), plus each play's label + strategy_text (added seo_geo_review chip A)
 - `engine_profiles.yml` — per-engine (chatgpt/`openai`, perplexity, gemini, claude) source-bias profiles: `retrieval_backend`, `source_bias` phrases, indicative+dated `avg_citations`, `reach_tier`/`referral_click_tier`, and the editorial `recommended_content_moves` list joined by `engine_recommendations.py` to produce per-engine "what to change here" advice. This is the ONLY place engine advice lives — no engine advice is hardcoded in Python. Vendor/temporal confidence caveat is binding: directional findings are high confidence, the numbers are indicative and shift over time — re-measure (added yoast_geo_upgrade Y.10)
 - `client_profiles.yml` — per-client profile blocks (keyed by client slug) driving persona-segmented AI-visibility question generation: `brand_name`, `domain`, `location`, `primary_city`, `secondary_cities`, `service_description`, and `personas` (each with `label`, `needs`, verbatim `seed_questions`, and per-city-expanding `templates` under open, per-client funnel/intent tiers). Edited in the GUI "Client Profile & Queries" tab (added yoast_geo_upgrade Y.1 / Y.13)

@@ -1020,6 +1020,66 @@ def _build_gsc_summary(sidecar):
     }
 
 
+def index_feasibility_by_keyword(feasibility_rows):
+    """Map keyword -> its primary feasibility row (pivot rows excluded)."""
+    by_kw = {}
+    for row in feasibility_rows or []:
+        if row.get("Query_Label") == "P" or row.get("query_label") == "P":
+            continue  # pivot rows are not the primary keyword's verdict
+        kw = row.get("Keyword") or row.get("keyword_text") or ""
+        if kw and kw not in by_kw:
+            by_kw[kw] = row
+    return by_kw
+
+
+def attach_recommended_plays(keyword_profiles, feasibility_rows,
+                             service_like_tokens=None, routing=None):
+    """Compute recommended_play for every profile, from `feasibility_rows`.
+
+    Purpose: One definition of "route the plays", so every producer of
+             keyword_profiles reaches the same verdict from the same inputs.
+    Spec:    report_content_direction_spec.md#CD.8
+    Tests:   tests/test_play_feasibility_ordering.py::test_cd8_*
+
+    This exists as a named function because it has to be called twice on the
+    real pipeline, at two different times:
+
+      1. serp_audit.py builds keyword_profiles while writing the audit JSON.
+         When feasibility ran inside that same pass, the rows are present and
+         the verdict is final.
+      2. run_feasibility.py computes Domain Authority separately, afterwards,
+         and writes keyword_feasibility back into the same JSON. Before CD.8 it
+         stopped there, leaving every play routed on the empty feasibility it
+         saw in step 1 — so a report could carry "Ranking is unlikely (high DA
+         gap)" directly above a measured High Feasibility and a -14 gap. The
+         verdict was not merely low-confidence, it was the opposite verdict:
+         re-routing the 2026-08-26 run with its own DA data turns both keywords
+         from extraction_play (confidence low) into rank_play (confidence high).
+
+    Returns the number of profiles whose play id changed, so callers can report
+    the correction rather than silently rewriting a verdict (P6).
+    """
+    if routing is None:
+        routing = load_play_routing()
+    if service_like_tokens is None:
+        service_like_tokens = load_service_like_tokens()
+
+    by_kw = index_feasibility_by_keyword(feasibility_rows)
+    changed = 0
+    for kw, profile in (keyword_profiles or {}).items():
+        previous = (profile.get("recommended_play") or {}).get("play")
+        profile["recommended_play"] = compute_recommended_play(
+            profile,
+            feasibility_row=by_kw.get(kw),
+            keyword=kw,
+            service_like_tokens=service_like_tokens,
+            routing=routing,
+        )
+        if (profile["recommended_play"] or {}).get("play") != previous:
+            changed += 1
+    return changed
+
+
 def _build_feasibility_summary(feasibility_rows):
     """Compact summary of keyword feasibility data for the LLM payload.
 
@@ -1813,21 +1873,9 @@ def extract_analysis_data_from_json(
     # each profile already carries mixed_intent_strategy. Deterministic Python
     # only normalises signals; play_routing.yml makes the call.
     # Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation divergence).
-    feasibility_by_kw = {}
-    for row in feasibility_rows:
-        if row.get("Query_Label") == "P" or row.get("query_label") == "P":
-            continue  # pivot rows are not the primary keyword's verdict
-        kw = row.get("Keyword") or row.get("keyword_text") or ""
-        if kw and kw not in feasibility_by_kw:
-            feasibility_by_kw[kw] = row
-    for kw, profile in keyword_profiles.items():
-        profile["recommended_play"] = compute_recommended_play(
-            profile,
-            feasibility_row=feasibility_by_kw.get(kw),
-            keyword=kw,
-            service_like_tokens=service_like_tokens,
-            routing=play_routing,
-        )
+    attach_recommended_plays(
+        keyword_profiles, feasibility_rows,
+        service_like_tokens=service_like_tokens, routing=play_routing)
 
     ads_out = []
     for row in ads:
