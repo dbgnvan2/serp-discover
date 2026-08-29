@@ -88,6 +88,20 @@ moz:
       navigational: navigational
       local: transactional
       uncategorised: null
+  # Competitor signals for the Tool 2 handoff (data.site.ranking.keyword.list
+  # + data.site.anchor.text.list). The spec's default was false; enabled here
+  # at the user's instruction (2026-08-28). 1 row per object returned, so cost
+  # scales with what each competitor actually has — a full anchor-text page is
+  # 25 rows, ranking keywords cost 1 per keyword found.
+  # Adding this block moves the handoff to schema_version 1.1; serp-compete's
+  # own handoff_schema.json must allow it or Tool 2 hard-exits on validation.
+  competitor:
+    enabled: true
+    scope: domain
+    locale: en-CA
+    max_competitors: 3
+    ranking_keyword_limit: 50
+    anchor_text_limit: 25
   site_metrics:
     scope: url
     batch_size: 50

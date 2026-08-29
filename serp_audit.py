@@ -1326,6 +1326,7 @@ def fetch_autocomplete(keyword):
 _HANDOFF_SCHEMA_PATH = handoff_writer._HANDOFF_SCHEMA_PATH
 _HANDOFF_SCHEMA = handoff_writer._HANDOFF_SCHEMA
 build_competitor_handoff = handoff_writer.build_competitor_handoff
+from moz_competitor import build_handoff_block as moz_competitor_block
 
 
 def build_help_rows():
@@ -1990,6 +1991,9 @@ def main():
         f"competitor_handoff_{_slug}_{_ts_short}.json",
     )
     print("Building competitor handoff for Tool 2...")
+    _moz_competitor = moz_competitor_block(
+        CONFIG, all_organic, CLIENT_DOMAIN, _omit_from_audit
+    )
     _handoff = build_competitor_handoff(
         all_organic,
         run_id=run_id,
@@ -1998,6 +2002,7 @@ def main():
         client_brand_names=_client_brand_names,
         n=_handoff_n,
         omit_from_audit=_omit_from_audit,
+        moz_competitor=_moz_competitor,
     )
     if _handoff is not None:
         try:

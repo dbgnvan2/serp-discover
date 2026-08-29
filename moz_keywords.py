@@ -116,6 +116,33 @@ def absent(status: str = STATUS_ERROR, reason: str | None = None) -> dict:
     return block
 
 
+def row_budget(rows_needed: int, what: str = "Moz") -> int | None:
+    """Return rows available to spend, or ``None`` when the quota can't be read.
+
+    Purpose: one quota guard for every paid Moz signal, so hardening one does
+             not leave its siblings unguarded (learnings P5).
+    Spec:    moz_api_upgrade_spec_v1.md#T.2, #T.4
+    Tests:   test_moz_keywords.py::TestSpendControls, test_moz_competitor.py
+
+    An unreadable quota returns ``None``, not zero: treating a transient
+    hiccup as "no budget" would silently disable the feature (P1). Callers
+    then fall through to "spend and let the API refuse".
+    """
+    try:
+        status = quota_status()
+    except (MozRpcError, RuntimeError) as exc:
+        logger.warning(
+            "Moz %s: could not read quota (%s) — proceeding without a local "
+            "budget guard", what, exc
+        )
+        return None
+    logger.info(
+        "Moz %s: ~%d row(s) needed, %d remaining of %d",
+        what, rows_needed, status["remaining"], status["allotted"],
+    )
+    return status["remaining"]
+
+
 class _KeywordSignalClient:
     """Shared fetch/cache/quota machinery for a per-keyword Moz signal.
 
@@ -265,29 +292,10 @@ class _KeywordSignalClient:
     # ------------------------------------------------------------------
 
     def _row_budget(self, planned_calls: int) -> int | None:
-        """Return rows available to spend, or ``None`` when it can't be read.
-
-        An unreadable quota must not be treated as zero — that would disable
-        the feature on a transient hiccup (P1). It falls through to "spend and
-        let the API refuse", which is the pre-existing behaviour.
-        """
+        """Return rows available to spend, or ``None`` when it can't be read."""
         if not planned_calls:
             return None
-        try:
-            status = quota_status()
-        except (MozRpcError, RuntimeError) as exc:
-            logger.warning(
-                "Moz keyword metrics: could not read quota (%s) — proceeding "
-                "without a local budget guard", exc
-            )
-            return None
-        needed = planned_calls * self._rows_per_call
-        logger.info(
-            "Moz keyword metrics: %d keyword(s) to fetch, ~%d row(s) needed, "
-            "%d remaining of %d",
-            planned_calls, needed, status["remaining"], status["allotted"],
-        )
-        return status["remaining"]
+        return row_budget(planned_calls * self._rows_per_call, self.SIGNAL_NAME)
 
     def _fetch_one(self, keyword: str) -> dict:
         """Fetch one keyword, classifying absence apart from failure."""

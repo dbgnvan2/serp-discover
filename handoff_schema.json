@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "CompetitorHandoff",
-  "description": "Validated handoff from serp-discover (Tool 1) to serp-compete (Tool 2)",
+  "description": "Validated handoff from serp-discover (Tool 1) to serp-compete (Tool 2). v1.1 adds the optional top-level `moz` block (moz_api_upgrade_spec_v1.md T.4); it is NOT in `required`, so a v1.0 producer still validates.",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -15,7 +15,8 @@
   ],
   "properties": {
     "schema_version": {
-      "type": "string"
+      "type": "string",
+      "description": "1.0 = original contract; 1.1 adds the optional `moz` block."
     },
     "source_run_id": {
       "type": "string"
@@ -29,7 +30,9 @@
     },
     "client_brand_names": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": {
+        "type": "string"
+      }
     },
     "targets": {
       "type": "array",
@@ -47,14 +50,30 @@
           "primary_keyword_for_url"
         ],
         "properties": {
-          "url":                    { "type": "string" },
-          "domain":                 { "type": "string" },
-          "rank":                   { "type": "integer" },
-          "entity_type":            { "type": "string" },
-          "content_type":           { "type": "string" },
-          "title":                  { "type": "string" },
-          "source_keyword":         { "type": "string" },
-          "primary_keyword_for_url": { "type": "string" }
+          "url": {
+            "type": "string"
+          },
+          "domain": {
+            "type": "string"
+          },
+          "rank": {
+            "type": "integer"
+          },
+          "entity_type": {
+            "type": "string"
+          },
+          "content_type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source_keyword": {
+            "type": "string"
+          },
+          "primary_keyword_for_url": {
+            "type": "string"
+          }
         }
       }
     },
@@ -67,11 +86,65 @@
         "omit_list_used"
       ],
       "properties": {
-        "client_urls_excluded": { "type": "integer" },
-        "omit_list_excluded":   { "type": "integer" },
+        "client_urls_excluded": {
+          "type": "integer"
+        },
+        "omit_list_excluded": {
+          "type": "integer"
+        },
         "omit_list_used": {
           "type": "array",
-          "items": { "type": "string" }
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "moz": {
+      "type": "object",
+      "description": "Optional Moz competitor signals, keyed by competitor domain. Additive and absent-safe: a consumer that ignores it behaves exactly as it did on v1.0. Present only when moz.competitor.enabled is true.",
+      "additionalProperties": false,
+      "required": [
+        "domains"
+      ],
+      "properties": {
+        "generated_at": {
+          "type": "string"
+        },
+        "locale": {
+          "type": "string"
+        },
+        "scope": {
+          "type": "string"
+        },
+        "domains": {
+          "type": "object",
+          "description": "domain -> signal block",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": true,
+            "required": [
+              "data_available",
+              "status"
+            ],
+            "properties": {
+              "data_available": {
+                "type": "boolean"
+              },
+              "status": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "ranking_keywords": {
+                "type": "object"
+              },
+              "anchor_texts": {
+                "type": "object"
+              }
+            }
+          }
         }
       }
     }

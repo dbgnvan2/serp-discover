@@ -1,7 +1,21 @@
 """handoff_writer.py — Competitor handoff JSON generation and schema validation.
 
-Spec: serp_tool1_improvements_spec.md#I.6
+Spec: serp_tool1_improvements_spec.md#I.6, moz_api_upgrade_spec_v1.md#T.4
+
+Cross-tool contract
+-------------------
+serp-compete validates this file against its own copy of
+``handoff_schema.json`` and calls ``sys.exit(1)`` on any validation error
+(``Serp-compete/src/main.py``). Both the root object and each target set
+``additionalProperties: false``, so a new field is **not** silently ignored
+downstream — it is fatal until Tool 2's schema copy allows it.
+
+The T.4 ``moz`` block is therefore optional, top-level (never inside a
+target), and absent entirely unless ``moz.competitor.enabled`` is true;
+``schema_version`` moves to "1.1" only when it is present, so a run without it
+still emits exactly the v1.0 document Tool 2 already accepts.
 """
+
 import json
 import logging
 import os
@@ -16,6 +30,12 @@ if os.path.exists(_HANDOFF_SCHEMA_PATH):
         _HANDOFF_SCHEMA = json.load(_f)
 
 
+SCHEMA_VERSION_BASE = "1.0"
+#: Bumped only when the optional `moz` block is actually present, so a run
+#: without it stays byte-compatible with what Tool 2 already accepts.
+SCHEMA_VERSION_WITH_MOZ = "1.1"
+
+
 def build_competitor_handoff(
     all_organic,
     run_id,
@@ -24,6 +44,7 @@ def build_competitor_handoff(
     client_brand_names,
     n=10,
     omit_from_audit=None,
+    moz_competitor=None,
 ):
     """Build the validated handoff dict for Tool 2 from organic results.
 
@@ -135,7 +156,9 @@ def build_competitor_handoff(
             added += 1
 
     handoff = {
-        "schema_version": "1.0",
+        "schema_version": (
+            SCHEMA_VERSION_WITH_MOZ if moz_competitor else SCHEMA_VERSION_BASE
+        ),
         "source_run_id": run_id,
         "source_run_timestamp": run_timestamp,
         "client_domain": client_domain or "",
@@ -147,6 +170,9 @@ def build_competitor_handoff(
             "omit_list_used": sorted(omit_domains_hit),
         },
     }
+
+    if moz_competitor:
+        handoff["moz"] = moz_competitor
 
     if _HANDOFF_SCHEMA:
         try:

@@ -129,3 +129,38 @@ audit_targets:
   n: 10                  # Number of top organic URLs per keyword
   omit_from_audit: []    # Domains to exclude from the handoff
 ```
+
+
+## schema_version 1.1 — the optional `moz` block (moz_api_upgrade_spec_v1.md T.4)
+
+`schema_version` is `"1.1"` **only when** the optional top-level `moz` block is present; a run
+with `moz.competitor.enabled: false` still emits a byte-identical `"1.0"` document.
+
+```
+moz:
+  generated_at: ISO-8601
+  locale: en-CA          # the Moz query context these signals were fetched under
+  scope: domain
+  domains:
+    <competitor domain>:
+      data_available: bool
+      status: ok | no_record | error | skipped_run_cap | skipped_quota
+      ranking_keywords: {status, items[], returned, truncated}
+      anchor_texts:     {status, items[], returned, truncated}
+```
+
+**The block is top-level, never inside a target.** Both repos' schemas set
+`additionalProperties: false` on each target, and serp-compete's `Serp-compete/src/main.py`
+calls `sys.exit(1)` on any validation error — so a new field is *not* silently ignored
+downstream, it is fatal. Adding a per-target field would break Tool 2 outright.
+
+**Both copies of `handoff_schema.json` must stay in sync.** serp-compete validates against its
+own copy, so the v1.1 schema was synced there in the same change (the established workflow —
+its previous commit is "Sync handoff_schema.json from serp-discover"). serp-compete's code is
+otherwise unchanged: it ignores the block, and its full suite (158 tests) passes with the new
+schema. `test_moz_competitor.py::TestHandoffContract` validates a generated v1.1 handoff
+against **Tool 2's real schema file on disk**, so the two drifting apart fails a test here.
+
+**Follow-up for serp-compete (not done in this spec):** nothing consumes the block yet.
+`convert_handoff_to_targets` drops it, which is correct and safe. Using the anchor-text and
+ranking-keyword data in Tool 2's audit is a separate piece of work.

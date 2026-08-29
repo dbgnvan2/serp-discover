@@ -339,6 +339,24 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 
 **What:** Moz's metric (0–100) predicting how well a domain will rank in Google. Higher DA = more "authority votes" from backlinks.
 
+**Competitor signals in the Tool 2 handoff (Moz).** For each competitor domain
+found in your SERP results, the handoff now carries what that domain actually
+ranks for (keyword, the page that ranks, position, difficulty, volume) and how
+the web links to it (anchor text, and how many domains and pages use each
+phrase). Anchor text is often the most revealing part — it shows how others
+describe a competitor, and it exposes link spam: bowencenter.org's top anchors
+include several paid-backlink PBN phrases.
+
+Limits worth knowing: this takes the **top page** from each method, not the
+complete history, and each block says `truncated: true` when there was more.
+It costs 1 API row per item returned, so a full anchor-text page is 25 rows per
+competitor. `moz.competitor.max_competitors` (default 3) caps how many domains
+are fetched per run, and results cache for 30 days.
+
+Locale matters here too: bowencenter.org returns ranking keywords under `en-US`
+but **none** under `en-CA`. If a competitor's ranking list looks empty, the
+locale is the first thing to check.
+
 **Search-intent cross-check (Moz, optional and off by default).** The tool
 classifies each keyword's intent with its own rule table (`intent_mapping.yml`),
 which you control. Moz can also be asked what *it* thinks the intent is, and the
