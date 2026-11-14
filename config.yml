@@ -343,3 +343,8 @@ geo:
   - professional_association
   - education
   - government
+launcher:
+  stop_grace_seconds: 5            # Stop button: wait this long after asking the run to end, then force it
+  max_run_minutes: 0               # end a run that lasts longer than this; 0 = no limit
+  regenerate_timeout_seconds: 300  # report regeneration after a feasibility run
+  process_check_timeout_seconds: 5 # the "is a pipeline already running?" check

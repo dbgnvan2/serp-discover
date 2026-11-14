@@ -1455,6 +1455,25 @@ DA gap analysis:
 
 ---
 
+## Stopping a run, and one run at a time
+
+- **Stop button** (beside "Run Selected Script"): enabled only while a script is running. It asks
+  for confirmation, then ends the script and everything it started (the pipeline starts the
+  audit as a separate process; both are ended). The log shows `STOPPED`. A stopped audit writes
+  no output files and leaves `config.yml` pointing at the previous run. SerpAPI calls already
+  made are still charged, and their raw responses stay under `raw/<run id>/`.
+- **Run is disabled for the whole run.** Clicking another script in the list no longer
+  re-enables it, so a second pipeline cannot be started by accident.
+- **A pipeline started somewhere else** (a second launcher window, a terminal) from the same
+  folder also disables Run. The log names the process. Click any script in the list to check
+  again once it has finished.
+- **Closing the window during a run** asks "Stop the run and close?". Yes ends the run first;
+  No keeps the window open. Cmd-Q asks the same question. If the launcher is ended some other
+  way (Ctrl-C in its terminal, the terminal closed), the run is ended with it. The run is never
+  left going with no window.
+- **Why it matters:** each run spends SerpAPI credits. Two runs at once write the same output
+  and config files, and a run with no window could not be seen or ended.
+
 ## Troubleshooting
 
 ### "Process finished with status FAILED (exit N)"

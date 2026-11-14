@@ -24,6 +24,10 @@ from generate_domain_override_candidates import (
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 from config_manager import ConfigManagerWindow
 from pipeline_status import exit_label
+from run_control import (
+    TIMED_OUT, ProcessCheckFailed, RunControl, close_action, install_exit_guards,
+    launcher_settings, popen_kwargs, run_with_timeout, running_pipeline_processes,
+)
 from report_models import (
     DEFAULT_REPORT_MODELS,
     get_report_model_options,
@@ -79,6 +83,17 @@ class SerpLauncherApp:
         # the app is launched without a terminal — so a failing button
         # handler looks like the button "does nothing".
         self.root.report_callback_exception = self._report_callback_exception
+        try:
+            self.launcher_cfg = launcher_settings(self.load_config())
+        except Exception:
+            self.launcher_cfg = launcher_settings({})
+        self.run_control = RunControl(self.launcher_cfg["stop_grace_seconds"])
+        self.external_runs = []     # pipeline processes this window did not start
+        self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        try:
+            self.root.createcommand("::tk::mac::Quit", self.on_close)   # Cmd-Q on macOS
+        except tk.TclError:
+            pass
         self.root.title("SERP Intelligence Launcher")
         self.root.geometry("800x650")
         self.domain_review_window = None
@@ -405,6 +420,11 @@ class SerpLauncherApp:
             btn_frame, text="Run Selected Script", command=self.run_script, state="disabled")
         self.run_btn.pack(side="right", padx=5)
 
+        # S3: enabled only while a run is active (see _refresh_run_buttons).
+        self.stop_btn = ttk.Button(
+            btn_frame, text="Stop", command=self.stop_script, state="disabled")
+        self.stop_btn.pack(side="right", padx=5)
+
         ttk.Button(btn_frame, text="Clear Log",
                    command=self.clear_log).pack(side="right", padx=5)
 
@@ -445,6 +465,11 @@ class SerpLauncherApp:
         self.log(f"> Working dir: {os.getcwd()}\n")
         self.log("> Select a script on the left, then click 'Run Selected Script'.\n")
         self.log("-" * 68 + "\n")
+        # S6: a pipeline started before this window opened keeps Run disabled.
+        self.external_runs = self._external_runs()
+        if self.external_runs:
+            self._report_external_runs()
+            self._refresh_run_buttons()
 
     @staticmethod
     def _git_version():
@@ -488,14 +513,69 @@ class SerpLauncherApp:
             if script_idx is not None:
                 desc = self.scripts[script_idx]["desc"]
                 self.update_desc(desc)
-                self.run_btn.config(state="normal")
             else:
                 # Selected a section header or empty line
                 self.update_desc("")
-                self.run_btn.config(state="disabled")
         else:
             self.update_desc("")
-            self.run_btn.config(state="disabled")
+        # S1: the selection alone never enables Run; a run in progress keeps it off.
+        self._refresh_run_buttons()
+
+    def _selection_is_runnable(self):
+        selection = self.script_listbox.curselection()
+        return bool(selection) and self.listbox_to_script_index.get(selection[0]) is not None
+
+    def _external_runs(self):
+        """Pipeline scripts running from this folder that this window did not start (S6)."""
+        try:
+            return running_pipeline_processes(
+                os.getcwd(), timeout=self.launcher_cfg["process_check_timeout_seconds"])
+        except ProcessCheckFailed as exc:
+            # Not "none running": say the check was not made. This window's own
+            # run flag still prevents a second run from here.
+            self.log(f"> Could not check for an already-running pipeline: {exc}\n")
+            return []
+
+    def _refresh_run_buttons(self):
+        """Set Run and Stop from the run state. The only place either is enabled."""
+        running = self.run_control.running
+        if self.external_runs and not running:
+            self.external_runs = self._external_runs()      # has it finished?
+        can_run = self._selection_is_runnable() and not running and not self.external_runs
+        self.run_btn.config(state="normal" if can_run else "disabled")
+        self.stop_btn.config(state="normal" if running else "disabled")
+
+    def _report_external_runs(self):
+        names = "; ".join(f"pid {pid}: {cmd}" for pid, cmd in self.external_runs)
+        self.log(
+            "> A pipeline script is already running from this folder, so Run is disabled "
+            f"until it finishes ({names}). Click a script in the list to check again.\n")
+
+    def stop_script(self):
+        """Stop button: end the run and every process it started, after confirmation."""
+        if not self.run_control.running:
+            return
+        if not messagebox.askyesno(
+                "Stop Run",
+                "Stop the running script?\n\nIts output files will not be written. "
+                "SerpAPI calls already made are still charged."):
+            return
+        self.stop_btn.config(state="disabled")
+        self.log(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Stop requested...\n")
+        self.run_control.stop()
+
+    def on_close(self):
+        """Window close box. A run in progress is stopped or the window stays open (S5)."""
+        action = close_action(
+            self.run_control.running,
+            lambda: messagebox.askyesno(
+                "Run In Progress",
+                "A script is still running.\n\nStop the run and close?"))
+        if action == "stay":
+            return
+        if action == "stop_and_close":
+            self.run_control.stop(wait=True)
+        self.root.destroy()
 
     def update_desc(self, text):
         self.desc_text.config(state="normal")
@@ -794,6 +874,8 @@ class SerpLauncherApp:
         }
 
     def run_script(self):
+        if self.run_control.running:      # S1: never a second run from this window
+            return
         selection = self.script_listbox.curselection()
         self.log(
             f"[click] Run Selected Script — selection="
@@ -818,6 +900,18 @@ class SerpLauncherApp:
         script_info = self.scripts[script_idx]
         if script_info.get("action") == "review_domain_overrides":
             self.open_domain_override_review()
+            return
+
+        # S6: before anything is written for this run, refuse if the same pipeline is already running from this folder
+        # (another launcher window, a terminal).
+        self.external_runs = self._external_runs()
+        if self.external_runs:
+            self._report_external_runs()
+            self._refresh_run_buttons()
+            messagebox.showwarning(
+                "Already Running",
+                "A pipeline script is already running from this folder. "
+                "Wait for it to finish, then try again.")
             return
 
         run_context = None
@@ -936,13 +1030,21 @@ class SerpLauncherApp:
             self.log("> SERP_AI_PRIORITY_KEYWORDS=<none; A.1/A.2 skipped unless priority keywords are available>\n")
         self.log("> SERP_SINGLE_KEYWORD=<disabled; using keyword file management>\n")
         self.log("-" * 68 + "\n")
-        self.run_btn.config(state="disabled")
-
-        threading.Thread(target=self.execute_thread,
-                         args=(cmd, env, cwd), daemon=True).start()
+        # S2: claim the run and disable Run before the process is started.
+        if not self.run_control.begin():
+            return
+        try:
+            self._refresh_run_buttons()
+            threading.Thread(target=self.execute_thread,
+                             args=(cmd, env, cwd), daemon=True).start()
+        except Exception:
+            self.run_control.finish()      # never leave the window stuck "running"
+            self._refresh_run_buttons()
+            raise
 
     def execute_thread(self, cmd, env, cwd):
         started_at = time.perf_counter()
+        cap_timer = None
         try:
             # Use Popen to capture output in real-time
             process = subprocess.Popen(
@@ -952,8 +1054,16 @@ class SerpLauncherApp:
                 text=True,
                 bufsize=1,
                 cwd=cwd,
-                env=env
+                env=env,
+                **popen_kwargs()    # own process group, so Stop ends its children too
             )
+            self.run_control.attach(process)
+            max_minutes = self.launcher_cfg["max_run_minutes"]
+            if max_minutes > 0:
+                cap_timer = threading.Timer(
+                    max_minutes * 60, self.run_control.stop, kwargs={"reason": TIMED_OUT})
+                cap_timer.daemon = True
+                cap_timer.start()
 
             for line in process.stdout:
                 self.root.after(0, self.log, line)
@@ -962,7 +1072,8 @@ class SerpLauncherApp:
             elapsed_s = time.perf_counter() - started_at
             finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             completed_script = os.path.basename(cmd[1]) if len(cmd) > 1 else ""
-            status_label = exit_label(completed_script, process.returncode)
+            status_label = exit_label(completed_script, process.returncode,
+                                      stop_reason=self.run_control.stop_reason)
             self.root.after(
                 0,
                 self.log,
@@ -984,8 +1095,11 @@ class SerpLauncherApp:
                 f"\n[Error starting process after {elapsed_s:.1f}s: {e}]\n" + "=" * 68 + "\n"
             )
         finally:
+            if cap_timer is not None:
+                cap_timer.cancel()
+            self.run_control.finish()
             self.root.after(0, self.refresh_keyword_file_options)
-            self.root.after(0, lambda: self.run_btn.config(state="normal"))
+            self.root.after(0, self._refresh_run_buttons)
 
     def log(self, message):
         self.log_text.config(state="normal")
@@ -1114,13 +1228,14 @@ class SerpLauncherApp:
                 "--out", md_out,
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=os.getcwd())
-            if result.returncode == 0:
+            ok, problem = run_with_timeout(      # S7: was a blocking call with no timeout
+                cmd, self.launcher_cfg["regenerate_timeout_seconds"], cwd=os.getcwd())
+            if ok:
                 self.log(
                     f"✓ Market Analysis report regenerated with feasibility ranking: {md_out}\n"
                 )
             else:
-                self.log(f"⚠ Could not auto-regenerate report: {result.stderr}\n")
+                self.log(f"⚠ Could not auto-regenerate report: {problem}\n")
         except Exception as e:
             self.log(f"⚠ Auto-regeneration error: {e}\n")
 
@@ -1584,4 +1699,13 @@ class SerpLauncherApp:
 if __name__ == "__main__":
     root = tk.Tk()
     app = SerpLauncherApp(root)
+    # Ctrl-C, a closed terminal or a kill must not leave a paid run going.
+    install_exit_guards(app.run_control)
+
+    def _let_python_see_signals():
+        # Tk's main loop does not return to Python while idle, so a signal
+        # handler would otherwise wait for the next GUI event.
+        root.after(250, _let_python_see_signals)
+
+    _let_python_see_signals()
     root.mainloop()

@@ -88,10 +88,16 @@ def absent_files(paths):
     return [p for p in paths if not p or not os.path.exists(p)]
 
 
-def exit_label(script, code):
-    """The launcher's status word for a finished process."""
+def exit_label(script, code, stop_reason=None):
+    """The launcher's status word for a finished process.
+
+    ``stop_reason`` is set when the launcher itself ended the run ("stopped",
+    "timed out"); a run that still exited 0 finished before the signal landed.
+    """
     if code == 0:
         return "SUCCESS"
+    if stop_reason:
+        return stop_reason.upper()
     if code == 1 and os.path.basename(script or "") == MISMATCH_SCRIPT:
         return "MISMATCH"
     return f"FAILED (exit {code})"

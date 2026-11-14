@@ -1,6 +1,6 @@
 # Plan: Stop button / run guard, and SerpAPI timeout
 
-**Status:** approved 2026-11-14 with the three recommended decisions. Chunk T built; Chunk S in progress.
+**Status:** approved 2026-11-14 with the three recommended decisions. Both chunks built and pushed 2026-11-14.
 **Source:** `docs/REVIEW-serp-discover-2026-11-14.md` findings M8 and M2.
 **Tier (effort-budget):** Full — external paid calls and a GUI control that starts and kills
 processes. Tests for the change, one cold `learning-qa` pass over each diff before pushing.
@@ -84,6 +84,24 @@ child and say so in the log.
   retry is served from the one-hour cache (not available when `no_cache` is on).
 - **Review pass (T):** retry-loop errors are now scrubbed of the API key; a test runs the real
   client to prove `.timeout` reaches `requests`.
+
+## How S6 was built (differs from the table)
+
+Run is disabled at start-up when a pipeline script is already running from this folder, and the
+check is repeated on each list click (while the flag is set) and on every Run click, before
+anything is written for the run. There is no separate "Check again" control.
+
+## Changes made after the review pass (S)
+
+- Starting the child in its own session meant Ctrl-C or a closed terminal no longer reached it.
+  The launcher now ends the run on Cmd-Q (same prompt), SIGINT, SIGTERM, SIGHUP and normal exit.
+- The already-running check reads `ps` instead of `pgrep -fl`, whose output differs on Linux (CI),
+  and reads `/proc/<pid>/cwd` where it exists.
+- A check that cannot be made is logged as such instead of reading as "nothing running".
+
+Below medium, not fixed: the SIGKILL timer does not re-check that the process id still belongs
+to the run; a Stop that lands before the process exists, while the window is closing, gets no
+SIGKILL follow-up.
 
 ## Order
 
