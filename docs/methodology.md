@@ -6,7 +6,7 @@ How SERP Intelligence Tool 1 produces its outputs.
 
 ## Part 1 — SERP data collection and intent classification
 
-**Input:** keyword CSV file.
+**Input:** keyword CSV file, named by the `SERP_INPUT_CSV` environment variable (set by the launcher) or else `files.input_csv` in `config.yml`.
 
 **Fetch:** `serp_audit.py` calls SerpAPI for each keyword, retrieving organic results, People Also Ask (PAA) questions, and local pack entries. A query that returns no usable data is counted, named in the log, and recorded in the output JSON as `fetch_summary` (`planned`, `fetched`, `failed`, plus `pivot_failed` for pivot-keyword fetches); the analysis covers only the fetched queries. A run in which no query returns data, or in which an output file cannot be written, exits non-zero. Each SerpAPI response is saved under `raw/<run_id>/calls/` as it arrives. A run started with `SERP_RESUME_RUN_ID` reuses the stored responses of that earlier run when the request parameters are identical and the response is no older than `serpapi.resume_max_age_hours`; its results therefore mix fetch times, and `fetch_summary` records `resumed_from` and `reused_calls`. Rows built from a reused response carry the time of the resumed run, not the original fetch time. A stored response whose token follow-ups (AI Overview, related questions) were not completed is fetched again rather than reused.
 

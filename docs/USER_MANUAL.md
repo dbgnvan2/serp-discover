@@ -1463,6 +1463,17 @@ DA gap analysis:
   no output files and leaves `config.yml` pointing at the previous run. SerpAPI calls already
   made are still charged, and their responses stay under `raw/<run id>/calls/` (see "Resuming
   an unfinished run" below).
+- **Nothing is written until a run starts.** Clicking Run and then cancelling at a prompt
+  changes no file. Keywords typed into the new-keywords box are added to the keyword file
+  only when the script actually starts; the log names the file. `config.yml` is updated with
+  the keyword file and output paths only when the audit step has written all its outputs, so
+  a run that is stopped or fails during the audit leaves it pointing at the last good run.
+  (A run that fails in a later pipeline step, such as the xlsx/JSON check, has already
+  recorded the new paths.)
+- **A keyword file is never replaced.** New keywords with no file selected are saved as
+  `keywords_<first keyword>.csv`. If that file already exists with different keywords, the
+  launcher asks "Add the new keywords to it?" and says how many keywords the run will then
+  use. Yes adds them; No cancels the run and leaves the file as it was.
 - **Run is disabled for the whole run.** Clicking another script in the list no longer
   re-enables it, so a second pipeline cannot be started by accident.
 - **A pipeline started somewhere else** (a second launcher window, a terminal) from the same

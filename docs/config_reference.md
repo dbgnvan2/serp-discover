@@ -4,7 +4,7 @@
 - `serpapi.*` — API params (engine, location, pagination, retries, modes)
   - `serpapi.timeout_seconds` (default `60`) — how long one SerpAPI call may take before it is abandoned and retried (`retry_max_attempts`). Used by `serp_audit.py` and by the pivot fetches in `run_feasibility.py`. A missing, zero or non-numeric value falls back to 60 with a warning; there is no way to switch the timeout off. Without it the client library waits 16.7 hours.
   - `serpapi.resume_max_age_hours` (default `24`) — how long the stored SerpAPI responses of an unfinished run may be reused by a resumed run (`serp_checkpoint.py`). `0` means never reuse. A negative or non-numeric value falls back to 24 with a warning.
-- `files.*` — input/output file paths (auto-updated by GUI after each run)
+- `files.*` — input/output file paths. `input_csv`, `output_json`, `output_xlsx` and `output_md` are written by `serp_audit.py` at the end of a run that wrote all its outputs (`pipeline_status.finish_run`); a run that is cancelled, or stopped or failed before the audit finishes, leaves them unchanged (a failure in a later `run_pipeline.py` step does not undo them). The launcher does not write them: it passes the keyword file to the run as the `SERP_INPUT_CSV` environment variable, which takes precedence over `files.input_csv`. Output names are always new and timestamped; names already in `config.yml` are never reused.
 - `enrichment.*` — URL enrichment settings (`eeat_scan_chars` — how many leading body-text characters are scanned for author credentials and review markers, default 8000; see seo_geo_deferred G.3)
 - `app.*` — API mode flags (`balanced_mode`, `deep_research_mode`)
 - `moz.cache_ttl_days` — DA cache lifetime in days (default 30)

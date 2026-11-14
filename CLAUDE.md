@@ -25,7 +25,7 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py tests/ -q`
-  (currently 1504 passing, 66 skipped). Judge the result by the **exit code**,
+  (currently 1511 passing, 66 skipped). Judge the result by the **exit code**,
   not by grepping the summary line — `2 failed, 1227 passed` contains the word
   "passed" (P24). Note: the skipped tests need gitignored fixture files
   in `output/` that only exist after a real run. tkinter works in the venv, so
@@ -79,7 +79,10 @@ Tests do not require API keys — all external calls are mocked.
 `competitor_handoff_{topic}_{YYYYMMDD_HHMM}.json`.
 
 Topic slug derives from the keyword CSV filename (lowercase, spaces →
-underscores). The GUI auto-updates `config.yml` with the latest paths.
+underscores). The audit records
+the keyword file and output paths in `config.yml` only when a run has written
+all its outputs; the GUI passes the keyword file to the run as `SERP_INPUT_CSV`
+and writes nothing to `config.yml` before or during a run.
 
 ## Configuration files
 

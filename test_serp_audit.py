@@ -27,32 +27,18 @@ class TestOutputSlugDerivation(unittest.TestCase):
     def test_keywords_prefix_with_spaces(self):
         self.assertEqual(serp_audit._derive_output_slug("keywords_mental health.csv"), "mental_health")
 
-    def test_resolve_uses_config_when_slug_matches(self):
-        config = {"files": {
-            "output_json": "market_analysis_estrangement_20260327_1430.json",
-            "output_xlsx": "market_analysis_estrangement_20260327_1430.xlsx",
-            "output_md":   "market_analysis_estrangement_20260327_1430.md",
-        }}
-        xlsx, json_path, md = serp_audit._resolve_output_names("keywords_estrangement.csv", config)
-        self.assertEqual(json_path, "market_analysis_estrangement_20260327_1430.json")
-        self.assertEqual(xlsx,      "market_analysis_estrangement_20260327_1430.xlsx")
-        self.assertEqual(md,        "market_analysis_estrangement_20260327_1430.md")
-
-    def test_resolve_generates_fresh_names_when_slug_differs(self):
-        # Config has estrangement paths but keyword file is substance_use
-        config = {"files": {
-            "output_json": "market_analysis_estrangement_20260327_1430.json",
-            "output_xlsx": "market_analysis_estrangement_20260327_1430.xlsx",
-            "output_md":   "market_analysis_estrangement_20260327_1430.md",
-        }}
-        xlsx, json_path, md = serp_audit._resolve_output_names("Substance_Use.csv", config)
-        self.assertIn("substance_use", json_path)
-        self.assertIn("substance_use", xlsx)
-        self.assertIn("substance_use", md)
-        self.assertNotIn("estrangement", json_path)
+    def test_audit_output_names_are_always_fresh(self):
+        """M2: names in config.yml belong to an earlier run and are never reused."""
+        import inspect
+        self.assertEqual(list(inspect.signature(serp_audit._resolve_output_names).parameters),
+                         ["input_csv"])
+        xlsx, json_path, md = serp_audit._resolve_output_names("keywords_estrangement.csv")
+        self.assertRegex(json_path, r"^output/market_analysis_estrangement_\d{8}_\d{4}\.json$")
+        self.assertEqual(xlsx[:-5], json_path[:-5])
+        self.assertEqual(md[:-3], json_path[:-5])
 
     def test_resolve_generates_fresh_names_when_no_config(self):
-        xlsx, json_path, md = serp_audit._resolve_output_names("Substance_Use.csv", {})
+        xlsx, json_path, md = serp_audit._resolve_output_names("Substance_Use.csv")
         self.assertTrue(json_path.startswith("output/market_analysis_substance_use_"))
         self.assertTrue(json_path.endswith(".json"))
 

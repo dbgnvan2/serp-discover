@@ -76,7 +76,9 @@ from shared_config import load_shared_config, shared_config_path
 SHARED_CONFIG_PATH = shared_config_path()
 SHARED_CONFIG = load_shared_config()
 
-INPUT_FILE = CONFIG.get("files", {}).get("input_csv", "keywords.csv")
+# The launcher names the keyword file in the environment; config.yml is the fallback.
+INPUT_FILE = (os.environ.get("SERP_INPUT_CSV", "").strip()
+              or CONFIG.get("files", {}).get("input_csv", "keywords.csv"))
 
 
 def _derive_output_slug(input_csv):
@@ -94,23 +96,13 @@ def _derive_output_slug(input_csv):
     return stem.lower().replace(" ", "_")
 
 
-def _resolve_output_names(input_csv, config):
-    """Return (xlsx, json, md) output filenames derived from the keyword CSV.
+def _resolve_output_names(input_csv):
+    """Fresh timestamped (xlsx, json, md) output filenames for the keyword CSV.
 
-    If config.yml already holds filenames whose slug matches the one derived
-    from *input_csv* (written by the GUI launcher before starting the pipeline),
-    those paths are reused so the GUI's pre-computed expectations stay correct.
-    Otherwise fresh timestamped names are generated.
+    Names already in config.yml are never reused: they belong to an earlier
+    run, and config.yml is only updated once this run's outputs are written.
     """
     slug = _derive_output_slug(input_csv)
-    files_cfg = config.get("files", {})
-    configured_json = files_cfg.get("output_json", "")
-    if configured_json and f"market_analysis_{slug}_" in configured_json:
-        return (
-            files_cfg.get("output_xlsx", f"market_analysis_{slug}.xlsx"),
-            configured_json,
-            files_cfg.get("output_md", f"market_analysis_{slug}.md"),
-        )
     ts = datetime.now().strftime("%Y%m%d_%H%M")
     return (
         f"output/market_analysis_{slug}_{ts}.xlsx",
@@ -119,7 +111,7 @@ def _resolve_output_names(input_csv, config):
     )
 
 
-OUTPUT_FILE, OUTPUT_JSON, OUTPUT_MD = _resolve_output_names(INPUT_FILE, CONFIG)
+OUTPUT_FILE, OUTPUT_JSON, OUTPUT_MD = _resolve_output_names(INPUT_FILE)
 
 LOCATION = CONFIG.get("serpapi", {}).get(
     "location", "Vancouver, British Columbia, Canada")
@@ -1383,7 +1375,8 @@ def _run(run_id):
             "SERPAPI_KEY environment variable not set. Please run: export SERPAPI_KEY='your_key'")
         return pipeline_status.EXIT_FAILED
 
-    print(f"--- STARTING RUN: {run_id} ---")
+    print(f"--- STARTING RUN: {run_id} --- keyword file: {INPUT_FILE} "
+          f"({'SERP_INPUT_CSV' if os.environ.get('SERP_INPUT_CSV', '').strip() else 'config.yml'})")
 
     keywords = load_keywords(INPUT_FILE)
     if keywords is None:
@@ -2182,7 +2175,8 @@ def _run(run_id):
     # B3: fail the run unless every output was written; only then point
     # config.yml at the new files (run_pipeline.py and the refresh step read it).
     return pipeline_status.finish_run(outputs_written, {
-        "json": OUTPUT_JSON, "xlsx": OUTPUT_FILE, "md": OUTPUT_MD, "handoff": _handoff_path})
+        "json": OUTPUT_JSON, "xlsx": OUTPUT_FILE, "md": OUTPUT_MD, "handoff": _handoff_path},
+        input_csv=INPUT_FILE)
 
 
 if __name__ == "__main__":

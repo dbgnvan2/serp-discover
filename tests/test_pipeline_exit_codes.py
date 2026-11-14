@@ -89,8 +89,9 @@ def test_write_failure_exits_nonzero_and_leaves_config_paths(tmp_path):
     written = {"json": True, "xlsx": False, "md": True, "handoff": True}
     paths = _outputs(tmp_path, written)
 
-    assert ps.finish_run(written, paths, str(config)) == ps.EXIT_FAILED
+    assert ps.finish_run(written, paths, str(config), input_csv="new.csv") == ps.EXIT_FAILED
 
+    # M3: neither the output paths nor the keyword file name are recorded
     assert config.read_text() == "# keep\nfiles:\n  output_json: previous.json\n"
     assert sorted(p.name for p in tmp_path.iterdir()) == [
         "config.yml", "run.handoff.failed", "run.json.failed", "run.md.failed"]
@@ -103,11 +104,11 @@ def test_complete_run_exits_zero_and_records_paths(tmp_path):
     written = {"json": True, "xlsx": True, "md": True, "handoff": True}
     paths = _outputs(tmp_path, written)
 
-    assert ps.finish_run(written, paths, str(config)) == ps.EXIT_OK
+    assert ps.finish_run(written, paths, str(config), input_csv="keywords_new.csv") == ps.EXIT_OK
 
     assert yaml.safe_load(config.read_text())["files"] == {
         "output_json": paths["json"], "output_xlsx": paths["xlsx"],
-        "output_md": paths["md"], "input_csv": "k.csv"}
+        "output_md": paths["md"], "input_csv": "keywords_new.csv"}       # M3
     assert all((tmp_path / f"run.{n}").exists() for n in written)
 
 

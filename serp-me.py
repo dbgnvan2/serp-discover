@@ -24,6 +24,7 @@ from generate_domain_override_candidates import (
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 from config_manager import ConfigManagerWindow
 from pipeline_status import exit_label
+import keyword_run_plan
 import serp_checkpoint
 from run_control import (
     TIMED_OUT, ProcessCheckFailed, RunControl, close_action, install_exit_guards,
@@ -621,11 +622,6 @@ class SerpLauncherApp:
                 keywords.append(value)
         return keywords
 
-    def write_keyword_file(self, path, keywords):
-        with open(path, "w", encoding="utf-8") as f:
-            for keyword in keywords:
-                f.write(f"{keyword}\n")
-
     def parse_new_keywords(self, text):
         return [part.strip() for part in text.split(",") if part.strip()]
 
@@ -644,12 +640,6 @@ class SerpLauncherApp:
             for item in priorities
             if item.get("action") in allowed_actions and item.get("keyword")
         ]
-
-    def sanitize_keyword_slug(self, keyword):
-        slug = keyword.strip().lower().replace(" ", "_")
-        slug = re.sub(r"[^a-z0-9_]", "", slug)
-        slug = re.sub(r"_+", "_", slug).strip("_")
-        return slug or "custom"
 
     def derive_topic_slug(self, keyword_file):
         return derive_topic_slug_from_keyword_file(keyword_file)
@@ -705,8 +695,10 @@ class SerpLauncherApp:
         matches.sort(key=lambda item: item[0], reverse=True)
         return matches[0][1]
 
-    def find_matching_topic_slug(self, keyword_file):
-        target_keywords = normalize_keyword_list(self.read_keyword_file(keyword_file))
+    def find_matching_topic_slug(self, keyword_file, keywords=None):
+        # ``keywords``: the planned contents, for a keyword file not written yet.
+        target_keywords = normalize_keyword_list(
+            keywords if keywords is not None else self.read_keyword_file(keyword_file))
         if not target_keywords:
             return None
         cwd = os.getcwd()
@@ -725,7 +717,7 @@ class SerpLauncherApp:
         candidates.sort(key=lambda item: item[0], reverse=True)
         return candidates[0][1]
 
-    def resolve_existing_analysis_outputs(self, keyword_file, topic_slug):
+    def resolve_existing_analysis_outputs(self, keyword_file, topic_slug, keywords=None):
         latest_json = self.find_latest_topic_output("market_analysis", topic_slug, ".json")
         latest_xlsx = self.find_latest_topic_output("market_analysis", topic_slug, ".xlsx")
         latest_md = self.find_latest_topic_output("market_analysis", topic_slug, ".md")
@@ -755,7 +747,7 @@ class SerpLauncherApp:
                 config_md_path if config_md_path and os.path.exists(config_md_path) else None,
             )
 
-        matching_slug = self.find_matching_topic_slug(keyword_file)
+        matching_slug = self.find_matching_topic_slug(keyword_file, keywords)
         if matching_slug:
             return (
                 matching_slug,
@@ -803,66 +795,46 @@ class SerpLauncherApp:
             self.keyword_file_var.set(values[0] if values else "")
 
     def prepare_keyword_run_context(self, script_file):
+        """Plan the run. Writes nothing (M1): the keyword file is written by
+        apply_keyword_run_context just before the process starts, and config.yml
+        is written by the audit when the run has succeeded.
+
+        Returns None when the user cancels at the existing-file question (M4).
+        """
         selected_display = self.keyword_file_var.get().strip()
         selected_path = self.keyword_file_options.get(selected_display) if selected_display else None
         new_keywords = self.parse_new_keywords(self.new_keywords_var.get())
-
-        if not selected_path and not new_keywords:
-            raise ValueError("Please select an existing keyword file or enter new keywords.")
-
-        added_keywords = []
-        keyword_file = selected_path
-
-        if selected_path and not new_keywords:
-            keywords = self.read_keyword_file(selected_path)
-        elif not selected_path and new_keywords:
-            slug = self.sanitize_keyword_slug(new_keywords[0])
-            keyword_file = os.path.join(os.getcwd(), f"keywords_{slug}.csv")
-            keywords = new_keywords
-            self.write_keyword_file(keyword_file, keywords)
-        else:
-            existing_keywords = self.read_keyword_file(selected_path)
-            seen = {value.lower(): value for value in existing_keywords}
-            keywords = list(existing_keywords)
-            for keyword in new_keywords:
-                lowered = keyword.lower()
-                if lowered in seen:
-                    continue
-                seen[lowered] = keyword
-                keywords.append(keyword)
-                added_keywords.append(keyword)
-            self.write_keyword_file(selected_path, keywords)
+        plan = keyword_run_plan.plan_keyword_run(selected_path, new_keywords, os.getcwd())
+        if plan["existing_count"] is not None:
+            name = os.path.basename(plan["keyword_file"])
+            if not messagebox.askyesno(
+                "Keyword File Exists",
+                f"{name} already exists ({plan['existing_count']} keywords).\n\n"
+                f"Add the new keywords to it? The run will use all {len(plan['keywords'])} "
+                "keywords in the file.",
+            ):
+                return None
+        keyword_file = plan["keyword_file"]
+        keywords = plan["keywords"]
+        added_keywords = plan["added_keywords"]
 
         topic_slug = self.derive_topic_slug(keyword_file)
         output_names = self.build_output_names(topic_slug)
         resolved_topic_slug, latest_json, latest_xlsx, latest_md = self.resolve_existing_analysis_outputs(
             keyword_file,
             topic_slug,
+            keywords,
         )
         if resolved_topic_slug != topic_slug:
             topic_slug = resolved_topic_slug
             output_names = self.build_output_names(topic_slug)
 
-        if script_file == "run_pipeline.py":
-            config = self.load_config()
-            files_cfg = config.setdefault("files", {})
-            files_cfg["input_csv"] = os.path.basename(keyword_file)
-            files_cfg["output_xlsx"] = output_names["output_xlsx"]
-            files_cfg["output_json"] = output_names["output_json"]
-            files_cfg["output_md"] = output_names["output_md"]
-            self.save_config(config)
-            input_json = os.path.join(os.getcwd(), output_names["output_json"])
-        else:
-            input_json = latest_json
-
-        self.refresh_keyword_file_options()
-        selected_base = os.path.basename(keyword_file)
-        for display, path in self.keyword_file_options.items():
-            if path and os.path.basename(path) == selected_base:
-                self.keyword_file_var.set(display)
-                break
+        # The pipeline's analysis JSON does not exist yet; the audit names it and
+        # records it in config.yml when the run succeeds (M2, M3).
+        input_json = None if script_file == "run_pipeline.py" else latest_json
 
         return {
+            "keyword_plan": plan,
             "keyword_file": keyword_file,
             "keywords": keywords,
             "added_keywords": added_keywords,
@@ -873,6 +845,19 @@ class SerpLauncherApp:
             "latest_xlsx": latest_xlsx,
             "latest_md": latest_md,
         }
+
+    def apply_keyword_run_context(self, run_context):
+        """Write what the plan needs, immediately before the process starts (M1, M5)."""
+        plan = run_context["keyword_plan"]
+        if keyword_run_plan.apply_keyword_plan(plan):
+            self.log(f"> Wrote {os.path.basename(plan['keyword_file'])} "
+                     f"({len(plan['keywords'])} keywords)\n")
+        self.refresh_keyword_file_options()
+        selected_base = os.path.basename(plan["keyword_file"])
+        for display, path in self.keyword_file_options.items():
+            if path and os.path.basename(path) == selected_base:
+                self.keyword_file_var.set(display)
+                break
 
     def _ask_resume(self, keyword_file):
         """C8: offer the stored responses of an unfinished run for this keyword file.
@@ -948,6 +933,8 @@ class SerpLauncherApp:
             except ValueError as exc:
                 messagebox.showerror("Keyword Setup", str(exc))
                 return
+            if run_context is None:        # cancelled at the existing-file question
+                return
             output_names = run_context["output_names"]
             if script_info["file"] == "generate_content_brief.py":
                 if not run_context.get("input_json"):
@@ -1019,6 +1006,9 @@ class SerpLauncherApp:
             priority_keywords = self.extract_priority_keywords_from_analysis(previous_json)
             env["SERP_AI_PRIORITY_KEYWORDS"] = "||".join(priority_keywords)
         env.pop(serp_checkpoint.RESUME_ENV, None)
+        env.pop(keyword_run_plan.INPUT_CSV_ENV, None)
+        if script_info["file"] == "run_pipeline.py" and run_context:
+            env[keyword_run_plan.INPUT_CSV_ENV] = os.path.basename(run_context["keyword_file"])
         if script_info["file"] == "run_pipeline.py" and run_context:
             resume_run_id = self._ask_resume(run_context["keyword_file"])
             if resume_run_id:
@@ -1042,11 +1032,15 @@ class SerpLauncherApp:
                     f"> Added {len(run_context['added_keywords'])} new keywords to "
                     f"{os.path.basename(run_context['keyword_file'])}: {added}\n"
                 )
-            self.log(
-                f"> Outputs: {output_names['output_xlsx']}, {output_names['output_json']}, "
-                f"{output_names['output_md']}, {output_names['report_out']}, "
-                f"{output_names['advisory_out']}, {output_names['feasibility_out']}\n"
-            )
+            if script_info["file"] == "run_pipeline.py":
+                self.log("> Outputs: output/market_analysis_"
+                         f"{run_context['topic_slug']}_<time>.xlsx/.json/.md, named by the audit; "
+                         "config.yml is updated only when the run succeeds\n")
+            else:
+                self.log(
+                    f"> Outputs: {output_names['report_out']}, "
+                    f"{output_names['advisory_out']}, {output_names['feasibility_out']}\n"
+                )
             if run_context.get("latest_json"):
                 self.log(f"> Latest existing JSON input: {os.path.basename(run_context['latest_json'])}\n")
         self.log(f"> SERP_LOW_API_MODE={env['SERP_LOW_API_MODE']}\n")
@@ -1066,6 +1060,14 @@ class SerpLauncherApp:
             return
         try:
             self._refresh_run_buttons()
+            if run_context:
+                try:
+                    self.apply_keyword_run_context(run_context)
+                except OSError as exc:
+                    self.log(f"> Run not started: could not write the keyword file: {exc}\n")
+                    self.run_control.finish()
+                    self._refresh_run_buttons()
+                    return
             threading.Thread(target=self.execute_thread,
                              args=(cmd, env, cwd), daemon=True).start()
         except Exception:

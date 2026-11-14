@@ -54,6 +54,7 @@ market_analysis_*.json
 | `run_pipeline.py` | Pipeline orchestration |
 | `run_control.py` | Launcher process control (no tkinter): one run at a time, stop a run with its child processes, detect a pipeline started elsewhere |
 | `serp_checkpoint.py` | Saves each SerpAPI response under `raw/<run_id>/calls/` as it arrives, records `run_state.json`, and serves stored responses to a resumed run (`SERP_RESUME_RUN_ID`) |
+| `keyword_run_plan.py` | Launcher keyword-file handling (no tkinter): plan what a run will read and write, then write it only when the run starts |
 | `timeouts.py` | Reads timeouts from `config.yml`; a bad value falls back to the default, never to "no timeout" |
 | `pipeline_status.py` | Exit-code rules shared by the audit, the pipeline runner and the launcher: fetch summary, missing-output check, launcher status label |
 | `config_tab_models.py` | Data side of the Configuration Manager tabs (no tkinter): load/save guards, save-only-changed-tabs, record models. `config_manager.py` holds the widgets |

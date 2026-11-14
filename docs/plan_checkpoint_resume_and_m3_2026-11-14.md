@@ -1,6 +1,6 @@
 # Plan: keep paid SERP responses and resume a run (M9); no writes before a run starts (M3)
 
-**Status:** approved 2026-11-14 with the four recommended decisions. Chunk C built.
+**Status:** approved 2026-11-14 with the four recommended decisions. Both chunks built and pushed 2026-11-14.
 **Source:** `docs/REVIEW-serp-discover-2026-11-14.md` findings M9 and M3.
 **Tier (effort-budget):** Full — the paid fetch path and the launcher's config/keyword writes.
 Tests for the change, one cold `learning-qa` pass over each diff before pushing.
@@ -65,7 +65,7 @@ into a function first. Listed as adjacent.
 |---|---|---|
 | M1 | Preparing a run is split into a plan (no writes) and an apply step. The plan is made first; every check that can cancel the run happens next; the apply step runs immediately before the process starts. A cancelled run changes no file. | `test_plan_writes_nothing` (pure function); Tk test: cancel at the feasibility prompt, keyword file and `config.yml` bytes unchanged. |
 | M2 | The launcher no longer writes `files.output_*`. The audit always generates fresh timestamped names, and `finish_run` records them only after all outputs are written (already built). | `test_audit_output_names_are_always_fresh` (replaces the reuse case in `test_serp_audit.py`). |
-| M3 | The launcher no longer writes `files.input_csv` before the run. It passes the keyword file to the child as `SERP_INPUT_CSV`; `serp_audit` reads that first and `config.yml` second. `finish_run` records `input_csv` together with the output paths. A stopped or failed run leaves `config.yml` byte-identical. | `test_input_csv_env_overrides_config`, `test_finish_run_records_input_csv`, `test_failed_run_leaves_config_untouched` (extends the existing test). |
+| M3 | The launcher no longer writes `files.input_csv` before the run. It passes the keyword file to the child as `SERP_INPUT_CSV`; `serp_audit` reads that first and `config.yml` second. `finish_run` records `input_csv` together with the output paths. A stopped or failed run leaves `config.yml` byte-identical. | `test_input_csv_env_overrides_config`; `test_complete_run_exits_zero_and_records_paths` and `test_write_failure_exits_nonzero_and_leaves_config_paths` in `tests/test_pipeline_exit_codes.py` (extended). |
 | M4 | New keywords with no file selected: if `keywords_<slug>.csv` already exists with different contents, the launcher asks before touching it (see decision 3). It is never silently replaced. | `test_existing_keyword_file_is_not_overwritten`. |
 | M5 | Adding keywords to a selected file still happens, but only at the apply step, and the log names the file and the keywords added. | `test_added_keywords_are_written_at_apply`. |
 
@@ -112,6 +112,21 @@ Below medium, not fixed: `run_feasibility.py` pivot calls are not checkpointed; 
 run for a file is considered; rows from a reused response are stamped with the resumed run's
 time; a resume folder where every file is stale warns and pays for everything; the launcher
 env hand-off is checked by a source-string test.
+
+## Changes made after the review pass (M)
+
+- The "config.yml is left alone" guarantee covers a run cancelled, stopped or failed before the
+  audit finishes. A failure in a later `run_pipeline.py` step (the xlsx/JSON check, for
+  example) happens after the audit has recorded its paths. The documents now say this; moving
+  the recording to the end of the pipeline is listed as adjacent.
+- Added a launcher test for the existing-keyword-file question (M4).
+- The audit prints which keyword file it is using and where the name came from.
+- A keyword file that cannot be written stops the run with a message in the launcher log.
+
+Below medium, not fixed: the keyword file's existence is checked at plan time and written at
+apply time; the launcher skips a `keyword` header line that the audit would read as a keyword;
+situational-probe priority ordering reads `files.output_json`, which now always names the last
+successful run.
 
 ## Order
 

@@ -46,10 +46,11 @@ def missing_outputs(written):
 CONFIG_PATH_KEYS = {"json": "output_json", "xlsx": "output_xlsx", "md": "output_md"}
 
 
-def finish_run(written, paths, config_path="config.yml"):
+def finish_run(written, paths, config_path="config.yml", input_csv=None):
     """End-of-run status for the audit. Returns the process exit code.
 
-    All outputs written: record their paths in config.yml. Any output missing:
+    All outputs written: record their paths, and the keyword file they came
+    from (``input_csv``), in config.yml. Any output missing:
     the run failed, config.yml is left alone, and the outputs that were written
     are renamed ``<name>.failed`` so steps that pick the newest
     ``market_analysis_*.json`` do not use a partial run.
@@ -74,6 +75,8 @@ def finish_run(written, paths, config_path="config.yml"):
         cfg.setdefault("files", {})
         for name, key in CONFIG_PATH_KEYS.items():
             cfg["files"][key] = paths[name]
+        if input_csv:
+            cfg["files"]["input_csv"] = input_csv
         save_yaml_preserving_comments(config_path, cfg)
         print(f"Updated {config_path}: output paths set to {paths['json']}")
     except Exception as e:

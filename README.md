@@ -160,7 +160,7 @@ serpapi:
   maps_max_pages: 3
 
 files:
-  input_csv: keywords_Couple_Marriage_RelationshipLocal.csv   # auto-updated by GUI
+  input_csv: keywords_Couple_Marriage_RelationshipLocal.csv   # recorded by the audit after a successful run
 
 enrichment:
   max_urls_per_keyword: 5    # URLs fully fetched and analysed per keyword
