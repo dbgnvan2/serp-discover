@@ -55,7 +55,10 @@ def test_zero_fetched_exits_nonzero(audit, tmp_path, monkeypatch, capsys):
     assert audit.main() == ps.EXIT_FAILED
     assert calls == ["alpha", "beta"]
     assert "Fetched 0 of 2 queries" in capsys.readouterr().out
-    assert list(tmp_path.iterdir()) == []            # no outputs, no config.yml
+    # no outputs, no config.yml: only the run's own state under raw/
+    assert [p.name for p in tmp_path.iterdir()] == ["raw"]
+    state = json.loads(next(tmp_path.glob("raw/*/run_state.json")).read_text())
+    assert state["status"] == "failed"
 
 
 def test_failed_queries_are_counted_and_listed():

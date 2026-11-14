@@ -20,6 +20,7 @@ import handoff_writer
 import yaml
 import metrics
 import pipeline_status
+import serp_checkpoint
 import timeouts
 from run_feasibility import _scrub_secrets  # requests errors carry api_key in the URL
 from urllib.parse import urlparse
@@ -351,6 +352,9 @@ def _fetch_serp_api(params):
     if "api_key" in log_params:
         log_params["api_key"] = "REDACTED"
     logging.info(f"API Call Parameters: {json.dumps(log_params, indent=2)}")
+    stored = serp_checkpoint.lookup(params)  # resume: a call already paid for
+    if stored is not None:
+        return stored
     for attempt in range(1, RETRY_MAX_ATTEMPTS + 1):
         try:
             SERPAPI_CALL_COUNT += 1
@@ -376,6 +380,7 @@ def _fetch_serp_api(params):
                 if attempt == RETRY_MAX_ATTEMPTS:
                     return None
             else:
+                serp_checkpoint.save(params, results)
                 return results
         except Exception as e:
             logging.error(
@@ -500,7 +505,7 @@ def save_raw_json(run_id, engine, data):
     """Saves raw JSON output to a structured folder."""
     output_dir = f"raw/{run_id}"
     os.makedirs(output_dir, exist_ok=True)
-    file_path = f"{output_dir}/{engine}_response.json"
+    file_path = f"{output_dir}/{serp_checkpoint.raw_file_prefix()}{engine}_response.json"
     with open(file_path, 'w') as f:
         json.dump(data, f, indent=2)
 
@@ -1363,7 +1368,10 @@ def load_keywords(input_file):
 def main():
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
     setup_logging(run_id)
+    return serp_checkpoint.tracked_run(run_id, INPUT_FILE, CONFIG, _run)
 
+
+def _run(run_id):
     if not SERPAPI_AVAILABLE:
         logging.error(
             "Missing dependency: google-search-results (serpapi client). Run: pip install -r requirements.txt"
@@ -1926,7 +1934,7 @@ def main():
         "keyword_feasibility": all_feasibility,
         "situational_probes": all_situational_probes,
         "bing_visibility": all_bing_rows,
-        "fetch_summary": run_fetch_summary,
+        "fetch_summary": serp_checkpoint.fetch_summary(run_fetch_summary),
     }
 
     # --- BUILD KEYWORD_PROFILES ---
@@ -2169,7 +2177,7 @@ def main():
     except Exception as e:
         logging.error(f"Error saving Markdown report: {e}")
 
-    print(f"--- Total SerpApi Calls: {SERPAPI_CALL_COUNT} ---")
+    print(serp_checkpoint.calls_line(SERPAPI_CALL_COUNT))
 
     # B3: fail the run unless every output was written; only then point
     # config.yml at the new files (run_pipeline.py and the refresh step read it).

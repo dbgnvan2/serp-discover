@@ -24,6 +24,7 @@ from generate_domain_override_candidates import (
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 from config_manager import ConfigManagerWindow
 from pipeline_status import exit_label
+import serp_checkpoint
 from run_control import (
     TIMED_OUT, ProcessCheckFailed, RunControl, close_action, install_exit_guards,
     launcher_settings, popen_kwargs, run_with_timeout, running_pipeline_processes,
@@ -873,6 +874,31 @@ class SerpLauncherApp:
             "latest_md": latest_md,
         }
 
+    def _ask_resume(self, keyword_file):
+        """C8: offer the stored responses of an unfinished run for this keyword file.
+
+        Returns the run id to resume, or None for a fresh run.
+        """
+        try:
+            max_age = serp_checkpoint.resume_max_age_hours(self.load_config())
+            found = serp_checkpoint.find_resumable_run(keyword_file, max_age)
+        except Exception as exc:  # the offer is optional; a fresh run must still start
+            self.log(f"[resume] Could not check for an unfinished run: {exc}\n")
+            return None
+        if not found:
+            return None
+        if messagebox.askyesno(
+            "Unfinished Run",
+            f"The last run for {os.path.basename(keyword_file)} stopped after "
+            f"{found['stored_calls']} stored responses, {found['age_minutes']} minutes ago.\n\n"
+            "Reuse them? Yes: only the missing searches are fetched. No: fetch everything again.",
+        ):
+            self.log(f"[resume] Reusing {found['stored_calls']} stored responses from run "
+                     f"{found['run_id']}.\n")
+            return found["run_id"]
+        self.log(f"[resume] Not reusing run {found['run_id']}; fetching everything again.\n")
+        return None
+
     def run_script(self):
         if self.run_control.running:      # S1: never a second run from this window
             return
@@ -992,6 +1018,11 @@ class SerpLauncherApp:
             previous_json = run_context.get("latest_json")
             priority_keywords = self.extract_priority_keywords_from_analysis(previous_json)
             env["SERP_AI_PRIORITY_KEYWORDS"] = "||".join(priority_keywords)
+        env.pop(serp_checkpoint.RESUME_ENV, None)
+        if script_info["file"] == "run_pipeline.py" and run_context:
+            resume_run_id = self._ask_resume(run_context["keyword_file"])
+            if resume_run_id:
+                env[serp_checkpoint.RESUME_ENV] = resume_run_id
         started_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         self.current_run_context = run_context
 

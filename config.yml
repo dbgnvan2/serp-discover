@@ -11,6 +11,7 @@ serpapi:
   retry_max_attempts: 3
   retry_backoff_seconds: 1.0
   timeout_seconds: 60   # per SerpAPI call; slowest of 296 logged calls was 30s (2026-11-14)
+  resume_max_age_hours: 24   # an unfinished run's stored responses may be reused for this long; 0 = never
   request_delay_seconds: 0.2
   no_cache: false
   ai_fallback_without_location: true

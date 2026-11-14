@@ -1461,7 +1461,8 @@ DA gap analysis:
   for confirmation, then ends the script and everything it started (the pipeline starts the
   audit as a separate process; both are ended). The log shows `STOPPED`. A stopped audit writes
   no output files and leaves `config.yml` pointing at the previous run. SerpAPI calls already
-  made are still charged, and their raw responses stay under `raw/<run id>/`.
+  made are still charged, and their responses stay under `raw/<run id>/calls/` (see "Resuming
+  an unfinished run" below).
 - **Run is disabled for the whole run.** Clicking another script in the list no longer
   re-enables it, so a second pipeline cannot be started by accident.
 - **A pipeline started somewhere else** (a second launcher window, a terminal) from the same
@@ -1495,6 +1496,40 @@ paid run is still worth reviewing. The failed queries are named in the log and s
 JSON under `fetch_summary` (`planned`, `fetched`, `failed`, and `pivot_failed` for the
 secondary pivot-keyword fetches). The report covers only the queries
 that were fetched; re-run the failed keywords if they matter.
+
+### Resuming an unfinished run
+**What it does:** every SerpAPI response is saved to its own file under
+`raw/<run id>/calls/` as soon as it arrives. If a Full Pipeline run is stopped, crashes or
+fails, the next time you start Full Pipeline for the same keyword file the launcher asks:
+"The last run for keywords_x.csv stopped after N stored responses, X minutes ago. Reuse them?"
+- **Yes** — the audit runs again from the start, but takes every search it already has from
+  disk and only pays for the missing ones. The end of the log reads
+  "Reused N stored responses; made M new SerpAPI calls".
+- **No** — everything is fetched again.
+
+**Why it matters:** before this, a run that failed on keyword 18 of 20 lost all 18 paid
+results. Now it costs only the searches that had not been made.
+
+**Limits to know:**
+- A stored response is reused only when the search is identical (same query, location, mode,
+  page). Changing the API mode or location between runs means those searches are paid again.
+- Stored responses older than `serpapi.resume_max_age_hours` (24 by default; 0 = never
+  reuse) are not offered, because search results change.
+- A resumed report mixes results fetched at different times. The output JSON records this
+  under `fetch_summary` as `resumed_from` (the earlier run id) and `reused_calls`.
+- Only the newest run for the keyword file is offered, and only if it did not finish. A run
+  that wrote its outputs but had failed queries ("Fetched N of M") counts as unfinished, so
+  the failed queries can be retried without paying for the rest again.
+- A search whose follow-up calls (AI Overview, related questions) had not finished is
+  fetched again, because the follow-up tokens in a stored response expire. Expect the last
+  keyword of the stopped run to be paid for a second time.
+- With `serpapi.no_cache: true`, answering Yes still reuses the stored responses; they were
+  fresh when the earlier run fetched them.
+- Only the audit's searches are stored. The pivot searches made by Run Feasibility Analysis
+  are not.
+- From a terminal: `SERP_RESUME_RUN_ID=<run id> python3 serp_audit.py`. A run id that does
+  not exist stops the run with an error rather than fetching everything at full price.
+- `raw/` is never cleaned up automatically. Delete old run folders by hand when it grows.
 
 ### "SerpAPI rate limited or timed out"
 **Cause:** SerpAPI has temporarily blocked requests (too many calls from same IP), or a call
