@@ -23,6 +23,7 @@ from generate_domain_override_candidates import (
 )
 from refresh_analysis_outputs import load_config_paths, refresh_analysis_outputs
 from config_manager import ConfigManagerWindow
+from pipeline_status import exit_label
 from report_models import (
     DEFAULT_REPORT_MODELS,
     get_report_model_options,
@@ -50,11 +51,6 @@ def derive_topic_slug_from_keyword_file(keyword_file):
 
 
 class SerpLauncherApp:
-    EXIT_STATUS_LABELS = {
-        0: "SUCCESS",
-        1: "MISMATCH",
-        2: "ERROR",
-    }
     DOMAIN_REVIEW_TAG_STYLES = {
         "counselling": {"background": "#e8f5e9"},
         "legal": {"background": "#fff3e0"},
@@ -965,10 +961,8 @@ class SerpLauncherApp:
             process.wait()
             elapsed_s = time.perf_counter() - started_at
             finished_at = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            status_label = self.EXIT_STATUS_LABELS.get(
-                process.returncode, f"FAILED_{process.returncode}"
-            )
             completed_script = os.path.basename(cmd[1]) if len(cmd) > 1 else ""
+            status_label = exit_label(completed_script, process.returncode)
             self.root.after(
                 0,
                 self.log,

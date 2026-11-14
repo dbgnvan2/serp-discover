@@ -8,7 +8,7 @@ How SERP Intelligence Tool 1 produces its outputs.
 
 **Input:** keyword CSV file.
 
-**Fetch:** `serp_audit.py` calls SerpAPI for each keyword, retrieving organic results, People Also Ask (PAA) questions, and local pack entries.
+**Fetch:** `serp_audit.py` calls SerpAPI for each keyword, retrieving organic results, People Also Ask (PAA) questions, and local pack entries. A query that returns no usable data is counted, named in the log, and recorded in the output JSON as `fetch_summary` (`planned`, `fetched`, `failed`, plus `pivot_failed` for pivot-keyword fetches); the analysis covers only the fetched queries. A run in which no query returns data, or in which an output file cannot be written, exits non-zero.
 
 **Intent verdict:** `intent_verdict.py` applies rules from `intent_mapping.yml` (first-match-wins) to assign a `primary_intent`, `is_mixed` flag, confidence score, and distribution to each keyword.
 

@@ -1,6 +1,6 @@
 # Plan: Configuration Manager save safety + pipeline exit codes
 
-**Status:** approved 2026-11-14 (B2: partial failure exits 0). Chunk 0 and Chunk A built; Chunk B in progress.
+**Status:** approved 2026-11-14 (B2: partial failure exits 0). All three chunks built and pushed 2026-11-14.
 **Source:** `docs/REVIEW-serp-discover-2026-11-14.md` findings M1, M4 (and T1 as a prerequisite).
 **Tier (effort-budget):** Full — GUI config data path and pipeline status. Tests for the change, one
 cold `learning-qa` pass over the diff before each push.
@@ -72,6 +72,22 @@ P0 → A (A1–A3 first: they stop file loss) → B. B does not depend on A.
 - `verify_enrichment.py` cannot fail.
 - Vacuous tab tests in `tests/test_config_manager.py`; they are left as they are.
 - LLM truncation checks (M5), retired model IDs (M13).
+
+## Changes made after the review pass (beyond the table above)
+
+- B3 also covers the competitor handoff file, and a failed run renames the outputs it did write
+  to `<name>.failed`, because three scripts pick the newest `market_analysis_*.json` by date.
+- `fetch_summary` also lists `pivot_failed`.
+- A: the Triggers and URL Pattern tabs keep keys they have no widget for; a typo in a settings
+  field counts as an unsaved change; Discard Changes reloads a file that failed to load.
+
+More adjacent issues found, not fixed:
+
+- A failed `keyword_profiles` build is a warning and the run still exits 0 (`serp_audit.py`).
+- `validate_cross_file_constraints` is imported by `config_manager.py` and never called.
+- Inside the full pipeline a validation mismatch shows as "FAILED (exit 1)", because the launcher
+  sees `run_pipeline.py`; the step name is in the log above it.
+- `serp_audit.py` is 2,177 lines against a 2,200-line limit test.
 
 ## Not code-testable
 

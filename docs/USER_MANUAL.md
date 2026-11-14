@@ -1457,6 +1457,26 @@ DA gap analysis:
 
 ## Troubleshooting
 
+### "Process finished with status FAILED (exit N)"
+**What it means:** the step did not complete. The log lines above it say why. A run now fails,
+instead of reporting success, when:
+- the SerpAPI key or the serpapi package is missing, or the keyword CSV cannot be read;
+- no query returned usable SERP data ("Fetched 0 of N queries") — no output files are written;
+- the JSON, XLSX, Markdown or competitor-handoff file could not be written (for example the
+  workbook is open in Excel). `config.yml` keeps pointing at the previous run's files, and the
+  files that were written are renamed with a `.failed` suffix, so no later step reads a
+  half-written run. Remove the suffix by hand if you want to inspect them;
+- the pipeline cannot find the audit's output files.
+
+`MISMATCH` is used only for the data-validation step, when the workbook and the JSON disagree.
+
+### "Fetched N of M queries — K failed"
+**What it means:** some queries returned no data but the run continued, because the rest of a
+paid run is still worth reviewing. The failed queries are named in the log and stored in the
+JSON under `fetch_summary` (`planned`, `fetched`, `failed`, and `pivot_failed` for the
+secondary pivot-keyword fetches). The report covers only the queries
+that were fetched; re-run the failed keywords if they matter.
+
 ### "SerpAPI rate limited or timed out"
 **Cause:** SerpAPI has temporarily blocked requests (too many calls from same IP).
 

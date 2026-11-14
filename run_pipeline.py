@@ -13,6 +13,8 @@ import sys
 import os
 import yaml
 
+import pipeline_status
+
 
 def run_command(cmd, description):
     print(f"\n--- {description} ---")
@@ -47,30 +49,30 @@ def main():
     json_file = files_cfg.get("output_json", "market_analysis_v2.json")
     diff_file = "diff_report.json"
 
-    if os.path.exists(xlsx_file) and os.path.exists(json_file):
-        run_command([
-            sys.executable, "validate_xlsx_vs_json.py",
-            "--xlsx", xlsx_file,
-            "--json", json_file,
-            "--out", diff_file
-        ], "Step 1.2: Data Validation")
-    else:
-        print("⚠️ Skipping validation: Output files not found.")
+    # B4: the audit exited 0, so its outputs must exist. Missing files are a
+    # failed run, not a step to skip.
+    missing = pipeline_status.absent_files([xlsx_file, json_file])
+    if missing:
+        print(f"❌ Audit output files not found: {', '.join(missing)}")
+        sys.exit(pipeline_status.EXIT_FAILED)
+    run_command([
+        sys.executable, "validate_xlsx_vs_json.py",
+        "--xlsx", xlsx_file,
+        "--json", json_file,
+        "--out", diff_file
+    ], "Step 1.2: Data Validation")
 
     # 3. Verify Database Enrichment
     run_command([sys.executable, "verify_enrichment.py"],
                 "Step 1.3: DB Enrichment Verification")
 
     # 4. Generate Domain Override Review Candidates
-    if os.path.exists(json_file):
-        run_command([
-            sys.executable, "generate_domain_override_candidates.py",
-            "--json", json_file,
-            "--overrides", files_cfg.get("domain_overrides", "domain_overrides.yml"),
-            "--out", "domain_override_candidates.md",
-        ], "Step 1.4: Domain Override Candidate Report")
-    else:
-        print("⚠️ Skipping domain override candidate report: JSON output not found.")
+    run_command([
+        sys.executable, "generate_domain_override_candidates.py",
+        "--json", json_file,
+        "--overrides", files_cfg.get("domain_overrides", "domain_overrides.yml"),
+        "--out", "domain_override_candidates.md",
+    ], "Step 1.4: Domain Override Candidate Report")
 
     # Markdown report shares the JSON stem (same topic + timestamp).
     md_file = json_file[:-5] + ".md" if json_file.endswith(".json") else "market_analysis.md"

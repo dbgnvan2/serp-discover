@@ -152,8 +152,8 @@ def test_all_config_writers_route_through_yaml_io():
     """P5 regression guard: the whole class of config-file writers must use the
     comment-preserving save, not yaml.safe_dump."""
     root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    for module in ("serp_audit.py", "apply_domain_override_candidates.py",
-                   "config_manager.py"):
+    for module in ("pipeline_status.py", "apply_domain_override_candidates.py",
+                   "config_tab_models.py"):
         src = open(os.path.join(root, module), encoding="utf-8").read()
         assert "save_yaml_preserving_comments" in src, \
             f"{module} must use the comment-preserving save"

@@ -2,6 +2,7 @@ import pandas as pd
 import time
 import os
 import re
+import sys
 import random
 from dotenv import load_dotenv
 import logging
@@ -18,7 +19,7 @@ import bing_check
 import handoff_writer
 import yaml
 import metrics
-from yaml_io import save_yaml_preserving_comments
+import pipeline_status
 from urllib.parse import urlparse
 from classifiers import ContentClassifier, EntityClassifier
 from url_enricher import UrlEnricher
@@ -1363,18 +1364,19 @@ def main():
         logging.error(
             "Missing dependency: google-search-results (serpapi client). Run: pip install -r requirements.txt"
         )
-        return
+        return pipeline_status.EXIT_FAILED
 
     if not API_KEY:
         logging.error(
             "SERPAPI_KEY environment variable not set. Please run: export SERPAPI_KEY='your_key'")
-        return
+        return pipeline_status.EXIT_FAILED
 
     print(f"--- STARTING RUN: {run_id} ---")
 
     keywords = load_keywords(INPUT_FILE)
     if keywords is None:
-        return
+        logging.error(f"No keywords loaded from {INPUT_FILE}; nothing to run.")
+        return pipeline_status.EXIT_FAILED
 
     query_jobs = expand_keywords_for_ai(keywords)
 
@@ -1421,6 +1423,7 @@ def main():
     all_parsing_warnings = []
     all_aio_logs = []
     all_autocomplete = []
+    failed_queries = []  # B2: every query that produced no usable SERP data
 
     print(f"--- Base keywords: {len(keywords)} ---")
     print(f"--- LOW API MODE: {LOW_API_MODE} ---")
@@ -1453,9 +1456,15 @@ def main():
         aio_log["Executed_Query"] = keyword
         all_aio_logs.append(aio_log)
 
+        if not raw_data_dict:
+            failed_queries.append({"query": keyword, "source_keyword": source_keyword,
+                                   "reason": "no SERP data returned"})
         if raw_data_dict:
             m, o, p, e, c, lp, ac, sm, rf, pw = parse_data(
                 keyword, raw_data_dict, query_metadata)
+            if not m:
+                failed_queries.append({"query": keyword, "source_keyword": source_keyword,
+                                       "reason": "SERP data could not be parsed"})
 
             # Tag PAA questions with Bowen/medical intent
             for row in p:
@@ -1468,51 +1477,15 @@ def main():
                 m["Query_Label"] = query_label
                 m["Executed_Query"] = keyword
                 all_metrics.append(m)
-                for row in o:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_organic.extend(o)
-                for row in p:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_paa.extend(p)
-                for row in e:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_expansion.extend(e)
-                for row in c:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_competitors.extend(c)
-                for row in lp:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_local_pack.extend(lp)
-                for row in ac:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_ai_citations.extend(ac)
-                for row in sm:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_serp_modules.extend(sm)
-                for row in rf:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_rich_features.extend(rf)
-                for row in pw:
-                    row["Source_Keyword"] = source_keyword
-                    row["Query_Label"] = query_label
-                    row["Executed_Query"] = keyword
-                all_parsing_warnings.extend(pw)
+                for rows, bucket in (
+                        (o, all_organic), (p, all_paa), (e, all_expansion),
+                        (c, all_competitors), (lp, all_local_pack), (ac, all_ai_citations),
+                        (sm, all_serp_modules), (rf, all_rich_features), (pw, all_parsing_warnings)):
+                    for row in rows:
+                        row["Source_Keyword"] = source_keyword
+                        row["Query_Label"] = query_label
+                        row["Executed_Query"] = keyword
+                    bucket.extend(rows)
 
                 # --- ENRICHMENT LOOP ---
                 if ENRICHMENT_ENABLED:
@@ -1710,6 +1683,16 @@ def main():
 
         time.sleep(1.2)  # Polite delay
 
+    # B2: say how many queries produced data, and stop when none did.
+    run_fetch_summary = pipeline_status.fetch_summary(len(query_jobs), failed_queries)
+    _summary_line = pipeline_status.fetch_summary_line(run_fetch_summary)
+    print(f"--- {_summary_line} ---")
+    if failed_queries:
+        logging.warning(_summary_line)
+    if run_fetch_summary["fetched"] == 0:
+        logging.error("No query returned usable SERP data; no output files were written.")
+        return pipeline_status.EXIT_FAILED
+
     # --- PIVOT KEYWORD FETCH PASS ---
     # Secondary SERP + Maps fetch for Low Feasibility keywords.
     # Maps is automatically included (FORCE_LOCAL_INTENT=true) so the local
@@ -1725,7 +1708,8 @@ def main():
 
         raw_pivot, aio_log_p, meta_p = fetch_serp_data(pivot_keyword, run_id)
         if not raw_pivot:
-            print(f"  [Pivot] No data returned for '{pivot_keyword}' — skipping.")
+            logging.warning(f"[Pivot] No data returned for '{pivot_keyword}' — skipping.")
+            run_fetch_summary["pivot_failed"].append(pivot_keyword)
             continue
 
         _, p_organic, _, _, _, p_local_pack, _, _, _, _ = parse_data(
@@ -1938,6 +1922,7 @@ def main():
         "keyword_feasibility": all_feasibility,
         "situational_probes": all_situational_probes,
         "bing_visibility": all_bing_rows,
+        "fetch_summary": run_fetch_summary,
     }
 
     # --- BUILD KEYWORD_PROFILES ---
@@ -1960,6 +1945,7 @@ def main():
     except Exception as _kpe:
         logging.warning(f"keyword_profiles build failed — audit JSON will not include it: {_kpe}")
 
+    outputs_written = {"json": False, "xlsx": False, "md": False, "handoff": False}  # B3
     print(f"Saving JSON to {OUTPUT_JSON}...")
     try:
         with open(OUTPUT_JSON, 'w', encoding='utf-8') as f:
@@ -1972,6 +1958,7 @@ def main():
         with open(norm_path, 'w', encoding='utf-8') as f:
             json.dump(full_data, f, indent=2, ensure_ascii=False)
         print(f"Saved normalized audit to {norm_path}")
+        outputs_written["json"] = True
     except Exception as e:
         logging.error(f"Error saving JSON file: {e}")
 
@@ -2006,6 +1993,7 @@ def main():
             with open(_handoff_path, "w", encoding="utf-8") as _hf:
                 json.dump(_handoff, _hf, indent=2, ensure_ascii=False)
             print(f"Saved competitor handoff to {_handoff_path} ({len(_handoff['targets'])} targets)")
+            outputs_written["handoff"] = True
         except Exception as _he:
             logging.error(f"Error saving competitor handoff: {_he}")
     else:
@@ -2112,6 +2100,7 @@ def main():
                     writer, sheet_name="SERP_Intent_Detail", index=False)
 
         print(f"SUCCESS! Data saved to {OUTPUT_FILE}")
+        outputs_written["xlsx"] = True
     except Exception as e:
         logging.error(f"Error saving Excel file (is it open?): {e}")
 
@@ -2172,27 +2161,17 @@ def main():
             f.write("\n".join(md_content))
 
         print(f"SUCCESS! Report saved to {OUTPUT_MD}")
+        outputs_written["md"] = True
     except Exception as e:
         logging.error(f"Error saving Markdown report: {e}")
 
     print(f"--- Total SerpApi Calls: {SERPAPI_CALL_COUNT} ---")
 
-    # Write actual output paths back to config.yml so downstream scripts
-    # (run_pipeline.py, refresh_analysis_outputs.py) can locate the files.
-    try:
-        _cfg: dict = {}
-        if os.path.exists("config.yml"):
-            with open("config.yml", "r") as _f:
-                _cfg = yaml.safe_load(_f) or {}
-        _cfg.setdefault("files", {})
-        _cfg["files"]["output_xlsx"] = OUTPUT_FILE
-        _cfg["files"]["output_json"] = OUTPUT_JSON
-        _cfg["files"]["output_md"] = OUTPUT_MD
-        save_yaml_preserving_comments("config.yml", _cfg)  # ruamel: keep comments (was safe_dump, stripped every run)
-        print(f"Updated config.yml: output paths set to {OUTPUT_JSON}")
-    except Exception as _e:
-        logging.warning(f"Could not update config.yml output paths: {_e}")
+    # B3: fail the run unless every output was written; only then point
+    # config.yml at the new files (run_pipeline.py and the refresh step read it).
+    return pipeline_status.finish_run(outputs_written, {
+        "json": OUTPUT_JSON, "xlsx": OUTPUT_FILE, "md": OUTPUT_MD, "handoff": _handoff_path})
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
