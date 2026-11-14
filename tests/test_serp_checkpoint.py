@@ -25,6 +25,7 @@ class _FakeSearch:
 
     def get_dict(self):
         type(self).calls.append(self.params["q"])
+        self.params.update(output="json", source="python")     # the real client does this
         if self.params["q"] in self.fail:
             return {"error": "Google hasn't returned any results for this query."}
         return {"q": self.params["q"], "echo": f"key={self.params['api_key']}"}
@@ -324,3 +325,10 @@ def test_launcher_hands_the_resume_run_to_the_child():
         source = f.read()
     assert "find_resumable_run(" in source
     assert "env[serp_checkpoint.RESUME_ENV]" in source
+
+
+def test_fields_added_by_the_client_do_not_change_the_call_identity():
+    """Found on a real run: the client adds output/source, so nothing was ever reused."""
+    plain = {"engine": "google", "q": "alpha", "api_key": KEY}
+    assert cp.call_key(plain) == cp.call_key({**plain, "output": "json", "source": "python"})
+    assert cp.call_key(plain) != cp.call_key({**plain, "location": "Vancouver"})

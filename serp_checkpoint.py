@@ -25,6 +25,9 @@ RAW_DIR = "raw"
 RESUME_ENV = "SERP_RESUME_RUN_ID"
 DEFAULT_RESUME_MAX_AGE_HOURS = 24.0
 SECRET_PARAMS = ("api_key",)
+# Added to the params dict by the SerpAPI client itself during a call, so they
+# are present when a response is saved and absent when it is looked up.
+CLIENT_ADDED_PARAMS = ("output", "source")
 
 # INCOMPLETE: outputs were written (exit 0) but some queries failed. Every
 # status except COMPLETE is offered for resume.
@@ -63,7 +66,8 @@ def _public_params(params):
 
 def call_key(params):
     """Identity of one SerpAPI call: every request parameter except the API key."""
-    text = json.dumps(_public_params(params), sort_keys=True, default=str)
+    identity = {k: v for k, v in _public_params(params).items() if k not in CLIENT_ADDED_PARAMS}
+    text = json.dumps(identity, sort_keys=True, default=str)
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
@@ -115,9 +119,10 @@ class CallStore:
                 continue
             try:
                 record = _read_json(os.path.join(folder, name))
-                key, saved_at = record["key"], float(record["saved_at"])
+                key, saved_at = call_key(record["params"]), float(record["saved_at"])
+                record["key"] = key          # recomputed: never trust a stored key
                 record["response"]
-            except (OSError, ValueError, KeyError, TypeError):
+            except (OSError, ValueError, KeyError, TypeError, AttributeError):
                 unreadable += 1
                 continue
             if saved_at < oldest_allowed:

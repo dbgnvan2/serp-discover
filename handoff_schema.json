@@ -163,6 +163,10 @@
             "anchor_texts": {
               "type": "object",
               "description": "The client's own inbound anchor-text distribution. Present only when moz.competitor.client_anchor_texts is enabled. Carried here rather than in `domains` because the handoff excludes the client by design."
+          },
+          "fetched_at": {
+            "type": "string",
+            "description": "When the client's anchor text was collected (ISO 8601 UTC). Present with anchor_texts."
             }
           }
         }

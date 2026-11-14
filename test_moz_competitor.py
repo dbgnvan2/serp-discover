@@ -478,6 +478,18 @@ class TestHandoffContract(unittest.TestCase):
             tool2_schema = json.load(f)
         jsonschema.validate(instance=self._build(), schema=tool2_schema)
 
+    def test_client_block_with_fetched_at_passes_our_schema(self):
+        """build_handoff_block stamps client.fetched_at with the client's anchor
+        text. The schema did not allow it, so every real run with
+        client_anchor_texts on failed to write the handoff (found 2026-11-14)."""
+        here = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(here, "handoff_schema.json"), encoding="utf-8") as f:
+            schema = json.load(f)
+        block = {**self.MOZ_BLOCK, "client": {
+            "domain": "livingsystems.ca", "anchor_texts": {"items": []},
+            "fetched_at": "2026-11-14T15:53:04+00:00"}}
+        jsonschema.validate(instance=self._build(block), schema=schema)
+
 
 class TestAuditWiring(unittest.TestCase):
     """T.4 — serp_audit must actually pass the block (P25)."""

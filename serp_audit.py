@@ -351,7 +351,7 @@ def _fetch_serp_api(params):
         try:
             SERPAPI_CALL_COUNT += 1
             logging.info(f"SerpApi Call Count: {SERPAPI_CALL_COUNT}")
-            search = GoogleSearch(params)
+            search = GoogleSearch(dict(params))  # the client adds fields to what it is given
             search.timeout = SERPAPI_TIMEOUT_SECONDS  # the constructor takes no timeout
             results = search.get_dict()
             logging.info(f"API Return Message: {json.dumps(results, indent=2)}")

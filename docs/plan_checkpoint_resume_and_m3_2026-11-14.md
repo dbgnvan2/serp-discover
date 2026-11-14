@@ -128,6 +128,21 @@ apply time; the launcher skips a `keyword` header line that the audit would read
 situational-probe priority ordering reads `files.output_json`, which now always names the last
 successful run.
 
+## Checked with a real run (2026-11-14, 9 keywords, Low API mode)
+
+A run was stopped after 8 stored responses and resumed. Two faults showed up that the mocked
+tests had missed, both fixed:
+- Nothing was reused. The SerpAPI client adds `output` and `source` to the params it is given,
+  so the key at save time differed from the key at lookup time. Those two fields are now left
+  out of a call's identity, the audit hands the client a copy, and stored keys are recomputed
+  when a run is loaded.
+- The run then failed writing the competitor handoff: `moz.client.fetched_at` (emitted since
+  commit 14f2718) was not allowed by `handoff_schema.json`. Before the exit-code fix this was
+  only logged. The property is now in the schema. serp-compete's own copy of the schema still
+  rejects it and has not been changed.
+
+The second resume reused all 35 stored responses, made 0 new calls, and the pipeline finished.
+
 ## Order
 
 C first (it protects money already spent), then M.
