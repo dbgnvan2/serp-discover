@@ -904,7 +904,10 @@ class TestCollectionFreshness(_CompCase):
         import sqlite3
         mock_post.side_effect = _by_method()
         self.client.fetch(["bowencenter.org"])
-        stale = "2026-08-01T09:00:00+00:00"
+        # Older than "now" but inside the cache TTL — relative, so the test
+        # does not expire with the calendar.
+        from datetime import datetime, timedelta, timezone
+        stale = (datetime.now(timezone.utc) - timedelta(days=5)).replace(microsecond=0).isoformat()
         with sqlite3.connect(self.tmp.name) as conn:
             conn.execute("UPDATE moz_competitor_cache SET fetched_at=?", (stale,))
             conn.commit()
