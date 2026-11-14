@@ -52,6 +52,7 @@ market_analysis_*.json
 | `url_enricher.py` | URL fetching & feature extraction |
 | `serp-me.py` | Tkinter GUI launcher |
 | `run_pipeline.py` | Pipeline orchestration |
+| `timeouts.py` | Reads timeouts from `config.yml`; a bad value falls back to the default, never to "no timeout" |
 | `pipeline_status.py` | Exit-code rules shared by the audit, the pipeline runner and the launcher: fetch summary, missing-output check, launcher status label |
 | `config_tab_models.py` | Data side of the Configuration Manager tabs (no tkinter): load/save guards, save-only-changed-tabs, record models. `config_manager.py` holds the widgets |
 | `handoff_schema.json` | Spec v2 Gap 3 — draft-07 JSON Schema for `competitor_handoff_*.json`; `additionalProperties: false` enforces contract |

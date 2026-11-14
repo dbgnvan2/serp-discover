@@ -38,6 +38,7 @@ from urllib.parse import urlparse
 import yaml
 
 import brief_data_extraction
+import timeouts
 from play_rendering import format_play_cell
 
 logging.basicConfig(
@@ -175,7 +176,8 @@ def _fetch_pivot_local_pack(keyword: str, config: dict) -> tuple[list[dict], boo
         "type": "search",
     }
     try:
-        resp = _requests.get("https://serpapi.com/search", params=params, timeout=15)
+        resp = _requests.get("https://serpapi.com/search", params=params,
+                             timeout=timeouts.serpapi_timeout(config))
         resp.raise_for_status()
         data = resp.json()
         return data.get("local_results", []), True
@@ -209,7 +211,8 @@ def _fetch_pivot_organic_urls(
         "num": 10,
     }
     try:
-        resp = _requests.get("https://serpapi.com/search", params=params, timeout=15)
+        resp = _requests.get("https://serpapi.com/search", params=params,
+                             timeout=timeouts.serpapi_timeout(config))
         resp.raise_for_status()
         data = resp.json()
         return [r.get("link", "") for r in data.get("organic_results", [])[:max_urls] if r.get("link")], True

@@ -20,6 +20,8 @@ import handoff_writer
 import yaml
 import metrics
 import pipeline_status
+import timeouts
+from run_feasibility import _scrub_secrets  # requests errors carry api_key in the URL
 from urllib.parse import urlparse
 from classifiers import ContentClassifier, EntityClassifier
 from url_enricher import UrlEnricher
@@ -130,6 +132,7 @@ GOOGLE_MAX_RESULTS = max(10, int(CONFIG.get("serpapi", {}).get("google_max_resul
 MAPS_MAX_PAGES = max(1, int(CONFIG.get("serpapi", {}).get("maps_max_pages", 3)))
 RETRY_MAX_ATTEMPTS = max(1, int(CONFIG.get("serpapi", {}).get("retry_max_attempts", 3)))
 RETRY_BACKOFF_SECONDS = float(CONFIG.get("serpapi", {}).get("retry_backoff_seconds", 1.0))
+SERPAPI_TIMEOUT_SECONDS = timeouts.serpapi_timeout(CONFIG)  # T1: the client default is 16.7 hours
 REQUEST_DELAY_SECONDS = float(CONFIG.get("serpapi", {}).get("request_delay_seconds", 0.2))
 AI_FALLBACK_WITHOUT_LOCATION = bool(
     CONFIG.get("serpapi", {}).get("ai_fallback_without_location", True)
@@ -353,6 +356,7 @@ def _fetch_serp_api(params):
             SERPAPI_CALL_COUNT += 1
             logging.info(f"SerpApi Call Count: {SERPAPI_CALL_COUNT}")
             search = GoogleSearch(params)
+            search.timeout = SERPAPI_TIMEOUT_SECONDS  # the constructor takes no timeout
             results = search.get_dict()
             logging.info(f"API Return Message: {json.dumps(results, indent=2)}")
             if "error" in results:
@@ -375,11 +379,11 @@ def _fetch_serp_api(params):
                 return results
         except Exception as e:
             logging.error(
-                f"Fetch error (attempt {attempt}) for query '{params.get('q', 'N/A')}': {e}"
+                f"Fetch error (attempt {attempt}) for query '{params.get('q', 'N/A')}': {_scrub_secrets(e)}"
             )
             if attempt == RETRY_MAX_ATTEMPTS:
                 logging.critical(
-                    f"CRITICAL ERROR fetching with params {params.get('q')}: {e}"
+                    f"CRITICAL ERROR fetching with params {params.get('q')}: {_scrub_secrets(e)}"
                 )
                 return None
         sleep_s = RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)) + random.uniform(0, 0.2)

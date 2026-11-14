@@ -1478,7 +1478,10 @@ secondary pivot-keyword fetches). The report covers only the queries
 that were fetched; re-run the failed keywords if they matter.
 
 ### "SerpAPI rate limited or timed out"
-**Cause:** SerpAPI has temporarily blocked requests (too many calls from same IP).
+**Cause:** SerpAPI has temporarily blocked requests (too many calls from same IP), or a call
+did not answer within `serpapi.timeout_seconds` (60 by default). A call that times out is
+retried up to `retry_max_attempts` times; if every attempt fails the query is listed under
+"Fetched N of M queries" and the run carries on with the rest.
 
 **Solution:**
 - Stop the pipeline and wait 30 minutes

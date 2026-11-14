@@ -10,6 +10,7 @@ serpapi:
   maps_max_pages: 3
   retry_max_attempts: 3
   retry_backoff_seconds: 1.0
+  timeout_seconds: 60   # per SerpAPI call; slowest of 296 logged calls was 30s (2026-11-14)
   request_delay_seconds: 0.2
   no_cache: false
   ai_fallback_without_location: true
