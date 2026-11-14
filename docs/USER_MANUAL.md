@@ -1564,7 +1564,7 @@ DA gap analysis:
    - Open Configuration Manager (GUI launcher → "Edit Configuration")
    - Click "Intent Mapping"
    - Review and edit rules for your domain
-   - Save (validates before writing)
+   - Save All (validates first; writes only the files you changed — see `docs/config_reference.md`, "Saving")
 
 2. **Add Bowen patterns**
    - Configuration Manager → "Strategic Patterns"

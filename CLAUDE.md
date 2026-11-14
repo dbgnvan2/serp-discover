@@ -25,10 +25,11 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py tests/ -q`
-  (currently 1308 passing, 66 skipped). Judge the result by the **exit code**,
+  (currently 1416 passing, 66 skipped). Judge the result by the **exit code**,
   not by grepping the summary line — `2 failed, 1227 passed` contains the word
-  "passed" (P24). Note: skipped tests are GUI tests requiring
-  tkinter (not available in venv, but run when tkinter is available).
+  "passed" (P24). Note: the skipped tests need gitignored fixture files
+  in `output/` that only exist after a real run. tkinter works in the venv, so
+  the GUI tests run locally.
 - **Never `git add .`** — the repo accumulates output and draft files that
   must stay local. Only commit files intentionally changed for the current
   chunk.

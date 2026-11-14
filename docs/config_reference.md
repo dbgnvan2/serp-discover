@@ -158,17 +158,24 @@ The Configuration Manager allows you to edit all 9 configuration files in a GUI 
 | Strategic Patterns | `strategic_patterns.yml` | View/edit/add/delete pattern definitions (name, triggers, reframes, content angles). |
 | Brief Pattern Routing | `brief_pattern_routing.yml` | View/edit/add/delete pattern routing (PAA themes, categories, keyword hints per pattern). |
 | Intent Classifier Triggers | `intent_classifier_triggers.yml` | View/edit/add/delete medical and systemic trigger lists for intent classification. |
-| Config Settings | `config.yml` | Edit operational settings (API keys, file paths, thresholds, client preferences). |
+| Config Settings | `config.yml` | Edit operational settings (file paths, thresholds, client preferences). API keys live in `.env`, not here. |
 | Domain Overrides | `domain_overrides.yml` | View/edit/add/delete domain → entity-type manual overrides. |
 | Classification Rules | `classification_rules.json` | View/edit entity-type list and entity-type descriptions. Double-click descriptions to edit. |
 | URL Pattern Rules | `url_pattern_rules.yml` | View/edit/add/delete URL fallback patterns (regex → content type). |
 | Client Profile & Queries | `client_profiles.yml` | Edit the **selected client's** profile (brand, domain, location, cities) and its personas with named funnel/intent tiers (verbatim `seed_questions` + per-city `templates`). **Preview generated questions** runs `profile_questions.generate` with persona/tier/city tags — no API calls. Save is atomic, validated (round-trips through the Y.1 loader; rejects empty persona labels / bad tiers inline), and never disturbs other clients' blocks. (yoast_geo_upgrade Y.13) |
 
-**Features:**
-- **Validation before save:** All files validated for schema errors and cross-file constraints. Errors shown with field-level detail.
-- **Backup and restore:** Save automatically backs up current files before writing. If save fails, original files restored.
-- **Help on every field:** Click `?` button next to any field to see contextual help explaining what it means and why it matters.
-- **CRUD operations:** Add new entries, edit existing ones, delete, and reorder (for order-sensitive files like intent_mapping.yml).
-- **Discard changes:** Cancel button lets you abandon edits and return to saved state.
+**Saving:**
+- **Only changed files are written.** "Save All" writes the tabs you edited and reports "Saved N of 9". Pressing it with no edits writes nothing.
+- **Nothing is written unless everything can be.** Each changed file is validated first; if one is invalid, no file is written and the errors are listed. Each file is replaced atomically. There is no backup copy — use git to recover an earlier version.
+- **Keys the tab does not show are kept.** A save applies your edits to the file as it was loaded, so entries with no field in the GUI (for example `known_brands` in `config.yml`, or `rationale` on an intent rule) are left as they were.
+- **A file that could not be read is never overwritten.** If a file has a syntax error when the manager opens, its tab shows a red notice and is skipped on save. Fix the file in a text editor, then press "Discard Changes" to reload.
+- **A file changed by something else is not overwritten.** If the launcher or a pipeline run wrote a file after the manager loaded it, saving that file is refused; press "Discard Changes" to reload and redo the edit.
+- **A field that does not parse is an error.** A typo in a number or list field in Config Settings is reported by name instead of being saved as `0` or an empty list.
+- **Closing:** the Close button and the window's close box both ask about unsaved changes. If "save before closing" fails, the window stays open with your edits.
+
+**Other features:**
+- **Help on every field:** Click `?` next to a field for what it means and why it matters.
+- **CRUD operations:** Add, edit, delete, and reorder (for order-sensitive files like intent_mapping.yml).
+- **Discard Changes:** reloads every tab from disk.
 
 For detailed help, see `docs/config_manager_phase5_completion_20260502.md`.

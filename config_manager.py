@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import yaml
@@ -7,6 +8,10 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 
 from yaml_io import save_yaml_preserving_comments
+from config_tab_models import (
+    TabFileState, RowModel, save_changed_tabs, merge_settings_edits,
+    update_record, apply_rule_row, restore_hidden,
+)
 
 try:
     import tkinter as tk
@@ -204,8 +209,12 @@ HELP_BY_FIELD = {
 }
 
 
-class BaseConfigTab(ttk.Frame):
-    """Abstract base class for all configuration tabs."""
+class BaseConfigTab(TabFileState, ttk.Frame):
+    """Abstract base class for all configuration tabs.
+
+    Loading, change detection and saving live in TabFileState (no tkinter),
+    which refuses to write a file that failed to load or changed on disk.
+    """
 
     def __init__(self, parent, file_name: str, file_type: str):
         """
@@ -222,23 +231,18 @@ class BaseConfigTab(ttk.Frame):
         self.edited_data = None
         self.load_current_data()
         self.render_ui()
+        self._show_load_error()
 
-    def load_current_data(self):
-        """Load file from disk. Subclasses should override if custom loading needed."""
-        if not os.path.exists(self.file_path):
-            self.current_data = {} if self.file_type == "json" else {}
+    def _show_load_error(self):
+        """Put a visible banner on a tab whose file could not be read."""
+        if not self.load_error or not TKINTER_AVAILABLE:
             return
-
-        try:
-            if self.file_type == "yaml":
-                with open(self.file_path, "r") as f:
-                    self.current_data = yaml.safe_load(f) or {}
-            else:  # json
-                with open(self.file_path, "r") as f:
-                    self.current_data = json.load(f)
-        except Exception as e:
-            self.current_data = {} if self.file_type == "json" else {}
-            print(f"Error loading {self.file_name}: {e}")
+        ttk.Label(
+            self,
+            text=(f"{self.file_name} could not be read: {self.load_error}\n"
+                  "This tab will not be saved. Fix the file, then use Discard Changes."),
+            foreground="red", wraplength=700, justify="left",
+        ).pack(side="bottom", anchor="w", padx=10, pady=5)
 
     def render_ui(self):
         """Render tab UI. Must be implemented by subclasses."""
@@ -266,35 +270,12 @@ class BaseConfigTab(ttk.Frame):
 
     def revert_to_disk(self):
         """Reload from disk, discard unsaved changes."""
+        if TKINTER_AVAILABLE:
+            for child in list(self.winfo_children()):
+                child.destroy()
         self.load_current_data()
         self.render_ui()
-
-    def save_to_disk(self):
-        """Validate, then write to disk. Return (success, message)."""
-        is_valid, errors, warnings = self.validate()
-
-        if not is_valid:
-            return (False, f"Validation failed for {self.file_name}:\n" + "\n".join(errors))
-
-        try:
-            data = self.get_edited_data()
-            if self.file_type == "yaml":
-                # Preserve comments/key-order (ruamel round-trip). safe_dump strips
-                # every comment, which wiped the doc blocks in config.yml + the 7
-                # other editorial YAML configs on each save.
-                save_yaml_preserving_comments(self.file_path, data)
-            else:  # json
-                with open(self.file_path, "w") as f:
-                    json.dump(data, f, indent=2)
-
-            self.current_data = data
-            return (True, f"Saved {self.file_name}")
-        except Exception as e:
-            return (False, f"Failed to save {self.file_name}: {e}")
-
-    def has_unsaved_changes(self):
-        """Check if current data differs from disk version."""
-        return self.get_edited_data() != self.current_data
+        self._show_load_error()
 
 
 class DomainOverridesTab(BaseConfigTab):
@@ -717,7 +698,11 @@ class ClassificationRulesTab(BaseConfigTab):
         entity_types = []
         for item in self.entity_types_tree.get_children():
             entity_types.append(self.entity_types_tree.item(item)["values"][0])
-        data["entity_types"] = sorted(entity_types)
+        # Same members as loaded: keep the file's own order, so an untouched
+        # tab is not reported as changed and the list is not re-sorted on save.
+        loaded = data.get("entity_types")
+        if not (isinstance(loaded, list) and sorted(map(str, loaded)) == sorted(map(str, entity_types))):
+            data["entity_types"] = sorted(entity_types)
 
         # Extract descriptions
         descriptions = {}
@@ -734,6 +719,8 @@ class IntentMappingTab(BaseConfigTab):
 
     def __init__(self, parent):
         self.tree = None
+        self._rows = RowModel()      # tree item id -> the full rule it shows
+        self._hidden_rules = []      # (index, rule) for rules the tree cannot show
         super().__init__(parent, "intent_mapping.yml", "yaml")
 
     def render_ui(self):
@@ -797,16 +784,21 @@ class IntentMappingTab(BaseConfigTab):
             self.tree.delete(item)
 
         # Load from current_data
+        self._rows.clear()
+        self._hidden_rules = []
         if isinstance(self.current_data, dict) and "rules" in self.current_data:
-            for rule in self.current_data["rules"]:
-                if isinstance(rule, dict) and "match" in rule:
-                    match = rule["match"]
-                    content_type = match.get("content_type", "")
-                    entity_type = match.get("entity_type", "")
-                    local_pack = match.get("local_pack", "")
-                    domain_role = match.get("domain_role", "")
-                    intent = rule.get("intent", "")
-                    self.tree.insert("", "end", values=(content_type, entity_type, local_pack, domain_role, intent))
+            for index, rule in enumerate(self.current_data["rules"]):
+                if not (isinstance(rule, dict) and "match" in rule):
+                    self._hidden_rules.append((index, rule))
+                    continue
+                match = rule["match"]
+                content_type = match.get("content_type", "")
+                entity_type = match.get("entity_type", "")
+                local_pack = match.get("local_pack", "")
+                domain_role = match.get("domain_role", "")
+                intent = rule.get("intent", "")
+                item = self.tree.insert("", "end", values=(content_type, entity_type, local_pack, domain_role, intent))
+                self._rows.bind(item, rule)
 
     def _add_rule(self):
         """Add a new intent mapping rule."""
@@ -970,6 +962,7 @@ class IntentMappingTab(BaseConfigTab):
         self.tree.delete(item)
         # Insert at the new position and keep the selection
         new_item = self.tree.insert("", index - 1, values=values)
+        self._rows.move(item, new_item)
         self.tree.selection_set(new_item)
         messagebox.showinfo("Moved", f"Rule moved up to position {index} (rules are evaluated top-to-bottom)")
 
@@ -992,28 +985,24 @@ class IntentMappingTab(BaseConfigTab):
         self.tree.delete(item)
         # Insert at the new position and keep the selection
         new_item = self.tree.insert("", index + 1, values=values)
+        self._rows.move(item, new_item)
         self.tree.selection_set(new_item)
         messagebox.showinfo("Moved", f"Rule moved down to position {index + 2} (rules are evaluated top-to-bottom)")
 
     def get_edited_data(self):
-        """Extract treeview data back into intent_mapping.yml format."""
-        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+        """The loaded file with the tree's rows applied.
 
-        rules = []
-        for item in self.tree.get_children():
-            content_type, entity_type, local_pack, domain_role, intent = self.tree.item(item)["values"]
-            rule = {
-                "match": {
-                    "content_type": content_type,
-                    "entity_type": entity_type,
-                    "local_pack": local_pack,
-                    "domain_role": domain_role
-                },
-                "intent": intent
-            }
-            rules.append(rule)
-
-        data["rules"] = rules
+        Each row updates the rule it was loaded from, so keys the tree does not
+        show (rationale) and other top-level keys are kept.
+        """
+        data = copy.deepcopy(self.current_data) if isinstance(self.current_data, dict) else {}
+        if self.tree is None:
+            return data
+        shown = [
+            apply_rule_row(self._rows.get(item), self.tree.item(item)["values"])
+            for item in self.tree.get_children()
+        ]
+        data["rules"] = restore_hidden(shown, self._hidden_rules)
         return data
 
 
@@ -1022,6 +1011,7 @@ class StrategicPatternsTab(BaseConfigTab):
 
     def __init__(self, parent):
         self.tree = None
+        self._rows = RowModel()      # tree item id -> the full pattern it shows
         super().__init__(parent, "strategic_patterns.yml", "yaml")
 
     def render_ui(self):
@@ -1078,6 +1068,7 @@ class StrategicPatternsTab(BaseConfigTab):
             self.tree.delete(item)
 
         # Load from current_data
+        self._rows.clear()
         if isinstance(self.current_data, list):
             for pattern in self.current_data:
                 if isinstance(pattern, dict):
@@ -1090,7 +1081,8 @@ class StrategicPatternsTab(BaseConfigTab):
                     missing = [f for f in required_fields if f not in pattern or not pattern[f]]
                     status = "✓ Complete" if not missing else f"✗ Missing: {', '.join(missing)}"
 
-                    self.tree.insert("", "end", values=(pattern_name, triggers_count, status))
+                    item = self.tree.insert("", "end", values=(pattern_name, triggers_count, status))
+                    self._rows.bind(item, pattern)
 
     def _add_pattern(self):
         """Add a new strategic pattern."""
@@ -1112,12 +1104,8 @@ class StrategicPatternsTab(BaseConfigTab):
             item = selected[0]
             pattern_name = self.tree.item(item)["values"][0]
 
-            # Find the original pattern data
-            pattern_data = None
-            for p in self.current_data:
-                if p.get("Pattern_Name") == pattern_name:
-                    pattern_data = p.copy()
-                    break
+            # The full pattern behind this row, including earlier unsaved edits
+            pattern_data = self._rows.get(item)
             if not pattern_data:
                 messagebox.showerror("Error", "Pattern not found")
                 return
@@ -1189,11 +1177,20 @@ class StrategicPatternsTab(BaseConfigTab):
 
             triggers_count = len(triggers)
 
-            # Update or insert
+            # Update or insert, and keep what was typed (the tree shows only a summary)
+            record = update_record(pattern_data, {
+                "Pattern_Name": pattern_name,
+                "Triggers": triggers,
+                "Status_Quo_Message": status_quo,
+                "Bowen_Bridge_Reframe": reframe,
+                "Content_Angle": content_angle,
+            })
             if item:
                 self.tree.item(item, values=(pattern_name, triggers_count, "✓ Complete"))
+                row = item
             else:
-                self.tree.insert("", "end", values=(pattern_name, triggers_count, "✓ Complete"))
+                row = self.tree.insert("", "end", values=(pattern_name, triggers_count, "✓ Complete"))
+            self._rows.bind(row, record)
 
             dialog.destroy()
 
@@ -1214,35 +1211,15 @@ class StrategicPatternsTab(BaseConfigTab):
             self.tree.delete(item)
 
     def get_edited_data(self):
-        """Extract treeview data back into strategic_patterns.yml format."""
-        patterns = []
-
-        # Reconstruct from treeview
-        for item in self.tree.get_children():
-            pattern_name, triggers_count, status = self.tree.item(item)["values"]
-
-            # Try to find original pattern to preserve full data
-            original_pattern = None
-            if isinstance(self.current_data, list):
-                for p in self.current_data:
-                    if p.get("Pattern_Name") == pattern_name:
-                        original_pattern = p.copy()
-                        break
-
-            if original_pattern:
-                # Preserve all fields from original
-                patterns.append(original_pattern)
-            else:
-                # Create minimal pattern (should not happen in normal flow)
-                pattern = {
-                    "Pattern_Name": pattern_name,
-                    "Triggers": [],
-                    "Status_Quo_Message": "",
-                    "Bowen_Bridge_Reframe": "",
-                    "Content_Angle": ""
-                }
-                patterns.append(pattern)
-
+        """The patterns behind the tree's rows, in tree order."""
+        if self.tree is None:
+            return self.current_data
+        patterns = self._rows.records(self.tree.get_children())
+        if not patterns and not isinstance(self.current_data, list):
+            return self.current_data      # missing/empty file and nothing added: not an edit
+        # Entries the tree cannot show (not a mapping) are kept, not dropped.
+        if isinstance(self.current_data, list):
+            patterns += [p for p in self.current_data if not isinstance(p, dict)]
         return patterns
 
 
@@ -1252,6 +1229,7 @@ class BriefPatternRoutingTab(BaseConfigTab):
     def __init__(self, parent):
         self.tree = None
         self.intent_descriptions = {}
+        self._rows = RowModel()      # tree item id -> the full pattern it shows
         super().__init__(parent, "brief_pattern_routing.yml", "yaml")
 
     def render_ui(self):
@@ -1339,6 +1317,7 @@ class BriefPatternRoutingTab(BaseConfigTab):
             self.tree.delete(item)
 
         # Load from current_data
+        self._rows.clear()
         if isinstance(self.current_data, dict) and "patterns" in self.current_data:
             for pattern in self.current_data["patterns"]:
                 if isinstance(pattern, dict):
@@ -1347,7 +1326,8 @@ class BriefPatternRoutingTab(BaseConfigTab):
                     categories = len(pattern.get("paa_categories", []))
                     keywords = len(pattern.get("keyword_hints", []))
 
-                    self.tree.insert("", "end", values=(pattern_name, themes, categories, keywords))
+                    item = self.tree.insert("", "end", values=(pattern_name, themes, categories, keywords))
+                    self._rows.bind(item, pattern)
 
     def _add_pattern(self):
         """Add a new pattern."""
@@ -1369,12 +1349,8 @@ class BriefPatternRoutingTab(BaseConfigTab):
             item = selected[0]
             pattern_name = self.tree.item(item)["values"][0]
 
-            # Find the original pattern data
-            pattern_data = None
-            for p in self.current_data.get("patterns", []):
-                if p.get("pattern_name") == pattern_name:
-                    pattern_data = p.copy()
-                    break
+            # The full pattern behind this row, including earlier unsaved edits
+            pattern_data = self._rows.get(item)
             if not pattern_data:
                 messagebox.showerror("Error", "Pattern not found")
                 return
@@ -1436,11 +1412,20 @@ class BriefPatternRoutingTab(BaseConfigTab):
                 messagebox.showwarning("Incomplete", "All fields required (themes, categories, keywords)")
                 return
 
-            # Update or insert
+            # Update or insert, and keep what was typed (the tree shows only counts)
+            record = update_record(pattern_data, {
+                "pattern_name": pattern_name,
+                "paa_themes": themes_list,
+                "paa_categories": categories_list,
+                "keyword_hints": keywords_list,
+            })
+            summary = (pattern_name, len(themes_list), len(categories_list), len(keywords_list))
             if item:
-                self.tree.item(item, values=(pattern_name, len(themes_list), len(categories_list), len(keywords_list)))
+                self.tree.item(item, values=summary)
+                row = item
             else:
-                self.tree.insert("", "end", values=(pattern_name, len(themes_list), len(categories_list), len(keywords_list)))
+                row = self.tree.insert("", "end", values=summary)
+            self._rows.bind(row, record)
 
             dialog.destroy()
 
@@ -1461,8 +1446,10 @@ class BriefPatternRoutingTab(BaseConfigTab):
             self.tree.delete(item)
 
     def get_edited_data(self):
-        """Extract treeview data back into brief_pattern_routing.yml format."""
-        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+        """The loaded file with the description box and the tree's rows applied."""
+        data = copy.deepcopy(self.current_data) if isinstance(self.current_data, dict) else {}
+        if self.tree is None:
+            return data
 
         # Parse intent descriptions from text widget
         intent_descriptions = {}
@@ -1471,35 +1458,15 @@ class BriefPatternRoutingTab(BaseConfigTab):
             if ":" in line:
                 intent, desc = line.split(":", 1)
                 intent_descriptions[intent.strip()] = desc.strip()
+        # Written only when the text differs from what was loaded, so an
+        # untouched box does not reformat the stored descriptions.
+        loaded = data.get("intent_slot_descriptions") or {}
+        if intent_descriptions != {str(k).strip(): str(v).strip() for k, v in loaded.items()}:
+            data["intent_slot_descriptions"] = intent_descriptions
 
-        data["intent_slot_descriptions"] = intent_descriptions
-
-        # Reconstruct patterns from treeview
-        patterns = []
-        for item in self.tree.get_children():
-            pattern_name, themes_count, categories_count, keywords_count = self.tree.item(item)["values"]
-
-            # Try to find original pattern to preserve full data
-            original_pattern = None
-            if isinstance(self.current_data, dict):
-                for p in self.current_data.get("patterns", []):
-                    if p.get("pattern_name") == pattern_name:
-                        original_pattern = p.copy()
-                        break
-
-            if original_pattern:
-                patterns.append(original_pattern)
-            else:
-                # Create minimal pattern (should not happen in normal flow)
-                pattern = {
-                    "pattern_name": pattern_name,
-                    "paa_themes": [],
-                    "paa_categories": [],
-                    "keyword_hints": []
-                }
-                patterns.append(pattern)
-
-        data["patterns"] = patterns
+        patterns = self._rows.records(self.tree.get_children())
+        if patterns or "patterns" in data:
+            data["patterns"] = patterns
         return data
 
 
@@ -1585,8 +1552,10 @@ class IntentClassifierTriggersTab(BaseConfigTab):
                     self.systemic_sw_text.insert("1.0", "\n".join(sw))
 
     def get_edited_data(self):
-        """Extract text widget data back into intent_classifier_triggers.yml format."""
-        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+        """The loaded file with the four trigger lists replaced by the text boxes."""
+        loaded = self.current_data if isinstance(self.current_data, dict) else {}
+        data = copy.deepcopy(loaded)
+        data.setdefault("version", 1)
 
         # Parse medical triggers
         medical_mw_str = self.medical_mw_text.get("1.0", "end").strip()
@@ -1595,10 +1564,10 @@ class IntentClassifierTriggersTab(BaseConfigTab):
         medical_sw_str = self.medical_sw_text.get("1.0", "end").strip()
         medical_sw = [t.strip() for t in medical_sw_str.split("\n") if t.strip()]
 
-        data["medical_triggers"] = {
+        data["medical_triggers"] = update_record(loaded.get("medical_triggers"), {
             "multi_word": medical_mw,
             "single_word": medical_sw
-        }
+        })
 
         # Parse systemic triggers
         systemic_mw_str = self.systemic_mw_text.get("1.0", "end").strip()
@@ -1607,10 +1576,10 @@ class IntentClassifierTriggersTab(BaseConfigTab):
         systemic_sw_str = self.systemic_sw_text.get("1.0", "end").strip()
         systemic_sw = [t.strip() for t in systemic_sw_str.split("\n") if t.strip()]
 
-        data["systemic_triggers"] = {
+        data["systemic_triggers"] = update_record(loaded.get("systemic_triggers"), {
             "multi_word": systemic_mw,
             "single_word": systemic_sw
-        }
+        })
 
         return data
 
@@ -1621,6 +1590,7 @@ class ConfigSettingsTab(BaseConfigTab):
     def __init__(self, parent):
         self.section_widgets = {}  # Maps section_name -> dict of field_name -> widget
         self.section_frames = {}  # Maps section_name -> LabelFrame for collapsing
+        self._parse_errors = []   # fields whose text did not parse on the last read
         super().__init__(parent, "config.yml", "yaml")
 
     def render_ui(self):
@@ -1628,6 +1598,8 @@ class ConfigSettingsTab(BaseConfigTab):
         if not TKINTER_AVAILABLE:
             return
 
+        self.section_widgets = {}
+        self.section_frames = {}
         main_frame = ttk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
@@ -1785,43 +1757,48 @@ class ConfigSettingsTab(BaseConfigTab):
             text.pack(side="left", fill="both", expand=True)
             self.section_widgets[section_name][field_name] = (text, "dict")
 
-    def get_edited_data(self):
-        """Extract form values back into config.yml format."""
-        if not TKINTER_AVAILABLE:
-            return self.current_data
-
-        data = {}
+    def _raw_values(self):
+        """Widget contents as {section: {field: (raw, type)}}, unparsed."""
+        raw = {}
         for section_name, fields in self.section_widgets.items():
-            section_data = {}
+            raw[section_name] = {}
             for field_name, (widget, field_type) in fields.items():
                 if field_type == "bool":
-                    section_data[field_name] = widget.get()
-                elif field_type == "int":
-                    try:
-                        section_data[field_name] = int(widget.get())
-                    except:
-                        section_data[field_name] = 0
-                elif field_type == "float":
-                    try:
-                        section_data[field_name] = float(widget.get())
-                    except:
-                        section_data[field_name] = 0.0
+                    value = widget.get()
+                elif field_type in ("int", "float"):
+                    # The variable's text, not .get(): .get() raises on a typo.
+                    value = widget._tk.globalgetvar(widget._name)
                 elif field_type == "str":
-                    section_data[field_name] = widget.get()
-                elif field_type == "list":
-                    try:
-                        section_data[field_name] = yaml.safe_load(widget.get("1.0", tk.END))
-                    except:
-                        section_data[field_name] = []
-                elif field_type == "dict":
-                    try:
-                        section_data[field_name] = yaml.safe_load(widget.get("1.0", tk.END))
-                    except:
-                        section_data[field_name] = {}
+                    value = widget.get()
+                else:
+                    value = widget.get("1.0", tk.END)
+                raw[section_name][field_name] = (value, field_type)
+        return raw
 
-            data[section_name] = section_data
+    def has_unsaved_changes(self):
+        """A field that does not parse counts as a change, so Save All and Close
+        report it instead of dropping it silently."""
+        if self.load_error:
+            return False
+        data = self.get_edited_data()
+        return bool(self._parse_errors) or data != self.current_data
 
+    def get_edited_data(self):
+        """config.yml as loaded, with the edited fields applied.
+
+        Keys that have no widget (top-level lists such as known_brands, null
+        values, empty mappings) are kept exactly as loaded.
+        """
+        if not TKINTER_AVAILABLE:
+            return self.current_data
+        data, self._parse_errors = merge_settings_edits(self.current_data, self._raw_values())
         return data
+
+    def validate(self):
+        """File validation plus any field that did not parse."""
+        is_valid, errors, warnings = super().validate()
+        errors = list(errors) + list(self._parse_errors)
+        return (is_valid and not self._parse_errors, errors, warnings)
 
 
 class UrlPatternRulesTab(BaseConfigTab):
@@ -2142,19 +2119,27 @@ class UrlPatternRulesTab(BaseConfigTab):
         messagebox.showinfo("Moved", f"Rule moved down to position {index + 2} (rules are evaluated top-to-bottom)")
 
     def get_edited_data(self):
-        """Extract treeview data back into url_pattern_rules.yml format."""
-        data = {"version": self.current_data.get("version", 1) if isinstance(self.current_data, dict) else 1}
+        """The loaded file with ``url_pattern_rules`` rebuilt from the tree.
+
+        A row is matched to its loaded rule by pattern, so keys the tree does
+        not show stay on the rule."""
+        loaded = self.current_data if isinstance(self.current_data, dict) else {}
+        data = copy.deepcopy(loaded)
+        data.setdefault("version", 1)
+        by_pattern = {r.get("pattern"): r for r in loaded.get("url_pattern_rules") or []
+                      if isinstance(r, dict)}
 
         rules = []
         for item in self.tree.get_children():
             pattern, entity_types, content_type, rationale = self.tree.item(item)["values"]
             entity_types_list = [et.strip() for et in entity_types.split(",")]
 
-            rule = {
+            rule = update_record(by_pattern.get(pattern), {
                 "pattern": pattern,
                 "entity_types": entity_types_list,
                 "content_type": content_type,
-            }
+            })
+            rule.pop("rationale", None)
             if rationale:
                 rule["rationale"] = rationale
 
@@ -2305,11 +2290,13 @@ class ClientProfileTab(BaseConfigTab):
 
     def load_current_data(self):
         """Load the whole client_profiles.yml mapping (slug -> block)."""
+        self.load_error = None
+        self._disk_mtime = self._file_mtime()
         try:
             self.current_data = load_client_profiles_file(self.file_path)
         except Exception as e:
             self.current_data = {}
-            print(f"Error loading {self.file_name}: {e}")
+            self.load_error = f"{type(e).__name__}: {e}"
         # Default selection: first client slug, if any.
         slugs = list(self.current_data.keys())
         if self.selected_slug not in slugs:
@@ -2422,6 +2409,8 @@ class ConfigManagerWindow:
         self.window.title("Configuration Manager")
         self.window.geometry("1000x700")
         self.window.transient(root)
+        # The window's X button goes through the same unsaved-changes prompt.
+        self.window.protocol("WM_DELETE_WINDOW", self.close_window)
 
         # Header
         header_frame = ttk.Frame(self.window)
@@ -2490,6 +2479,10 @@ class ConfigManagerWindow:
         ).pack(side="left")
 
         self.log("[Config Manager] Window opened\n")
+        for tab in self.tabs:
+            if tab.load_error:
+                self.log(f"[Config Manager] {tab.file_name} could not be read "
+                         f"({tab.load_error}); it will not be saved\n")
 
     def validate_all(self):
         """Validate all tabs."""
@@ -2515,24 +2508,41 @@ class ConfigManagerWindow:
             self.log("[Config Manager] Validation failed\n")
 
     def save_all(self):
-        """Save all tabs to disk."""
-        self.validate_all()
+        """Save the tabs that changed. Returns True when nothing failed.
 
-        for tab in self.tabs:
-            success, message = tab.save_to_disk()
-            if not success:
-                messagebox.showerror("Save Failed", message)
-                self.log(f"[Config Manager] Save failed: {message}\n")
-                return
+        Everything is checked before the first write; unchanged files are not
+        rewritten.
+        """
+        ok, saved, problems = save_changed_tabs(self.tabs)
+        if not ok:
+            message = "Nothing more was saved:\n\n" + "\n".join(f"- {p}" for p in problems)
+            if saved:
+                message += "\n\nAlready written: " + ", ".join(saved)
+            messagebox.showerror("Save Failed", message)
+            self.log(f"[Config Manager] Save failed: {'; '.join(problems)}\n")
+            return False
 
-        messagebox.showinfo("Success", f"Saved {len(self.tabs)} configuration files.")
-        self.log("[Config Manager] All files saved successfully\n")
+        summary = (f"Saved {len(saved)} of {len(self.tabs)} files ({', '.join(saved)}); "
+                   "the others are unchanged." if saved else "No changes to save.")
+        if problems:
+            summary += "\n\nNot saved:\n" + "\n".join(f"- {p}" for p in problems)
+        messagebox.showinfo("Save", summary)
+        self.log(f"[Config Manager] {summary}\n")
+        return True
 
     def discard_changes(self):
         """Discard unsaved changes and revert to disk."""
         has_changes = any(tab.has_unsaved_changes() for tab in self.tabs)
         if not has_changes:
-            messagebox.showinfo("Discard", "No unsaved changes to discard.")
+            stale = [tab for tab in self.tabs if tab.needs_reload()]
+            for tab in stale:
+                tab.revert_to_disk()
+            if stale:
+                names = ", ".join(tab.file_name for tab in stale)
+                messagebox.showinfo("Reloaded", f"Reloaded from disk: {names}")
+                self.log(f"[Config Manager] Reloaded from disk: {names}\n")
+            else:
+                messagebox.showinfo("Discard", "No unsaved changes to discard.")
             return
 
         confirm = messagebox.askyesno(
@@ -2555,8 +2565,8 @@ class ConfigManagerWindow:
             )
             if confirm is None:
                 return  # Cancel
-            elif confirm:
-                self.save_all()
+            elif confirm and not self.save_all():
+                return  # save failed: keep the window and the edits
 
         self.window.destroy()
         self.log("[Config Manager] Window closed\n")
