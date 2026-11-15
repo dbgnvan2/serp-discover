@@ -325,7 +325,7 @@ signal. The branded-demand trend that *is* buildable lives in the D2 GSC analysi
 
 **Input:** `market_analysis_*.json` + `strategic_recommendations`.
 
-`generate_content_brief.py` selects relevant PAA questions and competitors for each pattern using routing rules from `brief_pattern_routing.yml` (`paa_themes`, `paa_categories`, `keyword_hints`). An LLM (Anthropic API) generates the main report and advisory briefing. Outputs are validated before writing; hard validation failures abort, soft failures retry once.
+`generate_content_brief.py` selects relevant PAA questions and competitors for each pattern using routing rules from `brief_pattern_routing.yml` (`paa_themes`, `paa_categories`, `keyword_hints`). An LLM generates the main report and advisory briefing. The provider and both model IDs come from `report_llm` in `config.yml` (any Anthropic or OpenAI-dialect provider in the shared key file, including Google models); each LLM-written file ends with a line naming the model and provider that wrote it. Outputs are validated before writing; hard validation failures abort, soft failures retry once. The validation rules are the same for every model. An empty, refused or token-limit-truncated answer is a failure and nothing is written.
 
 ### FAQ / Answer-Extraction Plan (report Section 5b)
 

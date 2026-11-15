@@ -36,10 +36,7 @@ from brief_prompts import (
     load_prompt_blocks, load_single_prompt, build_user_prompt,
     build_main_report_payload, build_correction_message, append_interpretation_notes,
 )
-from brief_llm import (
-    MAIN_REPORT_DEFAULT_MODEL, ADVISORY_DEFAULT_MODEL, SUPPORTED_REPORT_MODELS,
-    run_llm_report,
-)
+from brief_llm import run_llm_report
 from brief_rendering import (
     write_validation_artifact, _infer_intent_text, _score_keyword_opportunity,
     generate_local_report, generate_serp_intent_section, score_paa_for_brief,
@@ -141,10 +138,12 @@ def main():
     parser.add_argument("--correction-prompt", default=CORRECTION_PROMPT_DEFAULT,
                         help="Correction prompt template file used for LLM revision retries")
     parser.add_argument("--use-llm", action="store_true",
-                        help="Use Anthropic API with prompt spec (fails if LLM path is unavailable)")
+                        help="Write the report with the LLM provider set under report_llm in config.yml "
+                             "(fails if the LLM path is unavailable)")
     parser.add_argument("--config", default="config.yml",
                         help="Path to YAML config (reads analysis_report client context)")
-    parser.add_argument("--llm-model", default=MAIN_REPORT_DEFAULT_MODEL)
+    parser.add_argument("--llm-model", default=None,
+                        help="Main report model (default: report_llm.main_model in config.yml)")
     parser.add_argument("--llm-max-tokens", type=int, default=16000)
     parser.add_argument("--allow-unverified-report", action="store_true",
                         help="Write the LLM report even if evidence validation flags unsupported claims")
@@ -152,8 +151,8 @@ def main():
                         help="Run a second LLM pass to produce a strategic advisory briefing")
     parser.add_argument("--advisory-out", default="advisory_briefing.md",
                         help="Output path for the advisory briefing")
-    parser.add_argument("--advisory-model", default=ADVISORY_DEFAULT_MODEL,
-                        help="Model for advisory pass (defaults to --llm-model)")
+    parser.add_argument("--advisory-model", default=None,
+                        help="Advisory model (default: report_llm.advisory_model in config.yml)")
     args = parser.parse_args()
 
     data = load_data(args.json)

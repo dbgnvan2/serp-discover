@@ -240,7 +240,7 @@ def test_run_and_stop_buttons_follow_the_run_state(monkeypatch):
     serp_me = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(serp_me)
     monkeypatch.setattr(serp_me, "get_report_model_options",       # no HTTP call at startup
-                        lambda fallback=None, **k: list(fallback or []))
+                        lambda settings, **k: [])
     root = tk.Tk()
     root.withdraw()
     try:

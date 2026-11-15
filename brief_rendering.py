@@ -24,6 +24,7 @@ from brief_prompts import (
     load_prompt_blocks, build_user_prompt, build_correction_message,
     build_main_report_payload, append_interpretation_notes,
 )
+import report_llm
 from brief_llm import run_llm_report, ANTHROPIC_AVAILABLE
 
 
@@ -546,6 +547,37 @@ def _fetch_moz_intent(data, config):
         return {}
 
 
+def resolve_report_llm(config, args):
+    """Provider, models and timeout for this run, or exit 2 with the reason.
+
+    Spec: docs/plan_google_report_model_2026-11-14.md#G6
+    Tests: tests/test_brief_llm_providers.py::test_g6_precheck_uses_resolved_provider
+    """
+    settings = report_llm.settings_from_config(config)
+    try:
+        provider = report_llm.resolve_provider(settings)
+    except report_llm.ReportLLMError as exc:
+        print(f"Error: {exc}")
+        sys.exit(2)
+    if provider.dialect == "anthropic" and not ANTHROPIC_AVAILABLE:
+        print("Error: anthropic package is not installed.")
+        sys.exit(2)
+    main_model = getattr(args, "llm_model", None) or settings.main_model
+    if not main_model:
+        print("Error: no report model. Set report_llm.main_model in config.yml or pass --llm-model.")
+        sys.exit(2)
+    advisory_model = getattr(args, "advisory_model", None) or settings.advisory_model or main_model
+    progress(f"      Report provider: {provider.name}; main model {main_model}; "
+             f"advisory model {advisory_model}.")
+    return {"provider": provider, "main_model": main_model,
+            "advisory_model": advisory_model, "timeout": settings.timeout_seconds}
+
+
+def model_footer(provider, model):
+    """The line appended to an LLM-written report naming what wrote it (G6)."""
+    return f"\n\n---\n\n*Written by model `{model}` (provider `{provider.name}`).*"
+
+
 def list_recommendations(data, args):
     config = load_yaml_config(args.config)
     progress("[3/7] Resolving client context from YAML...")
@@ -597,12 +629,7 @@ def list_recommendations(data, args):
     progress(f"      Extracted data object size: {extracted_size} chars.")
 
     if args.use_llm:
-        if not ANTHROPIC_AVAILABLE:
-            print("Error: anthropic package is not installed.")
-            sys.exit(2)
-        if not os.getenv("ANTHROPIC_API_KEY"):
-            print("Error: ANTHROPIC_API_KEY is not set.")
-            sys.exit(2)
+        llm = resolve_report_llm(config, args)
 
         system_prompt, user_template = load_prompt_blocks(
             args.prompt_spec,
@@ -621,8 +648,10 @@ def list_recommendations(data, args):
             report = run_llm_report(
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
-                model=args.llm_model,
+                model=llm["main_model"],
                 max_tokens=args.llm_max_tokens,
+                provider=llm["provider"],
+                timeout=llm["timeout"],
             )
             validation_issues = validate_llm_report(report, extracted)
             blocking_issues, note_issues = partition_validation_issues(validation_issues)
@@ -642,8 +671,10 @@ def list_recommendations(data, args):
                     report = run_llm_report(
                         system_prompt=system_prompt,
                         user_prompt=user_prompt,
-                        model=args.llm_model,
+                        model=llm["main_model"],
                         max_tokens=args.llm_max_tokens,
+                        provider=llm["provider"],
+                        timeout=llm["timeout"],
                         prior_response=report,
                         correction_message=correction_msg,
                     )
@@ -665,6 +696,7 @@ def list_recommendations(data, args):
                         print(f"- {issue}")
                     print(f"- Validation artifact written to {artifact_path}")
                     sys.exit(2)
+            report += model_footer(llm["provider"], llm["main_model"])
             progress("[done] LLM response received. Writing report to disk...")
         except Exception as e:
             print(f"Error: LLM report generation failed: {e}")
@@ -687,12 +719,9 @@ def list_recommendations(data, args):
     if args.advisory_briefing:
         if not args.use_llm:
             print("Warning: --advisory-briefing requires --use-llm. Skipping.")
-        elif not ANTHROPIC_AVAILABLE or not os.getenv("ANTHROPIC_API_KEY"):
-            print("Error: Advisory briefing requires anthropic package and API key.")
-            sys.exit(2)
         else:
             progress("[advisory] Running second-pass strategic briefing...")
-            advisory_model = args.advisory_model or args.llm_model
+            advisory_model = llm["advisory_model"]
             advisory_system_prompt, advisory_user_template = load_prompt_blocks(
                 args.advisory_prompt_dir,
                 progress_label="[advisory]",
@@ -730,6 +759,8 @@ def list_recommendations(data, args):
                     user_prompt=advisory_user,
                     model=advisory_model,
                     max_tokens=4000,
+                    provider=llm["provider"],
+                    timeout=llm["timeout"],
                 )
                 advisory_issues = validate_advisory_briefing(advisory_report, extracted)
                 if advisory_issues:
@@ -742,6 +773,8 @@ def list_recommendations(data, args):
                         user_prompt=advisory_user,
                         model=advisory_model,
                         max_tokens=4000,
+                        provider=llm["provider"],
+                        timeout=llm["timeout"],
                         prior_response=advisory_report,
                         correction_message=correction_msg,
                     )
@@ -769,13 +802,13 @@ def list_recommendations(data, args):
                 print(
                     "  The main Content Opportunity report was written successfully; "
                     "only the advisory second pass was skipped. If this is a "
-                    "404/not_found error, check the --advisory-model value."
+                    "404/not_found error, check report_llm.advisory_model in config.yml."
                 )
             # File write is OUTSIDE the try so a disk/permission error here is
             # reported as itself, not mislabeled as an LLM/advisory-model failure.
             if advisory_report is not None:
                 with open(args.advisory_out, "w", encoding="utf-8") as f:
-                    f.write(advisory_report + "\n")
+                    f.write(advisory_report + model_footer(llm["provider"], advisory_model) + "\n")
                 progress(f"[done] Advisory briefing written to {args.advisory_out}")
 
     print("\nContent Opportunity Report generated.\n")

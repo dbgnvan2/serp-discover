@@ -30,8 +30,8 @@ from run_control import (
     TIMED_OUT, ProcessCheckFailed, RunControl, close_action, install_exit_guards,
     launcher_settings, popen_kwargs, run_with_timeout, running_pipeline_processes,
 )
+import report_llm
 from report_models import (
-    DEFAULT_REPORT_MODELS,
     get_report_model_options,
     resolve_default,
 )
@@ -69,15 +69,6 @@ class SerpLauncherApp:
         "education": {"background": "#f1f8e9"},
         "unknown": {"background": "#f5f5f5"},
     }
-    # Static fallback for the report-model dropdowns. The effective list is
-    # sourced from the live Anthropic model list at startup (see __init__ and
-    # report_models.get_report_model_options) so retired snapshots such as
-    # claude-sonnet-4-20250514 can't reappear as 404 landmines; this list is
-    # used only when the shared global-api-config or network is unavailable.
-    REPORT_MODEL_OPTIONS = list(DEFAULT_REPORT_MODELS)
-    MAIN_REPORT_DEFAULT_MODEL = "claude-opus-4-6"
-    ADVISORY_DEFAULT_MODEL = "claude-opus-4-6"
-
     def __init__(self, root):
         self.root = root
         # Surface ANY exception raised inside a Tkinter callback. By default
@@ -239,7 +230,7 @@ class SerpLauncherApp:
                     "  - Keywords ordered by High → Moderate → Low feasibility\n"
                     "  - Strategic content angles per keyword\n"
                     "  - PAA questions and competitor analysis\n\n"
-                    "NOTE: Requires Anthropic API (ANTHROPIC_API_KEY).\n\n"
+                    "NOTE: Uses the LLM provider set under report_llm in config.yml.\n\n"
                     "OUTPUTS:\n"
                     "  - content_opportunities_<topic>_<ts>.md\n"
                     "  - advisory_briefing_<topic>_<ts>.md"
@@ -341,30 +332,24 @@ class SerpLauncherApp:
         )
         self.deep_research_mode_chk.pack(side="left", padx=5)
 
-        # Source the model dropdowns from the live Anthropic model list when
-        # reachable (falls back to REPORT_MODEL_OPTIONS on any error/offline),
-        # so retired snapshots never linger in the dropdown. NOTE: this makes a
-        # synchronous HTTP GET at startup (short timeout ceiling in
-        # report_models). on_error surfaces a real misconfiguration (bad keys
-        # file, auth failure) instead of it looking identical to being offline.
+        # The dropdowns hold the configured provider's live models (one
+        # synchronous GET at start-up with a short timeout). Offline, they hold
+        # the models named under report_llm in config.yml. Spec:
+        # docs/plan_google_report_model_2026-11-14.md#G7
+        llm_settings = report_llm.load_settings(self.config_path())
         self.report_model_options = get_report_model_options(
-            fallback=self.REPORT_MODEL_OPTIONS,
+            llm_settings,
             on_error=lambda exc: print(
-                f"[report-models] live model list unavailable, using static "
-                f"fallback: {type(exc).__name__}: {exc}",
+                f"[report-models] live model list unavailable, offering the "
+                f"models in config.yml: {type(exc).__name__}: {exc}",
                 file=sys.stderr,
             ),
         )
-        # Derive the default *selection* from the live list too — if the
-        # preferred default was retired it is no longer in report_model_options,
-        # so defaulting to it would 404 the run even though the dropdown is
-        # clean. resolve_default keeps the preferred model when it is offered,
-        # else falls back to the first (guaranteed-live) option.
         self.main_report_default = resolve_default(
-            self.MAIN_REPORT_DEFAULT_MODEL, self.report_model_options
+            llm_settings.main_model, self.report_model_options
         )
         self.advisory_default = resolve_default(
-            self.ADVISORY_DEFAULT_MODEL, self.report_model_options
+            llm_settings.advisory_model or llm_settings.main_model, self.report_model_options
         )
 
         model_frame = ttk.Frame(root)

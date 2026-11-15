@@ -233,11 +233,11 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 ---
 
 ### **Step 3: List Content Opportunities** (Optional)
-**What:** Calls Anthropic LLM to generate content brief and advisory.
+**What:** Calls an LLM to generate the content brief and advisory. Which provider and model is set under `report_llm` in `config.yml` (see "Choosing the report model" below).
 
 **Requires:** Completed Step 1 (market_analysis JSON).
 
-**Input:** JSON from Step 1 + LLM model selection (default: Claude Opus 4.6 for main, Sonnet 4 for advisory)
+**Input:** JSON from Step 1 + LLM model selection (defaults: `report_llm.main_model` and `report_llm.advisory_model` in `config.yml`)
 
 **Process:**
 - For each keyword, LLM reads:
@@ -254,7 +254,26 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 - `content_opportunities_<topic>_<timestamp>.md` — per-keyword analysis with specific content recommendations
 - `advisory_briefing_<topic>_<timestamp>.md` — executive summary (strategic framing, top 10 priorities, risks)
 
-**Cost:** LLM calls (~$0.08–$0.40 per run depending on keyword count and model). Anthropic API only.
+**Cost:** LLM calls. The ~$0.08–$0.40 per run figure was measured with Claude models; no figure has been measured for other providers. Prompt caching is used on the Anthropic path only.
+
+#### Choosing the report model
+
+**What it does.** The main report and the advisory briefing are written by one LLM provider. The provider is an entry in the shared key file `~/.config/llm/keys.json` (the same file your other tools read), named in `config.yml`:
+
+```yaml
+report_llm:
+  provider: gemini-serp        # entry name in ~/.config/llm/keys.json
+  main_model: gemini-4-hydrogen
+  advisory_model: gemini-4-hydrogen
+```
+
+Any provider with the `anthropic` or `openai` dialect works. Google models are reached through Google's OpenAI-compatible endpoint, so a Google entry has `"dialect": "openai"`. The API key lives in the key file only, never in `config.yml`.
+
+**Why it matters.** The models must belong to the provider. To go back to Claude, change `provider` to an Anthropic entry and both models to Claude model IDs; nothing else changes. The launcher's two dropdowns list that provider's live models (filtered by `model_include` / `model_exclude` so image, speech and embedding models are left out), with the two configured models first.
+
+**What a failure looks like.** There is no fallback to another provider or model. If the provider is missing from the key file, has no key, rejects the model, or times out, the step stops and names the provider and model. If the answer is empty, refused, or cut off at the token limit, nothing is written: a short report is never saved as if it were complete. Each LLM-written file ends with a line naming the model and provider that wrote it.
+
+`brand_mentions.llm_model` and `sentiment.llm_model` (both features are off by default) are sent to this same provider, so they must also be that provider's model IDs.
 
 **Timing:** 2–5 minutes.
 
@@ -1749,7 +1768,8 @@ All caches are optional and safe to clear; next run regenerates them.
 | `config_manager.py` | GUI for editing all config files (validation, backup, restore) |
 | `config_validators.py` | Schema validation for all config files |
 | `dataforseo_client.py` | API client for Domain Authority fetching |
-| `brief_llm.py` | Calls Anthropic API for content briefing |
+| `brief_llm.py` | Calls the configured LLM provider for the content brief |
+| `report_llm.py` | Reads `report_llm` from `config.yml` and resolves the provider from the shared key file |
 | `brief_prompts.py` | LLM prompts (structured, deterministic) |
 
 ### Backwards Compatibility

@@ -24,7 +24,7 @@ For each keyword set you run, the tool writes:
 
 ## One-time setup
 
-**Prerequisites:** Python 3.12+, a SerpAPI account, and an Anthropic API account.
+**Prerequisites:** Python 3.12+, a SerpAPI account, and an LLM API account (Anthropic, Google or any OpenAI-dialect provider) for the content brief.
 
 ```bash
 cd /path/to/serp-discover
@@ -43,7 +43,7 @@ DATAFORSEO_PASSWORD=your_dataforseo_password
 ```
 
 - **SerpAPI** — required for all SERP fetches
-- **Anthropic** — required only for the content brief and advisory steps
+- **Anthropic** — `ANTHROPIC_API_KEY` is used for the content brief only when no `report_llm.provider` is set and the shared key file is absent; otherwise the brief uses the provider in `~/.config/llm/keys.json` named under `report_llm` in `config.yml`
 - **DataForSEO** — required for Domain Authority feasibility scoring (pay-per-use, ~$0.002/domain, cached 30 days)
 
 ---
@@ -65,7 +65,7 @@ The launcher walks through each step in order. After a pipeline run it automatic
 |------|-------------|
 | **1. Run Full Pipeline** | Fetches SERPs, classifies every URL, scores feasibility, writes JSON/XLSX/MD. This is the expensive step (SerpAPI calls). |
 | **2. Fetch SERPs Only** | Fetches without running validation — useful for debugging. |
-| **3. List Content Opportunities** | Calls Anthropic LLM to generate the content brief and advisory. Reads the JSON from Step 1. |
+| **3. List Content Opportunities** | Calls the configured LLM to generate the content brief and advisory. Reads the JSON from Step 1. |
 | **4. Refresh Analysis Outputs** | Re-classifies URLs and rewrites reports without re-fetching SERPs. Use after approving domain overrides. |
 | **5. Export History** | Dumps the SQLite rank history to CSV files. |
 | **6. Review Domain Overrides** | Opens a checklist of domains whose entity type (counselling, directory, legal, etc.) may need manual correction. Approve to update `domain_overrides.yml`. |
@@ -213,20 +213,26 @@ The content brief uses two model calls:
 
 | Pass | Default model | Purpose |
 |------|-------------|---------|
-| Main report | `claude-opus-4-6` | Full per-keyword analysis and recommendations |
-| Advisory briefing | `claude-opus-4-6` | Executive framing |
+| Main report | `report_llm.main_model` in `config.yml` | Full per-keyword analysis and recommendations |
+| Advisory briefing | `report_llm.advisory_model` in `config.yml` | Executive framing |
 
 You can override both in the GUI launcher or with `--llm-model` / `--advisory-model` CLI flags.
 
-The GUI model dropdowns are populated from the **live Anthropic model list** at
-startup (via the shared `../global-api-config` `llm_providers` module, if
-present), so retired model snapshots don't linger as selectable 404s. If that
-shared config or the network is unavailable, the dropdowns fall back to a static
-verified list (`report_models.DEFAULT_REPORT_MODELS`). If the preferred default
-above is ever retired, the GUI defaults to the first currently-available model
-instead.
+Both calls go to one provider: the entry named by `report_llm.provider` in
+`config.yml`, looked up in the shared key file `~/.config/llm/keys.json` (via
+the `../global-api-config` `llm_providers` module). Anthropic and
+OpenAI-dialect providers work; Google models use Google's OpenAI-compatible
+endpoint. No model ID is hardcoded in Python. If the provider fails, the step
+fails; there is no fallback to another provider.
 
-**Approximate LLM cost per run:** $0.08–$0.40 depending on model and keyword count.
+The GUI model dropdowns list that provider's **live model list** at startup,
+filtered by `report_llm.model_include` / `model_exclude`. If the shared config
+or the network is unavailable, they hold the two models named in `config.yml`.
+A configured model that is no longer live is not offered, and the GUI defaults
+to the first available model instead.
+
+**Approximate LLM cost per run:** $0.08–$0.40 with Claude models, depending on
+model and keyword count. Not measured for other providers.
 
 ---
 

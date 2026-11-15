@@ -17,7 +17,7 @@ market_analysis_*.json
     │       ├─► feasibility.py            gap scoring + pivot suggestions
     │       └─► feasibility_*.md          standalone feasibility report
     │
-    └─► generate_content_brief.py (LLM via Anthropic)
+    └─► generate_content_brief.py (LLM via the provider in config.yml report_llm)
             ├─► content_opportunities_*.md
             └─► advisory_briefing_*.md
 ```
@@ -34,7 +34,8 @@ market_analysis_*.json
 | `brief_data_extraction.py` | Extracts structured data from `market_analysis_*.json`; `extract_analysis_data_from_json()` is the primary entry point (split from `generate_content_brief.py` I.5) |
 | `brief_validation.py` | Validates LLM output against pre-computed verdicts; `validate_llm_report()` enforces HARD/SOFT-fail rules (split from `generate_content_brief.py` I.5) |
 | `brief_prompts.py` | Loads and constructs prompt payloads; `load_prompt_blocks()`, `build_main_report_payload()`, etc. (split from `generate_content_brief.py` I.5) |
-| `brief_llm.py` | Anthropic API call wrapper; `run_llm_report()` handles multi-turn correction flow (split from `generate_content_brief.py` I.5) |
+| `report_llm.py` | Reads `report_llm` from `config.yml` and resolves the provider (Anthropic or OpenAI dialect) from the shared key file; no model ID in Python |
+| `brief_llm.py` | LLM call for either dialect; `run_llm_report()` handles multi-turn correction flow and fails on an empty, refused or truncated answer (split from `generate_content_brief.py` I.5) |
 | `brief_rendering.py` | Renders content briefs and opportunity reports; `generate_brief()`, `list_recommendations()`, `generate_local_report()` (split from `generate_content_brief.py` I.5) |
 | `run_feasibility.py` | Standalone DA feasibility analysis and pivot report |
 | `probe_ai_visibility.py` | Standalone AI-engine mention probing (Claude + Gemini, gate D-2) — per-engine mention/citation trend in SQLite, cost-guarded; never imported by the pipeline (seo_geo_deferred G.1) |

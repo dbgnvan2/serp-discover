@@ -1,143 +1,77 @@
-"""Tests for report_models — live-sourced report-model dropdown with fallback.
+"""Tests for report_models — the launcher's report-model dropdown options.
 
-Purpose: Verify the dropdown options come from the live model list when
-         available, fall back to the static list on any failure, and never
-         surface retired/non-Claude IDs.
-Spec:    follow-up to the advisory-model 404 fix (2026-08-06)
-Tests:   tests/test_report_models.py
-
-No tkinter and no network: the live loader is injected.
+Spec: docs/plan_google_report_model_2026-11-14.md (G7)
+No network: the loader is injected.
 """
 
-import sys
-import types
+from types import SimpleNamespace
 
+import report_llm
 import report_models
-from report_models import (
-    DEFAULT_REPORT_MODELS,
-    get_report_model_options,
-    resolve_default,
-)
+from report_llm import Settings
+from report_models import get_report_model_options, resolve_default
+
+SETTINGS = Settings(
+    provider="gemini-serp", main_model="gemini-4-hydrogen", advisory_model="gemini-3.8-flash",
+    model_include=("gemini-", "claude-"), model_exclude=("tts", "embedding", "image"))
+GOOGLE_LIVE = ["models/gemini-4-hydrogen", "models/gemini-4-argon", "models/gemini-3.8-flash",
+               "models/gemini-3.8-flash-tts", "models/gemini-embedding-2",
+               "models/gemini-3-pro-image", "models/lyria-3.5", "models/gemma-4-31b-it"]
 
 
-def test_fallback_when_loader_raises():
-    """Any loader error returns the static fallback."""
-    def boom():
-        raise RuntimeError("no shared config")
-
-    assert get_report_model_options(loader=boom) == DEFAULT_REPORT_MODELS
-
-
-def test_fallback_when_live_list_empty():
-    """An empty live list returns the static fallback, not an empty dropdown."""
-    assert get_report_model_options(loader=lambda: []) == DEFAULT_REPORT_MODELS
-
-
-def test_fallback_when_no_claude_models():
-    """A live list with no Claude models returns the fallback."""
-    assert get_report_model_options(loader=lambda: ["gpt-4o", "gemini-2.5-pro"]) == (
-        DEFAULT_REPORT_MODELS
-    )
+def test_g7_google_models_are_listed_and_filtered():
+    options = get_report_model_options(SETTINGS, loader=lambda: GOOGLE_LIVE)
+    # configured models first, then the rest sorted; prefix removed; filters applied
+    assert options == ["gemini-4-hydrogen", "gemini-3.8-flash", "gemini-4-argon"]
+    # the same settings work for an Anthropic provider
+    claude = ["claude-sonnet-5", "claude-opus-5"]
+    assert get_report_model_options(SETTINGS, loader=lambda: claude) == [
+        "claude-opus-5", "claude-sonnet-5"]
+    # an empty include list offers every live model that is not excluded
+    everything = Settings(main_model="x", model_exclude=("tts",))
+    assert get_report_model_options(everything, loader=lambda: ["b", "a-tts", "a"]) == ["a", "b"]
 
 
-def test_retired_id_never_appears():
-    """A retired id present in the fallback but absent from the live list is dropped."""
-    live = ["claude-opus-4-6", "claude-sonnet-4-6"]
-    options = get_report_model_options(loader=lambda: live)
-    assert "claude-sonnet-4-20250514" not in options
-    assert set(options) == set(live)
+def test_g7_defaults_come_from_config():
+    options = get_report_model_options(SETTINGS, loader=lambda: GOOGLE_LIVE)
+    assert resolve_default(SETTINGS.main_model, options) == "gemini-4-hydrogen"
+    assert resolve_default(SETTINGS.advisory_model, options) == "gemini-3.8-flash"
+    # a configured model that is no longer live is not offered and not the default
+    retired = Settings(main_model="gemini-1-gone", model_include=("gemini-",))
+    options = get_report_model_options(retired, loader=lambda: GOOGLE_LIVE)
+    assert "gemini-1-gone" not in options
+    assert resolve_default(retired.main_model, options) == options[0]
+    assert resolve_default("anything", []) == "anything"
 
 
-def test_preferred_ordering_then_sorted_rest():
-    """Preferred (DEFAULT order) models come first; other live Claude models sorted after."""
-    live = [
-        "claude-sonnet-4-6",          # preferred (index 4)
-        "claude-opus-4-6",            # preferred (index 2)
-        "claude-sonnet-4-5-20250929",  # not preferred
-        "claude-opus-5",              # not preferred
-        "gpt-4o",                     # non-Claude, filtered out
-    ]
-    options = get_report_model_options(loader=lambda: live)
-    assert options == [
-        "claude-opus-4-6",
-        "claude-sonnet-4-6",
-        "claude-opus-5",
-        "claude-sonnet-4-5-20250929",
-    ]
-
-
-def test_default_model_present_in_live_result():
-    """The GUI default (claude-opus-4-6) survives when the live list contains it."""
-    live = ["claude-opus-4-8", "claude-opus-4-6", "claude-sonnet-5"]
-    options = get_report_model_options(loader=lambda: live)
-    assert "claude-opus-4-6" in options
-
-
-def test_custom_fallback_respected():
-    """An explicit fallback is used when the loader fails."""
-    fb = ["claude-opus-4-6"]
-    assert get_report_model_options(fallback=fb, loader=lambda: (_ for _ in ()).throw(OSError)) == fb
-
-
-def test_on_error_called_with_exception_on_fallback():
-    """A live-fetch failure invokes on_error so the caller can surface it (P2)."""
+def test_g7_offline_fallback_is_the_configured_models():
     seen = []
 
     def boom():
-        raise RuntimeError("bad keys file")
+        raise RuntimeError("offline")
 
-    opts = get_report_model_options(loader=boom, on_error=seen.append)
-    assert opts == DEFAULT_REPORT_MODELS
-    assert len(seen) == 1 and isinstance(seen[0], RuntimeError)
-    assert str(seen[0]) == "bad keys file"
-
-
-def test_on_error_not_called_on_success():
-    """on_error stays silent when the live fetch succeeds."""
-    seen = []
-    get_report_model_options(loader=lambda: ["claude-opus-4-6"], on_error=seen.append)
+    options = get_report_model_options(SETTINGS, loader=boom, on_error=seen.append)
+    assert options == ["gemini-4-hydrogen", "gemini-3.8-flash"]
+    assert isinstance(seen[0], RuntimeError)
+    # nothing passes the filter: same fallback, and on_error is not called
+    seen.clear()
+    assert get_report_model_options(
+        SETTINGS, loader=lambda: ["models/lyria-3.5"], on_error=seen.append
+    ) == ["gemini-4-hydrogen", "gemini-3.8-flash"]
     assert seen == []
 
 
-def test_resolve_default_keeps_preferred_when_offered():
-    assert resolve_default("claude-opus-4-6", ["claude-opus-4-8", "claude-opus-4-6"]) == (
-        "claude-opus-4-6"
-    )
+def test_g7_default_loader_lists_the_resolved_provider(monkeypatch):
+    asked = {}
+    provider = SimpleNamespace(name="gemini-serp", dialect="openai", api_key="k",
+                               base_url="https://g.test")
 
+    def list_models(given, timeout):
+        asked.update(name=given.name, timeout=timeout)
+        return ["models/gemini-4-hydrogen"]
 
-def test_resolve_default_falls_back_when_preferred_retired():
-    """When the preferred default was retired (absent), fall back to the first live option."""
-    assert resolve_default("claude-opus-4-6", ["claude-opus-4-8", "claude-sonnet-5"]) == (
-        "claude-opus-4-8"
-    )
-
-
-def test_resolve_default_returns_preferred_when_options_empty():
-    assert resolve_default("claude-opus-4-6", []) == "claude-opus-4-6"
-
-
-def test_default_loader_wiring(monkeypatch):
-    """_default_loader resolves the provider, falls through app->no-arg, and passes timeout."""
-    calls = {"apps": []}
-
-    def resolve_provider(app=None):
-        calls["apps"].append(app)
-        if app is not None:
-            raise RuntimeError("no app mapping")  # force the no-arg fallback
-        return "PROVIDER"
-
-    def list_models(provider, timeout=None):
-        calls["provider"] = provider
-        calls["timeout"] = timeout
-        return ["claude-opus-4-6"]
-
-    fake = types.ModuleType("llm_providers")
-    fake.resolve_provider = resolve_provider
-    fake.list_models = list_models
-    monkeypatch.setitem(sys.modules, "llm_providers", fake)
-
-    result = report_models._default_loader(timeout=7)
-    assert result == ["claude-opus-4-6"]
-    assert calls["apps"] == ["serp-discover", None]  # app-keyed first, then no-arg fallback
-    assert calls["provider"] == "PROVIDER"
-    assert calls["timeout"] == 7
+    registry = SimpleNamespace(
+        resolve_provider=lambda app=None, local_choice=None: provider, list_models=list_models)
+    monkeypatch.setattr(report_llm, "load_registry", lambda: registry)
+    assert report_models._default_loader(SETTINGS, timeout=7) == ["models/gemini-4-hydrogen"]
+    assert asked == {"name": "gemini-serp", "timeout": 7}

@@ -113,7 +113,7 @@ def launcher(tmp_path, monkeypatch):
     serp_me = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(serp_me)
     monkeypatch.setattr(serp_me, "get_report_model_options",
-                        lambda fallback=None, **k: list(fallback or []))
+                        lambda settings, **k: [])
     monkeypatch.setattr(serp_me, "running_pipeline_processes", lambda *a, **k: [])
 
     (tmp_path / "config.yml").write_text("# keep\nfiles:\n  input_csv: old.csv\n"

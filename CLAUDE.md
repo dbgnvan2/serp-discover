@@ -17,7 +17,7 @@ Read the relevant file from `~/.claude/standards/` before starting work:
 
 Market intelligence tool for Living Systems Counselling (livingsystems.ca),
 a Bowen Family Systems Theory nonprofit in North Vancouver, BC. Scrapes
-Google SERPs via SerpAPI, generates content briefs via Anthropic API, scores
+Google SERPs via SerpAPI, generates content briefs via a configurable LLM provider, scores
 keyword feasibility via Domain Authority gap analysis.
 
 ## Always do this
@@ -25,7 +25,7 @@ keyword feasibility via Domain Authority gap analysis.
 - **Activate venv first**: `source venv/bin/activate` before any Python
   command. Tests and scripts will fail in confusing ways without it.
 - **Run tests with**: `python3 -m pytest test_*.py tests/ -q`
-  (currently 1513 passing, 66 skipped). Judge the result by the **exit code**,
+  (currently 1518 passing, 66 skipped). Judge the result by the **exit code**,
   not by grepping the summary line — `2 failed, 1227 passed` contains the word
   "passed" (P24). Note: the skipped tests need gitignored fixture files
   in `output/` that only exist after a real run. tkinter works in the venv, so
@@ -57,7 +57,10 @@ keyword feasibility via Domain Authority gap analysis.
 ## Required env vars (in `.env`)
 
 - `SERPAPI_KEY` — required for SERP fetching.
-- `ANTHROPIC_API_KEY` — required for content brief generation.
+- `ANTHROPIC_API_KEY` — used by the Claude engine in `probe_ai_visibility.py`, and by
+  content brief generation only when `report_llm.provider` is empty and the shared key
+  file is absent. The brief's provider and models are set under `report_llm` in
+  `config.yml`; its key is read from `~/.config/llm/keys.json` (never from `.env`).
 - `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` — primary DA provider
   (pay-per-use).
 - `MOZ_TOKEN` — fallback DA provider, and the credential for the full Moz

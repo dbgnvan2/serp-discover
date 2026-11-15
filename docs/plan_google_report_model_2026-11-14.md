@@ -1,6 +1,6 @@
 # Plan: let the report and brief writer use a Google model (Gemini 4 Hydrogen) by default
 
-**Status:** proposed 2026-11-14. Not approved. No code written.
+**Status:** approved 2026-11-14 with the three recommended decisions. Chunks P and D built 2026-11-14 in one commit (the G1 source check covers files from both).
 **Tier (effort-budget):** Full — the paid LLM call path. Tests for the change, one cold
 `learning-qa` pass over the diff before pushing.
 **Branch:** current (`fix/gui-model-robustness`), two commits, pushed one at a time.
@@ -30,8 +30,10 @@
   change, but that entry does not work today.
 - No provider is mapped to `serp-discover` under `apps`, so it resolves to the registry default
   (`anthropic`).
-- Not checked: whether the chat endpoint wants `gemini-4-hydrogen` or `models/gemini-4-hydrogen`,
-  and how Hydrogen counts reasoning tokens against `max_tokens`. Both are settled by G8.
+- Checked during the build with a one-word request: the chat endpoint accepts both
+  `gemini-4-hydrogen` and `models/gemini-4-hydrogen`, and accepts `max_tokens`. The reply's
+  usage showed 43 tokens beyond prompt and answer, so Hydrogen does use hidden reasoning tokens.
+  Whether they count against `max_tokens` is settled by G8.
 
 ## Approach
 
@@ -90,6 +92,25 @@ live model list was read the same day (64 models, `models/gemini-4-hydrogen` amo
 - **Token limit.** If Hydrogen spends output tokens on reasoning, today's `max_tokens` may cut
   the report short. G4 turns that into a visible failure; the limit may then need raising in
   config.
+
+## Changes made after the review pass
+
+- The finish reason is now an allow-list. Only `end_turn` / `stop_sequence` (Anthropic) and
+  `stop` (OpenAI dialect) count as a finished answer; any other reason, a missing one, or an
+  answer that is not text, fails the call. Before the fix an unknown reason with some text was
+  written as a complete report.
+- `brand_mentions.llm_model` and `sentiment.llm_model` in `config.yml` were Claude model IDs.
+  Those two features call the same function, so with a Google provider every call would have
+  returned 404, which the callers record as "neutral" or "no brands". Both are now
+  `gemini-4-hydrogen`. Both features stay off by default.
+
+Below medium, not fixed: with `provider` empty, a broken key file falls back to
+`ANTHROPIC_API_KEY` without printing why; a live list where nothing passes the filter falls
+back to the configured models without a message; a configured model that is not live is
+replaced by the first offered model without a message; the footer names the model requested,
+not the one the response reports; a read timeout is retried once in full (up to 20 minutes and
+possibly two billed generations); `answer_sentiment.py` and `brand_mentions.py` read
+`config.yml` from the working directory and record a failed call as a result.
 
 ## Order
 
