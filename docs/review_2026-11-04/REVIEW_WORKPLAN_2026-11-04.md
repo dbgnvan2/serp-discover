@@ -287,14 +287,30 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
    coding agent should treat D-M-05 as authorised rather than as an open
    decision.
 
-   The second half of this decision — which provider is "the" scale for
-   feasibility going forward — is **still open**, and the interim answer is to
-   make the mismatch visible rather than pick now: tag every feasibility row with
-   `da_provider`, never compare across providers inside one trend, and state in
-   `docs/feasibility.md` that a DataForSEO Domain Rank and a Moz Domain Authority
-   are different models and are not interchangeable. The code's own example has
-   livingsystems.ca at 19 on DataForSEO against the 35 in config, so until one
-   provider is named canonical a cross-provider trend line is not a measurement.
+   **DECIDED 2026-11-14 by the owner on the second half too: leave the rows
+   tagged; do not name a canonical provider.** No provider is "the" scale for
+   feasibility. Instead:
+
+   - Tag every feasibility row, cache entry and report figure with the
+     `da_provider` that produced it, alongside the fetch date already required
+     above. A DA figure without its provider is not a usable figure.
+   - Never compare or average across providers inside one trend, one chart or one
+     "has the gap closed?" claim. Where a trend's rows do not share a provider,
+     the honest output is to say so and show the segments separately, not to
+     splice them (P2: surface, never silently drop).
+   - State in `docs/feasibility.md` that a DataForSEO Domain Rank and a Moz
+     Domain Authority are different models on different scales and are not
+     interchangeable. The code's own example has livingsystems.ca at 19 on
+     DataForSEO against the 35 in `config.yml`.
+
+   Rationale, recorded so this is not revisited blind: naming DataForSEO would be
+   the obvious default since it is the primary provider, but it rescales every
+   historical feasibility figure in the repo, and this review has not established
+   which existing rows came from which provider. Tagging costs nothing and makes
+   the mismatch visible. Naming one provider stays available later, once D2 has
+   landed and the tagged rows show how much history each provider actually
+   accounts for; that is a calibration decision (see decision 7), not a
+   correctness one.
 7. **Thresholds without provenance (D-M-21, C-M-18).** Accept "editorial, uncalibrated, <date>" labels in config and reports, or schedule a calibration (e.g. feasibility gap vs whether the client actually ranked over successive runs).
 8. **Barbell / EEAT / cluster at N≤3 (C-M-10/12/13).** Raise `max_audit_pages_per_domain` (cost) or demote these sections to boolean evidence tables.
 
