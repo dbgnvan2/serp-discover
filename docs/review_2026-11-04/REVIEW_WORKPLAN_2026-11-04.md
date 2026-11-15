@@ -348,6 +348,47 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
    accounts for; that is a calibration decision (see decision 7), not a
    correctness one.
 7. **Thresholds without provenance (D-M-21, C-M-18).** Accept "editorial, uncalibrated, <date>" labels in config and reports, or schedule a calibration (e.g. feasibility gap vs whether the client actually ranked over successive runs).
+
+   **DECIDED 2026-11-15 by the owner: accept the editorial labels.** No
+   calibration is scheduled. An honest label on an uncalibrated number is
+   sufficient, and is preferred over leaving the number undocumented or over
+   blocking a chunk on a calibration exercise.
+
+   What this requires, in both repos:
+
+   - Every threshold and weight that drives a stated verdict carries a
+     provenance note beside it in config — the basis (`editorial`, `derived`,
+     or `vendor`), whether it is calibrated, and the date it was last set. The
+     mechanism is already specified in the chunk bullets: a `_source` note per
+     threshold in `shared_config.json` (C4) and a `source:` note beside every
+     threshold and weight in `config.yml` (D6), plus a "Provenance" column in
+     `docs/FEATURE_GUIDE.md` §9.
+   - The report says so once per section that depends on an uncalibrated
+     threshold, not once per number — a label on every figure is noise and
+     stops being read.
+   - A threshold added later without a provenance note is a defect, not a style
+     lapse. **Suggested, not decided:** a guard test that walks the config for
+     threshold keys and fails when one has no provenance sibling is the only
+     thing that will keep this from rotting; both repos already use standing
+     guard tests this way. Treat it as preferred unless it proves awkward.
+
+   **What this decision does not license.** "Editorial and uncalibrated" is a
+   statement about where a number came from. It is not permission to report a
+   confidence or precision the data cannot support, so the findings about
+   unjustified confidence language stand on their own: C-M-12 (EEAT composites
+   of near-constant booleans rendered to 2 dp with "high" confidence always),
+   D-M-10 (a "confidence" figure that is really classification coverage) and
+   C-M-14 ("Why Competitors Get Cited" asserting causation) are still to be
+   fixed, and labelling the threshold does not close them.
+
+   **Interaction with decision 3.** The `vacuum_min_medical` re-set that
+   decision 3 forces still has to happen — without it the Traffic Magnet and
+   Systemic Vacuum detectors go silent once the Tier-1 vocabulary shrinks. Under
+   this decision the new value lands labelled `editorial`, `uncalibrated` and
+   dated, with the before/after row counts recorded as its basis in the
+   provenance note. Those counts are evidence that the number admits roughly
+   what it used to; they are not a calibration, and C4 must not describe them as
+   one.
 8. **Barbell / EEAT / cluster at N≤3 (C-M-10/12/13).** Raise `max_audit_pages_per_domain` (cost) or demote these sections to boolean evidence tables.
 
 ---
