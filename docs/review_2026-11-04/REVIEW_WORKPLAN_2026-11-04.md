@@ -274,6 +274,42 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
    when it is above 0, and otherwise say no medical vocabulary was detected
    instead of asserting a Medical Model page.
 3. **Tier-1 vocabulary (C-M-08).** Is "therapy" medical-model vocabulary for this client's purposes? The current answer makes the client's own copy and every "couples therapy" query Tier-1.
+
+   **DECIDED 2026-11-15 by the owner: no — "therapy" is neutral, not Tier-1.**
+   Tier-1 is diagnostic and pathology vocabulary only. Remove these five from
+   `tier_1_medical` in `serp-compete/clinical_dictionary.json`: `therapy`,
+   `patient`, `patients`, `condition`, `trauma`. (`counselling`, which the C4
+   bullet also names, is not in the list today — nothing to remove.) That leaves
+   15 of the current 20: `symptom`, `symptoms`, `treatment`, `disorder`,
+   `disorders`, `diagnosis`, `clinical`, `medical`, `disease`, `medication`,
+   `prognosis`, `pathology`, `syndrome`, `healthcare`, `illness`.
+
+   Record the removed words in the dictionary itself — a `neutral_clinical` list
+   with a comment saying they were deliberately excluded on this date and why —
+   so the editorial decision is visible in the file and the words do not drift
+   back in. Also add the word-boundary matching the C4 bullet requires: without
+   it `condition` matches "conditioning" and `trauma` matches "traumatic", so the
+   removal is only half-effective.
+
+   **This decision interacts with decision 2 and must not be shipped without
+   re-examining it.** `medical_score` is a raw count of Tier-1 hits
+   (`semantic.py:445`), and decision 2's floor gates on `medical_score >= 10`
+   (`database.py:52`, `technical.vacuum_min_medical`). Dropping a quarter of the
+   Tier-1 vocabulary — including `therapy`, the most common word in this market —
+   lowers every page's `medical_score`, so a floor anchored to the *old*
+   vocabulary will silently stop Traffic Magnets and Systemic Vacuums firing at
+   all. `reframe_engine.py:87` gates on `medical_score <= 0` and is affected the
+   same way. Chunk C4 must re-run the detectors on real stored audits before and
+   after the dictionary change, report how many rows each threshold admits either
+   side, and re-set `vacuum_min_medical` to a value that means the same thing
+   under the new vocabulary. State the new value as editorial and uncalibrated
+   with its date, as decision 2 requires.
+
+   Three words left in Tier-1 are arguable on the "diagnostic and pathology
+   only" test and were **not** part of this decision: `treatment`, `clinical` and
+   `healthcare` are medical-model framing rather than diagnoses. They stay for
+   now; raise them as a separate question if the C4 before/after numbers show
+   them driving the score.
 4. **Domain canonical form.** Tool 1 strips `www.` at write time (simplest), or Tool 2 normalises at ingest.
 5. **`visibility_cliff` and the velocity alerts.** Keep with a real data source and floor, or remove until one exists.
 6. **Client DA source (D-M-05).** Live provider lookup (recommended) vs the fixed 35 — and which provider is "the" scale for feasibility going forward.
