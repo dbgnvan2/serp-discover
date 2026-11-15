@@ -64,6 +64,9 @@ UI contract (ui-regression): no control added, removed, renamed or moved. The no
 
 ## Decisions needed
 
+Decision 1 is made (2026-11-14): the registry entry `gemini-serp` holds the new key. Its
+live model list was read the same day (64 models, `models/gemini-4-hydrogen` among them).
+
 1. **Which key.** Recommended: you add a new entry to `~/.config/llm/keys.json` (for example
    `gemini-serp`, same base URL as `gemini-rag`) holding the new key, and I set
    `report_llm.provider: gemini-serp`. This tool's usage then bills to its own key. The
