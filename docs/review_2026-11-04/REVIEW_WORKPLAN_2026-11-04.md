@@ -277,6 +277,24 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 4. **Domain canonical form.** Tool 1 strips `www.` at write time (simplest), or Tool 2 normalises at ingest.
 5. **`visibility_cliff` and the velocity alerts.** Keep with a real data source and floor, or remove until one exists.
 6. **Client DA source (D-M-05).** Live provider lookup (recommended) vs the fixed 35 — and which provider is "the" scale for feasibility going forward.
+
+   **DECIDED 2026-11-14 by the owner: the live provider lookup.** Look the client
+   domain up through the active provider in the same batch and use that as
+   `client_da`, logging the provider and the fetch date. `config.yml`'s
+   `client_da: 35` stays only as an explicit override, and
+   `run_feasibility.py:334` must stop excluding the client domain from the
+   provider lookup. This is what D2's bullet list already implements, so the
+   coding agent should treat D-M-05 as authorised rather than as an open
+   decision.
+
+   The second half of this decision — which provider is "the" scale for
+   feasibility going forward — is **still open**, and the interim answer is to
+   make the mismatch visible rather than pick now: tag every feasibility row with
+   `da_provider`, never compare across providers inside one trend, and state in
+   `docs/feasibility.md` that a DataForSEO Domain Rank and a Moz Domain Authority
+   are different models and are not interchangeable. The code's own example has
+   livingsystems.ca at 19 on DataForSEO against the 35 in config, so until one
+   provider is named canonical a cross-provider trend line is not a measurement.
 7. **Thresholds without provenance (D-M-21, C-M-18).** Accept "editorial, uncalibrated, <date>" labels in config and reports, or schedule a calibration (e.g. feasibility gap vs whether the client actually ranked over successive runs).
 8. **Barbell / EEAT / cluster at N≤3 (C-M-10/12/13).** Raise `max_audit_pages_per_domain` (cost) or demote these sections to boolean evidence tables.
 
