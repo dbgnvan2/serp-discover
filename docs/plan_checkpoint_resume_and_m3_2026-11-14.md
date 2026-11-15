@@ -138,8 +138,8 @@ tests had missed, both fixed:
   when a run is loaded.
 - The run then failed writing the competitor handoff: `moz.client.fetched_at` (emitted since
   commit 14f2718) was not allowed by `handoff_schema.json`. Before the exit-code fix this was
-  only logged. The property is now in the schema. serp-compete's own copy of the schema still
-  rejects it and has not been changed.
+  only logged. The property is now in the schema. serp-compete's own copy of the schema was
+  given the same property the same day, and a test here checks that copy when it is present.
 
 The second resume reused all 35 stored responses, made 0 new calls, and the pipeline finished.
 

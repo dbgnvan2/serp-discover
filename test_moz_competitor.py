@@ -489,6 +489,11 @@ class TestHandoffContract(unittest.TestCase):
             "domain": "livingsystems.ca", "anchor_texts": {"items": []},
             "fetched_at": "2026-11-14T15:53:04+00:00"}}
         jsonschema.validate(instance=self._build(block), schema=schema)
+        # Tool 2 exits on a handoff its own copy rejects, so check that copy too.
+        tool2 = "/Users/davemini2/ProjectsLocal/serp-compete/handoff_schema.json"
+        if os.path.exists(tool2):
+            with open(tool2, encoding="utf-8") as f:
+                jsonschema.validate(instance=self._build(block), schema=json.load(f))
 
 
 class TestAuditWiring(unittest.TestCase):
