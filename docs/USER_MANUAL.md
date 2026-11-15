@@ -271,6 +271,8 @@ Any provider with the `anthropic` or `openai` dialect works. Google models are r
 
 **Why it matters.** The models must belong to the provider. To go back to Claude, change `provider` to an Anthropic entry and both models to Claude model IDs; nothing else changes. The launcher's two dropdowns list that provider's live models (filtered by `model_include` / `model_exclude` so image, speech and embedding models are left out), with the two configured models first.
 
+**Token limits.** `report_llm.main_max_tokens` and `advisory_max_tokens` cap the length of each answer. Some models, Hydrogen among them, reason before they answer, and that reasoning counts against the cap: on a 9-keyword run Hydrogen used about 19,000 tokens to produce a 10,000-token report. If you see "the answer was cut off at the N-token limit", raise the number. The run prints the token usage of every call so you can see how close it came.
+
 **What a failure looks like.** There is no fallback to another provider or model. If the provider is missing from the key file, has no key, rejects the model, or times out, the step stops and names the provider and model. If the answer is empty, refused, or cut off at the token limit, nothing is written: a short report is never saved as if it were complete. Each LLM-written file ends with a line naming the model and provider that wrote it.
 
 `brand_mentions.llm_model` and `sentiment.llm_model` (both features are off by default) are sent to this same provider, so they must also be that provider's model IDs.

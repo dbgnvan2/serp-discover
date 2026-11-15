@@ -144,7 +144,8 @@ def main():
                         help="Path to YAML config (reads analysis_report client context)")
     parser.add_argument("--llm-model", default=None,
                         help="Main report model (default: report_llm.main_model in config.yml)")
-    parser.add_argument("--llm-max-tokens", type=int, default=16000)
+    parser.add_argument("--llm-max-tokens", type=int, default=None,
+                        help="Main report output-token limit (default: report_llm.main_max_tokens)")
     parser.add_argument("--allow-unverified-report", action="store_true",
                         help="Write the LLM report even if evidence validation flags unsupported claims")
     parser.add_argument("--advisory-briefing", action="store_true",

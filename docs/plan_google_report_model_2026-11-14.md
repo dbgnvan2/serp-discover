@@ -112,6 +112,28 @@ not the one the response reports; a read timeout is retried once in full (up to 
 possibly two billed generations); `answer_sentiment.py` and `brand_mentions.py` read
 `config.yml` from the working directory and record a failed call as a result.
 
+## Checked with a real run (G8, 2026-11-14, couples-counselling analysis, 9 keywords)
+
+- **Run 1 failed, as the token-limit risk predicted.** Hydrogen's answer was cut off at the
+  16,000-token limit. G4 stopped the run and wrote nothing. The two limits were a CLI default
+  and a literal `4000`; they are now `report_llm.main_max_tokens` (64000) and
+  `advisory_max_tokens` (16000) in `config.yml`.
+- **Run 2 wrote both files** in 125 seconds, with no validation retry and no validation notes:
+  main report 4,828 words, advisory briefing 1,036 words. Token usage printed by the run:
+  main prompt 35,488 / answer 10,167 / total 54,729; advisory prompt 13,482 / answer 1,503 /
+  total 23,349. The gap between total and prompt + answer is hidden reasoning (about 9,000 and
+  8,400 tokens), and it does count against the limit: both calls would have failed at the old
+  limits.
+- **Run 2 then crashed on its last summary line** (`args.llm_model` was `None`), after both
+  files were written. Fixed, with a source-check test. The fix was not checked with a third
+  paid run.
+- The chat endpoint accepts the model ID with or without the `models/` prefix.
+- The run now prints token usage for every call, for both dialects.
+
+Not checked: the Anthropic path against the live API after this change (mocked tests only);
+the launcher dropdowns in the running GUI; report quality, which is the owner's read of
+`output/g8_content_opportunities_hydrogen.md` and `output/g8_advisory_briefing_hydrogen.md`.
+
 ## Order
 
 P first, then D. D depends on the `report_llm` block from P.

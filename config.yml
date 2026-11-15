@@ -366,6 +366,12 @@ report_llm:
   advisory_model: gemini-4-hydrogen
   # Seconds allowed for one report call. A full report can take minutes.
   timeout_seconds: 600
+  # Output-token limits for the main report and the advisory briefing. A model
+  # that reasons before answering (Hydrogen does) spends part of this limit on
+  # reasoning, so it needs far more than the length of the report. An answer
+  # that hits the limit fails the run; nothing is written.
+  main_max_tokens: 64000
+  advisory_max_tokens: 16000
   # Launcher dropdowns: a live model is offered when its ID starts with one of
   # model_include and contains none of model_exclude.
   model_include:

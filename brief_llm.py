@@ -58,6 +58,10 @@ def _call_anthropic(provider, system_prompt, messages, model, max_tokens, timeou
         ],
         messages=messages,
     )
+    usage = getattr(response, "usage", None)
+    if usage is not None:
+        progress(f"      Tokens: input {getattr(usage, 'input_tokens', '?')}, "
+                 f"output {getattr(usage, 'output_tokens', '?')}.")
     chunks = [getattr(block, "text", None) for block in response.content]
     return "\n".join(c for c in chunks if c).strip(), getattr(response, "stop_reason", None)
 
@@ -80,9 +84,16 @@ def _call_openai(provider, system_prompt, messages, model, max_tokens, timeout):
             f"{provider.name}: HTTP {response.status_code} for model {model}: "
             f"{_scrub(response.text[:ERROR_DETAIL_CHARS], provider)}")
     try:
-        choice = (response.json().get("choices") or [{}])[0]
+        body = response.json()
     except ValueError as exc:
         raise ReportLLMError(f"{provider.name}: the response was not JSON.") from exc
+    usage = body.get("usage") or {}
+    if usage:
+        # total can exceed prompt + answer: the difference is hidden reasoning.
+        progress(f"      Tokens: prompt {usage.get('prompt_tokens', '?')}, "
+                 f"answer {usage.get('completion_tokens', '?')}, "
+                 f"total {usage.get('total_tokens', '?')}.")
+    choice = (body.get("choices") or [{}])[0]
     message = choice.get("message") or {}
     reason = "content_filter" if message.get("refusal") else choice.get("finish_reason")
     content = message.get("content") or ""

@@ -9,6 +9,7 @@ Tests:   tests/test_brief_llm_providers.py
 
 from __future__ import annotations
 
+import logging
 import os
 import sys
 from dataclasses import dataclass, field
@@ -20,6 +21,11 @@ from timeouts import seconds_from_config
 APP_NAME = "serp-discover"
 # The Anthropic SDK's own default. A 16,000-token report can take minutes.
 DEFAULT_TIMEOUT_SECONDS = 600.0
+# Output-token limits used when config.yml sets none (the values in use before
+# they became configurable). Models that spend output tokens on hidden
+# reasoning need more: see report_llm.main_max_tokens in config.yml.
+DEFAULT_MAIN_MAX_TOKENS = 16000
+DEFAULT_ADVISORY_MAX_TOKENS = 4000
 SUPPORTED_DIALECTS = ("anthropic", "openai")
 ENV_PROVIDER_NAME = "anthropic (ANTHROPIC_API_KEY)"
 
@@ -34,6 +40,8 @@ class Settings:
     main_model: str = ""
     advisory_model: str = ""
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    main_max_tokens: int = DEFAULT_MAIN_MAX_TOKENS
+    advisory_max_tokens: int = DEFAULT_ADVISORY_MAX_TOKENS
     model_include: tuple = ()
     model_exclude: tuple = ()
 
@@ -52,6 +60,16 @@ def _strings(value):
     return tuple(str(v).strip() for v in (value or []) if str(v).strip())
 
 
+def _token_limit(value, default, name):
+    """A positive whole number of tokens, else ``default`` with a warning."""
+    if value is None:
+        return default
+    if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
+        logging.warning(f"config {name}={value!r} is not a positive whole number; using {default}.")
+        return default
+    return value
+
+
 def settings_from_config(config):
     """The ``report_llm`` block of a loaded config.yml dict. Missing keys are empty."""
     block = config.get("report_llm") if isinstance(config, dict) else None
@@ -62,6 +80,11 @@ def settings_from_config(config):
         advisory_model=str(block.get("advisory_model") or "").strip(),
         timeout_seconds=seconds_from_config(
             block.get("timeout_seconds"), DEFAULT_TIMEOUT_SECONDS, "report_llm.timeout_seconds"),
+        main_max_tokens=_token_limit(
+            block.get("main_max_tokens"), DEFAULT_MAIN_MAX_TOKENS, "report_llm.main_max_tokens"),
+        advisory_max_tokens=_token_limit(
+            block.get("advisory_max_tokens"), DEFAULT_ADVISORY_MAX_TOKENS,
+            "report_llm.advisory_max_tokens"),
         model_include=_strings(block.get("model_include")),
         model_exclude=_strings(block.get("model_exclude")),
     )

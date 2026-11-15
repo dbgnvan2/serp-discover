@@ -96,9 +96,16 @@ def sdk(monkeypatch):
 def test_g1_models_and_provider_come_from_config():
     settings = report_llm.settings_from_config({"report_llm": {
         "provider": "gemini-serp", "main_model": "m-main", "advisory_model": "m-adv",
-        "timeout_seconds": 90, "model_include": ["gemini-"], "model_exclude": "tts"}})
-    assert settings == Settings("gemini-serp", "m-main", "m-adv", 90.0, ("gemini-",), ("tts",))
+        "timeout_seconds": 90, "main_max_tokens": 64000, "advisory_max_tokens": 9000,
+        "model_include": ["gemini-"], "model_exclude": "tts"}})
+    assert settings == Settings("gemini-serp", "m-main", "m-adv", 90.0, 64000, 9000,
+                                ("gemini-",), ("tts",))
     assert report_llm.settings_from_config({}) == Settings()
+    # a bad token limit falls back to the default; it never means "no limit"
+    bad = report_llm.settings_from_config({"report_llm": {"main_max_tokens": 0,
+                                                          "advisory_max_tokens": "lots"}})
+    assert (bad.main_max_tokens, bad.advisory_max_tokens) == (
+        report_llm.DEFAULT_MAIN_MAX_TOKENS, report_llm.DEFAULT_ADVISORY_MAX_TOKENS)
     assert report_llm.resolve_provider(settings, registry=REGISTRY).name == "gemini-serp"
     # empty provider: the registry's apps map, then its default
     mapped = FakeRegistry(REGISTRY.providers, apps={"serp-discover": "gemini-serp"}, default="anthropic")
@@ -240,6 +247,7 @@ def test_g6_precheck_uses_resolved_provider(monkeypatch, capsys):
     llm = brief_rendering.resolve_report_llm(config, args)
     assert llm["provider"].name == "gemini-serp"
     assert (llm["main_model"], llm["advisory_model"]) == ("m-main", "m-main")
+    assert llm["main_max_tokens"] == report_llm.DEFAULT_MAIN_MAX_TOKENS
     assert "gemini-serp" in capsys.readouterr().out
     # the command line wins over config.yml
     args = SimpleNamespace(llm_model="cli-main", advisory_model="cli-adv")
@@ -252,6 +260,15 @@ def test_g6_precheck_uses_resolved_provider(monkeypatch, capsys):
             brief_rendering.resolve_report_llm(bad, SimpleNamespace(llm_model=None, advisory_model=None))
         assert stopped.value.code == 2
     assert "report_llm.main_model" in capsys.readouterr().out
+
+
+def test_g6_report_step_reads_models_only_through_the_resolver():
+    # --llm-model / --advisory-model / --llm-max-tokens default to None now, so
+    # any direct use outside resolve_report_llm crashes (found by the real run).
+    with open(os.path.join(REPO, "brief_rendering.py"), encoding="utf-8") as f:
+        source = f.read()
+    for name in ("args.llm_model", "args.advisory_model", "args.llm_max_tokens"):
+        assert name not in source, f"brief_rendering.py reads {name} directly"
 
 
 def test_g6_model_is_recorded():

@@ -570,7 +570,9 @@ def resolve_report_llm(config, args):
     progress(f"      Report provider: {provider.name}; main model {main_model}; "
              f"advisory model {advisory_model}.")
     return {"provider": provider, "main_model": main_model,
-            "advisory_model": advisory_model, "timeout": settings.timeout_seconds}
+            "advisory_model": advisory_model, "timeout": settings.timeout_seconds,
+            "main_max_tokens": getattr(args, "llm_max_tokens", None) or settings.main_max_tokens,
+            "advisory_max_tokens": settings.advisory_max_tokens}
 
 
 def model_footer(provider, model):
@@ -649,7 +651,7 @@ def list_recommendations(data, args):
                 system_prompt=system_prompt,
                 user_prompt=user_prompt,
                 model=llm["main_model"],
-                max_tokens=args.llm_max_tokens,
+                max_tokens=llm["main_max_tokens"],
                 provider=llm["provider"],
                 timeout=llm["timeout"],
             )
@@ -672,7 +674,7 @@ def list_recommendations(data, args):
                         system_prompt=system_prompt,
                         user_prompt=user_prompt,
                         model=llm["main_model"],
-                        max_tokens=args.llm_max_tokens,
+                        max_tokens=llm["main_max_tokens"],
                         provider=llm["provider"],
                         timeout=llm["timeout"],
                         prior_response=report,
@@ -758,7 +760,7 @@ def list_recommendations(data, args):
                     system_prompt=advisory_system_prompt,
                     user_prompt=advisory_user,
                     model=advisory_model,
-                    max_tokens=4000,
+                    max_tokens=llm["advisory_max_tokens"],
                     provider=llm["provider"],
                     timeout=llm["timeout"],
                 )
@@ -772,7 +774,7 @@ def list_recommendations(data, args):
                         system_prompt=advisory_system_prompt,
                         user_prompt=advisory_user,
                         model=advisory_model,
-                        max_tokens=4000,
+                        max_tokens=llm["advisory_max_tokens"],
                         provider=llm["provider"],
                         timeout=llm["timeout"],
                         prior_response=advisory_report,
@@ -819,7 +821,7 @@ def list_recommendations(data, args):
     print(f"AIO citations: {extracted.get('aio_total_citations', 0)}")
     print(f"Client organic appearances: {extracted.get('client_position', {}).get('summary', {}).get('total_organic_appearances', 0)}")
     print(f"Client AIO citations: {extracted.get('client_position', {}).get('summary', {}).get('total_aio_citations', 0)}")
-    print(f"Report mode: {'LLM (' + args.llm_model + ')' if args.use_llm else 'heuristic'}")
+    print(f"Report mode: {'LLM (' + llm['main_model'] + ')' if args.use_llm else 'heuristic'}")
 
     if warnings:
         print("\nData warnings:")
