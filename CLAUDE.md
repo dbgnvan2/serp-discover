@@ -96,7 +96,9 @@ and writes nothing to `config.yml` before or during a run.
 - `intent_mapping.yml` — SERP intent rule table (spec v2). First-match-wins,
   top of file = highest priority. Edit this file to refine intent rules; do
   not push exceptions into Python.
-- `clinical_dictionary.json` — Bowen vs medical-model vocabulary tiers.
+- `clinical_dictionary.json` — Bowen vs medical-model vocabulary tiers. **Lives in
+  `serp-compete`, not this repo**: no file of this name exists here and no code here
+  reads one. Do not create a second copy — edit compete's.
 - `strategic_patterns.yml` — Bowen pattern definitions (triggers, reframes, content angles, and the optional `Content_Angle_Example` worked opening rendered in report section 4). Add patterns here; no Python required.
 
 ## Editorial content lives in config files
@@ -123,7 +125,7 @@ Editorial content currently lives in:
 - `url_pattern_rules.yml` — URL pattern fallbacks for content classifier
 - `domain_overrides.yml` — manual entity-type overrides
 - `classification_rules.json` — content type and entity type pattern lists (includes the `publisher` entity type + `publisher_domains` list added for the yoast_geo_upgrade Y.8 citation table; the Y.8 citation category is sourced from this file via the existing classifier, never a parallel list)
-- `clinical_dictionary.json` — Bowen vs medical vocabulary tiers
+- `clinical_dictionary.json` — Bowen vs medical vocabulary tiers (in `serp-compete`, not here)
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
