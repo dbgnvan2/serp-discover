@@ -16,6 +16,7 @@ Part 1 "Rank semantics (pagination)".
 
 from __future__ import annotations
 
+import logging
 import re
 
 
@@ -38,6 +39,15 @@ def _merge_google_pages(pages):
     the merged (absolute) position and keeps the raw value as ``page_position``.
     Rank semantics: docs/methodology.md, Part 1 "Rank semantics (pagination)".
     Spec: review_2026-11-04 chunk D1 (D-C-01 / D-M-01).
+
+    Renumbering makes the merged ``position`` a contiguous 1..N, so a row that
+    follows a dropped duplicate sits one place better than its true SERP
+    position. Overlapping ``start``/``num`` windows do return the same URL
+    twice, so the count of dropped rows is recorded as
+    ``pagination_duplicates_dropped`` and logged: a shifted merge must not be
+    indistinguishable from a clean one (P2). ``page_index`` and
+    ``page_position`` are kept on every row, so the un-renumbered position
+    stays recoverable.
     """
     if not pages:
         return {}
@@ -49,6 +59,8 @@ def _merge_google_pages(pages):
     merged["discussions_and_forums"] = []
     merged["pagination_pages_fetched"] = len(pages)
 
+    duplicates_dropped = 0
+
     seen_org = set()
     seen_paa = set()
     seen_rel = set()
@@ -58,6 +70,7 @@ def _merge_google_pages(pages):
         for item in page.get("organic_results", []) or []:
             key = item.get("link") or f"{item.get('title')}|{item.get('position')}"
             if key in seen_org:
+                duplicates_dropped += 1
                 continue
             seen_org.add(key)
             # Copy before renumbering: the un-merged pages are kept in
@@ -92,6 +105,13 @@ def _merge_google_pages(pages):
 
         if "ai_overview" not in merged and page.get("ai_overview"):
             merged["ai_overview"] = page["ai_overview"]
+
+    merged["pagination_duplicates_dropped"] = duplicates_dropped
+    if duplicates_dropped:
+        logging.info(
+            "Pagination: %d duplicate organic row(s) dropped across %d page(s); "
+            "merged ranks are positions among the %d retained rows.",
+            duplicates_dropped, len(pages), len(merged["organic_results"]))
 
     return merged
 

@@ -162,5 +162,54 @@ class TestReportRendersOneRowPerKeyword(unittest.TestCase):
                          "High Feasibility")
 
 
+class TestEveryProducerUsesTheSharedHelper(unittest.TestCase):
+    """Source-inspection guards, in the style of
+    ``tests/test_config_manager.py::TestTabInitializationOrder``.
+
+    The behavioural tests above re-implement each call site by hand, so they
+    prove the helper is deterministic — not that the producers still call it.
+    They stayed green while serp_audit's pivot pass kept its own inline
+    comprehension, which averaged the client in as its own competitor.
+    """
+
+    def _src(self, name):
+        import pathlib
+        return (pathlib.Path(__file__).resolve().parents[1] / name).read_text()
+
+    def test_serp_audit_has_no_inline_da_comprehension(self):
+        src = self._src("serp_audit.py")
+        self.assertEqual(src.count("feasibility_module.select_competitor_das"),
+                         2,
+                         "both feasibility passes must use the shared helper")
+        self.assertNotIn('for v in pivot_moz.values() if v.get("da")', src)
+
+    def test_run_feasibility_has_no_inline_da_comprehension(self):
+        src = self._src("run_feasibility.py")
+        self.assertEqual(src.count("feasibility_module.select_competitor_das"),
+                         2,
+                         "the primary and pivot passes must both use it")
+        self.assertNotIn('[v["da"] for v in pivot_da_data.values()]', src)
+
+    def test_the_window_size_is_not_pre_sliced_with_a_literal(self):
+        """Raising TOP_N_FOR_FEASIBILITY must actually widen the window.
+
+        Both producers sliced to a literal 10 before calling the helper, so
+        lowering the constant worked and raising it silently did nothing.
+        """
+        self.assertNotIn("][:10]", self._src("serp_audit.py"))
+        self.assertIn("[:feasibility_module.TOP_N_FOR_FEASIBILITY]",
+                      self._src("serp_audit.py"))
+        for sig in ("max_urls: int = feasibility_module.TOP_N_FOR_FEASIBILITY",
+                    "max_per_keyword: int = feasibility_module.TOP_N_FOR_FEASIBILITY"):
+            self.assertIn(sig, self._src("run_feasibility.py"))
+
+    def test_an_unmeasured_keyword_still_gets_a_row(self):
+        """serp_audit used to append nothing when no DA was measured, so the
+        keyword vanished from §5b with no record that it was attempted."""
+        src = self._src("serp_audit.py")
+        self.assertNotIn('if competitor_das and query_label == "A":', src)
+        self.assertIn('if query_label == "A":', src)
+
+
 if __name__ == "__main__":
     unittest.main()

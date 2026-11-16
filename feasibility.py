@@ -47,7 +47,8 @@ def load_thresholds():
 
 HIGH_FEASIBILITY_MAX_GAP, MODERATE_FEASIBILITY_MAX_GAP, SCORE_NORMALISER = load_thresholds()
 
-StatusLiteral = Literal["High Feasibility", "Moderate Feasibility", "Low Feasibility"]
+StatusLiteral = Literal["High Feasibility", "Moderate Feasibility",
+                       "Low Feasibility", "Not Measured"]
 
 
 # ---------------------------------------------------------------------------
@@ -104,7 +105,13 @@ def select_competitor_das(
 
     *da_for_url* returns the DA for one URL, or ``None`` when that URL has no
     DA record. ``None`` is not zero: an unscored domain is left out of the
-    average rather than counted as a DA of 0 (finding D-C-04).
+    average rather than counted as a DA of 0 (finding D-C-04). An empty
+    result therefore means "nothing measured here", which
+    :func:`compute_feasibility` reports as ``"Not Measured"`` — never as
+    ``"Low Feasibility"``.
+
+    Callers must take their slice from ``TOP_N_FOR_FEASIBILITY`` rather than
+    their own literal, or raising it here would have no effect.
     """
     client = domain_of(client_domain) if client_domain else ""
     das = []
@@ -154,9 +161,15 @@ def compute_feasibility(
     client_da:
         Domain Authority of the non-profit client (0–100).
     competitor_das:
-        DA values for the top-10 organic results.  An empty list returns a
-        ``status`` of ``"Low Feasibility"`` with all numeric fields set to
-        ``None`` so callers don't have to special-case missing data.
+        DA values for the top-10 organic results, as chosen by
+        :func:`select_competitor_das`.  An empty list means **no competitor DA
+        was measured** for this keyword, and returns a ``status`` of
+        ``"Not Measured"`` with all numeric fields ``None``. It used to return
+        ``"Low Feasibility"``, which published a verdict — and a hyper-local
+        pivot recommendation, and a Maps fetch to support it — from zero
+        measurements (P1/P14: unknown is not a terminal negative). Callers
+        still do not have to special-case missing data; they just no longer
+        get a false negative.
 
     Returns
     -------
@@ -179,7 +192,7 @@ def compute_feasibility(
             "client_da": client_da,
             "gap": None,
             "feasibility_score": None,
-            "feasibility_status": "Low Feasibility",
+            "feasibility_status": "Not Measured",
         }
 
     avg_serp_da = round(sum(competitor_das) / len(competitor_das), 1)

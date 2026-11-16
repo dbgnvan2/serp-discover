@@ -32,18 +32,28 @@ def _previous_completed_run(runs_df, current_date):
     """The most recent completed run strictly before *current_date*.
 
     Returns ``(run_id, skipped_count)``; ``run_id`` is None when there is
-    none. *skipped_count* is how many earlier runs were passed over because
-    they never recorded a completion — the caller reports that number instead
-    of silently comparing against an aborted run.
+    none. *skipped_count* is how many runs were passed over because they
+    never recorded a completion — the caller reports that number instead of
+    silently comparing against an aborted run.
+
+    The count is scoped to what the caller's message claims. With a baseline,
+    it counts only the incomplete runs **between** that baseline and the
+    current run, which is what "N more recent run(s) skipped" means; counting
+    every earlier incomplete run would report the whole pre-migration history
+    (54 runs on this client's database) as if it sat in that window. With no
+    baseline at all, every earlier run was indeed passed over, so all of them
+    are counted.
     """
     earlier = runs_df[runs_df["run_date"] < current_date]
     if earlier.empty:
         return None, 0
     completed = earlier[earlier["completed_at"].notna()]
-    skipped = len(earlier) - len(completed)
     if completed.empty:
-        return None, skipped
-    return completed.iloc[0]["run_id"], skipped
+        return None, len(earlier)
+    baseline = completed.iloc[0]
+    between = earlier[(earlier["run_date"] > baseline["run_date"])
+                      & earlier["completed_at"].isna()]
+    return baseline["run_id"], len(between)
 
 
 def _incomplete_history_msg(skipped):
@@ -165,12 +175,27 @@ def get_volatility_metrics(current_run_id):
         return None
 
 
+#: Why a result set is not comparable, for callers to render instead of
+#: dropping a report section silently (finding D-C-22 follow-up, P2).
+_NO_PRIMARY_ROWS_MSG = (
+    "no primary-query (query_label = 'A') organic rows for this run. Rows "
+    "stored before the query_label migration carry no label and are not "
+    "comparable; re-run to rebuild the history.")
+
+
 def get_entity_dominance(run_id):
     """
     Aggregates Entity Type and Content Type dominance for the current run.
+
+    On success the result carries ``entity_dominance`` / ``content_dominance``.
+    Otherwise it carries ``status`` and ``msg`` so the caller can print why the
+    section is missing: a bare ``{}`` made report section 5 disappear with no
+    note, which reads as "the SERP has no composition" rather than "this run's
+    rows cannot be interpreted".
     """
     if not os.path.exists(DB_PATH):
-        return {}
+        return {"status": "no_database",
+                "msg": f"no history database at {DB_PATH} yet."}
 
     try:
         conn = sqlite3.connect(DB_PATH)
@@ -193,7 +218,7 @@ def get_entity_dominance(run_id):
         conn.close()
 
         if df.empty:
-            return {}
+            return {"status": "empty_data", "msg": _NO_PRIMARY_ROWS_MSG}
 
         entity_counts = df['entity_type'].value_counts(
             normalize=True).to_dict()
@@ -207,27 +232,38 @@ def get_entity_dominance(run_id):
 
     except Exception as e:
         logging.error(f"Error calculating dominance: {e}")
-        return {}
+        return {"status": "error", "msg": f"dominance query failed: {e}"}
 
 
-def get_rank_deltas(current_run_id):
+def get_rank_deltas(current_run_id, with_reason=False):
     """
-    Returns a dictionary of {url: rank_delta} for the current run compared to the previous one.
+    Returns a dictionary of {(keyword, url): rank_delta} for the current run
+    compared to the previous one.
+
+    With ``with_reason=True`` returns ``(deltas, reason)``, where *reason* says
+    why an empty result is empty. An empty dict alone meant three different
+    things — no runs, no completed baseline, no label-A rows — and the caller
+    printed "No historical data for rank comparison yet" over a database
+    holding thousands of rows (P2).
     """
+    def _out(deltas, reason=""):
+        return (deltas, reason) if with_reason else deltas
+
     if not os.path.exists(DB_PATH):
-        return {}
+        return _out({}, f"no history database at {DB_PATH} yet.")
 
     try:
         with sqlite3.connect(DB_PATH) as conn:
             runs_df = pd.read_sql(_RUNS_SQL, conn)
 
             if len(runs_df) < 2:
-                return {}
+                return _out({}, "only one run recorded: deltas need two.")
 
             # Identify previous run
             current_run_date_row = runs_df[runs_df['run_id'] == current_run_id]
             if current_run_date_row.empty:
-                return {}
+                return _out({}, f"run {current_run_id} is not in the history "
+                                f"table, so it has nothing to compare against.")
 
             current_date = current_run_date_row.iloc[0]['run_date']
             # Previous *completed* run only (D-C-22).
@@ -237,7 +273,11 @@ def get_rank_deltas(current_run_id):
                     logging.warning(
                         "Rank deltas: no baseline; %d earlier run(s) have no "
                         "completion record.", skipped)
-                return {}
+                return _out({}, _incomplete_history_msg(skipped))
+            if skipped:
+                logging.info(
+                    "Rank deltas: baseline is run %s; %d more recent run(s) "
+                    "skipped with no completion record.", prev_run_id, skipped)
 
             # Keep keyword + url to avoid collisions when the same URL ranks for
             # multiple keywords, and the primary query only, so a URL ranking in
@@ -249,7 +289,7 @@ def get_rank_deltas(current_run_id):
                                   params=(prev_run_id, PRIMARY_QUERY_LABEL))
 
         if curr_df.empty or prev_df.empty:
-            return {}
+            return _out({}, _NO_PRIMARY_ROWS_MSG)
 
         curr_df['rank'] = pd.to_numeric(curr_df['rank'], errors='coerce')
         prev_df['rank'] = pd.to_numeric(prev_df['rank'], errors='coerce')
@@ -263,14 +303,15 @@ def get_rank_deltas(current_run_id):
             suffixes=('_curr', '_prev')
         )
         if merged.empty:
-            return {}
+            return _out({}, f"no URL ranks for the same keyword in both run "
+                            f"{current_run_id} and run {prev_run_id}.")
 
         merged['rank_delta'] = merged['rank_prev'] - merged['rank_curr']
-        return {
+        return _out({
             (row['keyword_text'], row['url']): row['rank_delta']
             for _, row in merged.dropna(subset=['rank_delta']).iterrows()
-        }
+        })
 
     except Exception as e:
         logging.error(f"Error getting rank deltas: {e}")
-        return {}
+        return _out({}, f"rank-delta query failed: {e}")

@@ -1504,7 +1504,7 @@ def _run(run_id):
                     keyword_urls = [
                         item.get("Link") for item in o
                         if item.get("Link") and item.get("Link") != "N/A"
-                    ][:10]
+                    ][:feasibility_module.TOP_N_FOR_FEASIBILITY]
 
                     if keyword_urls:
                         moz_results = moz_client.get_moz_metrics(keyword_urls)
@@ -1536,7 +1536,14 @@ def _run(run_id):
                         # different SERP, and its feasibility row used to
                         # overwrite the real keyword's verdict in the report
                         # while the play router kept the A row (D-C-19).
-                        if competitor_das and query_label == "A":
+                        #
+                        # No gate on `competitor_das`: an empty set means no
+                        # competitor DA was measured, and compute_feasibility
+                        # reports that as "Not Measured". Skipping the row
+                        # instead dropped the keyword out of §5b and out of
+                        # keywords_with_feas with no record that it was ever
+                        # attempted (P2: surface, never silently drop).
+                        if query_label == "A":
                             feas = feasibility_module.compute_feasibility(
                                 FEASIBILITY_CLIENT_DA, competitor_das
                             )
@@ -1579,7 +1586,8 @@ def _run(run_id):
                             all_feasibility.append(feas_row)
 
                             status_icon = {"High Feasibility": "✅", "Moderate Feasibility": "⚠️",
-                                           "Low Feasibility": "🔴"}.get(feas["feasibility_status"], "")
+                                           "Low Feasibility": "🔴",
+                                           "Not Measured": "❓"}.get(feas["feasibility_status"], "")
                             print(f"  [Feasibility] {source_keyword}: "
                                   f"{status_icon} {feas['feasibility_status']} "
                                   f"(gap={feas['gap']}, avg_da={feas['avg_serp_da']})")
@@ -1667,10 +1675,20 @@ def _run(run_id):
             pivot_urls = [
                 r.get("Link") for r in p_organic
                 if r.get("Link") and r.get("Link") != "N/A"
-            ][:10]
+            ][:feasibility_module.TOP_N_FOR_FEASIBILITY]
             if pivot_urls:
                 pivot_moz = moz_client.get_moz_metrics(pivot_urls)
-                pivot_das = [v["da"] for v in pivot_moz.values() if v.get("da") is not None]
+                # The same definition as the primary pass (finding D-C-19):
+                # rank-ordered top N, the client's own domain dropped. Taking
+                # every measured DA instead averaged the client in as its own
+                # competitor whenever it ranked in the pivot SERP, pulling
+                # avg_serp_da toward client_da and making the pivot read as
+                # more feasible than it is.
+                pivot_das = feasibility_module.select_competitor_das(
+                    pivot_urls,
+                    lambda u: (pivot_moz.get(u) or {}).get("da"),
+                    client_domain=CLIENT_DOMAIN,
+                )
                 for item in p_organic:
                     url = item.get("Link")
                     if url and url in pivot_moz:
@@ -1795,7 +1813,7 @@ def _run(run_id):
     # --- MERGE RANK DELTAS (Volatility) ---
     if ENRICHMENT_ENABLED:
         print("Calculating Rank Deltas...")
-        deltas = metrics.get_rank_deltas(run_id)
+        deltas, deltas_reason = metrics.get_rank_deltas(run_id, with_reason=True)
         if deltas:
             count = 0
             for item in all_organic:
@@ -1807,7 +1825,9 @@ def _run(run_id):
                     count += 1
             print(f"Updated {count} rows with rank changes.")
         else:
-            print("No historical data for rank comparison yet.")
+            # Name the reason: "no history" was printed over a database with
+            # thousands of rows whose runs simply were not comparable (P2).
+            print(f"No rank comparison: {deltas_reason}")
 
     # --- VISUALIZATION (Word Cloud) ---
     if VISUALIZATION_AVAILABLE:

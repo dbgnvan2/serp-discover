@@ -103,6 +103,26 @@ class TestRankDeltas(unittest.TestCase):
         # (rank 1) it would be -3.
         self.assertEqual(deltas[("kw_a", SHARED_URL)], 5)
 
+    def test_an_empty_result_says_why(self):
+        """P2: `{}` meant no runs, no baseline, or no label-A rows alike.
+
+        serp_audit printed "No historical data for rank comparison yet" over a
+        database holding thousands of rows whose runs were simply not
+        comparable.
+        """
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            store = _store(db_path)
+            _run(store, "run_prev", "2026-02-01T00:00:00")
+            _run(store, "run_curr", "2026-02-02T00:00:00")
+            _result(store, "run_prev", "kw", 9, label=None)
+            _result(store, "run_curr", "kw", 4, label=None)
+            with patch.object(metrics, "DB_PATH", db_path):
+                deltas, reason = metrics.get_rank_deltas(
+                    "run_curr", with_reason=True)
+        self.assertEqual(deltas, {})
+        self.assertIn("query_label", reason)
+
     def test_no_completed_prior_run_yields_no_deltas(self):
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
@@ -159,6 +179,86 @@ class TestVolatility(unittest.TestCase):
                 result = metrics.get_volatility_metrics("run_curr")
         self.assertEqual(result["status"], "empty_data")
         self.assertIn("query_label", result["msg"])
+
+
+class TestSkipCountMatchesTheMessage(unittest.TestCase):
+    """The number reported must be the number actually passed over.
+
+    `skipped` counted every earlier incomplete run, but the message calls them
+    "more recent run(s) skipped". On this client's database (54 pre-migration
+    runs, all with completed_at NULL) the first comparable pair would have
+    logged "54 more recent run(s) skipped" with nothing in that window.
+    """
+
+    def test_runs_older_than_the_baseline_are_not_counted_as_skipped(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            store = _store(db_path)
+            _run(store, "old_1", "2026-01-01T00:00:00", completed=False)
+            _run(store, "old_2", "2026-01-02T00:00:00", completed=False)
+            _run(store, "baseline", "2026-02-01T00:00:00")
+            _run(store, "between", "2026-02-01T12:00:00", completed=False)
+            _run(store, "run_curr", "2026-02-02T00:00:00")
+            import pandas as pd
+            with sqlite3.connect(db_path) as conn:
+                runs_df = pd.read_sql(metrics._RUNS_SQL, conn)
+        prev_id, skipped = metrics._previous_completed_run(
+            runs_df, "2026-02-02T00:00:00")
+        self.assertEqual(prev_id, "baseline")
+        self.assertEqual(skipped, 1)   # "between" only, not old_1/old_2
+
+    def test_with_no_baseline_every_earlier_run_is_counted(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            store = _store(db_path)
+            _run(store, "old_1", "2026-01-01T00:00:00", completed=False)
+            _run(store, "old_2", "2026-01-02T00:00:00", completed=False)
+            _run(store, "run_curr", "2026-02-02T00:00:00")
+            import pandas as pd
+            with sqlite3.connect(db_path) as conn:
+                runs_df = pd.read_sql(metrics._RUNS_SQL, conn)
+        prev_id, skipped = metrics._previous_completed_run(
+            runs_df, "2026-02-02T00:00:00")
+        self.assertIsNone(prev_id)
+        self.assertEqual(skipped, 2)
+
+
+class TestEntityDominanceSaysWhyItIsEmpty(unittest.TestCase):
+    """A bare `{}` made report section 5 vanish with no note."""
+
+    def test_unlabelled_rows_report_a_reason(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            store = _store(db_path)
+            _run(store, "run_curr", "2026-02-02T00:00:00")
+            _result(store, "run_curr", "kw", 4, label=None)
+            with patch.object(metrics, "DB_PATH", db_path):
+                result = metrics.get_entity_dominance("run_curr")
+        self.assertEqual(result["status"], "empty_data")
+        self.assertIn("query_label", result["msg"])
+        self.assertNotIn("entity_dominance", result)
+
+
+class TestCompletionStampSurvivesASecondSaveRun(unittest.TestCase):
+    """`save_run` is called once per keyword, so the upsert must not reset it.
+
+    `INSERT OR REPLACE` deletes the row and re-inserts it, wiping
+    `completed_at` — and every test in this file passed against that, because
+    none of them saved the same run twice.
+    """
+
+    def test_resaving_a_run_keeps_completed_at(self):
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            db_path = os.path.join(tmp_dir, "test.db")
+            store = _store(db_path)
+            store.save_run("run_x", "params")
+            store.mark_run_completed("run_x", completed_at="2026-02-02T00:00:00")
+            store.save_run("run_x", "params")      # the next keyword
+            with sqlite3.connect(db_path) as conn:
+                stamp = conn.execute(
+                    "SELECT completed_at FROM runs WHERE run_id = ?",
+                    ("run_x",)).fetchone()[0]
+        self.assertEqual(stamp, "2026-02-02T00:00:00")
 
 
 class TestFixtureSchemaMatchesProduction(unittest.TestCase):

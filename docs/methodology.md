@@ -25,6 +25,13 @@ handoff targets, `metrics.py`, `aio_exposure.py`) means the real top 10.
 Maps pagination needs no renumbering: the local-pack `Rank` is the index
 into the merged `local_results` list, which is already absolute.
 
+Because the merged sequence is contiguous, a row that follows a dropped
+duplicate sits one place better than its true SERP position — and overlapping
+`start`/`num` windows do return the same URL twice. The merge therefore records
+how many rows it dropped as `pagination_duplicates_dropped` and logs it, so a
+shifted merge is not indistinguishable from a clean one; `page_index` and
+`page_position` keep the un-renumbered position recoverable on every row.
+
 Three Google pages reach about the top 30, not the top 300: Google serves
 roughly 10 organic rows per page regardless of `serpapi.num`, so with
 `google_max_pages: 3` the `serpapi.num: 100` and

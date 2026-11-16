@@ -25,9 +25,13 @@ carry NULL in both, which means *unknown* — not "completed" and not "primary".
   `storage.save_run` is called before the first fetch, so a `runs` row exists
   even for a run that aborts on keyword 1; only `storage.mark_run_completed`,
   called after `pipeline_status.finish_run` returns OK, stamps this column.
+  `pipeline_status.finish_run` checks each output against the file on disk
+  before returning OK, not only against the in-process "written" flags, so a
+  truncated or deleted output cannot earn a completion stamp (P6).
   `metrics.py` takes its baseline from the most recent **completed** run
   before the current one, and counts and logs the runs it passed over rather
-  than reporting a bare "no history" (P2).
+  than reporting a bare "no history" (P2). The count is scoped to the runs
+  between that baseline and the current run, which is what the message says.
 - **`serp_results.query_label`** — `"A"` for the primary keyword, `"A.1"` /
   `"A.2"` for AI-alternative phrasings, `"P"` for a pivot fetch. Every label
   is stored under the **root** keyword, so merging two runs on

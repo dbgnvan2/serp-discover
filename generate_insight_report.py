@@ -1528,7 +1528,19 @@ def generate_report(data, db_path=None, run_ts=None):
         if _run_id:
             # Section 5 — SERP Composition
             dominance = metrics.get_entity_dominance(_run_id)
-            if dominance:
+            _has_dominance = bool(dominance.get("entity_dominance")
+                                  or dominance.get("content_dominance"))
+            if not _has_dominance and dominance.get("msg"):
+                # Say why instead of dropping the section silently: an absent
+                # section 5 reads as "the SERP has no composition" rather than
+                # "this run's rows are not comparable" (P2). Deliberately not
+                # a "## 5." heading — a rendered section must carry its
+                # writing directive (CD.2), and "match the format that is
+                # winning" is not advice you can give with no data.
+                report.append(
+                    f"\n_Section 5 (SERP Composition) is not available for "
+                    f"this run — {dominance['msg']}_")
+            if _has_dominance:
                 report.append("\n## 5. SERP Composition (Enriched Data)")
                 report.extend(_directive("section_5"))
 

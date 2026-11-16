@@ -54,8 +54,25 @@ def finish_run(written, paths, config_path="config.yml", input_csv=None):
     the run failed, config.yml is left alone, and the outputs that were written
     are renamed ``<name>.failed`` so steps that pick the newest
     ``market_analysis_*.json`` do not use a partial run.
+
+    "Written" is checked against the files, not only against the caller's
+    flags. The flags are set in-process straight after each write, so a
+    truncated, deleted or renamed output used to return ``EXIT_OK`` — and
+    since review chunk D1 that exit code is what stamps ``runs.completed_at``,
+    which ``metrics.py`` then trusts as "this run's history is sound"
+    (P6: verify status against the artifact).
     """
     missing = missing_outputs(written)
+    if not missing:
+        # Every path the caller named, not just the three config keys: the
+        # handoff file is the one Tool 2 reads.
+        gone = absent_files([paths.get(name) for name in written])
+        if gone:
+            missing = [name for name in written
+                       if not paths.get(name) or paths.get(name) in gone]
+            logging.error(
+                f"Run failed: {len(gone)} output(s) the run reported as "
+                f"written are not on disk: {', '.join(str(g) for g in gone)}")
     if missing:
         set_aside = []
         for name, ok in written.items():

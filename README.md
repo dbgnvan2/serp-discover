@@ -202,6 +202,7 @@ Gap = average competitor Domain Authority − Living Systems DA (35).
 | ≤ 5 | ✅ High Feasibility | Rankable with content quality alone |
 | 6–15 | ⚠️ Moderate Feasibility | Needs local backlink building |
 | > 15 | 🔴 Low Feasibility | High-authority incumbents — pivot to neighbourhood variant |
+| — | ❓ Not Measured | No competitor DA was fetched — no verdict, no pivot |
 
 Low-feasibility keywords get a neighbourhood pivot suggestion (e.g. "Couples Counselling" → "Couples Counselling Lonsdale"). DA results are cached in SQLite for 30 days — re-running feasibility within that window costs nothing.
 

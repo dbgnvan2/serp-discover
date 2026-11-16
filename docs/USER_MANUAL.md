@@ -107,6 +107,10 @@ Serp-Discover answers these questions by:
   - **High Feasibility:** Gap ≤ 5 (rankable with quality content alone)
   - **Moderate Feasibility:** Gap 6–15 (needs local backlinks)
   - **Low Feasibility:** Gap > 15 (high-authority incumbents, pivot suggested)
+  - **Not Measured:** no competitor Domain Authority could be fetched for that
+    keyword. The keyword is still listed, with no verdict and no pivot — an
+    unmeasured keyword used to be reported as "Low Feasibility", which looks
+    identical to a real finding and triggered a pivot recommendation of its own.
 
 - Results are cached 30 days — re-running costs nothing
 - For low-feasibility **service** keywords, suggests neighbourhood pivots (e.g., "Couples Counselling" → "Couples Counselling Lonsdale")
@@ -473,6 +477,7 @@ for a URL the field is blank rather than 0, so "no data" is never shown as "clea
 | ≤ 5 | ✅ High Feasibility | Rankable with quality content + on-page SEO alone |
 | 6–15 | ⚠️ Moderate Feasibility | Needs local backlink building + content quality |
 | > 15 | 🔴 Low Feasibility | Dominated by high-authority sites; **service** keywords pivot to neighbourhood variants, informational keywords route to the extraction play |
+| — | ❓ Not Measured | No competitor DA was fetched for this keyword. Not a verdict: re-run once the DA provider is reachable |
 
 ### SERP Intent
 

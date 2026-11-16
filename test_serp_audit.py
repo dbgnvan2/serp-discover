@@ -874,6 +874,24 @@ class TestAbsoluteRankAcrossPages(unittest.TestCase):
         self.assertEqual(len(rows), 4)
         self.assertEqual([r["position"] for r in rows], [1, 2, 3, 4])
 
+    def test_dropped_duplicates_are_counted(self):
+        """P2: renumbering shifts the rows below a dropped duplicate.
+
+        Each drop moves every later row one place better than its true SERP
+        position, so a shifted merge must not be indistinguishable from a
+        clean one.
+        """
+        page_one = self._page(0, 3, "a")
+        page_two = {"organic_results": [
+            dict(page_one["organic_results"][0]),
+            dict(page_one["organic_results"][1]),
+            {"title": "new", "link": "http://b.example/1", "position": 3},
+        ]}
+        merged = serp_audit._merge_google_pages([page_one, page_two])
+        self.assertEqual(merged["pagination_duplicates_dropped"], 2)
+        clean = serp_audit._merge_google_pages([self._page(0, 3, "a")])
+        self.assertEqual(clean["pagination_duplicates_dropped"], 0)
+
     def test_merge_does_not_mutate_the_input_pages(self):
         """all_results['google_pages'] keeps the raw SerpAPI responses, and
         the paginating loop re-merges the same list on every iteration."""

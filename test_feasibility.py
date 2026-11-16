@@ -91,12 +91,29 @@ class TestComputeFeasibility(unittest.TestCase):
 
     # --- Edge cases ---
 
-    def test_empty_competitor_list_returns_low_feasibility(self):
+    def test_empty_competitor_list_is_not_measured_not_low(self):
+        """Zero measurements is not a verdict (P1/P14).
+
+        It used to return "Low Feasibility", which `generate_hyper_local_pivot`
+        then turned into "Pivoting to Hyper-Local" — a published verdict, a
+        suggested pivot keyword and a paid Maps fetch, all from no data.
+        """
         result = compute_feasibility(35, [])
-        self.assertEqual(result["feasibility_status"], "Low Feasibility")
+        self.assertEqual(result["feasibility_status"], "Not Measured")
         self.assertIsNone(result["avg_serp_da"])
         self.assertIsNone(result["gap"])
         self.assertIsNone(result["feasibility_score"])
+
+    def test_unmeasured_keyword_gets_no_pivot(self):
+        from feasibility import generate_hyper_local_pivot
+        feas = compute_feasibility(35, [])
+        pivot = generate_hyper_local_pivot(
+            "Couples Counselling", "North Vancouver",
+            {"status": feas["feasibility_status"],
+             "avg_competitor_da": feas["avg_serp_da"]},
+            ["Lonsdale", "Edgemont Village"])
+        self.assertNotEqual(pivot["pivot_status"], "Pivoting to Hyper-Local")
+        self.assertIsNone(pivot["suggested_keyword"])
 
     def test_client_da_higher_than_competitors_gives_negative_gap(self):
         """Client already outranks competitors — should still be High Feasibility."""

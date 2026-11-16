@@ -188,7 +188,8 @@ def _fetch_pivot_local_pack(keyword: str, config: dict) -> tuple[list[dict], boo
 
 
 def _fetch_pivot_organic_urls(
-    keyword: str, config: dict, max_urls: int = 10
+    keyword: str, config: dict,
+    max_urls: int = feasibility_module.TOP_N_FOR_FEASIBILITY,
 ) -> tuple[list[str], bool]:
     """Fetch organic results for a pivot keyword and return ``(urls, ok)``.
 
@@ -226,7 +227,10 @@ def _fetch_pivot_organic_urls(
 # Core analysis
 # ---------------------------------------------------------------------------
 
-def _get_organic_urls_by_keyword(data: dict, max_per_keyword: int = 10) -> dict[str, list[str]]:
+def _get_organic_urls_by_keyword(
+    data: dict,
+    max_per_keyword: int = feasibility_module.TOP_N_FOR_FEASIBILITY,
+) -> dict[str, list[str]]:
     """Return top organic URLs keyed by keyword (primary queries only)."""
     by_kw: dict[str, list[str]] = {}
     for row in data.get("organic_results", []):
@@ -428,7 +432,19 @@ def run_feasibility_analysis(
                     pivot_urls, organic_ok = _fetch_pivot_organic_urls(pivot_kw, config)
                     if pivot_urls:
                         pivot_da_data = _get_metrics(pivot_urls)
-                        pivot_das = [v["da"] for v in pivot_da_data.values()]
+                        # The same definition as the primary pass: rank-ordered
+                        # top N, client's own domain dropped, URLs with no DA
+                        # omitted rather than carried as None. Taking every
+                        # value averaged the client in as its own competitor
+                        # and could put a None into the mean (D-C-19, P5).
+                        pivot_das = feasibility_module.select_competitor_das(
+                            pivot_urls,
+                            lambda u: (pivot_da_data.get(u)
+                                       or pivot_da_data.get(
+                                           feasibility_module.domain_of(u))
+                                       or {}).get("da"),
+                            client_domain=client_domain,
+                        )
 
                 # If the validation SERP fetch failed we cannot score the pivot;
                 # do not present the failure as a real "Low Feasibility" verdict.

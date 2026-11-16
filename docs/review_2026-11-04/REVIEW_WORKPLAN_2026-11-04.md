@@ -406,9 +406,9 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 
 ## 6. Finding index
 
-| ID | Sev/Impact | Chunk | One line | Status (2026-11-15) |
+| ID | Sev/Impact | Chunk | One line | Status (2026-11-16) |
 |---|---|---|---|---|
-| D-C-01 | S1 | D1 | SerpAPI per-page `position` stored as absolute `Rank` | open |
+| D-C-01 | S1 | D1 | SerpAPI per-page `position` stored as absolute `Rank` | fixed `2285828` |
 | D-C-02 | S1 | D2 | GSC transient failure cached as `found=0` for the TTL | open |
 | D-C-03 | S1 | D2 | Zero DA-covered keyword → "Low Feasibility"; no N-of-M | open |
 | D-C-04 | S1 | D2 | DataForSEO `rank: null` → DA 0, averaged, cached 30 days | open |
@@ -426,11 +426,11 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 | D-C-16 | S3 | D6 | Failing Moz test is a hard-coded-date bomb | already fixed `abcc2aa` — close, do not re-fix |
 | D-C-17 | S3 | D6 | `serp_intent.thresholds.confidence_*` have no reader | open |
 | D-C-18 | S3 | D4 | §6 prints "unknown" for keys metrics never returns | open |
-| D-C-19 | S3 | D1 | Two feasibility producers with different definitions | open |
+| D-C-19 | S3 | D1 | Two feasibility producers with different definitions | fixed `2285828` |
 | D-C-20 | S3 | D2 | 403/429/5xx bodies are classified as content | open |
 | D-C-21 | S3 | D2 | `Has_Main_AI_Overview` set from the no-location fallback | open |
-| D-C-22 | S3 | D1 | Rank history polluted by aborted runs and alt-query rows | open |
-| D-M-01 | High | D1 | = D-C-01 (methodology consequences) | open |
+| D-C-22 | S3 | D1 | Rank history polluted by aborted runs and alt-query rows | fixed `2285828` |
+| D-M-01 | High | D1 | = D-C-01 (methodology consequences) | fixed `2285828` |
 | D-M-02 | High | D2 | Unscorable domain enters the feasibility mean as 0 | open |
 | D-M-03 | High | D3 | = D-C-05 plus Jaccard(∅,∅)=1 and prioritisation | open |
 | D-M-04 | High | D3 | Foundational structure sub-score measures competitors' schema | open |
@@ -470,10 +470,10 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 | C-C-11 | S2 | C2 | Per-brand volume failure persisted as 0 | fixed `7a6405b` (C2) |
 | C-C-12 | S2 | C2 | `get_relevant_pages` no retry; dropped domain untraced; abort after `create_run` | fixed `7a6405b` (C2) |
 | C-C-13 | S3 | C1 | `client_brand_names` dropped; config key doesn't exist | fixed `f7b09bf` (C1) |
-| C-C-14 | S3 | C4 | Documented config keys with no reader | open |
-| C-C-15 | S3 | C4 | `self-regulation` unmatchable; position thresholds hard-coded | open |
+| C-C-14 | S3 | C4 | Documented config keys with no reader | fixed `f48953f` (C4c) |
+| C-C-15 | S3 | C4 | `self-regulation` unmatchable; position thresholds hard-coded | fixed `7c98967` (C4a) |
 | C-C-16 | S3 | C3 | Orchestrator ignores selected handoff / reports dir | fixed `3d56e0a` (C3) |
-| C-C-17 | S3 | C4 | GSC 5000-row page; `rank_absolute` vs `position` | open |
+| C-C-17 | S3 | C4 | GSC 5000-row page; `rank_absolute` vs `position` | fixed `f48953f` (C4c) |
 | C-C-18 | S3 | C2 | Homepage warm-up failure burns an audit slot | fixed `7a6405b` (C2) |
 | C-M-01 | High | C1 | Audited keywords are DataForSEO per-domain top-10, not the handoff | fixed `f7b09bf` (C1) |
 | C-M-02 | High | C1 | Vacuum = any systems-0 page | fixed `f7b09bf` (C1) |
@@ -482,22 +482,22 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 | C-M-05 | Med | C3 | Depth "High" from one token; raw vs weighted; cache estimate | fixed `3d56e0a` (C3) |
 | C-M-06 | High | C2 | Fragile-Magnet / velocity fire on outages, 1-pt noise, forever | fixed `7a6405b` (C2) |
 | C-M-07 | High | C2 | `visibility_cliff` measures the tool's sampling | fixed `7a6405b` (C2) |
-| C-M-08 | Med | C4 | "therapy" is Tier-1 medical | open |
-| C-M-09 | Med | C4 | Barbell authority: DA vs PA; client authoritative by construction | open |
-| C-M-10 | Med | C4 | Focus undefined at ≤3 pages | open |
-| C-M-11 | Med | C4 | Overlap cells are sampling artefacts; unlike position scales | open |
-| C-M-12 | Med | C4 | EEAT composites of near-constant booleans, always "high" confidence | open |
-| C-M-13 | Med | C4 | Cluster label from 3 pages; www mismatch → isolated | open |
-| C-M-14 | Med | C4 | GEO tier rewards WP defaults; section asserts causation | open |
+| C-M-08 | Med | C4 | "therapy" is Tier-1 medical | fixed `7c98967` (C4a) |
+| C-M-09 | Med | C4 | Barbell authority: DA vs PA; client authoritative by construction | fixed `977b52f` (C4b) |
+| C-M-10 | Med | C4 | Focus undefined at ≤3 pages | fixed `977b52f` (C4b) |
+| C-M-11 | Med | C4 | Overlap cells are sampling artefacts; unlike position scales | fixed `f48953f` (C4c) |
+| C-M-12 | Med | C4 | EEAT composites of near-constant booleans, always "high" confidence | fixed `977b52f` (C4b) |
+| C-M-13 | Med | C4 | Cluster label from 3 pages; www mismatch → isolated | fixed `977b52f` (C4b) |
+| C-M-14 | Med | C4 | GEO tier rewards WP defaults; section asserts causation | fixed `977b52f` (C4b) |
 | C-M-15 | Med | C1 | Reframe prompt asserts Medical Model at medical 0; PAA never present | fixed `f7b09bf` (C1) |
-| C-M-16 | Low–Med | C4 | YouTube `none_found` rendered as "no channel" | open |
-| C-M-17 | Low–Med | C4 | SoV drops mentioned-not-cited rivals; `presence_rate` unprinted | open |
-| C-M-18 | Med | C4 | Provenance; dead keys; hard-coded live thresholds | open |
-| C-M-19 | Med | C4 | Vocabulary counting mechanics | open |
+| C-M-16 | Low–Med | C4 | YouTube `none_found` rendered as "no channel" | fixed `f48953f` (C4c) |
+| C-M-17 | Low–Med | C4 | SoV drops mentioned-not-cited rivals; `presence_rate` unprinted | fixed `f48953f` (C4c) |
+| C-M-18 | Med | C4 | Provenance; dead keys; hard-coded live thresholds | fixed `f48953f` (C4c) |
+| C-M-19 | Med | C4 | Vocabulary counting mechanics | fixed `7c98967` (C4a) |
 | C-M-20 | Low | C3 | Smaller doc/label drifts | fixed `3d56e0a` (C3) |
 
 
-Status is per-finding as of 2026-11-15. `fixed <sha>` means that commit's message
+Status is per-finding as of 2026-11-16. `fixed <sha>` means that commit's message
 claims the finding and the chunk shipped behaviour tests for it. Independently
 spot-checked against the code by this session: C-C-01/C-M-01 (`group_targets` is
 read at `main.py:415,430`), C-M-02 (`vacuum_min_medical` is a new key and
@@ -506,12 +506,80 @@ read at `main.py:415,430`), C-M-02 (`vacuum_min_medical` is a new key and
 rather than silently disabled), C-C-11 (unmeasured brands excluded from the share
 denominator), C-C-02 (`COUNT(DISTINCT m.keyword)`), C-C-07 ("showing N of M"),
 C-C-08 (`t2_count`/`t3_count` persisted, estimate gone), C-C-10
-(`get_competitor_das` requires `run_id`) and C-C-16 (`--handoff` passed from both
-the orchestrator and `run_audit.sh`). The rest of each chunk's list is taken from
-its commit and its tests, not separately re-derived. The compete suite is 578
-passed, exit 0, at `3d56e0a`.
+(`get_competitor_das` requires `run_id`), C-C-16 (`--handoff` passed from both
+the orchestrator and `run_audit.sh`), C-M-08 (`tier_1_medical` is 13 lemmas with
+`therapy`, `patient`, `patients`, `condition`, `trauma` moved to
+`neutral_clinical`; the 15 words decision 3 listed became 13 because matching
+lemmatises the page text — verified at `semantic.py:124-160` — so the plural
+entries were redundant) and C-C-14 (`main._unsupported_handoff_version` really
+does refuse an unlisted version, exercised again by chunk X's second half).
+The rest of each chunk's list is taken from its commit and its tests, not
+separately re-derived. The compete suite is 952 passed, exit 0, at `6164008`.
 
-No discover finding is fixed yet: chunk D1/D2 has pushed nothing.
+Chunk D1 shipped at `2285828` (serp-discover), closing D-C-01/D-M-01, D-C-19 and
+D-C-22; the discover suite is 1540 passed, 72 skipped, exit 0. The absolute-rank
+fix was verified on real data, not only on synthetic pages: the archived
+2026-08-26 response's rows, split back into pages at each `position` restart and
+re-merged by the fixed function, renumber to a contiguous 1..27, putting the
+client's page at its true position 25 where the stored `Rank` said 7 — which
+matches `probe_01`'s independent estimate. `probe_01`, `p02`, `p03` and `p09`
+still reproduce on the archived *outputs*, because those are stored data from
+before the fix; the live code path they also exercise
+(`_merge_google_pages`) now returns 1..20 for two full pages. They can only stop
+reproducing after a re-run, which is the owner work the chunk's *After:* line
+assigns.
+
+The pre-push `learning-qa` pass over `2285828` returned 10 findings against
+P1-P45 (2 at S2, 5 at S3, 3 at S4). Every S2/S3 one is fixed in the follow-up
+commit, with one guard test each:
+
+- An unmeasured keyword was published as "Low Feasibility", which also
+  produced a pivot recommendation and a paid Maps fetch from zero
+  measurements. `compute_feasibility([])` now returns "Not Measured", and the
+  in-pipeline pass writes that row instead of dropping the keyword.
+- `runs.completed_at` was stamped from in-process flags. `finish_run` now
+  checks every output against the file on disk before returning OK (P6).
+- Both pivot passes averaged every measured DA, counting the client as its own
+  competitor whenever it ranked in the pivot SERP. All four passes now use
+  `select_competitor_das`, guarded by a source-inspection test — the
+  behavioural tests re-implement each call site, so they could not catch this.
+- `TOP_N_FOR_FEASIBILITY` did not bind: both producers pre-sliced to a literal
+  10, so raising it had no effect.
+- Dropped pagination duplicates are counted and logged
+  (`pagination_duplicates_dropped`): renumbering shifts the rows below a drop.
+- The "N more recent run(s) skipped" count included every earlier incomplete
+  run, which on this database would have reported 54 with none in the window.
+- `get_rank_deltas` and `get_entity_dominance` returned a bare `{}` for three
+  different reasons; the caller printed "no historical data" over 6,540 rows,
+  and report section 5 vanished with no note. Both now carry a reason, which
+  the audit prints and the report renders.
+- The `INSERT OR REPLACE` → upsert change in `save_run` was untested although
+  it is the only change in the diff that can destroy live data.
+
+**Adjacent issues found, not fixed** (S4, dropped per the effort budget; each
+is a real defect, not a false positive):
+
+- `storage.py` migration `except sqlite3.OperationalError: pass` also swallows
+  lock and missing-table errors. It then fails loudly on the first write
+  instead of at init, so the effect is a worse error message, not bad data.
+- `visualize_volatility.py` runs the same top-10 organic query as
+  `metrics.get_entity_dominance` with no `query_label` filter, and its
+  `pivot_table` averages A/A.1/A.2/P ranks into one plotted point. Same defect
+  class as D-C-22, in a dev-facing script.
+- `step_dag.py` is built, correct and covered by 13 passing tests, and is
+  reachable from nothing. Either wire it in or delete it with its test.
+
+Chunk X's open half shipped with it at `6164008` (serp-compete): the handoff moved
+to `schema_version` 2.0/2.1 and those versions are now in compete's
+`handoff.supported_versions` and `absolute_rank_versions`, so the rank-column
+warning retires itself on new files and still fires on the v1.x files on disk.
+Without the `supported_versions` entry the next real handoff would have been a
+hard fail. Compete's suite is 952 passed, exit 0. The "`rank <= magnet_max_position`
+admits 29 of 29" figure in its FEATURE_GUIDE is kept but labelled: it was measured
+on page-relative data and does not describe a v2.x run, and what the filter admits
+on absolute ranks has not been measured — no v2.x handoff exists yet.
+
+Chunks D2–D6 are unstarted; 44 findings remain open, all discover's.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)
 

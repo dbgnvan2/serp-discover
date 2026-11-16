@@ -217,7 +217,11 @@ def _section_5_available() -> bool:
         with open(REAL_JSON, encoding="utf-8") as f:
             overview = (json.load(f).get("overview") or [])
         run_id = overview[0].get("Run_ID") if overview else None
-        return bool(run_id and metrics.get_entity_dominance(run_id))
+        if not run_id:
+            return False
+        # Rows, not merely a truthy dict: since the D1 follow-up the function
+        # returns {"status": ..., "msg": ...} when it has nothing to report.
+        return bool(metrics.get_entity_dominance(run_id).get("entity_dominance"))
     except Exception:
         return False
 
@@ -319,3 +323,22 @@ class TestCD7ExamplesAreGrounded:
             if line.startswith("**Here's an example:**"):
                 assert "{" not in line and "}" not in line, line
                 assert "None" not in line, line
+
+
+class TestSection5SaysWhyItIsMissing:
+    """P2: an absent section 5 reads as "the SERP has no composition"."""
+
+    def test_a_reason_is_rendered_instead_of_dropping_the_section(
+            self, monkeypatch):
+        monkeypatch.setattr(
+            gir.metrics, "get_entity_dominance",
+            lambda run_id: {"status": "empty_data",
+                            "msg": "no primary-query rows for this run."})
+        with open(REAL_JSON, encoding="utf-8") as f:
+            report = generate_report(json.load(f))
+        assert "Section 5 (SERP Composition) is not available" in report
+        assert "no primary-query rows for this run." in report
+        assert "Entity Dominance (Top 10)" not in report
+        # Not a rendered section: a "## 5." heading would have to carry its
+        # writing directive (CD.2), which needs data to be about.
+        assert "## 5. SERP Composition (Enriched Data)" not in report

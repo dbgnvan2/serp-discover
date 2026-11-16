@@ -4,6 +4,7 @@ Spec: docs/plan_config_save_exit_codes_2026-11-14.md (B1-B5)
 """
 
 import json
+import os
 
 import pytest
 
@@ -110,6 +111,26 @@ def test_complete_run_exits_zero_and_records_paths(tmp_path):
         "output_json": paths["json"], "output_xlsx": paths["xlsx"],
         "output_md": paths["md"], "input_csv": "keywords_new.csv"}       # M3
     assert all((tmp_path / f"run.{n}").exists() for n in written)
+
+
+def test_a_reported_output_that_is_not_on_disk_fails_the_run(tmp_path):
+    """P6: "written" is verified against the files, not the in-process flags.
+
+    The flags are set straight after each write, so a truncated, deleted or
+    renamed output used to return EXIT_OK — and that exit code is what stamps
+    `runs.completed_at`, which metrics.py then trusts as "this run's history
+    is sound".
+    """
+    config = tmp_path / "config.yml"
+    config.write_text("files:\n  output_json: previous.json\n")
+    written = {"json": True, "xlsx": True, "md": True, "handoff": True}
+    paths = _outputs(tmp_path, written)
+    os.remove(paths["handoff"])          # e.g. a cleanup step, or a full disk
+
+    assert ps.finish_run(written, paths, str(config)) == ps.EXIT_FAILED
+    # The previous run's paths stay in config.yml, so later steps do not read
+    # this run's partial outputs.
+    assert "previous.json" in config.read_text()
 
 
 def test_config_update_failure_exits_nonzero(tmp_path):

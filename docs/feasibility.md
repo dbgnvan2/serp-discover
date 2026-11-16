@@ -16,6 +16,21 @@ the client ranks 4th is scored against the 9 competitors in its true top 10,
 not against 10 competitors drawn from further down the page. A URL with no DA
 record is omitted from the average rather than counted as a DA of 0.
 
+All four passes use it: the primary and the pivot pass in each producer. The
+two pivot passes used to average every measured DA, which counted the client
+as its own competitor whenever it ranked in the pivot SERP — pulling
+`avg_serp_da` toward `client_da` and making the pivot read as more feasible
+than it is, in exactly the number that justifies recommending it.
+
+**An empty set is "Not Measured", never "Low Feasibility".** When no
+competitor DA could be measured for a keyword, `compute_feasibility` returns
+that status with every number `None`. It used to return "Low Feasibility",
+which `generate_hyper_local_pivot` then turned into a pivot recommendation and
+a paid Maps fetch — a published verdict from zero measurements. The
+in-pipeline pass also writes that row rather than skipping the keyword, which
+used to drop it out of report section 5b with no record that it was ever
+attempted.
+
 Two producers write `keyword_feasibility` from the same SERP — the in-pipeline
 pass in `serp_audit.py` and the standalone `run_feasibility.py` — and they used
 to build that set differently (page order with the client included, vs rank
