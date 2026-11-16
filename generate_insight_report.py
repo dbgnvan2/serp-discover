@@ -45,6 +45,7 @@ import pattern_matching
 from play_rendering import format_play_cell, format_play_line, load_play_vocab
 
 import aio_exposure
+from feasibility import index_feasibility_by_keyword
 import commodity_score
 import demand_dashboard
 
@@ -779,11 +780,7 @@ def _render_content_plan(data: dict, order: list) -> list:
     Tests:   tests/test_report_content_direction.py::test_cd1_*
     """
     profiles = data.get("keyword_profiles") or {}
-    feas_map = {
-        r.get("Keyword"): r
-        for r in (data.get("keyword_feasibility") or [])
-        if r.get("Query_Label") != "P"
-    }
+    feas_map = index_feasibility_by_keyword(data.get("keyword_feasibility"))
     vocab = load_play_vocab()
 
     out = ["## 1. What To Write", ""]
@@ -903,11 +900,7 @@ def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_
     Returns list of (keyword, rank_score, feasibility_status, intent, confidence).
     Higher rank_score = higher priority.
     """
-    feasibility_map = {
-        r.get("Keyword"): r
-        for r in keyword_feasibility
-        if r.get("Query_Label") != "P"  # Exclude pivot keywords
-    }
+    feasibility_map = index_feasibility_by_keyword(keyword_feasibility)
 
     ranked = []
     for kw, profile in keyword_profiles.items():
@@ -962,11 +955,7 @@ def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: l
         return None, "No keywords to analyze."
 
     # Filter to keywords with feasibility data
-    feas_map = {
-        r.get("Keyword"): r
-        for r in keyword_feasibility
-        if r.get("Query_Label") != "P"
-    }
+    feas_map = index_feasibility_by_keyword(keyword_feasibility)
     keywords_with_feas = [kw for kw in keyword_profiles if kw in feas_map]
 
     if not keywords_with_feas:
@@ -1038,7 +1027,7 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
 
     keyword_profiles = data.get("keyword_profiles", {})
     keyword_feasibility = data.get("keyword_feasibility", [])
-    feas_map = {r.get("Keyword"): r for r in keyword_feasibility if r.get("Query_Label") != "P"}
+    feas_map = index_feasibility_by_keyword(keyword_feasibility)
 
     report = []
     report.append("## 0. Executive Summary\n")
@@ -1169,7 +1158,7 @@ def _order_briefs_by_opportunity(data: dict, strategic_recs: list, best_opportun
     organic_results = data.get("organic_results", [])
     paa_questions = data.get("paa_questions", [])
 
-    feas_map = {r.get("Keyword"): r for r in keyword_feasibility if r.get("Query_Label") != "P"}
+    feas_map = index_feasibility_by_keyword(keyword_feasibility)
 
     # Build brief metadata
     brief_metadata = []
@@ -1604,7 +1593,9 @@ def generate_report(data, db_path=None, run_ts=None):
         )
 
         # Split primary and pivot rows
-        primary_rows = [r for r in feasibility_rows if r.get("Query_Label") != "P"]
+        # One row per keyword: an AI-alternative A.1/A.2 row must not add a
+        # second line for the same keyword (finding D-C-19).
+        primary_rows = list(index_feasibility_by_keyword(feasibility_rows).values())
         pivot_rows   = {r.get("Source_Keyword", r.get("Keyword")): r
                         for r in feasibility_rows if r.get("Query_Label") == "P"}
 

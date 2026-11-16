@@ -8,6 +8,26 @@ Gap = avg competitor DA − client DA. Thresholds:
 | 6–15 | ⚠️ Moderate Feasibility | Requires local backlink building |
 | > 15 | 🔴 Low Feasibility | Dominated by high-authority sites — pivot to neighbourhood variant |
 
+**Which DAs the average is taken over.** `feasibility.select_competitor_das`
+is the one definition, used by both producers. The window is the first
+`TOP_N_FOR_FEASIBILITY` (10) URLs **of the SERP in absolute rank order**, and
+the client's own domain is then dropped from that window — so a keyword where
+the client ranks 4th is scored against the 9 competitors in its true top 10,
+not against 10 competitors drawn from further down the page. A URL with no DA
+record is omitted from the average rather than counted as a DA of 0.
+
+Two producers write `keyword_feasibility` from the same SERP — the in-pipeline
+pass in `serp_audit.py` and the standalone `run_feasibility.py` — and they used
+to build that set differently (page order with the client included, vs rank
+order with the client excluded), so `market_analysis_*.md` and
+`feasibility_*.md` reported different Avg Comp DA for the same keyword. The
+in-pipeline pass now also computes a verdict for the primary query (`A`) only:
+an AI-alternative phrasing (`A.1` / `A.2`) is a different SERP, and its row
+used to overwrite the real keyword's verdict in report sections 0, 1 and 5c
+while the play router kept the `A` row. Every consumer indexes the rows with
+`feasibility.index_feasibility_by_keyword` (first-wins, pivot rows excluded).
+*Finding D-C-19, review of 2026-11-04.*
+
 **DA providers** (tried in order):
 1. **DataForSEO** (`DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD`) — `POST /v3/backlinks/bulk_ranks/live`, up to 1000 domains/call, pay-per-use
 2. **Moz** (`MOZ_TOKEN`) — Moz Data API `data.site.metrics.fetch.multiple` over

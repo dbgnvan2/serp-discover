@@ -28,6 +28,7 @@ market_analysis_*.json
 |--------|------|
 | `serp_audit.py` | Main SERP engine — fetches, parses, enriches, tags PAA intent |
 | `pattern_matching.py` | N-gram analysis and Bowen strategic pattern matching (extracted from `serp_audit.py` I.6) |
+| `serp_pagination.py` | SerpAPI pagination: next-page `start` offset, and the page merge that renumbers `position` to the absolute SERP rank (extracted from `serp_audit.py` by review chunk D1) |
 | `handoff_writer.py` | Builds and schema-validates the `competitor_handoff_*.json` handoff for Tool 2 (extracted from `serp_audit.py` I.6) |
 | `generate_insight_report.py` | Renders `market_analysis_*.md` — Sections 1–6 including `## 5b. Per-Keyword SERP Intent`, Mixed-Intent Strategic Notes (Section 4), and per-pattern SERP intent context lines (C.2) |
 | `generate_content_brief.py` | Entry point for the content brief pipeline — orchestrates sub-modules; contains `main()`, `progress()`, `load_data()`, `load_brief_pattern_routing()` |
@@ -45,11 +46,11 @@ market_analysis_*.json
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |
 | `intent_verdict.py` | Spec v2 — computes per-keyword SERP intent verdict from intent_mapping.yml rules (primary_intent, is_mixed, confidence, distribution) |
 | `title_patterns.py` | Spec v2 — extracts shape patterns (how_to, what_is, listicle_numeric, vs_comparison, best_of, brand_only, question, other) from top-10 titles with dominance threshold |
-| `feasibility.py` | DA gap scoring (`compute_feasibility`) + pivot suggestions (`generate_hyper_local_pivot`) |
+| `feasibility.py` | DA gap scoring (`compute_feasibility`) + pivot suggestions (`generate_hyper_local_pivot`) + the one definition of the feasibility input set (`select_competitor_das`) and of the row index (`index_feasibility_by_keyword`), shared by both producers (D-C-19) |
 | `dataforseo_client.py` | DataForSEO bulk_ranks API client with 30-day SQLite cache |
 | `moz_client.py` | Moz Links API v2 client with 30-day SQLite cache (fallback) |
 | `storage.py` | SQLite persistence layer |
-| `metrics.py` | Volatility & entity dominance calculations |
+| `metrics.py` | Volatility & entity dominance calculations; baselines against the previous **completed** run, primary-query rows only (D-C-22) |
 | `url_enricher.py` | URL fetching & feature extraction |
 | `serp-me.py` | Tkinter GUI launcher |
 | `run_pipeline.py` | Pipeline orchestration |

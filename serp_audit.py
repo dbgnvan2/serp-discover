@@ -43,6 +43,9 @@ except ImportError:
     MOZ_AVAILABLE = False
 
 import feasibility as feasibility_module
+import serp_pagination
+from serp_pagination import (
+    _merge_google_pages, _merge_maps_pages, _parse_start_from_pagination)
 from intent_classifier import IntentClassifier
 
 try:
@@ -386,89 +389,6 @@ def _fetch_serp_api(params):
         sleep_s = RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)) + random.uniform(0, 0.2)
         time.sleep(sleep_s)
     return None
-
-
-def _parse_start_from_pagination(results):
-    """Returns the next `start` integer from serpapi_pagination.next, if present."""
-    pagination = results.get("serpapi_pagination", {}) if isinstance(results, dict) else {}
-    next_link = pagination.get("next")
-    if not next_link:
-        return None
-    match = re.search(r"[?&]start=(\d+)", next_link)
-    if not match:
-        return None
-    return int(match.group(1))
-
-
-def _merge_google_pages(pages):
-    """Merge selected paginated Google fields into a single response object."""
-    if not pages:
-        return {}
-
-    merged = dict(pages[0])
-    merged["organic_results"] = []
-    merged["related_questions"] = []
-    merged["related_searches"] = []
-    merged["discussions_and_forums"] = []
-    merged["pagination_pages_fetched"] = len(pages)
-
-    seen_org = set()
-    seen_paa = set()
-    seen_rel = set()
-    seen_forums = set()
-
-    for page in pages:
-        for item in page.get("organic_results", []) or []:
-            key = item.get("link") or f"{item.get('title')}|{item.get('position')}"
-            if key in seen_org:
-                continue
-            seen_org.add(key)
-            merged["organic_results"].append(item)
-
-        for item in page.get("related_questions", []) or []:
-            key = item.get("question")
-            if not key or key in seen_paa:
-                continue
-            seen_paa.add(key)
-            merged["related_questions"].append(item)
-
-        for item in page.get("related_searches", []) or []:
-            key = item.get("query")
-            if not key or key in seen_rel:
-                continue
-            seen_rel.add(key)
-            merged["related_searches"].append(item)
-
-        for item in page.get("discussions_and_forums", []) or []:
-            key = item.get("link") or item.get("title")
-            if not key or key in seen_forums:
-                continue
-            seen_forums.add(key)
-            merged["discussions_and_forums"].append(item)
-
-        if "ai_overview" not in merged and page.get("ai_overview"):
-            merged["ai_overview"] = page["ai_overview"]
-
-    return merged
-
-
-def _merge_maps_pages(pages):
-    """Merge paginated maps local results into a single response object."""
-    if not pages:
-        return {}
-    merged = dict(pages[0])
-    merged["local_results"] = []
-    merged["pagination_pages_fetched"] = len(pages)
-
-    seen_places = set()
-    for page in pages:
-        for place in page.get("local_results", []) or []:
-            key = place.get("place_id") or place.get("data_id") or f"{place.get('title')}|{place.get('address')}"
-            if key in seen_places:
-                continue
-            seen_places.add(key)
-            merged["local_results"].append(place)
-    return merged
 
 
 def _extract_text_blocks_text(item):
@@ -1386,6 +1306,7 @@ def _run(run_id):
     query_jobs = expand_keywords_for_ai(keywords)
 
     # Initialize Enrichment Modules
+    storage = None
     if ENRICHMENT_ENABLED:
         enricher = UrlEnricher(user_agent=CONFIG.get("enrichment", {}).get("user_agent", "MarketIntelligenceBot/1.0"),
                                timeout=CONFIG.get("enrichment", {}).get("timeout_seconds", 10),
@@ -1507,7 +1428,8 @@ def _run(run_id):
                         domain = urlparse(url).netloc
                         storage.save_serp_result(
                             run_id, source_keyword, "organic", item.get("Rank"),
-                            item.get("Title"), url, domain, item.get("Snippet")
+                            item.get("Title"), url, domain, item.get("Snippet"),
+                            query_label=query_label,
                         )
 
                         # 2. Fetch & Enrich URL (Limit to top 5 to save time/bandwidth for now)
@@ -1600,11 +1522,21 @@ def _run(run_id):
                                         moz_results[url]["pa"],
                                     )
 
-                        competitor_das = [
-                            v["da"] for v in moz_results.values()
-                            if v.get("da") is not None
-                        ]
-                        if competitor_das:
+                        # One definition of the input set, shared with
+                        # run_feasibility.py (finding D-C-19): the top 10 by
+                        # absolute Rank, the client's own domain dropped from
+                        # that window. `o` is in rank order because the merged
+                        # SERP rows are (D-C-01).
+                        competitor_das = feasibility_module.select_competitor_das(
+                            keyword_urls,
+                            lambda u: (moz_results.get(u) or {}).get("da"),
+                            client_domain=CLIENT_DOMAIN,
+                        )
+                        # Label-A only: an AI-alternative query (A.1/A.2) is a
+                        # different SERP, and its feasibility row used to
+                        # overwrite the real keyword's verdict in the report
+                        # while the play router kept the A row (D-C-19).
+                        if competitor_das and query_label == "A":
                             feas = feasibility_module.compute_feasibility(
                                 FEASIBILITY_CLIENT_DA, competitor_das
                             )
@@ -2174,9 +2106,23 @@ def _run(run_id):
 
     # B3: fail the run unless every output was written; only then point
     # config.yml at the new files (run_pipeline.py and the refresh step read it).
-    return pipeline_status.finish_run(outputs_written, {
+    exit_code = pipeline_status.finish_run(outputs_written, {
         "json": OUTPUT_JSON, "xlsx": OUTPUT_FILE, "md": OUTPUT_MD, "handoff": _handoff_path},
         input_csv=INPUT_FILE)
+
+    # Stamp the run as complete only once every output is on disk, so a run
+    # that aborted part-way cannot become the baseline a later run's rank
+    # deltas are measured against (finding D-C-22).
+    if storage is not None and exit_code == pipeline_status.EXIT_OK:
+        try:
+            storage.mark_run_completed(run_id)
+        except Exception as e:
+            logging.error(
+                f"Run outputs were written but the completion stamp failed "
+                f"({e}): run {run_id} will not be used as a rank-delta "
+                f"baseline.")
+
+    return exit_code
 
 
 if __name__ == "__main__":

@@ -427,17 +427,21 @@ class TestHandoffContract(unittest.TestCase):
             moz_competitor=moz_competitor_block,
         )
 
-    def test_t4_handoff_without_moz_is_unchanged_v1_0(self):
+    def test_t4_handoff_without_moz_emits_the_base_version(self):
         """A run with the block absent must emit exactly what Tool 2 accepts."""
         handoff = self._build()
         self.assertIsNotNone(handoff)
-        self.assertEqual(handoff["schema_version"], "1.0")
+        self.assertEqual(handoff["schema_version"],
+                         handoff_writer.SCHEMA_VERSION_BASE)
         self.assertNotIn("moz", handoff)
 
     def test_t4_handoff_with_moz_bumps_the_version(self):
         handoff = self._build(self.MOZ_BLOCK)
         self.assertIsNotNone(handoff, "schema rejected the moz block")
-        self.assertEqual(handoff["schema_version"], "1.1")
+        self.assertEqual(handoff["schema_version"],
+                         handoff_writer.SCHEMA_VERSION_WITH_MOZ)
+        self.assertNotEqual(handoff_writer.SCHEMA_VERSION_WITH_MOZ,
+                            handoff_writer.SCHEMA_VERSION_BASE)
         self.assertIn("bowencenter.org", handoff["moz"]["domains"])
 
     def test_t4_moz_block_is_top_level_not_inside_targets(self):

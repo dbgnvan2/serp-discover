@@ -38,6 +38,7 @@ from urllib.parse import urlparse
 import yaml
 
 import brief_data_extraction
+import feasibility as feasibility_module
 import timeouts
 from play_rendering import format_play_cell
 
@@ -335,11 +336,16 @@ def run_feasibility_analysis(
 
     for kw in keywords:
         urls = urls_by_kw[kw]
-        competitor_das = [
-            domain_to_da[_extract_domain(url)]["da"]
-            for url in urls
-            if _extract_domain(url) in domain_to_da and _extract_domain(url) != client_domain
-        ]
+        # One definition of the input set, shared with the in-pipeline pass in
+        # serp_audit (feasibility.select_competitor_das — finding D-C-19).
+        # `urls` is already the top N by absolute Rank; the helper drops the
+        # client's own domain from that window and omits URLs with no DA
+        # record (None is not a DA of 0).
+        competitor_das = feasibility_module.select_competitor_das(
+            urls,
+            lambda u: (domain_to_da.get(feasibility_module.domain_of(u)) or {}).get("da"),
+            client_domain=client_domain,
+        )
 
         # Gate: only service-intent keywords get a neighbourhood pivot/variants.
         # Informational keywords ("how does birth order affect personality West

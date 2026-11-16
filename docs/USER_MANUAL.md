@@ -796,6 +796,44 @@ patterns:
 
 ## Understanding Your Results
 
+### What "Rank" means, and why older outputs disagree
+
+Every rank in your outputs — the `Rank` column in the workbook, `client_rank`
+in the JSON, the handoff's target ranks, the "top 10" the feasibility table
+scores — is the **real position on the Google results page**. Rank 12 means
+twelfth; it is not "second on page two".
+
+That was not true of runs before 16 November 2026. The SERP provider numbers
+each page of results from 1, so a three-page fetch came back as 1–10, then
+1–10 again, then 1–10 again, and the tool stored those numbers as they came.
+Three different pages all looked like rank 1. The practical effects, all now
+fixed:
+
+- **Your own position was flattered.** A page sitting around 25th was reported
+  as 7th, because it was 7th *on its page*. In one audited run the report said
+  the client ranked 7th while 17 competitors sat above it.
+- **"Top 10" was not the top 10.** The ten URLs the feasibility table measured
+  your Domain Authority gap against were drawn from positions 30 to 50. The
+  gap, the status (High / Moderate / Low Feasibility) and the pivot advice were
+  all computed against the wrong competitors.
+- **Page fetching spread too thin.** `enrichment.max_urls_per_keyword: 5` was
+  letting about 14 pages per keyword through, since it admitted five per
+  fetched page. It now means five pages per keyword. If you want the old
+  breadth of enriched pages, raise that number — it is a real cost, roughly
+  one page fetch each.
+- **Rank changes between runs could be invented.** Deltas now compare against
+  the previous run that actually finished, using only the main query's rows.
+  Runs that aborted part-way, and the alternative phrasings the tool tries,
+  no longer act as a baseline.
+
+**What this means for you:** any `market_analysis_*`, `feasibility_*` or
+`competitor_handoff_*` file from before 16 November 2026 has wrong ranks, and
+every number derived from them — feasibility gaps, recommended plays, the
+competitor lists sent to Serp-Compete — is wrong with them. Re-run the audit
+on any keyword set you are still working from. Run-to-run rank history also
+starts fresh: older rows carry no record of which query produced them, so the
+tool reports that it cannot compare them rather than guessing.
+
 ### Output Files
 
 For each run, Serp-Discover produces 7 files:

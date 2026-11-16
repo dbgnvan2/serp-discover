@@ -36,7 +36,8 @@ class SerpStorage:
         c.execute('''CREATE TABLE IF NOT EXISTS runs (
             run_id TEXT PRIMARY KEY,
             run_date TEXT,
-            params_hash TEXT
+            params_hash TEXT,
+            completed_at TEXT   -- NULL until the run wrote all its outputs
         )''')
 
         # 2. Keywords
@@ -52,12 +53,13 @@ class SerpStorage:
             run_id TEXT,
             keyword_text TEXT,
             result_type TEXT, -- organic, paid, local, etc.
-            rank INTEGER,
+            rank INTEGER,       -- absolute SERP position, not per-page
             title TEXT,
             url TEXT,
             domain TEXT,
             snippet TEXT,
             features_json TEXT,
+            query_label TEXT,   -- "A" primary | "A.1"/"A.2" alt | "P" pivot
             FOREIGN KEY(run_id) REFERENCES runs(run_id)
         )''')
 
@@ -115,23 +117,73 @@ class SerpStorage:
             except sqlite3.OperationalError:
                 pass  # Column already exists — safe to ignore
 
+        # --- Migrations: run-completion and query-label columns (D-C-22) ---
+        # `runs.completed_at` is NULL until the run writes all its outputs, so
+        # an aborted run cannot become the baseline a later run's deltas are
+        # measured against. `serp_results.query_label` separates the primary
+        # query ("A") from AI-alternative queries ("A.1"/"A.2") and pivot
+        # fetches ("P"), which were all stored under the root keyword and so
+        # produced cross-product merges in metrics.py.
+        # Rows written before this migration keep NULL in both columns, which
+        # means "unknown", not "A" and not "completed" — metrics.py counts and
+        # reports what it skipped rather than guessing.
+        for table, col, col_type in [
+            ("runs", "completed_at", "TEXT"),
+            ("serp_results", "query_label", "TEXT"),
+        ]:
+            try:
+                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass  # Column already exists — safe to ignore
+
         conn.commit()
         conn.close()
 
     def save_run(self, run_id, params_hash):
+        """Record (or update) a run. ``completed_at`` stays NULL until
+        ``mark_run_completed`` — this is called before the first fetch, so a
+        run that aborts on keyword 1 must not look like usable history
+        (finding D-C-22).
+        """
         run_date = datetime.now().isoformat()
         with sqlite3.connect(self.db_path) as conn:
-            # Use REPLACE to handle updates to params_hash if called multiple times
-            conn.execute("INSERT OR REPLACE INTO runs (run_id, run_date, params_hash) VALUES (?, ?, ?)",
-                         (run_id, run_date, params_hash))
+            # UPSERT rather than INSERT OR REPLACE: REPLACE deletes the row and
+            # re-inserts it, which would wipe a completed_at already set.
+            conn.execute(
+                """INSERT INTO runs (run_id, run_date, params_hash)
+                   VALUES (?, ?, ?)
+                   ON CONFLICT(run_id) DO UPDATE SET
+                       run_date = excluded.run_date,
+                       params_hash = excluded.params_hash""",
+                (run_id, run_date, params_hash))
 
-    def save_serp_result(self, run_id, keyword, result_type, rank, title, url, domain, snippet, features=None):
+    def mark_run_completed(self, run_id, completed_at=None):
+        """Stamp ``runs.completed_at``: this run wrote all of its outputs.
+
+        Called once, at the end of a successful run. Only runs with a
+        completion stamp are eligible as the baseline for rank deltas
+        (finding D-C-22).
+        """
+        stamp = completed_at or datetime.now().isoformat()
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("UPDATE runs SET completed_at = ? WHERE run_id = ?",
+                         (stamp, run_id))
+
+    def save_serp_result(self, run_id, keyword, result_type, rank, title, url,
+                         domain, snippet, features=None, query_label=None):
+        """Store one SERP row. *rank* is the absolute SERP position (D-C-01).
+
+        *query_label* says which query produced the row — "A" for the primary
+        keyword, "A.1"/"A.2" for AI-alternative phrasings, "P" for a pivot
+        fetch. All of them are stored under the root keyword, so rank history
+        has to filter on the label (finding D-C-22).
+        """
         features_json = json.dumps(features) if features else "{}"
         with sqlite3.connect(self.db_path) as conn:
             conn.execute('''INSERT INTO serp_results 
-                            (run_id, keyword_text, result_type, rank, title, url, domain, snippet, features_json)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                         (run_id, keyword, result_type, rank, title, url, domain, snippet, features_json))
+                            (run_id, keyword_text, result_type, rank, title, url, domain, snippet, features_json, query_label)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                         (run_id, keyword, result_type, rank, title, url, domain, snippet, features_json, query_label))
 
     def save_url_features(self, url, status_code, content_type, schema_types, word_count, evidence):
         fetched_at = datetime.now().isoformat()

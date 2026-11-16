@@ -16,6 +16,7 @@ from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapp
 from title_patterns import compute_title_patterns
 from classifiers import classify_url_from_patterns, EntityClassifier
 from play_routing import compute_recommended_play, load_play_routing
+import feasibility as feasibility_module
 
 
 def progress(message):
@@ -1021,15 +1022,13 @@ def _build_gsc_summary(sidecar):
 
 
 def index_feasibility_by_keyword(feasibility_rows):
-    """Map keyword -> its primary feasibility row (pivot rows excluded)."""
-    by_kw = {}
-    for row in feasibility_rows or []:
-        if row.get("Query_Label") == "P" or row.get("query_label") == "P":
-            continue  # pivot rows are not the primary keyword's verdict
-        kw = row.get("Keyword") or row.get("keyword_text") or ""
-        if kw and kw not in by_kw:
-            by_kw[kw] = row
-    return by_kw
+    """Map keyword -> its primary feasibility row (pivot rows excluded).
+
+    Kept as a name here because callers and tests import it from this module;
+    the one implementation lives in ``feasibility`` so the report renderers
+    index the rows the same way (finding D-C-19).
+    """
+    return feasibility_module.index_feasibility_by_keyword(feasibility_rows)
 
 
 def attach_recommended_plays(keyword_profiles, feasibility_rows,

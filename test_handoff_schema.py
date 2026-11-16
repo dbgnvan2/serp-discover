@@ -4,7 +4,8 @@ import os
 import pytest
 import jsonschema
 
-from handoff_writer import build_competitor_handoff, _HANDOFF_SCHEMA
+from handoff_writer import (build_competitor_handoff, _HANDOFF_SCHEMA,
+                            SCHEMA_VERSION_BASE, SCHEMA_VERSION_WITH_MOZ)
 
 SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "handoff_schema.json")
 
@@ -86,7 +87,15 @@ def test_top_level_keys_present():
 def test_schema_version_is_string():
     handoff = _build()
     assert isinstance(handoff["schema_version"], str)
-    assert handoff["schema_version"] == "1.0"
+    assert handoff["schema_version"] == SCHEMA_VERSION_BASE
+
+
+def test_schema_version_is_2_x_because_rank_is_absolute():
+    """Tool 2 keys `absolute_rank_versions` off this, so the major version
+    must move with the rank semantics (review chunk D1 / finding D-C-01)."""
+    assert SCHEMA_VERSION_BASE.startswith("2.")
+    assert SCHEMA_VERSION_WITH_MOZ.startswith("2.")
+    assert SCHEMA_VERSION_WITH_MOZ != SCHEMA_VERSION_BASE
 
 
 def test_targets_are_list():

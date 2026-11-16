@@ -12,8 +12,12 @@ downstream — it is fatal until Tool 2's schema copy allows it.
 
 The T.4 ``moz`` block is therefore optional, top-level (never inside a
 target), and absent entirely unless ``moz.competitor.enabled`` is true;
-``schema_version`` moves to "1.1" only when it is present, so a run without it
-still emits exactly the v1.0 document Tool 2 already accepts.
+``schema_version`` takes the ``_WITH_MOZ`` value only when it is present, so a
+run without it emits the smaller document Tool 2 already accepts.
+
+``targets[].rank`` is the absolute SERP position as of schema_version 2.0
+(review chunk D1 / finding D-C-01); 1.0 and 1.1 carried SerpAPI's per-page
+``position``. See ``docs/handoff_contract.md``.
 """
 
 import json
@@ -30,10 +34,19 @@ if os.path.exists(_HANDOFF_SCHEMA_PATH):
         _HANDOFF_SCHEMA = json.load(_f)
 
 
-SCHEMA_VERSION_BASE = "1.0"
+#: 2.0 since review chunk D1: `targets[].rank` is now the absolute position on
+#: the SERP. Under 1.0/1.1 it was SerpAPI's per-page `position`, so a 3-page
+#: run emitted three targets all claiming rank 1 and Tool 2 could not tell a
+#: real #1 from a page-3 row (finding D-C-01). The document's *shape* is
+#: unchanged — only the meaning of `rank` — but Tool 2 enforces
+#: `handoff.supported_versions` and keys its rank-column warning off
+#: `handoff.absolute_rank_versions`, so the bump is how it learns the ranks
+#: can be trusted. Both values must be registered in Tool 2's shared
+#: cross-tool config — see docs/handoff_contract.md, "schema_version 2.0".
+SCHEMA_VERSION_BASE = "2.0"
 #: Bumped only when the optional `moz` block is actually present, so a run
-#: without it stays byte-compatible with what Tool 2 already accepts.
-SCHEMA_VERSION_WITH_MOZ = "1.1"
+#: without it emits the smaller document.
+SCHEMA_VERSION_WITH_MOZ = "2.1"
 
 
 def build_competitor_handoff(

@@ -10,6 +10,33 @@ How SERP Intelligence Tool 1 produces its outputs.
 
 **Fetch:** `serp_audit.py` calls SerpAPI for each keyword, retrieving organic results, People Also Ask (PAA) questions, and local pack entries. A query that returns no usable data is counted, named in the log, and recorded in the output JSON as `fetch_summary` (`planned`, `fetched`, `failed`, plus `pivot_failed` for pivot-keyword fetches); the analysis covers only the fetched queries. A run in which no query returns data, or in which an output file cannot be written, exits non-zero. Each SerpAPI response is saved under `raw/<run_id>/calls/` as it arrives. A run started with `SERP_RESUME_RUN_ID` reuses the stored responses of that earlier run when the request parameters are identical and the response is no older than `serpapi.resume_max_age_hours`; its results therefore mix fetch times, and `fetch_summary` records `resumed_from` and `reused_calls`. Rows built from a reused response carry the time of the resumed run, not the original fetch time. A stored response whose token follow-ups (AI Overview, related questions) were not completed is fetched again rather than reused.
 
+**Rank semantics (pagination).** SerpAPI restarts `position` at 1 on every
+paginated page, so page 2 of a three-page fetch reports positions 1..10 for
+results that sit at 11..20 on the SERP. `_merge_google_pages` therefore
+renumbers `position` to the merged, absolute position as it concatenates the
+pages, counting only the rows it keeps after de-duplicating by link. The
+merged sequence is a contiguous 1..N and `max(Rank) == len(rows)` for each
+keyword. Every row keeps the raw per-page value as `page_position` and the
+0-based page it came from as `page_index`. The `Rank` column in the JSON,
+the workbook and `serp_results.rank` is this absolute position, so every
+"top 10" filter downstream (enrichment, the brief's top-10 domain map and
+`serp_intent` denominator, `client_rank`, the feasibility URL set, the
+handoff targets, `metrics.py`, `aio_exposure.py`) means the real top 10.
+Maps pagination needs no renumbering: the local-pack `Rank` is the index
+into the merged `local_results` list, which is already absolute.
+
+Three Google pages reach about the top 30, not the top 300: Google serves
+roughly 10 organic rows per page regardless of `serpapi.num`, so with
+`google_max_pages: 3` the `serpapi.num: 100` and
+`serpapi.google_max_results: 300` ceilings are never the binding limit (see
+`docs/config_reference.md`). `enrichment.max_urls_per_keyword` now means
+what it says — the top N of the real SERP — so a run enriches N pages per
+keyword rather than roughly N per page.
+
+*Outputs written before 2026-11-16 carry the old per-page `Rank`: their
+`client_rank`, feasibility figures and handoff ranks are wrong and need a
+re-run. Finding D-C-01 / D-M-01, review of 2026-11-04.*
+
 **Intent verdict:** `intent_verdict.py` applies rules from `intent_mapping.yml` (first-match-wins) to assign a `primary_intent`, `is_mixed` flag, confidence score, and distribution to each keyword.
 
 **PAA classification:** `intent_classifier.py` tags each PAA question as `External Locus` (medical-model framing), `Systemic` (Bowen Family Systems Theory framing), or `General` (neither). Trigger vocabularies live in `intent_classifier_triggers.yml`.
@@ -211,6 +238,20 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 `feasibility.py` scores each keyword by the Domain Authority gap (avg competitor DA − client DA) into High / Moderate / Low Feasibility (thresholds in `docs/feasibility.md`). For **Low Feasibility** keywords `generate_hyper_local_pivot` may suggest a neighbourhood variant — but only when the keyword is **service-intent**. Whether a keyword is service-like is decided by the shared `query_variants.is_service_like` predicate, which matches the editorial `service_like_tokens` list in `serp_vocab.yml` against the de-localised keyword. Informational keywords (e.g. "how does birth order affect personality") get **no** pivot and **no** neighbourhood variants: a geographic variant is meaningless for them, and their play is content extractability, not proximity (the report flags them for the extraction play instead).
 
 When `feasibility.pivot_serp_fetch` is on, a secondary SerpAPI Maps/organic fetch validates each pivot. That fetch is treated honestly: a **failed** validation fetch is recorded as *could not measure* (local pack `None`, pivot status **Not Measured**), never as a real "not in local pack" or a false "Low Feasibility". Any request URL written to a log is scrubbed of the SerpAPI key first.
+
+Both producers of `keyword_feasibility` — the in-pipeline pass in
+`serp_audit.py` and the standalone `run_feasibility.py` — take the DA average
+over the same set: `feasibility.select_competitor_das`, the true top 10 by
+absolute rank with the client's own domain dropped. The in-pipeline pass
+computes a verdict for the primary query only, and every consumer indexes the
+rows with `feasibility.index_feasibility_by_keyword`. See
+`docs/feasibility.md`, "Which DAs the average is taken over" (finding D-C-19).
+
+**Rank history.** Deltas (`metrics.py`) are measured against the previous run
+that wrote all of its outputs, over primary-query rows only; an aborted run
+and an AI-alternative query can no longer act as a baseline. See
+`docs/database.md`, "Rank history: which rows are comparable" (finding
+D-C-22).
 
 *Spec: seo_geo_review_20260704.md (chip B). Implemented 2026-07-04.*
 

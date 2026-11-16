@@ -22,7 +22,8 @@ isolation and reused without side effects.
 from __future__ import annotations
 
 import random as _random
-from typing import Literal
+from typing import Callable, Literal
+from urllib.parse import urlparse
 
 from shared_config import load_shared_config
 
@@ -47,6 +48,95 @@ def load_thresholds():
 HIGH_FEASIBILITY_MAX_GAP, MODERATE_FEASIBILITY_MAX_GAP, SCORE_NORMALISER = load_thresholds()
 
 StatusLiteral = Literal["High Feasibility", "Moderate Feasibility", "Low Feasibility"]
+
+
+# ---------------------------------------------------------------------------
+# One definition of the feasibility input set
+# ---------------------------------------------------------------------------
+#
+# Two producers used to build this set differently, from the same SERP, and
+# both wrote `keyword_feasibility`: the in-pipeline pass in serp_audit took the
+# first 10 links in page order with the client's own URL among them, while
+# run_feasibility took the top 10 by rank with the client excluded. The two
+# therefore reported different Avg Comp DA for the same keyword, and the
+# report's §5c and the play router disagreed about which row was authoritative.
+# Both now call the helpers below.
+#
+# Spec: docs/review_2026-11-04/REVIEW_WORKPLAN_2026-11-04.md chunk D1
+# (finding D-C-19).
+
+#: How many of a keyword's ranking URLs the DA average is taken over.
+TOP_N_FOR_FEASIBILITY = 10
+
+
+def domain_of(url: str) -> str:
+    """Return the bare, lower-cased domain of *url*, ``www.`` removed.
+
+    ``urlparse`` puts everything in ``path`` when there is no ``//``, so a
+    scheme-less key such as ``"example.com/page"`` (the format the Moz cache
+    writes) would otherwise yield an empty domain. ``removeprefix`` is correct
+    where ``lstrip("www.")`` is not: ``lstrip`` strips *characters*, so it
+    turns "worldbank.org" into "orldbank.org".
+    """
+    if not url:
+        return ""
+    try:
+        parsed = urlparse(url if "//" in url else "//" + url)
+        return parsed.netloc.lower().removeprefix("www.")
+    except Exception:
+        return ""
+
+
+def select_competitor_das(
+    ranked_urls: list[str],
+    da_for_url: Callable[[str], object],
+    client_domain: str = "",
+    top_n: int = TOP_N_FOR_FEASIBILITY,
+) -> list:
+    """Return the competitor DA values the feasibility gap is measured over.
+
+    *ranked_urls* must already be in rank order, best first; since review
+    chunk D1 the merged SERP rows are, because ``Rank`` is absolute. The
+    window is the first *top_n* URLs **of the SERP**, and the client's own
+    domain is then dropped from that window — so a keyword where the client
+    ranks 4th is scored against the 9 competitors in its true top 10, not
+    against 10 competitors drawn from further down the page.
+
+    *da_for_url* returns the DA for one URL, or ``None`` when that URL has no
+    DA record. ``None`` is not zero: an unscored domain is left out of the
+    average rather than counted as a DA of 0 (finding D-C-04).
+    """
+    client = domain_of(client_domain) if client_domain else ""
+    das = []
+    for url in (ranked_urls or [])[:top_n]:
+        if not url or url == "N/A":
+            continue
+        if client and domain_of(url) == client:
+            continue
+        da = da_for_url(url)
+        if da is not None:
+            das.append(da)
+    return das
+
+
+def index_feasibility_by_keyword(feasibility_rows) -> dict:
+    """Map keyword -> its primary feasibility row (pivot rows excluded).
+
+    First-wins, so the primary ``A`` row is never overwritten by an AI-
+    alternative ``A.1``/``A.2`` row for the same keyword. Every consumer of
+    ``keyword_feasibility`` goes through this, because the last-wins dict
+    comprehensions it replaces made §0/§1/§5c of the report disagree with the
+    play router about the same keyword (finding D-C-19).
+    """
+    by_kw = {}
+    for row in feasibility_rows or []:
+        label = row.get("Query_Label") or row.get("query_label")
+        if label == "P":
+            continue  # pivot rows are not the primary keyword's verdict
+        kw = row.get("Keyword") or row.get("keyword_text") or ""
+        if kw and kw not in by_kw:
+            by_kw[kw] = row
+    return by_kw
 
 
 # ---------------------------------------------------------------------------

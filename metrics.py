@@ -9,6 +9,52 @@ import logging
 
 DB_PATH = "serp_data.db"
 
+#: Rank history is only comparable across the primary query. AI-alternative
+#: ("A.1"/"A.2") and pivot ("P") rows are stored under the same root keyword,
+#: so merging on (keyword_text, url) without this filter produced
+#: cross-products and invented rank deltas (finding D-C-22).
+PRIMARY_QUERY_LABEL = "A"
+
+#: One definition of "a run whose history can be trusted": it wrote every
+#: output. Rows written before the completed_at migration carry NULL, which
+#: means unknown — they are skipped, and the skip is counted and logged rather
+#: than passed off as "no history" (P2: surface, never silently drop).
+_RUNS_SQL = "SELECT run_id, run_date, completed_at FROM runs ORDER BY run_date DESC"
+
+_ORGANIC_SQL = """
+    SELECT keyword_text, url, rank
+    FROM serp_results
+    WHERE run_id = ? AND result_type = 'organic' AND query_label = ?
+"""
+
+
+def _previous_completed_run(runs_df, current_date):
+    """The most recent completed run strictly before *current_date*.
+
+    Returns ``(run_id, skipped_count)``; ``run_id`` is None when there is
+    none. *skipped_count* is how many earlier runs were passed over because
+    they never recorded a completion — the caller reports that number instead
+    of silently comparing against an aborted run.
+    """
+    earlier = runs_df[runs_df["run_date"] < current_date]
+    if earlier.empty:
+        return None, 0
+    completed = earlier[earlier["completed_at"].notna()]
+    skipped = len(earlier) - len(completed)
+    if completed.empty:
+        return None, skipped
+    return completed.iloc[0]["run_id"], skipped
+
+
+def _incomplete_history_msg(skipped):
+    """Why there is no baseline, naming how many runs were passed over."""
+    if skipped:
+        return (f"No completed prior run found: {skipped} earlier "
+                f"run(s) have no completion record (aborted, or written "
+                f"before run completion was tracked). Deltas need a run that "
+                f"wrote all of its outputs.")
+    return "No prior run found."
+
 
 def get_volatility_metrics(current_run_id):
     """
@@ -22,8 +68,7 @@ def get_volatility_metrics(current_run_id):
         conn = sqlite3.connect(DB_PATH)
 
         # 1. Get Run History
-        runs_df = pd.read_sql(
-            "SELECT run_id, run_date FROM runs ORDER BY run_date DESC", conn)
+        runs_df = pd.read_sql(_RUNS_SQL, conn)
         if len(runs_df) < 2:
             conn.close()
             return {"status": "insufficient_history", "msg": "Need at least 2 runs to calculate volatility."}
@@ -39,30 +84,35 @@ def get_volatility_metrics(current_run_id):
 
         current_date = current_run_date_row.iloc[0]['run_date']
 
-        # Find previous run
-        prev_runs = runs_df[runs_df['run_date'] < current_date]
-        if prev_runs.empty:
+        # Find the previous *completed* run (D-C-22)
+        prev_run_id, skipped = _previous_completed_run(runs_df, current_date)
+        if prev_run_id is None:
             conn.close()
-            return {"status": "insufficient_history", "msg": "No prior run found."}
+            if skipped:
+                logging.warning(
+                    "Volatility: %d earlier run(s) skipped with no completion record.",
+                    skipped)
+            return {"status": "insufficient_history",
+                    "msg": _incomplete_history_msg(skipped)}
+        if skipped:
+            logging.info(
+                "Volatility: baseline is run %s; %d more recent run(s) skipped "
+                "with no completion record.", prev_run_id, skipped)
 
-        prev_run_id = prev_runs.iloc[0]['run_id']
-
-        # 2. Get Ranks for Current and Previous
-        query = """
-        SELECT 
-            keyword_text, 
-            url, 
-            rank 
-        FROM serp_results 
-        WHERE run_id = ? AND result_type = 'organic'
-        """
-        curr_df = pd.read_sql(query, conn, params=(current_run_id,))
-        prev_df = pd.read_sql(query, conn, params=(prev_run_id,))
+        # 2. Get Ranks for Current and Previous — primary query only (D-C-22)
+        curr_df = pd.read_sql(_ORGANIC_SQL, conn,
+                              params=(current_run_id, PRIMARY_QUERY_LABEL))
+        prev_df = pd.read_sql(_ORGANIC_SQL, conn,
+                              params=(prev_run_id, PRIMARY_QUERY_LABEL))
 
         conn.close()
 
         if curr_df.empty or prev_df.empty:
-            return {"status": "empty_data", "msg": "No organic results found in one of the runs."}
+            return {"status": "empty_data",
+                    "msg": ("No primary-query organic results found in one of "
+                            "the runs. Rows stored before the query_label "
+                            "migration carry no label and are not comparable; "
+                            "re-run to rebuild the history.")}
 
         # Ensure ranks are numeric (handle "N/A" or other artifacts)
         curr_df['rank'] = pd.to_numeric(curr_df['rank'], errors='coerce')
@@ -134,9 +184,12 @@ def get_entity_dominance(run_id):
         FROM serp_results s
         LEFT JOIN domain_features d ON s.domain = d.domain
         LEFT JOIN url_features u ON s.url = u.url
-        WHERE s.run_id = ? AND s.result_type = 'organic' AND s.rank <= 10
+        WHERE s.run_id = ? AND s.result_type = 'organic'
+          AND s.query_label = ? AND s.rank <= 10
         """
-        df = pd.read_sql(query, conn, params=(run_id,))
+        # `rank <= 10` is the real top 10 since ranks became absolute
+        # (D-C-01), and the label keeps alternative-query rows out (D-C-22).
+        df = pd.read_sql(query, conn, params=(run_id, PRIMARY_QUERY_LABEL))
         conn.close()
 
         if df.empty:
@@ -166,8 +219,7 @@ def get_rank_deltas(current_run_id):
 
     try:
         with sqlite3.connect(DB_PATH) as conn:
-            runs_df = pd.read_sql(
-                "SELECT run_id, run_date FROM runs ORDER BY run_date DESC", conn)
+            runs_df = pd.read_sql(_RUNS_SQL, conn)
 
             if len(runs_df) < 2:
                 return {}
@@ -178,21 +230,23 @@ def get_rank_deltas(current_run_id):
                 return {}
 
             current_date = current_run_date_row.iloc[0]['run_date']
-            prev_runs = runs_df[runs_df['run_date'] < current_date]
-
-            if prev_runs.empty:
+            # Previous *completed* run only (D-C-22).
+            prev_run_id, skipped = _previous_completed_run(runs_df, current_date)
+            if prev_run_id is None:
+                if skipped:
+                    logging.warning(
+                        "Rank deltas: no baseline; %d earlier run(s) have no "
+                        "completion record.", skipped)
                 return {}
 
-            prev_run_id = prev_runs.iloc[0]['run_id']
-
-            # Keep keyword + url to avoid collisions when the same URL ranks for multiple keywords.
-            query = """
-                SELECT keyword_text, url, rank
-                FROM serp_results
-                WHERE run_id = ? AND result_type = 'organic'
-            """
-            curr_df = pd.read_sql(query, conn, params=(current_run_id,))
-            prev_df = pd.read_sql(query, conn, params=(prev_run_id,))
+            # Keep keyword + url to avoid collisions when the same URL ranks for
+            # multiple keywords, and the primary query only, so a URL ranking in
+            # both the root and an alternative query cannot cross-product
+            # (D-C-22).
+            curr_df = pd.read_sql(_ORGANIC_SQL, conn,
+                                  params=(current_run_id, PRIMARY_QUERY_LABEL))
+            prev_df = pd.read_sql(_ORGANIC_SQL, conn,
+                                  params=(prev_run_id, PRIMARY_QUERY_LABEL))
 
         if curr_df.empty or prev_df.empty:
             return {}

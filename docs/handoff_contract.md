@@ -32,7 +32,7 @@ The `<topic>` slug is derived from the input keyword CSV filename (same as `mark
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `schema_version` | string | ✅ | Always `"1.0"` |
+| `schema_version` | string | ✅ | `"2.0"`, or `"2.1"` when the optional `moz` block is present. `1.0`/`1.1` are the same shape with per-page ranks — see "schema_version 2.0" below |
 | `source_run_id` | string | ✅ | Unique ID of the Tool 1 run that produced this file |
 | `source_run_timestamp` | string | ✅ | ISO 8601 UTC timestamp of the run |
 | `client_domain` | string | ✅ | The client's primary domain (e.g. `livingsystems.ca`) |
@@ -46,7 +46,7 @@ The `<topic>` slug is derived from the input keyword CSV filename (same as `mark
 |-------|------|----------|-------------|
 | `url` | string | ✅ | Full URL of the competitor page |
 | `domain` | string | ✅ | Hostname extracted from the URL |
-| `rank` | integer | ✅ | Organic rank position on the SERP |
+| `rank` | integer | ✅ | Absolute organic position on the SERP (1 = first result overall). Per-page under `schema_version` 1.0/1.1 |
 | `entity_type` | string | ✅ | Entity classification (counselling, directory, media, etc.) |
 | `content_type` | string | ✅ | Content type (service, guide, directory, news, pdf, other) |
 | `title` | string | ✅ | Page title from the SERP result |
@@ -131,10 +131,34 @@ audit_targets:
 ```
 
 
-## schema_version 1.1 — the optional `moz` block (moz_api_upgrade_spec_v1.md T.4)
+## schema_version 2.0 — `rank` is absolute (review chunk D1 / finding D-C-01)
 
-`schema_version` is `"1.1"` **only when** the optional top-level `moz` block is present; a run
-with `moz.competitor.enabled: false` still emits a byte-identical `"1.0"` document.
+Under 1.0 and 1.1, `targets[].rank` carried SerpAPI's per-page `position`. SerpAPI restarts
+that at 1 on every paginated page, so a three-page Tool 1 run emitted ranks running
+1..9, 1..10, 1..10 and **three different targets each claimed rank 1** — Tool 2 could not
+tell a genuine #1 from a page-3 row, and any `rank <= 10` filter on its side admitted about
+three rows per rank.
+
+Since 2026-11-16 Tool 1 renumbers the merged pages, so `rank` is the absolute position on
+the SERP. The document's *shape* is unchanged: nothing was added, removed or renamed, and
+only the meaning of one field moved. The version is bumped anyway because Tool 2 enforces
+`handoff.supported_versions` and keys its rank-column warning off
+`handoff.absolute_rank_versions`; the bump is how it learns these ranks can be trusted.
+
+**Tool 2 side (`serp-compete/shared_config.json`):** `"2.0"` and `"2.1"` must be listed in
+both `handoff.supported_versions` and `handoff.absolute_rank_versions`. Until they are in
+`supported_versions`, Tool 2 hard-fails a 2.x handoff (`main._unsupported_handoff_version`);
+until they are in `absolute_rank_versions`, it keeps printing the rank-column warning on
+data that no longer needs it.
+
+De-duplicating "by the lowest `rank`" is now meaningful across the whole SERP rather than
+within a page.
+
+## schema_version 2.1 — the optional `moz` block (moz_api_upgrade_spec_v1.md T.4)
+
+`schema_version` is `"2.1"` **only when** the optional top-level `moz` block is present; a run
+with `moz.competitor.enabled: false` emits the smaller `"2.0"` document. (These were `"1.1"`
+and `"1.0"` before the rank change above.)
 
 ```
 moz:

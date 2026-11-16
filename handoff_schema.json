@@ -16,7 +16,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "description": "1.0 = original contract; 1.1 adds the optional `moz` block."
+      "description": "1.0 = original contract; 1.1 adds the optional `moz` block; 2.0/2.1 are the same shape but `targets[].rank` is the absolute SERP position rather than SerpAPI's per-page `position` (review chunk D1 / D-C-01)."
     },
     "source_run_id": {
       "type": "string"

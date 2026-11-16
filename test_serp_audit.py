@@ -371,14 +371,18 @@ class TestSerpAudit(unittest.TestCase):
     @patch('serp_audit.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_google_pagination_merge(self, mock_fetch, mock_save):
-        """Test that Google pagination merges organic results across pages."""
+        """Test that Google pagination merges organic results across pages.
+
+        SerpAPI restarts ``position`` at 1 on each page, so page 2 here is
+        position 1 — not 11. The merge must renumber it to the absolute 2.
+        """
         mock_fetch.side_effect = [
             {
                 "organic_results": [{"title": "P1", "link": "http://a.com", "position": 1}],
                 "serpapi_pagination": {"next": "https://serpapi.com/search.json?start=10"}
             },
             {
-                "organic_results": [{"title": "P2", "link": "http://b.com", "position": 11}],
+                "organic_results": [{"title": "P2", "link": "http://b.com", "position": 1}],
                 "serpapi_pagination": {}
             },
             None  # AI fallback call (no location) for this test
@@ -388,6 +392,10 @@ class TestSerpAudit(unittest.TestCase):
 
         self.assertEqual(len(results["google"]["organic_results"]), 2)
         self.assertEqual(aio_log["google_pages_fetched"], 2)
+        self.assertEqual(
+            [r["position"] for r in results["google"]["organic_results"]],
+            [1, 2],
+        )
 
     @patch('serp_audit.FORCE_LOCAL_INTENT', False)
     @patch('serp_audit.save_raw_json')
@@ -808,6 +816,113 @@ class TestKeywordProfilesInAuditJson(unittest.TestCase):
         for old_field in ("total_url_count", "classified_url_count",
                           "uncategorised_count", "intent_counts"):
             self.assertNotIn(old_field, ev, f"evidence has obsolete field: {old_field}")
+
+
+class TestAbsoluteRankAcrossPages(unittest.TestCase):
+    """_merge_google_pages must renumber per-page positions to absolute ones.
+
+    Spec: docs/review_2026-11-04/REVIEW_WORKPLAN_2026-11-04.md chunk D1
+    (findings D-C-01 / D-M-01). SerpAPI restarts ``position`` at 1 on every
+    paginated page; storing that raw value as ``Rank`` made every "top 10"
+    filter downstream admit roughly three rows per rank.
+    """
+
+    @staticmethod
+    def _page(start, count, host):
+        return {"organic_results": [
+            {"title": f"{host}-{i}",
+             "link": f"http://{host}.example/{i}",
+             "position": i}
+            for i in range(1, count + 1)
+        ]}
+
+    def test_two_full_pages_merge_to_one_to_twenty(self):
+        merged = serp_audit._merge_google_pages([
+            self._page(0, 10, "a"), self._page(10, 10, "b")])
+        self.assertEqual(
+            [r["position"] for r in merged["organic_results"]],
+            list(range(1, 21)))
+
+    def test_raw_per_page_position_is_preserved(self):
+        merged = serp_audit._merge_google_pages([
+            self._page(0, 10, "a"), self._page(10, 10, "b")])
+        rows = merged["organic_results"]
+        self.assertEqual([r["page_position"] for r in rows],
+                         list(range(1, 11)) * 2)
+        self.assertEqual([r["page_index"] for r in rows],
+                         [0] * 10 + [1] * 10)
+
+    def test_merged_positions_are_contiguous_when_pages_are_short(self):
+        """Google serves fewer than `num` rows per page; ranks must not gap."""
+        merged = serp_audit._merge_google_pages([
+            self._page(0, 9, "a"), self._page(10, 10, "b"),
+            self._page(20, 8, "c")])
+        rows = merged["organic_results"]
+        self.assertEqual([r["position"] for r in rows],
+                         list(range(1, len(rows) + 1)))
+        self.assertEqual(max(r["position"] for r in rows), len(rows))
+
+    def test_deduped_rows_do_not_consume_a_position(self):
+        """A URL repeated across pages must not leave a hole in the sequence."""
+        page_one = self._page(0, 3, "a")
+        page_two = {"organic_results": [
+            dict(page_one["organic_results"][0]),          # duplicate link
+            {"title": "new", "link": "http://b.example/1", "position": 2},
+        ]}
+        merged = serp_audit._merge_google_pages([page_one, page_two])
+        rows = merged["organic_results"]
+        self.assertEqual(len(rows), 4)
+        self.assertEqual([r["position"] for r in rows], [1, 2, 3, 4])
+
+    def test_merge_does_not_mutate_the_input_pages(self):
+        """all_results['google_pages'] keeps the raw SerpAPI responses, and
+        the paginating loop re-merges the same list on every iteration."""
+        pages = [self._page(0, 10, "a"), self._page(10, 10, "b")]
+        serp_audit._merge_google_pages(pages)
+        serp_audit._merge_google_pages(pages)
+        self.assertEqual(
+            [r["position"] for r in pages[1]["organic_results"]],
+            list(range(1, 11)))
+        self.assertNotIn("page_position", pages[1]["organic_results"][0])
+        # And a second merge still yields absolute positions, not doubled ones.
+        merged = serp_audit._merge_google_pages(pages)
+        self.assertEqual(
+            [r["position"] for r in merged["organic_results"]],
+            list(range(1, 21)))
+
+    def test_parsed_rows_have_contiguous_absolute_ranks(self):
+        """End-to-end: merge -> parse_data rows must satisfy
+        max(Rank) == len(rows) for the keyword (plan D1 fixture test)."""
+        merged = serp_audit._merge_google_pages([
+            self._page(0, 9, "a"), self._page(10, 10, "b"),
+            self._page(20, 10, "c")])
+        _, organic, _, _, _, _, _, _, _, _ = serp_audit.parse_data(
+            "kw",
+            {"google": merged},
+            {"run_id": "r1", "created_at": "2026-11-16T00:00:00",
+             "google_url": "http://g", "params_hash": "h"},
+        )
+        ranks = [row["Rank"] for row in organic]
+        self.assertEqual(len(organic), 29)
+        self.assertEqual(ranks, list(range(1, 30)))
+        self.assertEqual(max(ranks), len(organic))
+        # The pre-fix bug: three rows claiming rank 1 for one keyword.
+        self.assertEqual(ranks.count(1), 1)
+
+    def test_maps_merge_rank_comes_from_merged_order(self):
+        """_merge_maps_pages is not renumbered because nothing reads a maps
+        per-page `position`: the local-pack Rank is enumerate() over the
+        merged list (serp_audit.py, 'From the dedicated maps results'), which
+        is already absolute. This test pins that it stays index-derived."""
+        merged = serp_audit._merge_maps_pages([
+            {"local_results": [{"title": "p1", "place_id": "1"},
+                               {"title": "p2", "place_id": "2"}]},
+            {"local_results": [{"title": "p3", "place_id": "3"}]},
+        ])
+        self.assertEqual([p["title"] for p in merged["local_results"]],
+                         ["p1", "p2", "p3"])
+        ranks = [i + 1 for i, _ in enumerate(merged["local_results"])]
+        self.assertEqual(ranks, [1, 2, 3])
 
 
 if __name__ == '__main__':
