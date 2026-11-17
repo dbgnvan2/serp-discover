@@ -51,8 +51,8 @@ rows it cannot interpret. Re-running rebuilds the history.
 ## Feasibility coverage and provenance
 
 `keyword_feasibility` carries four columns added by review chunk D2
-(finding F9), so the figure and the confidence in it travel together into
-rank history:
+(finding F9) and five more added by D6, so the figure and the confidence in
+it travel together into rank history:
 
 - **`da_count` / `da_missing`** — how many of the keyword's top-10 positions
   carried a DA figure and how many did not. `avg_serp_da` over two domains
@@ -61,6 +61,14 @@ rank history:
   `none`). DataForSEO's backlink rank and Moz's Domain Authority are both
   0–100 and are different vendors' models, so a trend that mixes them is not
   a trend.
+- **`min_competitor_da` / `max_competitor_da` / `min_non_directory_da` /
+  `non_directory_count` / `entities_known`** (review chunk D6) — the minima
+  the mean cannot show. `min_non_directory_da` NULL means no competitor's
+  entity type was resolved, which is not "no directory ranks here";
+  `entities_known` says how many were, so a figure taken over 1 of 10 is
+  never read as taken over 10. NULL in every one of them means a row written
+  before D6, which is "not recorded", not 0. Added to existing databases by
+  migration.
 - **`client_da_source`** — how `client_da` was obtained: measured by the
   active provider, an operator override, the `config.yml` fallback (whose
   scale against that provider is unverified), or not measured at all.

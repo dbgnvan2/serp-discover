@@ -157,6 +157,10 @@ FEASIBILITY_CLIENT_DA    = int(SHARED_CONFIG.get("client", {}).get("da", _feas_c
 FEASIBILITY_LOCATION     = SHARED_CONFIG.get("client", {}).get("location", _feas_cfg.get("non_profit_location", ""))
 FEASIBILITY_PIVOT_FETCH  = _feas_cfg.get("pivot_serp_fetch", True)
 FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
+#: Which entity types count as a directory for the non-directory minimum
+#: (D6.1). Read through the same resolver the standalone pass uses, so both
+#: producers of `keyword_feasibility` answer with one list (D-C-19, P5).
+DIRECTORY_ENTITY_TYPES = feasibility_module.resolve_directory_entity_types(CONFIG)
 #: Same editorial list the standalone pass reads, so both gates agree (P5).
 FEASIBILITY_PIVOTABLE_INTENTS = feasibility_module.resolve_pivotable_intents(CONFIG)
 CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.get("analysis_report", {}).get("client_domain", ""))
@@ -1586,6 +1590,18 @@ def _run(run_id):
                                 FEASIBILITY_CLIENT_DA, None,
                                 logging.info, logging.warning)
 
+                        # Entity type per ranking URL for the non-directory
+                        # minimum (D6.1). The enrichment loop above classified
+                        # every domain, so this needs no second classifier
+                        # pass; "N/A" means the classifier could not tell and
+                        # stays unknown.
+                        entity_by_url = {}
+                        for _row in o:
+                            _u = _row.get("Link")
+                            _e = (_row.get("Entity_Type") or "").strip()
+                            if _u and _e and _e.upper() != "N/A":
+                                entity_by_url.setdefault(_u, _e)
+
                         # One definition of the input set, shared with
                         # run_feasibility.py (D-C-19). `o` is in rank order
                         # because the merged SERP rows are (D-C-01).
@@ -1593,6 +1609,12 @@ def _run(run_id):
                             keyword_urls,
                             lambda u: (moz_results.get(u) or {}).get("da"),
                             client_domain=CLIENT_DOMAIN,
+                            # Every domain is classified above, HTML-enriched
+                            # or not, so the non-directory minimum (D6.1) is
+                            # available in the pipeline too. "N/A" is the
+                            # classifier saying it could not tell, which stays
+                            # unknown rather than counting as a competitor.
+                            entity_for_url=lambda u: entity_by_url.get(u),
                         )
                         # Label-A only: an AI-alternative query (A.1/A.2) is a
                         # different SERP, and its feasibility row used to
@@ -1607,7 +1629,8 @@ def _run(run_id):
                         # attempted (P2: surface, never silently drop).
                         if query_label == "A":
                             feas = feasibility_module.compute_feasibility(
-                                client_da, competitor_das
+                                client_da, competitor_das,
+                                directory_types=DIRECTORY_ENTITY_TYPES,
                             )
                             # Gate the pivot on service intent — informational
                             # keywords get no neighbourhood variant (B.1.d).
@@ -1853,7 +1876,11 @@ def _run(run_id):
 
     # --- STRATEGIC ANALYSIS (The Bridge) ---
     print("Generating Strategic Recommendations...")
-    strategic_recs = analyze_strategic_opportunities(ngram_results, keywords=keywords)
+    # The snippet corpus goes in so a fired pattern can say how much of the
+    # page set carries its triggers (D6.7 / D-M-26). Without it the report has
+    # to print "not quantified", which is what it did for every run before.
+    strategic_recs = analyze_strategic_opportunities(
+        ngram_results, keywords=keywords, texts=all_snippets)
     print(f"Generated {len(strategic_recs)} strategic recommendations.")
 
     # --- MERGE RANK DELTAS (Volatility) ---

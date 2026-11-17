@@ -9,6 +9,61 @@ Gap = avg competitor DA − client DA. Thresholds:
 | > 15 | 🔴 Low Feasibility | Dominated by high-authority sites — pivot to neighbourhood variant |
 | — | ⚠️ Not measured | Too few ranking domains carried a DA record, or the client's own DA was never measured. No verdict, no pivot. |
 
+**These three bands are editorial, not derived.** ≤ 5 / 6–15 / > 15 and the
+0–30 score normaliser are judgements somebody made about what is realistic for
+a local nonprofit. No study produced them and nobody has yet checked them
+against whether the keywords the tool called High Feasibility were ones the
+client went on to rank for. The gap is a measurement; the band is an opinion
+about the measurement, and the report says so (review finding D-M-21 — record
+a source under `thresholds_provenance.feasibility` in `config.yml` and the
+report prints it instead). The calibration that would settle it is available:
+compare each keyword's gap against whether the client's rank improved over
+successive runs.
+
+**`feasibility_score` is clamped to 0–1.** It is `1 − gap / 30`, and a negative
+gap — the client stronger than the mean — used to put it above its own
+maximum (1.47 and 1.5 in real runs, D-M-24). The magnitude lives in the gap;
+the score is a normalised position inside a stated range, so it stays inside
+it.
+
+**The mean is not the whole answer, and the row says what it is missing.**
+A mean over a top 10 answers "how strong is this page on average". The
+question a DA-35 nonprofit is asking is "does anything my size hold a slot
+here", and one directory moves the mean far enough to hide the answer: a SERP
+of one DA-92 listing site plus nine DA-18 clinics means 25.4 and reads easy,
+while five DA-85 sites plus five DA-12 clinics means 48.5 and reads hard,
+although the second page demonstrably has room (D-M-09). Every row therefore
+also carries:
+
+| Field | Meaning |
+|-------|---------|
+| `min_competitor_da` | the weakest Domain Authority holding a top-10 slot |
+| `min_non_directory_da` | the weakest that is not a directory, or `None` when no competitor's entity type was resolved |
+| `non_directory_count` | measured competitors known not to be directories |
+| `entities_known` | measured competitors whose entity type was resolved at all |
+
+`da_count` is the `n` these figures and the mean rest on. Which entity types
+count as a directory is editorial and lives in
+`config.yml feasibility.directory_entity_types` (default `directory`).
+`min_non_directory_da` being `None` means the split was **not measured** — it
+never means "no directory ranks here"; `entities_known` is how a reader tells
+those apart, and the report prints a different sentence for each.
+
+Partial classification is the normal outcome, not an edge case: a non-enriched
+rank is classified domain-only and returns `N/A` for any domain matching no
+pattern. So where `entities_known` is between 1 and `da_count`, every figure
+resting on the entity types is reported over the competitors whose type was
+resolved and the remainder is named — "of the 1 of 10 scored competitors whose
+type could be resolved…", and the table cell carries a `?` after the second
+figure (`12 (40?)`). Quoting it over the window would assert a classification
+nobody made, and with one classified competitor the "weakest non-directory"
+figure can be the *strongest* page on the SERP.
+
+All five fields travel with the row through both producers
+(`feasibility.MINIMA_FIELDS` names the set once), into the JSON, the workbook
+and the `keyword_feasibility` table. Re-listing them at each call site is what
+left the coverage fields out of the database in review chunk D2 (finding F9).
+
 **Which DAs the average is taken over.** `feasibility.competitor_da_window`
 is the one definition, used by both producers. The window is the first
 `TOP_N_FOR_FEASIBILITY` (10) URLs **of the SERP in absolute rank order**, and

@@ -119,7 +119,29 @@ keyword rather than roughly N per page.
 `client_rank`, feasibility figures and handoff ranks are wrong and need a
 re-run. Finding D-C-01 / D-M-01, review of 2026-11-04.*
 
-**Intent verdict:** `intent_verdict.py` applies rules from `intent_mapping.yml` (first-match-wins) to assign a `primary_intent`, `is_mixed` flag, confidence score, and distribution to each keyword.
+**Intent verdict:** `intent_verdict.py` applies rules from `intent_mapping.yml` (first-match-wins) to assign a `primary_intent`, `is_mixed` flag, distribution, and two separate figures to each keyword.
+
+**Classification coverage and intent certainty are two different facts.**
+`confidence` (alias `classification_coverage`) is a count: how many of the ten
+ranking URLs could be classified at all. It is capped by
+`enrichment.max_urls_per_keyword`, so it rises when the operator enriches more
+pages and says nothing about whether the SERP's intent is clear. It was the
+only figure the tool produced and the report printed it as "Confidence", so a
+6/4 split read as high confidence (D-M-10). `intent_certainty` is the share of
+the *classified* URLs that agreed on the leading intent, bucketed against
+`serp_intent.thresholds.confidence_high` (0.8) and `confidence_medium` (0.5) —
+the two keys that were validated, documented and GUI-editable with no reader
+at all until this chunk (D-C-17). `leading_intent_share` carries the share
+itself — named for the *leading* intent, because it is computed even when the
+verdict was "mixed" or withheld for too little classification, and `not_measured`
+is its own value: a share of nothing is not a weak lead. Both figures print in
+every table, because a 100% share over two readable results is not the evidence
+a 100% share over ten is. Intent certainty is the third key the keyword and
+brief orderings use, but only where the coverage behind it is medium or better:
+a share taken over one classified URL is 1.0, and ranking on that alone put a
+keyword nobody could classify above a well-covered 6/4 split. Below that, and
+for a row written before this change, the coverage word orders as it did
+before.
 
 **PAA classification:** `intent_classifier.py` tags each PAA question as `External Locus` (medical-model framing), `Systemic` (Bowen Family Systems Theory framing), or `General` (neither). Trigger vocabularies live in `intent_classifier_triggers.yml`.
 
@@ -310,6 +332,37 @@ call it too**, or the plays it leaves behind will be stale in the same way.
 
 *Spec: report_content_direction_spec.md#CD.8. Implemented 2026-08-28.*
 
+### Section 4 — trigger-word presence, not framing analysis
+
+A Bowen pattern "fires" when any of its trigger words appears as a whole word
+in the SERP text the run collected. That is trigger-word presence. It is not an
+analysis of how those pages frame the problem, and section 4 says so in its
+own first lines, because the directive text used to treat a fired pattern as
+evidence the SERP "frames" the problem that way (D-M-26).
+
+Every fired pattern now reports how much it fired: `Trigger_Hits` (text blocks
+carrying each trigger), `Snippets_With_Trigger` and `Snippets_Scanned`,
+rendered as "clinical (1 of 20 SERP text blocks) — 2 of 20 scanned SERP text
+blocks carry at least one (10%)". The corpus is what `collect_snippet_texts`
+gathers — snippets, ad copy, related searches, autocomplete — not the body
+text of the ranking pages, and it holds several entries per result, so the
+denominator counts text blocks and the field names say so. Calling them pages
+would hand the reader a page-level measurement nobody took. A trigger is
+detected in the same text it is counted in, too: the fire test used to run
+over the n-gram phrases, which have stop words stripped, so a multi-word
+trigger could be listed as detected and counted as 0 in the same line.
+Where no corpus reached the matcher the counts are `None` and the report
+prints "trigger-word presence not quantified this run" — not "0", which
+would claim the triggers were looked for and found nowhere.
+
+`strategic_patterns.yml` states its own rule for a good trigger at the head of
+the file: specific to the trap's worldview, not a word that appears everywhere
+in the topic domain. Four triggers violated it and are gone — `registered`
+(in every RCC byline on a BC counselling page), `mental health` (the topic's
+own name), `close` and `communication` (the vocabulary of every couples page).
+Adding a trigger means adding vocabulary only someone inside the trap would
+use.
+
 ### Section 4 — Pattern keyword selection
 
 Each Section 4 Bowen pattern block shows a *SERP intent context* line anchoring the pattern to the most relevant keyword in the run. The keyword is selected by `_get_most_relevant_keyword()` in `generate_insight_report.py` using a three-component scoring formula:
@@ -396,6 +449,44 @@ absolute rank with the client's own domain dropped. The in-pipeline pass
 computes a verdict for the primary query only, and every consumer indexes the
 rows with `feasibility.index_feasibility_by_keyword`. See
 `docs/feasibility.md`, "Which DAs the average is taken over" (finding D-C-19).
+
+**The mean travels with the figures it hides.** Every feasibility row also
+carries `min_competitor_da`, `min_non_directory_da`, `non_directory_count` and
+`entities_known`, and both the §5b table ("Weakest (non-dir)") and the §5c
+sentence print them. A mean over a top 10 answers how strong the page is on
+average; a DA-35 nonprofit is asking whether anything its size holds a slot,
+and one directory moves the mean far enough to hide the answer (D-M-09).
+Which entity types count as a directory is editorial
+(`config.yml feasibility.directory_entity_types`), the types come from the
+rows the audit already classified, and an unresolved type leaves the
+non-directory minimum `None` — not measured, never "no directory ranks here".
+Where only some of the window was classified, the sentence and the cell say so
+(`12 (40?)`) and name how many types were resolved, because partial
+classification is the normal outcome and a figure resting on one competitor is
+not a figure over ten. The five fields reach the JSON, the workbook and the
+`keyword_feasibility` table through both producers; `feasibility.MINIMA_FIELDS`
+names the set once so a writer cannot fall behind the producer (finding F9).
+`feasibility_score` is clamped to its documented 0–1 (D-M-24). The three gap
+bands and the score normaliser are editorial and uncalibrated, which the
+report states; see below.
+
+**Every verdict-deciding threshold states where it came from.** The DA-gap
+bands, the intent shares, the title-dominance counts, the commodity bands and
+weights, the AIVI weights, the foundational thirds, the engine-prioritisation
+blend, the branded-demand bands and the entity-dominance share are all
+editorial. `thresholds_provenance.py` is the one place that answers for them:
+the text per family is editorial and lives in `config.yml`
+`thresholds_provenance`, and a family with no recorded source is printed as
+"editorial, uncalibrated — no source or date is recorded for this one" rather
+than passed over (D-M-21). Each line names the config keys that hold its
+numbers and prints their live values, read from the config the report was
+generated with; the figures are never copied into the module, because a
+provenance section stating stale numbers is worse than none. A key this config
+does not set says that the code default applies — `technical.*` comes from the
+shared cross-tool config — and the title-pattern threshold is still a code
+constant, which the line states. The block renders inside the report's §A glossary
+appendix, and the glossary entries for feasibility status and commodity score
+say the bands are editorial in the same words.
 
 **A value that was never measured is never written down as a zero.** A domain
 the DA provider holds no authority for is `None`, not `0`: counting absences

@@ -99,7 +99,7 @@ and writes nothing to `config.yml` before or during a run.
 - `clinical_dictionary.json` — Bowen vs medical-model vocabulary tiers. **Lives in
   `serp-compete`, not this repo**: no file of this name exists here and no code here
   reads one. Do not create a second copy — edit compete's.
-- `strategic_patterns.yml` — Bowen pattern definitions (triggers, reframes, content angles, and the optional `Content_Angle_Example` worked opening rendered in report section 4). Add patterns here; no Python required.
+- `strategic_patterns.yml` — Bowen pattern definitions (triggers, reframes, content angles, and the optional `Content_Angle_Example` worked opening rendered in report section 4). Add patterns here; no Python required. **The file's own rule at its head binds the triggers:** vocabulary only somebody inside the trap would use, never a word that appears everywhere in the topic domain. Four triggers that violated it were removed in review chunk D6 (D-M-26), and section 4 now prints how many of the scanned SERP text blocks (snippets, ad copy, related searches — not the ranking pages' own text) carry each trigger, so a pattern that fired in one block of twenty reads as such.
 
 ## Editorial content lives in config files
 
@@ -202,6 +202,16 @@ Editorial content currently lives in:
   are not a mention of the client ("living systems theory" is the subject this
   client teaches about). `known_brands` is never filtered (added review
   chunk D3b)
+- `config.yml` `thresholds_provenance` — one line per threshold family saying
+  where that family's numbers came from (a study and a date, a decision record,
+  a calibration). Printed in the report's §A appendix. A family left blank
+  prints as "editorial, uncalibrated", because every band and weight in this
+  tool is a judgement somebody made and a reader could not tell those from
+  measurements (added review chunk D6 / D-M-21)
+- `config.yml` `feasibility.directory_entity_types` — which entity types count
+  as a directory when the report prints the weakest NON-directory competitor
+  beside the mean. Editorial: a directory holding a top-10 slot is not evidence
+  a DA-35 clinic can hold one (added review chunk D6 / D-M-09)
 - `config.yml` `moz.search_intent.repo_to_moz_intent` — maps this repo's
   intent labels onto Moz's four so the two classifications can be compared.
   Editorial: Moz has no `local` label, and `null` means "not comparable"
@@ -275,10 +285,13 @@ For details, read these as needed (do not preload):
 `generate_content_brief.py` validates LLM outputs before writing:
 
 - **HARD-fail (abort)**: AI Overview count mismatch versus extracted data;
-  `serp_intent.primary_intent` or `is_mixed` contradictions.
-- **SOFT-fail (1 retry)**: wording issues, `title_patterns.dominant_pattern`
-  contradictions, `mixed_intent_strategy` contradictions. Retry uses the
-  correction prompt.
+  `serp_intent.primary_intent` or `is_mixed` contradictions;
+  `title_patterns.dominant_pattern` contradictions (mechanically checkable
+  against the profile, so it blocks; this doc listed it under retryable
+  failures until review chunk D6, while the validator has always blocked it).
+- **SOFT-fail (1 retry)**: wording issues, `mixed_intent_strategy`
+  contradictions, `entity_label` contradictions. Retry uses the correction
+  prompt.
 - Failed validations are written to `*.validation.md` for inspection.
 
 `test_validation_consistency.py` is a canary that scans the prompt files

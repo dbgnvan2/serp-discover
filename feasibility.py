@@ -175,6 +175,14 @@ class DAWindow(NamedTuple):
     measured: int   #: how many competitors had a DA record (``len(das)``)
     missing: int    #: competitors in the window with no DA record
     window: int     #: competitors considered — ``measured + missing``
+    entities: list = ()  #: entity type per entry of ``das``, ``None`` where unknown
+
+    # ``entities`` is parallel to ``das`` so the minimum can be taken over the
+    # competitors the client actually competes with (D-M-09/D6.1). It defaults
+    # to empty because the caller that has no entity type for a URL must say
+    # so rather than guess: an unknown type is ``None``, which keeps that
+    # competitor out of the non-directory minimum instead of counting it as a
+    # clinic (P1 — unknown is not a measurement).
 
 
 def competitor_da_window(
@@ -182,6 +190,7 @@ def competitor_da_window(
     da_for_url: Callable[[str], object],
     client_domain: str = "",
     top_n: int = TOP_N_FOR_FEASIBILITY,
+    entity_for_url: Callable[[str], object] | None = None,
 ) -> DAWindow:
     """Return the competitor DA values the feasibility gap is measured over.
 
@@ -213,6 +222,8 @@ def competitor_da_window(
     """
     client = domain_of(client_domain) if client_domain else ""
     das = []
+    entities = []
+    classifier_errors = []
     if isinstance(ranked_urls, URLWindow):
         # Already the window: slicing again would be applying it twice, and
         # the unresolved positions are holes in this same window.
@@ -233,8 +244,27 @@ def competitor_da_window(
             missing += 1
         else:
             das.append(da)
+            # A caller with no classifier passes none, and every entity is
+            # then unknown — which the minimum below reports as unmeasured
+            # rather than as "no directories on this SERP".
+            entity = None
+            if entity_for_url is not None:
+                try:
+                    entity = entity_for_url(url)
+                except Exception as exc:
+                    entity = None
+                    classifier_errors.append(f"{url}: {exc}")
+            entities.append(entity)
+    if classifier_errors:
+        # Unknown is the right value, but a classifier raising on every URL
+        # would make every SERP read "directory split not measured" with
+        # nothing saying why. Count it and name the first (P2).
+        logging.warning(
+            "entity classification failed for %d of %d scored competitors; "
+            "their directory split is reported as not measured. First: %s",
+            len(classifier_errors), len(das), classifier_errors[0])
     return DAWindow(das=das, measured=len(das), missing=missing,
-                    window=len(das) + missing)
+                    window=len(das) + missing, entities=entities)
 
 
 #: Where the status labels, icons, no-measurement sentences and coverage
@@ -346,6 +376,82 @@ def coverage_phrase(da_count, da_missing, short=False) -> str:
                     if window else "no ranking domain scored")
     return _render(phrases.get(key), fallback, measured=measured,
                    window=window, missing=missing)
+
+
+def minima_cell(feas_record: dict) -> str:
+    """The same two figures in a table cell: "12 (18)", or "—" / "12 (?)".
+
+    ``?`` is the directory split being unmeasured, which is not the same as
+    there being no non-directory competitor. The sentence form is
+    :func:`minima_phrase`; both read the same keys so the table and the prose
+    cannot disagree.
+    """
+    min_da = feas_record.get("min_competitor_da")
+    if min_da is None:
+        return "—"
+    non_dir = feas_record.get("min_non_directory_da")
+    n = _as_count(feas_record.get("da_count")) or 0
+    known = _as_count(feas_record.get("entities_known")) or 0
+    # A trailing "?" on the second figure means only some of the scored
+    # competitors had a resolved entity type, so the figure stands over those
+    # and not over the window. Partial classification is the normal outcome —
+    # a domain-only classification returns "N/A" for anything that matches no
+    # pattern — so reporting it as complete would overstate the evidence.
+    partial = "?" if known and n and known < n else ""
+    if non_dir is not None:
+        return f"{min_da} ({non_dir}{partial})"
+    if known:
+        return f"{min_da} (none{partial})"
+    return f"{min_da} (?)"
+
+
+def minima_phrase(feas_record: dict, directory_types=None) -> str:
+    """The rankability sentence the mean cannot carry, or "" when there is none.
+
+    Five states, five sentences (``feasibility_messages.yml`` ``minima``): a
+    non-directory minimum over a fully classified window, or over a partly
+    classified one; every scored competitor a directory, or every *classified*
+    one a directory with the rest unclassified; or no entity type resolved at
+    all. These are different facts — "no directory ranks here", "nobody
+    classified these pages" and "one of ten was classified and it was a
+    directory" — and this review has found one reported as another five times
+    (P1/P2). Spec: D6.1 / D-M-09, partial states added by D6's cold review.
+    """
+    min_da = feas_record.get("min_competitor_da")
+    n = _as_count(feas_record.get("da_count"))
+    if min_da is None or not n:
+        return ""
+    phrases = load_messages().get("minima") or {}
+    names = list(directory_types or DEFAULT_DIRECTORY_ENTITY_TYPES)
+    label = " / ".join(names) if names else "directory"
+    non_dir = feas_record.get("min_non_directory_da")
+    known = _as_count(feas_record.get("entities_known")) or 0
+    # Every figure below a non-directory claim stands over the competitors
+    # whose entity type was resolved, which is often fewer than the window.
+    # Quoting it over the window asserts a classification nobody made.
+    partial = bool(known) and known < n
+    if non_dir is not None:
+        key = "with_non_directory_partial" if partial else "with_non_directory"
+        return _render(
+            phrases.get(key),
+            f"Weakest non-{label} competitor {non_dir}, of the {known} of {n} "
+            f"scored competitors whose type was resolved; weakest of any kind "
+            f"{min_da}.",
+            min_da=min_da, min_non_directory_da=non_dir, n=n, known=known,
+            unknown=max(n - known, 0), directory_types=label)
+    if known:
+        key = "all_classified_directory" if partial else "all_directory"
+        return _render(
+            phrases.get(key),
+            f"All {known} of {n} scored competitors whose type was resolved "
+            f"are a {label}; the weakest of the {n} scores {min_da}.",
+            min_da=min_da, n=n, known=known, unknown=max(n - known, 0),
+            directory_types=label)
+    return _render(
+        phrases.get("entities_unknown"),
+        f"Weakest page holding a slot scores {min_da} over {n} scored "
+        f"competitors; the {label} split is not measured.",
+        min_da=min_da, n=n, directory_types=label)
 
 
 def client_da_cell(client_da, source="") -> str:
@@ -559,10 +665,77 @@ def index_feasibility_by_keyword(feasibility_rows) -> dict:
 # Public API
 # ---------------------------------------------------------------------------
 
+#: Fallback only. Which entity types count as a *directory* for the
+#: non-directory minimum — EDITORIAL, so the list lives in ``config.yml``
+#: ``feasibility.directory_entity_types`` and this is the documented default.
+#: A directory holding a top-10 slot is not evidence that a DA-35 clinic can
+#: hold one, which is the whole point of reporting the minimum separately.
+DEFAULT_DIRECTORY_ENTITY_TYPES = ("directory",)
+
+
+def resolve_directory_entity_types(cfg: dict | None) -> tuple[str, ...]:
+    """Resolve ``feasibility.directory_entity_types``; default when unusable."""
+    block = ((cfg or {}).get("feasibility") or {})
+    raw = block.get("directory_entity_types")
+    if raw is None:
+        return DEFAULT_DIRECTORY_ENTITY_TYPES
+    if not isinstance(raw, (list, tuple)) or not all(
+            isinstance(v, str) and v.strip() for v in raw):
+        logging.warning(
+            "feasibility.directory_entity_types is not a list of names (%r); "
+            "using the default %s.", raw, list(DEFAULT_DIRECTORY_ENTITY_TYPES))
+        return DEFAULT_DIRECTORY_ENTITY_TYPES
+    return tuple(v.strip().lower() for v in raw)
+
+
+# The keys :func:`competitor_minima` adds to every feasibility assessment.
+# Named once because the alternative — each producer re-listing them — is how
+# the coverage fields reached the JSON but not the database (finding F9, and
+# again in D6's cold review). Every producer copies this set; a test asserts
+# that each key reaches the row, the workbook and the database.
+MINIMA_FIELDS = (
+    "min_competitor_da",
+    "max_competitor_da",
+    "min_non_directory_da",
+    "non_directory_count",
+    "entities_known",
+)
+
+
+def competitor_minima(das, entities, directory_types=None) -> dict:
+    """Return the minima the mean cannot show.
+
+    The mean answers "how strong is this SERP on average"; the question a
+    DA-35 nonprofit is actually asking is "does anything my size hold a slot
+    here". A SERP of ``[92] + [18]*9`` has a mean of 25.4 and a SERP of
+    ``[85]*5 + [12]*5`` a mean of 48.5, so the second reads as the harder page
+    although five DA-12 pages demonstrably rank on it (D-M-09).
+
+    ``min_non_directory_da`` is ``None`` when no competitor's entity type was
+    resolved: "no directory ranks here" and "nobody classified these" are
+    different facts, and reporting the second as the first is exactly the
+    failure this review keeps finding (P1/P2). ``entities_known`` says which
+    it is.
+    """
+    das = [d for d in (das or []) if d is not None]
+    directory = set(directory_types or DEFAULT_DIRECTORY_ENTITY_TYPES)
+    entities = list(entities or [])
+    known = [(d, (e or "").lower()) for d, e in zip(das, entities) if e]
+    non_dir = [d for d, e in known if e not in directory]
+    return {
+        "min_competitor_da": min(das) if das else None,
+        "max_competitor_da": max(das) if das else None,
+        "min_non_directory_da": min(non_dir) if non_dir else None,
+        "non_directory_count": len(non_dir),
+        "entities_known": len(known),
+    }
+
+
 def compute_feasibility(
     client_da: int,
     competitor_das,
     window: int | None = None,
+    directory_types=None,
 ) -> dict:
     """Return a feasibility assessment for a keyword.
 
@@ -591,13 +764,23 @@ def compute_feasibility(
     Returns
     -------
     dict with keys:
-        avg_serp_da       : float | None  – mean DA of competitors
-        client_da         : int           – the value passed in
-        gap               : float | None  – avg_serp_da − client_da
-        feasibility_score : float | None  – 0.0 (worst) … 1.0 (best)
-        feasibility_status: str           – human-readable label
-        da_count          : int           – competitors with a DA record
-        da_missing        : int           – competitors with none
+        avg_serp_da          : float | None – mean DA of competitors
+        client_da            : int          – the value passed in
+        gap                  : float | None – avg_serp_da − client_da
+        feasibility_score    : float | None – 0.0 (worst) … 1.0 (best), clamped
+        feasibility_status   : str          – human-readable label
+        da_count             : int          – competitors with a DA record;
+                                              this IS the n the mean rests on
+        da_missing           : int          – competitors with none
+        min_competitor_da    : int | None   – weakest measured competitor
+        max_competitor_da    : int | None   – strongest measured competitor
+        min_non_directory_da : int | None   – weakest competitor that is not a
+                                              directory, or None when no
+                                              entity type was resolved
+        non_directory_count  : int          – measured competitors known not to
+                                              be directories
+        entities_known       : int          – measured competitors whose entity
+                                              type was resolved at all
 
     Examples
     --------
@@ -608,11 +791,15 @@ def compute_feasibility(
     if isinstance(competitor_das, DAWindow):
         das = list(competitor_das.das)
         missing = competitor_das.missing
+        entities = list(competitor_das.entities or [])
     else:
         das = list(competitor_das or [])
+        entities = []
         # With no window given, nothing is known to be missing. A caller that
         # wants honest coverage passes a DAWindow.
         missing = max(0, (window or len(das)) - len(das))
+
+    minima = competitor_minima(das, entities, directory_types)
 
     if not das or client_da is None:
         return {
@@ -623,11 +810,17 @@ def compute_feasibility(
             "feasibility_status": NOT_MEASURED,
             "da_count": len(das),
             "da_missing": missing,
+            **minima,
         }
 
     avg_serp_da = round(sum(das) / len(das), 1)
     gap = round(avg_serp_da - client_da, 1)
-    score = round(max(0.0, 1.0 - gap / SCORE_NORMALISER), 2)
+    # Clamped at both ends. The docstring has always said 0.0-1.0 and the
+    # field is persisted to SQLite and the workbook, but a negative gap (the
+    # client stronger than the mean) produced 1.47 and 1.5 in real runs
+    # (D-M-24). A score above its own maximum is not a stronger result, it is
+    # a broken scale; the gap itself carries the magnitude.
+    score = round(min(1.0, max(0.0, 1.0 - gap / SCORE_NORMALISER)), 2)
     # The numbers stand; the verdict does not. Reporting the mean of two
     # domains beside "Low Feasibility" would read as a measurement of the
     # SERP, which it is not.
@@ -642,6 +835,7 @@ def compute_feasibility(
         "feasibility_status": status,
         "da_count": len(das),
         "da_missing": missing,
+        **minima,
     }
 
 

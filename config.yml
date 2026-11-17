@@ -373,11 +373,41 @@ gsc_demand:
   # Optional generic words that contain the brand but are not name-seeking
   # (e.g. a common word) — excluded from branded classification.
   negative_terms: []
+# EDITORIAL: where each verdict-deciding threshold family came from, printed
+# in the report's appendix (review finding D-M-21). One line per family, in
+# the owner's own words — a study and a date ("Acme 2026 CTR study, retrieved
+# 2026-03-01"), a decision record ("editorial, owner 2026-07-06; approved
+# against the reference run"), or a calibration. Leave a family out, or
+# blank, and the report says "editorial, uncalibrated — no source or date is
+# recorded for this one", which is the honest answer until somebody writes
+# one. Family names must match thresholds_provenance.FAMILIES; an unknown
+# name is reported and not printed.
+thresholds_provenance:
+  feasibility: ""
+  serp_intent: ""
+  title_patterns: ""
+  commodity: ""
+  aivi: ""
+  foundational: ""
+  engine_prioritization: ""
+  gsc_demand: ""
+  entity_dominance: ""
 serp_intent:
   thresholds:
+    # EDITORIAL: how much of a result page has to agree before the tool calls
+    # one intent the primary one, and how clearly it has to lead before the
+    # verdict is called certain. Every key here has a reader in
+    # intent_verdict.py; a test enforces that, because confidence_high and
+    # confidence_medium were validated, documented and GUI-editable for
+    # months with nothing reading them (D-C-17).
     primary_share: 0.6
     fallback_share: 0.4
     fallback_runner_up_max: 0.2
+    # Share of the CLASSIFIED urls the leading intent must hold for the
+    # verdict's certainty to read high / medium. Read by
+    # intent_verdict._bucket_certainty since D6.3. Not the same thing as
+    # classification coverage, which is a count of how many urls could be
+    # classified at all and rises with enrichment.max_urls_per_keyword.
     confidence_high: 0.8
     confidence_medium: 0.5
 known_brands: []
@@ -397,6 +427,14 @@ feasibility:
   pivotable_intents:
   - local
   - transactional
+  # EDITORIAL: which entity types count as a directory when the report states
+  # the weakest NON-directory competitor beside the mean (D6.1 / D-M-09). A
+  # directory holding a top-10 slot says nothing about whether a DA-35 clinic
+  # can hold one, so the two minima are reported separately. Must use
+  # classification_rules.json's entity_types vocabulary. Empty/malformed =
+  # the documented default (directory) plus a warning.
+  directory_entity_types:
+  - directory
   client_da: 35
   non_profit_location: North Vancouver
   pivot_serp_fetch: true

@@ -50,6 +50,7 @@ import feasibility
 from feasibility import index_feasibility_by_keyword
 import commodity_score
 import demand_dashboard
+import thresholds_provenance
 from domain_utils import normalize_domain
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
@@ -552,6 +553,10 @@ def _render_glossary(body_text: str) -> list:
     for entry in sorted(used, key=lambda e: e["term"].lower()):
         definition = " ".join(str(entry["definition"]).split())
         out.append(f"**{entry['term']}** — {definition}\n")
+    # D-M-21: the glossary says what each label means; this says where the
+    # numbers behind the labels came from. A reader could not otherwise tell a
+    # figure somebody measured from a figure somebody chose.
+    out.extend(thresholds_provenance.lines(_load_config()))
     return out
 
 
@@ -718,6 +723,80 @@ def _as_float(value):
         return None
 
 
+def _trigger_presence(rec: dict) -> str:
+    """Trigger names with how many text blocks carry each, and the denominator.
+
+    The denominator is the SERP text the audit collected — snippets, ad copy,
+    related searches — not the ranking pages themselves, so the wording says
+    "SERP text blocks". Calling them pages would state a page-level
+    measurement nobody took (D6 cold review).
+
+    "not quantified this run" is the honest answer when no corpus reached the
+    matcher — it is not "0", which would say the triggers were looked for and
+    found nowhere (P1/P2, D-M-26).
+    """
+    names = rec.get("Detected_Triggers") or ""
+    hits = rec.get("Trigger_Hits")
+    scanned = rec.get("Snippets_Scanned")
+    if not isinstance(hits, dict) or not scanned:
+        return f"{names} — trigger-word presence not quantified this run"
+    parts = []
+    for name in [n.strip() for n in names.split(",") if n.strip()]:
+        count = hits.get(name)
+        parts.append(f"{name} ({count} of {scanned} SERP text blocks)"
+                     if count is not None else name)
+    blocks = rec.get("Snippets_With_Trigger")
+    tail = ""
+    if blocks is not None:
+        share = blocks / scanned if scanned else 0
+        tail = (f" — {blocks} of {scanned} scanned SERP text blocks carry at "
+                f"least one ({share:.0%})")
+    return ", ".join(parts) + tail
+
+
+def _intent_rank_word(serp_intent: dict, coverage) -> str:
+    """Which word the intent ranking key reads: certainty, or coverage.
+
+    Certainty is the leading intent's share of the *classified* URLs, so one
+    classified URL scores 1.0 — maximal certainty from almost nothing read.
+    Ranking on it alone put a keyword nobody could classify above a
+    well-covered 6/4 split (D6 cold review). Certainty orders the list only
+    where the coverage behind it is medium or better; otherwise the coverage
+    word orders, which is what happened before D6.3. Both figures are printed
+    either way, but the order is itself a published recommendation.
+
+    A row written before D6.3 has no certainty and falls back for the same
+    reason: its order was never a statement about certainty.
+    """
+    certainty = (serp_intent or {}).get("intent_certainty")
+    if certainty and certainty != "not_measured" and coverage in ("high", "medium"):
+        return certainty
+    return coverage
+
+
+def _certainty_cell(serp_intent: dict) -> str:
+    """The intent certainty for a table cell, with the share it rests on.
+
+    A row written before D6.3 carries no certainty. It is "—" (not recorded),
+    never "low": the run did not measure it. ``not_measured`` means nothing on
+    the page was classified, so there is no share to read.
+    """
+    si = serp_intent or {}
+    certainty = si.get("intent_certainty")
+    if not certainty:
+        return "—"
+    if certainty == "not_measured":
+        return "not measured"
+    share = si.get("leading_intent_share")
+    try:
+        # "leading intent", not the primary intent: on a mixed SERP, or one
+        # where the verdict was withheld, this share belongs to whichever
+        # intent led, not to the word printed beside it.
+        return f"{certainty} (leading intent {float(share):.0%} of classified)"
+    except (TypeError, ValueError):
+        return str(certainty)
+
+
 def _why_this_keyword(feas_record: dict, profile: dict) -> str:
     """Plain-English reason this keyword sits where it does in the plan (CD.1)."""
     bits = []
@@ -772,6 +851,19 @@ def _why_this_keyword(feas_record: dict, profile: dict) -> str:
         else:
             strength = f"{against}, so they are stronger than you"
         bits.append(f"{status} — {strength}.")
+        # The mean is the wrong statistic for "can a site my size rank here"
+        # (D-M-09): a single directory drags it either way. The minima say
+        # what the mean cannot, and they travel with it rather than replacing
+        # it.
+        # The computation used the config list, so the prose must name the
+        # same one — otherwise a widened `feasibility.directory_entity_types`
+        # is described as "directory" alone (D6 cold review).
+        minima = feasibility.minima_phrase(
+            feas_record,
+            directory_types=feasibility.resolve_directory_entity_types(
+                _load_config()))
+        if minima:
+            bits.append(minima)
 
     if profile.get("has_ai_overview"):
         if profile.get("client_aio_cited"):
@@ -909,7 +1001,7 @@ def _render_content_plan(data: dict, order: list) -> list:
 
 def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_intents: list):
     """
-    Purpose: Rank keywords by feasibility > intent alignment > confidence.
+    Purpose: Rank keywords by feasibility > intent alignment > intent certainty.
     Spec:    report_clarity_spec.md#RC.1.1
     Tests:   tests/test_report_clarity.py::test_rc1_*
 
@@ -950,10 +1042,19 @@ def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_
         else:
             intent_match = 1 if intent in preferred_intents else 0
 
-        # Confidence ranking (high=3, medium=2, low=1)
+        # Third ranking key: how clearly one intent leads (D6.3). It used to
+        # be `confidence`, which is the count of classified URLs — so the
+        # order moved when the operator enriched more pages and not when any
+        # SERP changed (D-M-10). A row written before D6.3 has no certainty;
+        # it falls back to the old key rather than dropping to last, because
+        # its order was never a statement about certainty either way.
+        rank_word = _intent_rank_word(profile.get("serp_intent"), confidence)
         conf_rank = (
-            3 if confidence == "high"
-            else 2 if confidence == "medium"
+            3 if rank_word == "high"
+            else 2 if rank_word == "medium"
+            # "not_measured" and "low" are both below medium, and they are not
+            # the same: nothing classified is not a weak lead. Ordering cannot
+            # express the difference, so the tables print it.
             else 1
         )
 
@@ -1222,14 +1323,22 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
         report.append("*No content briefs available to prioritize.*\n")
 
     # RC.1.3 — Keyword action table
-    report.append("| Keyword | Intent | Confidence | Feasibility | Action |")
-    report.append("|---------|--------|------------|-------------|--------|")
+    # "Coverage" and "Certainty" are two different facts and used to be one
+    # column called Confidence (D-M-10): coverage is how many of the ten
+    # ranking URLs were classified at all — a count capped by
+    # enrichment.max_urls_per_keyword — and certainty is how large a share of
+    # those agreed on the leading intent. A 6/4 split read as "high
+    # confidence" because only the count was shown.
+    report.append("| Keyword | Intent | Coverage | Certainty | Feasibility | Action |")
+    report.append("|---------|--------|----------|-----------|-------------|--------|")
 
     # Build rows and sort by action group
     rows = []
     for kw, profile in sorted(keyword_profiles.items()):
-        intent = profile.get("serp_intent", {}).get("primary_intent", "—")
-        confidence = profile.get("serp_intent", {}).get("confidence", "—")
+        si = profile.get("serp_intent", {}) or {}
+        intent = si.get("primary_intent", "—")
+        confidence = si.get("classification_coverage") or si.get("confidence") or "—"
+        certainty = _certainty_cell(si)
         feas_record = feas_map.get(kw, {})
         feas_status = feas_record.get("feasibility_status", "—")
         action = _get_keyword_action(kw, profile, feas_record, preferred_intents)
@@ -1244,12 +1353,14 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
             4 if action.startswith("❓") else
             5
         )
-        rows.append((action_priority, kw, intent, confidence, feas_status, action))
+        rows.append((action_priority, kw, intent, confidence, certainty,
+                     feas_status, action))
 
     # Sort by action group, then alphabetically
     rows.sort(key=lambda x: (x[0], x[1]))
-    for _, kw, intent, confidence, feas_status, action in rows:
-        report.append(f"| {kw} | {intent} | {confidence} | {feas_status} | {action} |")
+    for _, kw, intent, confidence, certainty, feas_status, action in rows:
+        report.append(f"| {kw} | {intent} | {confidence} | {certainty} "
+                      f"| {feas_status} | {action} |")
 
     report.append("")
     return report
@@ -1356,8 +1467,13 @@ def _order_briefs_by_opportunity(data: dict, strategic_recs: list, best_opportun
             else:
                 intent_match = 1 if intent in preferred_intents else 0
 
-            # Confidence ranking
-            conf_rank = 3 if confidence == "high" else 2 if confidence == "medium" else 1
+            # Intent certainty, same key as _rank_keywords (D6.3): the brief
+            # order and the keyword order have to agree, and ranking on the
+            # classification count ordered both by enrichment budget.
+            _rank_word = _intent_rank_word(
+                profile.get("serp_intent"), confidence)
+            conf_rank = (3 if _rank_word == "high"
+                         else 2 if _rank_word == "medium" else 1)
 
             rank_score = (feas_rank, intent_match, conf_rank, most_rel_kw)
         else:
@@ -1618,6 +1734,19 @@ def generate_report(data, db_path=None, run_ts=None):
     # 4. Strategic Bridge
     report.append("## 4. Strategic Recommendations (The Bridge)")
     report.append("How to differentiate using Bowen Theory.")
+    # D6.7 / D-M-26: a pattern fires on a whole-word trigger hit in the
+    # ranking pages' text. That is trigger-word presence, which is what the
+    # counts below report — it is not an analysis of how those pages frame
+    # the problem, and a pattern that fired on one page of twenty is not
+    # evidence the market thinks that way.
+    report.append("")
+    report.append(
+        "*What this section measures: trigger-word presence in the SERP text "
+        "this run collected — the snippets, ad copy and related searches, not "
+        "the body text of the ranking pages — and not framing analysis. Each "
+        "pattern below reports how many of those text blocks carry its "
+        "trigger words, so a pattern that fired in one block of forty can be "
+        "read as such.*")
     report.extend(_directive("section_4"))
 
     # M1.B — Mixed-Intent Strategic Note callouts above Bowen pattern blocks
@@ -1697,7 +1826,8 @@ def generate_report(data, db_path=None, run_ts=None):
             # RC.4.1 — Add evidence block if triggers found
             if rec.get("Detected_Triggers") and rec.get("Detected_Triggers") != "N/A":
                 triggers_str = rec.get('Detected_Triggers')
-                report.append(f"- *Triggers found:* {triggers_str}")
+                report.append(
+                    f"- *Triggers found:* {_trigger_presence(rec)}")
 
                 # Build evidence block from organic_results
                 triggers = [t.strip().lower() for t in triggers_str.split(",") if t.strip()]
@@ -1828,8 +1958,13 @@ def generate_report(data, db_path=None, run_ts=None):
                         for r in feasibility_rows if r.get("Query_Label") == "P"}
 
         # Table header
-        report.append("| Keyword | Client DA | Avg Comp DA | DA Coverage | Gap | Status | Recommended Play | Recommended Pivot |")
-        report.append("|---------|-----------|-------------|-----|--------|------------------|-------------------|")
+        # "Weakest (non-dir)" is the rankability figure the mean hides
+        # (D-M-09 / D6.1): the lowest DA holding a slot, and the lowest that
+        # is not a directory. "—" means no competitor was scored; "n/m" means
+        # no entity type was resolved, so the directory split is unmeasured
+        # rather than empty.
+        report.append("| Keyword | Client DA | Avg Comp DA | Weakest (non-dir) | DA Coverage | Gap | Status | Recommended Play | Recommended Pivot |")
+        report.append("|---------|-----------|-------------|-------------------|-------------|-----|--------|------------------|-------------------|")
 
         # Labels are editorial and live in feasibility_messages.yml; this was
         # the fourth Python copy of the same map (review chunk D2a).
@@ -1883,8 +2018,10 @@ def generate_report(data, db_path=None, run_ts=None):
                 else:
                     pivot_cell = f"**{suggested}**"
 
-            report.append(f"| {kw} | {client_da_str} | {avg_da_str} | {coverage_str} "
-                          f"| {gap_str} | {status} | {play_cell} | {pivot_cell} |")
+            weakest_str = feasibility.minima_cell(row)
+            report.append(f"| {kw} | {client_da_str} | {avg_da_str} | {weakest_str} "
+                          f"| {coverage_str} | {gap_str} | {status} | {play_cell} "
+                          f"| {pivot_cell} |")
 
         report.append("")
 
@@ -2088,7 +2225,8 @@ def _render_pattern_intent_context(
     Spec:    serp_tool1_improvements_spec.md#I.3 (supersedes cleanup_spec.md#C.2)
     Tests:   tests/test_most_relevant_keyword.py::test_i31_three_component_scoring
 
-    Format: *SERP intent context (most relevant keyword: <kw>): <intent>, confidence <conf>[, mixed: c1 + c2].*
+    Format: *SERP intent context (most relevant keyword: <kw>): <intent>,
+    classification coverage <cov>[, certainty <cert>][, mixed: c1 + c2].*
     Null primary_intent: *SERP intent context (most relevant keyword: <kw>): primary intent insufficient data.*
     No keyword found: *SERP intent context: no keyword in this run has triggers for this pattern.*
     """
@@ -2113,9 +2251,14 @@ def _render_pattern_intent_context(
     if is_mixed and mixed_comps:
         mixed_segment = f", mixed: {' + '.join(mixed_comps)}"
 
+    # "confidence <word>" said coverage and read as certainty (D-M-10). Both
+    # facts are printed, each named.
+    certainty = si.get("intent_certainty")
+    certainty_segment = f", certainty {certainty}" if certainty else ""
     return (
         f"*SERP intent context (most relevant keyword: {most_relevant_kw}): "
-        f"{primary}, confidence {confidence}{mixed_segment}.*"
+        f"{primary}, classification coverage {confidence}"
+        f"{certainty_segment}{mixed_segment}.*"
     )
 
 
@@ -2151,7 +2294,13 @@ def _render_serp_intent_section(keyword_profiles: dict) -> list:
                 f"— only {classified_n} of {organic_n} URLs could be classified"
             )
         else:
-            lines.append(f"- **Primary intent:** {primary}  *(confidence: {confidence})*")
+            # Two figures, two names (D6.3): coverage is how much of the page
+            # was classified, certainty how much of that agreed.
+            cert = _certainty_cell(si)
+            lines.append(
+                f"- **Primary intent:** {primary}  "
+                f"*(classification coverage: {confidence}; "
+                f"intent certainty: {cert})*")
 
         dist_parts = [
             f"{intent}: {count}"

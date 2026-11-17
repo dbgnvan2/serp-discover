@@ -364,6 +364,19 @@ def run_feasibility_analysis(
     urls_by_kw = _get_organic_urls_by_keyword(data)
     all_urls = list({url for w in urls_by_kw.values() for url in w.urls})
 
+    # Entity type per ranking URL, read off the rows the audit already
+    # classified (serp_audit classifies every domain, HTML-enriched or not).
+    # It feeds the non-directory minimum (D6.1): a directory holding a slot is
+    # not evidence a DA-35 clinic can hold one. A row with no Entity_Type, or
+    # the classifier's own "N/A", stays unknown rather than being counted as a
+    # competitor the client's size can displace.
+    entity_by_url: dict[str, str] = {}
+    for row in data.get("organic_results", []):
+        url = row.get("Link") or row.get("URL") or ""
+        etype = (row.get("Entity_Type") or "").strip()
+        if url and etype and etype.upper() != "N/A":
+            entity_by_url.setdefault(url, etype)
+
     # The client goes into the same batch as the competitors, so both sides of
     # the gap come off one provider's scale (D-M-05). One definition, shared
     # with serp_audit's in-pipeline pass.
@@ -415,6 +428,7 @@ def run_feasibility_analysis(
         logger.warning)
 
     keywords = sorted(urls_by_kw.keys())
+    _directory_types = feasibility_module.resolve_directory_entity_types(config)
     logger.info("Scoring feasibility for %d keywords...", len(keywords))
 
     for kw in keywords:
@@ -428,6 +442,7 @@ def run_feasibility_analysis(
             kw_window,
             lambda u: (domain_to_da.get(feasibility_module.domain_of(u)) or {}).get("da"),
             client_domain=client_domain,
+            entity_for_url=entity_by_url.get,
         )
 
         # Gate: only service-intent keywords get a neighbourhood pivot/variants.
@@ -451,7 +466,8 @@ def run_feasibility_analysis(
         # unmeasured provider response blank the keywords that did have
         # records (D-C-03). compute_feasibility reports the coverage either
         # way, so there is no second "no data" shape to keep in step.
-        feas = compute_feasibility(client_da, da_window)
+        feas = compute_feasibility(client_da, da_window,
+                                   directory_types=_directory_types)
         if feas["feasibility_status"] == feasibility_module.NOT_MEASURED:
             # No verdict for this keyword: no pivot recommendation and no paid
             # Maps fetch to support one. Gating on `gap is None` instead let a
@@ -500,6 +516,12 @@ def run_feasibility_analysis(
             "feasibility_status": feas["feasibility_status"],
             "da_count": feas["da_count"],
             "da_missing": feas["da_missing"],
+            # The minima travel with the mean. Re-listing the assessment's
+            # fields here is what dropped them in the first place: the mean
+            # over a top-10 does not say whether anything this client's size
+            # holds a slot, and a measured minimum rendered as "—" reads as
+            # "no competitor was scored" (D6 cold review, finding 2).
+            **{k: feas.get(k) for k in feasibility_module.MINIMA_FIELDS},
             "da_provider": da_source,
             "client_da_source": client_da_source,
             "pivot_status": pivot["pivot_status"],
@@ -592,6 +614,8 @@ def run_feasibility_analysis(
                     "feasibility_status": pivot_feas["feasibility_status"],
                     "da_count": pivot_feas["da_count"],
                     "da_missing": pivot_feas["da_missing"],
+                    **{k: pivot_feas.get(k)
+                       for k in feasibility_module.MINIMA_FIELDS},
                     "da_provider": da_source,
                     "client_da_source": client_da_source,
                     "Client_In_Local_Pack": client_in_local_pack,

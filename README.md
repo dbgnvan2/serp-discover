@@ -270,7 +270,7 @@ To keep the LLM honest and reduce hallucination, the tool pre-computes determini
 - **`title_patterns`** — shape analysis of the top-10 organic titles (how_to, what_is, best_of, etc.). `dominant_pattern` is only set when one shape reaches ≥4 of 10 titles.
 - **`mixed_intent_strategy`** — when the SERP is mixed-intent: `compete_on_dominant`, `backdoor`, or `avoid`. Driven by `client.preferred_intents` in `config.yml`.
 
-The validator hard-fails if the LLM report contradicts `serp_intent.primary_intent` or `is_mixed`, and soft-fails (one retry) on `title_patterns.dominant_pattern` or `mixed_intent_strategy` contradictions. If validation fails after retry, a companion `.validation.md` file is written explaining the rejected claims.
+The validator hard-fails if the LLM report contradicts `serp_intent.primary_intent`, `is_mixed` or `title_patterns.dominant_pattern`, and soft-fails (one retry) on `mixed_intent_strategy` or `entity_label` contradictions. (Until review chunk D6 this sentence listed `title_patterns` among the retryable failures; the code has always blocked it, and the paragraph above said so.) If validation fails after retry, a companion `.validation.md` file is written explaining the rejected claims.
 
 ---
 

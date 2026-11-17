@@ -91,3 +91,47 @@ client_da:
   # A row with no client_da_source: written before the provenance was
   # recorded, so whether this figure was measured is unknown. Not "measured".
   unknown_source: "{da} (source not recorded)"
+
+# What the mean cannot say. The mean answers "how strong is this page on
+# average"; a DA-35 nonprofit is asking "does anything my size hold a slot
+# here", and the answer is the weakest competitor that is not a directory.
+# A SERP of one DA-92 directory plus nine DA-18 clinics has a mean of 25 and
+# reads easy; one of five DA-85 sites plus five DA-12 clinics has a mean of
+# 48 and reads hard, although the second page demonstrably has room
+# (D-M-09 / D6.1).
+#
+# Placeholders: {min_da} weakest measured competitor, {min_non_directory_da}
+# weakest that is not a directory, {n} competitors the figures rest on,
+# {directory_types} the configured directory entity types.
+minima:
+  # Both figures available: the one that answers the question comes first.
+  with_non_directory: >-
+    The weakest page holding a slot that is not a {directory_types} scores
+    {min_non_directory_da}, and the weakest of any kind {min_da}, over {n}
+    scored competitors — that is what says whether a site your size has room
+    here, not the average.
+  # Only some of the scored competitors had a resolved entity type. The
+  # non-directory figure stands over those, not over the window — saying
+  # otherwise asserts a classification nobody made (D6 cold review).
+  with_non_directory_partial: >-
+    Of the {known} of {n} scored competitors whose type could be resolved, the
+    weakest that is not a {directory_types} scores {min_non_directory_da}; the
+    weakest of any kind is {min_da}. The other {unknown} were not classified,
+    so a page weaker than that may hold a slot here too.
+  # Every *classified* competitor is a directory, but some were not classified.
+  all_classified_directory: >-
+    Every one of the {known} of {n} scored competitors whose type could be
+    resolved is a {directory_types}; the other {unknown} were not classified,
+    so this page shows no evidence either way about an ordinary site your size.
+    The weakest of all {n} scores {min_da}.
+  # Entity types were resolved and every scored competitor is a directory.
+  all_directory: >-
+    Every one of the {n} scored competitors is a {directory_types}, so this
+    page shows no evidence either way about an ordinary site your size; the
+    weakest of them scores {min_da}.
+  # No entity type was resolved for any scored competitor. Not "no
+  # directories rank here" — nobody classified them.
+  entities_unknown: >-
+    The weakest page holding a slot scores {min_da} over {n} scored
+    competitors. None of them carries an entity type this run, so the
+    directory split is not measured.

@@ -415,28 +415,81 @@ def _load_strategic_patterns(path=None):
     return patterns
 
 
-def analyze_strategic_opportunities(ngram_results, keywords=None, patterns_path=None):
+def analyze_strategic_opportunities(ngram_results, keywords=None,
+                                    patterns_path=None, texts=None):
     """
     Maps detected N-Gram patterns to Bowen Theory strategic recommendations.
     Returns a list of dictionaries for the 'Strategic_Recommendations' sheet.
     Patterns are loaded from strategic_patterns.yml; add new patterns there.
+
+    A pattern used to be reported as "fired" on a single whole-word hit
+    anywhere in the joined n-gram phrases, with no count and no denominator,
+    and the report's section 4 then treated that as evidence the SERP "frames"
+    the problem that way (D-M-26). Every fired pattern now carries:
+
+    ``Trigger_Hits``          {trigger: how many of *texts* contain it}
+    ``Snippets_With_Trigger`` text blocks carrying at least one of this
+                              pattern's triggers, or ``None`` when none were
+                              supplied
+    ``Snippets_Scanned``      the denominator, or ``None``
+
+    *texts* is the SERP-visible text the audit collected — snippets, ad copy,
+    related searches, autocomplete — not the body text of the ranking pages,
+    and there are several entries per result. So the denominator counts text
+    blocks, not pages, and the field names say so: calling them pages would
+    hand the reader a page-level measurement nobody took (D6 cold review).
+    Without a corpus the hit counts are ``None`` — not zero: a count nobody
+    took is not a count of none (P1/P2), and the report prints "not
+    quantified this run".
+
+    A trigger is also *detected* against the same text it is counted in. The
+    fire test used to run over the n-gram phrases, which have stop words and
+    short words stripped, so a multi-word trigger could be listed as detected
+    and counted as 0 in the same line (D6 cold review).
+
+    Spec: docs/review_2026-11-04/PLAN_D6_hygiene_provenance_docs.md#D6.7
     """
     strategies = _load_strategic_patterns(patterns_path)
     all_phrases = " ".join([item["Phrase"] for item in ngram_results]).lower()
+    corpus = [str(t).lower() for t in (texts or []) if t]
+
+    # Fire and count against the same text, or the two can disagree.
+    haystack = " ".join(corpus) if corpus else all_phrases
+
+    def _hits(trigger):
+        """How many blocks of the corpus carry *trigger*, as a whole word."""
+        pattern = re.compile(r'\b' + re.escape(trigger) + r'\b')
+        return sum(1 for text in corpus if pattern.search(text))
 
     recommendations = []
     for strategy in strategies:
         found_triggers = [t for t in strategy["Triggers"]
-                         if re.search(r'\b' + re.escape(t) + r'\b', all_phrases)]
+                         if re.search(r'\b' + re.escape(t) + r'\b', haystack)]
         if found_triggers:
             rec = strategy.copy()
             rec["Detected_Triggers"] = ", ".join(found_triggers[:5])
+            if corpus:
+                hits = {t: _hits(t) for t in found_triggers}
+                rec["Trigger_Hits"] = hits
+                any_pattern = re.compile(
+                    "|".join(r'\b' + re.escape(t) + r'\b'
+                             for t in found_triggers))
+                rec["Snippets_With_Trigger"] = sum(
+                    1 for text in corpus if any_pattern.search(text))
+                rec["Snippets_Scanned"] = len(corpus)
+            else:
+                rec["Trigger_Hits"] = None
+                rec["Snippets_With_Trigger"] = None
+                rec["Snippets_Scanned"] = None
             recommendations.append(rec)
 
     if not recommendations:
         recommendations.append({
             "Pattern_Name": "General Differentiation",
             "Detected_Triggers": "N/A",
+            "Trigger_Hits": None,
+            "Snippets_With_Trigger": None,
+            "Snippets_Scanned": len(corpus) if corpus else None,
             "Status_Quo_Message": "Standard symptom-focused advice.",
             "Bowen_Bridge_Reframe": "Focus on defining a self within the system.",
             "Content_Angle": "How to be yourself in your important relationships."

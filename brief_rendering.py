@@ -319,7 +319,13 @@ def generate_serp_intent_section(keyword_profiles: dict) -> str:
                 f"— only {classified_n} of {organic_n} URLs could be classified"
             )
         else:
-            lines.append(f"- **Primary intent:** {primary}  *(confidence: {confidence})*")
+            # D6.3: `confidence` is the classification coverage, named as
+            # such, with the certainty of the verdict beside it.
+            _cert = si.get("intent_certainty")
+            _cert_text = f"; intent certainty: {_cert}" if _cert else ""
+            lines.append(
+                f"- **Primary intent:** {primary}  "
+                f"*(classification coverage: {confidence}{_cert_text})*")
 
         # Distribution line — only include buckets with count > 0
         dist_parts = [
@@ -879,7 +885,10 @@ def generate_brief(data, rec_index=0):
     if most_relevant_kw:
         lines.append(f"For the most relevant keyword (*{most_relevant_kw}*):")
         _primary_display = _primary if _primary is not None else "insufficient data"
-        lines.append(f"- Intent: {_primary_display} *(confidence: {_confidence})*")
+        _c = si.get("intent_certainty")
+        lines.append(
+            f"- Intent: {_primary_display} *(classification coverage: "
+            f"{_confidence}" + (f"; certainty: {_c}" if _c else "") + ")*")
         lines.append(f"- Title pattern: {_dp if _dp else 'no dominant pattern'}")
         lines.append(f"- Mixed: {'yes' if _is_mixed else 'no'}")
         lines.append("")

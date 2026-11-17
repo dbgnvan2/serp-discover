@@ -497,7 +497,7 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-C-14 | S2 | D4 | §4 evidence block reads keys the producer never writes | fixed (D4a) |
 | D-C-15 | S2 | D4 | `stop_reason == max_tokens` never checked | fixed (c742f68) |
 | D-C-16 | S3 | D6 | Failing Moz test is a hard-coded-date bomb | already fixed `abcc2aa` — close, do not re-fix |
-| D-C-17 | S3 | D6 | `serp_intent.thresholds.confidence_*` have no reader | open |
+| D-C-17 | S3 | D6 | `serp_intent.thresholds.confidence_*` have no reader | fixed (D6) — the two confidence thresholds now drive intent certainty; a test fails if any key under the block loses its reader |
 | D-C-18 | S3 | D4 | §6 prints "unknown" for keys metrics never returns | fixed (D4a) |
 | D-C-19 | S3 | D1 | Two feasibility producers with different definitions | fixed `2285828` |
 | D-C-20 | S3 | D2 | 403/429/5xx bodies are classified as content | fixed (D2c) |
@@ -511,8 +511,8 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-06 | High | D4 | Best opportunity ignores the mandatory intent gate | fixed (D4a) |
 | D-M-07 | High | D4 | Extraction play asserts "high DA gap" when unmeasured | fixed (D4a) |
 | D-M-08 | High | D2 | = D-C-03 (fake verdict + paid pivot fetch) | fixed `9784690` (D2a) |
-| D-M-09 | Med | D6 | Mean DA is the wrong statistic; no n / min / entity split | open |
-| D-M-10 | Med | D6 | "Confidence" is a classification count capped by enrichment budget | open |
+| D-M-09 | Med | D6 | Mean DA is the wrong statistic; no n / min / entity split | fixed (D6) — min_competitor_da / min_non_directory_da / n on the row, in §5b and §5c |
+| D-M-10 | Med | D6 | "Confidence" is a classification count capped by enrichment budget | fixed (D6) — coverage and certainty are separate figures, both printed; certainty is the ranking key |
 | D-M-11 | Med | D4 | Mixed-intent strategy says "backdoor" when dominant is preferred; dict-order ties | fixed (D4b) |
 | D-M-12 | Med | D4 | "Market too small" decided from `total_results` | fixed (D4b) |
 | D-M-13 | Med | D4 | Commodity homogeneity counts `other` titles as homogeneous | fixed (D4b) |
@@ -523,12 +523,12 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-18 | Med | D3 | 20-question cap drops whole personas | fixed (D3b) |
 | D-M-19 | Med | D4 | Pivot text asserts directory dominance; gate ignores intent verdict | fixed (D4b) |
 | D-M-20 | Med | D5 | AIO constants without source; trend across unlike keyword sets | fixed (D5) |
-| D-M-21 | Med | D6 | Core thresholds/weights without stated derivation | open |
-| D-M-22 | Low–Med | D6 | Root `methodology.md` stale and contradictory | open |
-| D-M-23 | Low | D6 | Glossary DA-gap formula reversed | open |
-| D-M-24 | Low | D6 | `feasibility_score` exceeds documented 0–1 | open |
+| D-M-21 | Med | D6 | Core thresholds/weights without stated derivation | fixed (D6) — thresholds_provenance, printed in §A; blank prints as editorial, uncalibrated |
+| D-M-22 | Low–Med | D6 | Root `methodology.md` stale and contradictory | fixed (D6) — root guide banner-marked a dated snapshot; intent_mapping.yml sentence corrected |
+| D-M-23 | Low | D6 | Glossary DA-gap formula reversed | already fixed before D6 — verified and guarded |
+| D-M-24 | Low | D6 | `feasibility_score` exceeds documented 0–1 | fixed (D6) — feasibility_score clamped to 0–1 |
 | D-M-25 | Low | D3 | Failed sentiment stored as "neutral" | fixed (D3b) |
-| D-M-26 | Low–Med | D6 | Bowen triggers include ubiquitous words; no counts | open |
+| D-M-26 | Low–Med | D6 | Bowen triggers include ubiquitous words; no counts | fixed (D6) — per-trigger page counts + share; four ubiquitous triggers removed; §4 relabelled |
 | D-M-27 | Low–Med | D4 | Validator cannot check the claims most likely wrong upstream | fixed (D4c) |
 | C-C-01 | S1 | C1 | `www.` domains derive brand "www" | fixed `f7b09bf` (C1) |
 | C-C-02 | S1 | C3 | `total_keywords` inflated by cross join | fixed `3d56e0a` (C3) |

@@ -270,6 +270,14 @@ degrades to the built-in wording and never aborts a report.
 | `gsc_demand.bands.source` | where the branded-share bands come from: a study and a date. Empty → the report states the two figures are the owner's working assumption, because no published source was ever recorded for them. Editorial (D-M-16) |
 | `aio_exposure.sources.aio_ctr_multiplier` / `.citation_credit` / `.ctr_curve` | the same for the three modelled AI-Overview constants. "Industry reference point" named no study and no date, and third-party CTR figures move year to year, so each empty value prints as the owner's working assumption in the report caveat and the glossary. Editorial (D-M-20) |
 
+### `thresholds_provenance` / `feasibility.directory_entity_types` / `serp_intent.thresholds` (review chunk D6)
+
+| Key | What it sets |
+|-----|--------------|
+| `thresholds_provenance.<family>` | one line, in the owner's own words, saying where that threshold family came from — a study and a date, a decision record, or a calibration. Printed in the report's §A glossary appendix under "Where these thresholds come from". A family left blank or absent prints as "editorial, uncalibrated — no source or date is recorded for this one", which is the honest answer until somebody records one. Families: `feasibility`, `serp_intent`, `title_patterns`, `commodity`, `aivi`, `foundational`, `engine_prioritization`, `gsc_demand`, `entity_dominance` (they must match `thresholds_provenance.FAMILIES`; an unknown name is reported and not printed). Each printed line also names the config keys that hold that family's numbers and shows their live values (a key this config does not set says the code default applies); the figures are never copied into the module, so the section cannot print a number somebody has since tuned. Editorial (D-M-21) |
+| `feasibility.directory_entity_types` | which entity types count as a directory when the report prints the weakest **non**-directory competitor beside the mean (default `directory`). A directory holding a top-10 slot says nothing about whether a DA-35 clinic can hold one, which is why the two minima are separate. Must use `classification_rules.json`'s `entity_types` vocabulary; malformed → the default plus a warning. Editorial (D-M-09) |
+| `serp_intent.thresholds.confidence_high` / `confidence_medium` | the share of the **classified** ranking URLs the leading intent must hold for the verdict's certainty to read high / medium (0.8 / 0.5). Read by `intent_verdict._bucket_certainty`. These two keys were validated, documented and GUI-editable with no reader at all until this chunk, so tuning either changed nothing and warned about nothing; a test now fails if any key under the block loses its reader (D-C-17). Not the same figure as classification coverage, which counts how many URLs could be classified and rises with `enrichment.max_urls_per_keyword` (D-M-10) |
+
 ---
 
 ## Configuration Manager GUI

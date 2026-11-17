@@ -748,7 +748,7 @@ guessing. For the demand trend that *can* be measured honestly, see the
 branded-vs-non-branded share in the GSC analysis report. If GSC isn't connected, this
 section shows the AI-Overview coverage and points you to connect GSC for the clicks overlay.
 
-### Keyword Prioritization: Feasibility > Intent > Confidence
+### Keyword Prioritization: Feasibility > Intent > Intent certainty
 
 When Serp-Discover recommends which keywords to target first, it ranks them using three factors in priority order. Understanding this hierarchy helps you make strategic decisions.
 
@@ -787,28 +787,30 @@ SERPs — a missing estimate was read as zero, so the keyword was called too
 small on no evidence at all (D-M-12). A keyword with no volume figure is no
 longer called too small; the absence is stated instead.
 
-**3. Confidence** — *How sure are we about the intent?*
-- **Why it matters:** Some keywords have clear intent (e.g., "book couples therapy" is obviously transactional). Others are ambiguous (e.g., "couples counselling" might be both local and informational). Low-confidence verdicts mean you need to validate the intent manually before investing in content.
-- **How it works:** Confidence is based on how many of the top-10 results clearly indicate intent. 8+ results = high confidence. 5–7 = medium. <5 = low (mixed intent).
-- **Priority:** **Within the same feasibility and intent level, prioritize high-confidence keywords.** They're easier to target and less likely to surprise you mid-way through writing.
+**3. Intent certainty** — *How clearly does one intent lead?*
+- **Why it matters:** Some keywords have clear intent (e.g., "book couples therapy" is obviously transactional). Others are ambiguous (e.g., "couples counselling" might be both local and informational). A low-certainty verdict means you need to validate the intent manually before investing in content.
+- **How it works:** Certainty is the share of the *classified* results that agreed on the leading intent, measured against `serp_intent.thresholds.confidence_high` (0.8) and `confidence_medium` (0.5) in `config.yml`. Six of ten results informational and four commercial is a 60% share — medium.
+- **Read it beside Coverage.** Coverage is a different number: how many of the ten results could be classified at all. It is capped by `enrichment.max_urls_per_keyword`, so raising that raises coverage without any SERP having changed, and results below the enrichment limit are classified from the URL shape only. Both columns are printed, because eight results unreadable and the other two agreeing is a 100% share over a coverage of "low" — not a certain verdict.
+- **Before November 2026** one column called "Confidence" showed the coverage count alone, so a 6/4 split read as "high confidence" and the two `confidence_*` settings had no reader at all (review findings D-M-10, D-C-17).
+- **Priority:** **Within the same feasibility and intent level, prioritize high-certainty keywords.** They're easier to target and less likely to surprise you mid-way through writing.
 
 #### Ranking Logic in Practice
 
 **Example 1: Two high-feasibility keywords**
-- Keyword A: Feasibility = High, Intent = informational (matches), Confidence = high
-- Keyword B: Feasibility = High, Intent = local (matches), Confidence = medium
+- Keyword A: Feasibility = High, Intent = informational (matches), Certainty = high
+- Keyword B: Feasibility = High, Intent = local (matches), Certainty = medium
 
 → **Pursue A first**, then B. Same feasibility; A has higher confidence.
 
 **Example 2: Mixed feasibility**
-- Keyword A: Feasibility = Moderate, Intent = informational (matches), Confidence = high
-- Keyword B: Feasibility = Low, Intent = informational (matches), Confidence = high
+- Keyword A: Feasibility = Moderate, Intent = informational (matches), Certainty = high
+- Keyword B: Feasibility = Low, Intent = informational (matches), Certainty = high
 
 → **Pursue A first**, then B. A is more feasible.
 
 **Example 3: Feasibility vs. intent match**
-- Keyword A: Feasibility = High, Intent = commercial (does NOT match preferred intents), Confidence = high
-- Keyword B: Feasibility = Moderate, Intent = informational (matches), Confidence = high
+- Keyword A: Feasibility = High, Intent = commercial (does NOT match preferred intents), Certainty = high
+- Keyword B: Feasibility = Moderate, Intent = informational (matches), Certainty = high
 
 → **Pursue B only.** A is off-limits because the intent doesn't match, regardless of feasibility.
 
@@ -824,7 +826,7 @@ re-running with more enrichment.
 
 Domain Authority data comes from external APIs (DataForSEO or Moz). Moz needs only `MOZ_TOKEN` in your `.env` — the audit previously looked for `MOZ_ACCESS_ID` and `MOZ_SECRET_KEY`, which this project never used, so Moz enrichment stayed off during audit runs no matter what was configured. It now runs whenever `MOZ_TOKEN` is set and `feasibility.enabled` is true, and the run log reports how many API rows each fetch billed (cache hits bill nothing). If those APIs fail or credentials aren't set up, feasibility data may be unavailable. In that case:
 - Intent match becomes the primary ranking factor (still required to pursue)
-- Confidence becomes the secondary ranking factor
+- Intent certainty becomes the secondary ranking factor
 - You can still prioritize, but you should re-run with DA data as soon as possible to refine your priorities
 
 ### API Usage Modes
@@ -1124,10 +1126,10 @@ The main report. It opens with what to write and works backwards to the evidence
 | 1b. Market Overview | Which search-page features appeared, and on how many keywords |
 | 2. The 'Anxiety Loop' | Real questions searchers ask, to use as page headings |
 | 3. The Words Competitors Use | Vocabulary already on the results page |
-| 4. Strategic Recommendations | The Bowen argument the page should make |
+| 4. Strategic Recommendations | The Bowen argument the page should make, with how much of the page set carries each pattern's trigger words |
 | 5–5f | The underlying data: competitor mix, intent, feasibility, AI Overview exposure, commodity risk |
 | 6. Market Volatility | Rank movement since the last run of the same keywords |
-| **A. Glossary** | Plain-English definition of every term of art used above |
+| **A. Glossary** | Plain-English definition of every term of art used above, plus where every band and weight in the report came from |
 
 **How to use:** read Section 1, write the page, and drop into the numbered
 sections when you want the evidence behind a recommendation.
@@ -1235,13 +1237,15 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 Per-keyword content roadmap. For each keyword:
 - **Keyword**: The search term
 - **Search intent**: Informational / transactional / local / commercial / navigational
-- **Feasibility**: High / Moderate / Low (DA gap)
+- **Feasibility**: High / Moderate / Low (DA gap). The three bands are editorial — somebody chose them as sensible for a local nonprofit, and the report's glossary appendix says plainly that nobody has checked them against whether the keywords it called High were ones you went on to rank for
+- **Weakest (non-dir)**: the lowest Domain Authority holding a top-10 slot, and the lowest that is not a directory. This is the figure that answers "does anything my size have room here", which the average cannot: one Psychology Today listing moves the average far enough to hide nine small clinics. `12 (?)` means no ranking page carried an entity type this run, so the directory split was not measured — it does not mean no directory ranks there. A `?` after the second figure (`12 (40?)`, `12 (none?)`) means only some of the ranking pages were classified, so that figure stands over those and not over the top 10 — with one page classified, the "weakest non-directory" can be the strongest site on the page, and the sentence in section 5c says how many were classified
 - **Top competitors**: Domains that rank + their entity types
 - **Recommended content**: Specific article titles, sections, format (guide, FAQ, local page)
 - **Content angle**: How to frame it (Bowen systems approach vs medical model)
-- **Confidence**: High (clear intent) / Medium (some ambiguity) / Low (mixed intent)
+- **Classification coverage**: High / Medium / Low — how many of the ten ranking URLs could be classified at all, not how clear the intent is
+- **Intent certainty**: High (one intent clearly leads) / Medium (some ambiguity) / Low (no intent leads) / not measured (nothing on the page was classified)
 
-**How to use:** Content team uses this to build the publishing roadmap. Start with high-feasibility, high-confidence keywords.
+**How to use:** Content team uses this to build the publishing roadmap. Start with high-feasibility, high-certainty keywords — and check the coverage beside the certainty, because a share measured over two readable results is not the same evidence as one measured over ten.
 
 #### The FAQ / Answer-Extraction Plan (report Section 5b)
 
@@ -1270,6 +1274,33 @@ the analyzed top-10 pages carry FAQ markup (FAQPage) and which schema.org
 types dominate, then recommends markup for the client's page. Recommendations
 come from the editorial table in `schema_recommendations.yml` — edit that file
 (not Python) to change what markup the tool may recommend.
+
+#### What Section 4's "Triggers found" line actually measures
+
+**What it is.** A Bowen pattern is reported when one of its trigger words
+appears in the SERP text the run collected — the snippets, the ad copy, the
+related searches — which is not the same as the body text of the ranking
+pages, and holds several entries per result. The line under each pattern says
+how many of those text blocks carry each trigger and how many carry any of
+them at all: "clinical (1 of 20 SERP text blocks) — 2 of 20 scanned SERP text
+blocks carry at least one (10%)". It says "text blocks" rather than "pages"
+because a page-level count is not what was taken.
+
+**Why it matters.** This is trigger-word presence. It is not an analysis of how
+those pages frame the problem, and a pattern that fired in one text block out
+of twenty is not evidence that the market thinks that way. Until the counts were
+printed, every fired pattern read the same — and four of the triggers were
+words that appear on essentially every counselling page in BC ("registered" is
+in every RCC byline, "mental health" is the topic's own name, "close" and
+"communication" are the vocabulary of every couples page), so those patterns
+fired on every run and the verdict carried no information. Those four triggers
+have been removed. If you add a trigger to `strategic_patterns.yml`, add
+vocabulary only somebody inside the trap would use — the file's own rule at the
+top says the same thing.
+
+**Where no count appears.** "trigger-word presence not quantified this run"
+means no page text reached the matcher. It does not mean the triggers were
+looked for and found on no page.
 
 #### The citation surface map and GEO alerts (report Section 4)
 

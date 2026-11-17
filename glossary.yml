@@ -216,6 +216,19 @@ columns:
       verdict — fewer than five ranking domains had a record, or your own Domain
       Authority was never measured. That is different from a low score, and the row
       still shows whatever numbers were measured.
+  - column: min_competitor_da / min_non_directory_da
+    sheet: Keyword_Feasibility
+    definition: >-
+      The weakest Domain Authority holding a top-10 slot, and the weakest that is
+      not a directory. These answer the question the average cannot: whether
+      anything your size has room on this page. One strong directory pulls the
+      average either way, so a page with five DA-12 clinics on it can read harder
+      than one with a single DA-92 listing site. A blank non-directory figure
+      means no ranking page carried an entity type this run, so the split was not
+      measured — it does not mean no directory ranks here. `entities_known` says
+      how many of the scored pages were classified at all: where that is fewer
+      than all of them, the non-directory figure stands over those pages only,
+      and in the report the cell carries a `?`.
   - column: pivot_status / suggested_keyword / all_variants
     sheet: Keyword_Feasibility
     definition: >-
@@ -345,6 +358,19 @@ terms:
       comparison, and no place in the best-opportunity pick. Re-run once the data
       provider is reachable.
 
+  - term: feasibility status
+    aliases: ["feasibility status", "High Feasibility", "Moderate Feasibility",
+              "Low Feasibility"]
+    definition: >-
+      The verdict on whether you could realistically rank for this keyword, read
+      off the DA gap: within 5 points is High, 6–15 Moderate, more than 15 Low.
+      Those three bands are editorial — somebody chose them as sensible for a
+      local nonprofit, and nobody has yet checked them against whether the
+      keywords they called High were ones you went on to rank for. The gap itself
+      is a measurement; the band is a judgement about it. Read the verdict beside
+      the weakest non-directory competitor, which answers the same question with
+      less arithmetic between you and the evidence.
+
   - term: organic position
     aliases: ["organic position", "organic rank", "organic results"]
     definition: >-
@@ -405,7 +431,10 @@ terms:
     definition: >-
       A 0–100 estimate of how easily one AI paragraph could replace the entire results
       page for this search. High means everyone is saying the same thing, so a generic
-      page is worth little — say something the others do not.
+      page is worth little — say something the others do not. Its weights and its
+      40 / 70 bands are editorial: somebody chose them for this client's market,
+      and "Where these thresholds come from" at the end of this appendix says
+      whether anyone has since checked them.
 
   - term: SERP homogeneity
     aliases: ["SERP homogeneity", "SERP homog."]

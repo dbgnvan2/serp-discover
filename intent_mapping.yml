@@ -40,10 +40,15 @@
 #
 # 2. Guide URL on a counselling provider's domain when the SERP has a local
 #    pack:
-#    → informational (locality does NOT override). A guide is a guide. The
-#      local pack contributes its own `local` count from map-pack URLs.
+#    → informational (locality does NOT override). A guide is a guide.
 #      Reclassifying every provider-hosted guide as "local" because the SERP
 #      also has a 3-pack would conflate authoring intent with SERP mix.
+#      NOTE (review finding D-M-22): this used to add that "the local pack
+#      contributes its own `local` count from map-pack URLs". It does not.
+#      Map-pack members are never counted as URLs; only `local_pack: present`
+#      as an attribute of the organic rows reaches the rules, and
+#      `evidence.local_pack_member_count` is recorded but not used in the
+#      verdict. The intent distribution counts organic URLs only.
 #
 # 3. AI Overview presence: NO effect on intent. AI Overviews appear across
 #    all intent types and are not a reliable signal. Recorded in

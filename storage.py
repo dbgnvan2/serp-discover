@@ -22,6 +22,10 @@ import json
 import logging
 from datetime import datetime
 
+# For MINIMA_FIELDS only — the names of the fields a feasibility
+# assessment carries, so this writer cannot fall behind the producer.
+import feasibility
+
 
 class SerpStorage:
     def __init__(self, db_path="serp_data.db"):
@@ -113,10 +117,32 @@ class SerpStorage:
             da_missing          INTEGER,    -- window positions with none
             da_provider         TEXT,       -- "dataforseo" | "moz" | "none"
             client_da_source    TEXT,       -- how client_da was obtained
+            -- The minima the mean cannot show (review chunk D6, D-M-09).
+            -- min_non_directory_da NULL means no competitor's entity type was
+            -- resolved, which is not "no directory ranks here";
+            -- entities_known says how many were resolved, so a figure taken
+            -- over 1 of 10 is never read as taken over 10.
+            min_competitor_da    REAL,
+            max_competitor_da    REAL,
+            min_non_directory_da REAL,
+            non_directory_count  INTEGER,
+            entities_known       INTEGER,
             computed_at         TEXT,
             PRIMARY KEY (keyword_text, run_id),
             FOREIGN KEY(run_id) REFERENCES runs(run_id)
         )''')
+
+        # --- Migration: feasibility minima columns (review chunk D6) ---
+        for col, col_type in [("min_competitor_da", "REAL"),
+                              ("max_competitor_da", "REAL"),
+                              ("min_non_directory_da", "REAL"),
+                              ("non_directory_count", "INTEGER"),
+                              ("entities_known", "INTEGER")]:
+            try:
+                c.execute(
+                    f"ALTER TABLE keyword_feasibility ADD COLUMN {col} {col_type}")
+            except sqlite3.OperationalError:
+                pass  # Column already exists — safe to ignore
 
         # --- Migrations: add Moz DA/PA columns to url_features if absent ---
         for col, col_type in [("competitor_da", "INTEGER"), ("page_authority", "INTEGER")]:
@@ -268,6 +294,7 @@ class SerpStorage:
         da_missing: int | None = None,
         da_provider: str | None = None,
         client_da_source: str | None = None,
+        minima: dict | None = None,
     ) -> None:
         """Upsert a feasibility assessment row.
 
@@ -313,21 +340,36 @@ class SerpStorage:
             How ``client_da`` was obtained — a measurement, the config
             fallback, or not measured. Reported beside the figure so a
             config value is never read as a measurement.
+        minima:
+            The ``feasibility.MINIMA_FIELDS`` keys from the assessment — the
+            weakest competitor, the weakest non-directory competitor, and how
+            many competitors had a resolved entity type. Passed as one mapping
+            so a new field does not have to be added at three call sites;
+            absent keys store NULL, which is "not recorded", never 0.
         """
         pivot_json = json.dumps(pivot_variants)
         computed_at = datetime.now().isoformat()
+        mins = minima or {}
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(
                 """INSERT OR REPLACE INTO keyword_feasibility
                    (keyword_text, run_id, query_label, avg_serp_da, client_da,
                     gap, feasibility_score, feasibility_status,
                     client_in_local_pack, pivot_variants, da_count,
-                    da_missing, da_provider, client_da_source, computed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    da_missing, da_provider, client_da_source,
+                    min_competitor_da, max_competitor_da,
+                    min_non_directory_da, non_directory_count,
+                    entities_known, computed_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                           ?, ?, ?, ?, ?, ?)""",
                 (keyword_text, run_id, query_label, avg_serp_da, client_da,
                  gap, feasibility_score, feasibility_status,
                  client_in_local_pack, pivot_json, da_count, da_missing,
-                 da_provider, client_da_source, computed_at),
+                 da_provider, client_da_source,
+                 mins.get("min_competitor_da"), mins.get("max_competitor_da"),
+                 mins.get("min_non_directory_da"),
+                 mins.get("non_directory_count"), mins.get("entities_known"),
+                 computed_at),
             )
 
     def save_feasibility_from_row(
@@ -367,6 +409,8 @@ class SerpStorage:
             da_missing=row.get("da_missing"),
             da_provider=row.get("da_provider"),
             client_da_source=row.get("client_da_source"),
+            minima={k: row.get(k) for k in feasibility.MINIMA_FIELDS
+                    if k in row},
         )
 
     def get_keyword_feasibility(self, run_id: str) -> list[dict]:

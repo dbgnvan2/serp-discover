@@ -18,7 +18,7 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 
 **cited-share** — The share of your keywords where the AI Overview quotes your site as one of its sources. Zero means the AI is answering your topic without crediting you.
 
-**commodity score** — A 0–100 estimate of how easily one AI paragraph could replace the entire results page for this search. High means everyone is saying the same thing, so a generic page is worth little — say something the others do not.
+**commodity score** — A 0–100 estimate of how easily one AI paragraph could replace the entire results page for this search. High means everyone is saying the same thing, so a generic page is worth little — say something the others do not. Its weights and its 40 / 70 bands are editorial: somebody chose them for this client's market, and "Where these thresholds come from" at the end of this appendix says whether anyone has since checked them.
 
 **content type** — What kind of page is ranking — a guide, a news item, a service page. It tells you what format to write in. If guides dominate, a service page will struggle however good it is.
 
@@ -35,6 +35,8 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 **extraction play** — The verdict that ranking is unrealistic but being quoted is not. You format the page so an AI can lift a clean answer out of it — question headings, the answer immediately underneath. Success is measured in citations, not position.
 
 **FAQPage markup** — Invisible labelling in the page's code that tells machines "this is a question, and this is its answer". It does not change what a human reads; it makes the question-and-answer structure unambiguous to Google and to AI engines.
+
+**feasibility status** — The verdict on whether you could realistically rank for this keyword, read off the DA gap: within 5 points is High, 6–15 Moderate, more than 15 Low. Those three bands are editorial — somebody chose them as sensible for a local nonprofit, and nobody has yet checked them against whether the keywords they called High were ones you went on to rank for. The gap itself is a measurement; the band is a judgement about it. Read the verdict beside the weakest non-directory competitor, which answers the same question with less arithmetic between you and the evidence.
 
 **Featured Snippet** — The boxed answer Google lifts out of one page and shows above the results. Won by answering a question directly and early on the page.
 
@@ -97,6 +99,7 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 | `client_da_source` | Keyword_Feasibility | Where your own Domain Authority on this row came from: the provider plus the date it was measured, "operator override" if you passed one on the command line, or "config fallback (unmeasured, ...)" when the provider had no record and the value in config.yml stood in. A config value is not a measurement and may be on a different vendor's scale, so a gap built on one is indicative. |
 | `gap` | Keyword_Feasibility | avg_serp_da minus client_da. Negative means you are the stronger site and ranking is realistic. Positive means they are stronger. Within about two points, treat it as level — the underlying score is an estimate. |
 | `feasibility_score / feasibility_status` | Keyword_Feasibility | The gap turned into a normalised score and a High / Moderate / Low verdict. "Not Measured" means there was not enough measured Domain Authority to give a verdict — fewer than five ranking domains had a record, or your own Domain Authority was never measured. That is different from a low score, and the row still shows whatever numbers were measured. |
+| `min_competitor_da / min_non_directory_da` | Keyword_Feasibility | The weakest Domain Authority holding a top-10 slot, and the weakest that is not a directory. These answer the question the average cannot: whether anything your size has room on this page. One strong directory pulls the average either way, so a page with five DA-12 clinics on it can read harder than one with a single DA-92 listing site. A blank non-directory figure means no ranking page carried an entity type this run, so the split was not measured — it does not mean no directory ranks here. `entities_known` says how many of the scored pages were classified at all: where that is fewer than all of them, the non-directory figure stands over those pages only, and in the report the cell carries a `?`. |
 | `pivot_status / suggested_keyword / all_variants` | Keyword_Feasibility | Whether the tool suggests targeting a narrower neighbourhood-level keyword instead, which one, and every variant it considered. Only generated for service-type keywords. |
 | `Client_In_Local_Pack` | Keyword_Feasibility | Whether your business appeared in the map box. Blank means the check could not be run — not that you were absent. |
 | `Type / Phrase / Count` | SERP_Language_Patterns | Repeated two- and three-word phrases from the SERP text, with how often each appeared. Stop words are stripped before counting here, so phrases read oddly ("family origin"). The readable version is in the Markdown report, Section 3. |

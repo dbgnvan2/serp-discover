@@ -42,12 +42,16 @@
 
 - Pattern_Name: The Medical Model Trap
   Relevant_Intent_Class: External Locus
+  # `registered` and `mental health` were removed by review chunk D6
+  # (D-M-26): "registered" is in every RCC byline on a BC counselling page and
+  # "mental health" is the topic's own name, so both fired on essentially
+  # every run and the pattern's verdict carried no information. They violate
+  # this file's own rule at the head. If you want cover for the same framing,
+  # add vocabulary that only someone INSIDE the trap uses.
   Triggers:
     - clinical
-    - registered
     - diagnosis
     - disorder
-    - mental health
     - patient
     - treatment
   Status_Quo_Message: >-
@@ -66,12 +70,12 @@
     one diagnosis.
 
 - Pattern_Name: The Fusion Trap
+  # `close` and `communication` were removed by review chunk D6 (D-M-26):
+  # they are the vocabulary of every couples page, trap or not.
   Triggers:
     - connection
     - bond
-    - close
     - intimacy
-    - communication
     - reconnect
     - reach out
   Status_Quo_Message: >-

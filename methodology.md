@@ -1,4 +1,16 @@
-# How the SERP Intelligence Tool Works
+# How the SERP Intelligence Tool Works — reading guide, snapshot of 2026-05-01
+
+> **This is a dated snapshot, not the contract.** The methodology contract is
+> [`docs/methodology.md`](docs/methodology.md), which CLAUDE.md names and which
+> is updated in the same change as the code it describes. This file was written
+> from a reading of the codebase as it stood on **2026-05-01** and has not been
+> maintained since; where the two disagree, `docs/methodology.md` is right.
+> Known stale passages: the trigger vocabularies it calls "effectively
+> hardcoded" moved to `intent_classifier_triggers.yml` (spec I.2) and
+> `serp_vocab.yml`; the two generators it says "weren't in the upload" are in
+> the repo; the DA and threshold figures it quotes are whatever `config.yml`
+> now holds. Kept because its plain-language Part 1 is still the clearest
+> introduction to why each piece exists (review finding D-M-22).
 
 A reading guide to what the tool does, why each piece exists, and where to look when you want to change something. Written from a fresh reading of the codebase as it stands at 2026-05-01.
 

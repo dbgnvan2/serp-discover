@@ -15,7 +15,11 @@ Output (stored at keyword_profiles[kw]["serp_intent"]):
                                        # organic URLs (not fractions)
         "is_mixed": bool,              # True when no intent passes thresholds
         "mixed_components": list,      # intents with ≥2 URLs when is_mixed=True
-        "confidence": str,             # high | medium | low
+        "confidence": str,             # high | medium | low — classification
+                                       #   COVERAGE, not certainty; alias
+                                       #   "classification_coverage"
+        "intent_certainty": str,       # high | medium | low | not_measured
+        "leading_intent_share": float, # leading intent's share, or None
         "evidence": {
             "organic_url_count": int,
             "classified_organic_url_count": int,
@@ -61,12 +65,20 @@ DEFAULT_MAPPING_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "intent_mapping.yml"
 )
 
-# Share thresholds for determining primary vs mixed intent.
-# These are independent of the confidence thresholds (which are count-based).
+# Share thresholds for determining primary vs mixed intent, and for the
+# certainty of the winning intent.
+#
+# `confidence_high` / `confidence_medium` are the share the leading intent must
+# hold for the verdict to be called certain. Until D6.3 nothing read them: the
+# only "confidence" the module produced was a count of classified URLs, so
+# tuning either knob changed nothing and raising `max_urls_per_keyword` raised
+# "confidence" across the board with no SERP having changed (D-C-17, D-M-10).
 DEFAULT_THRESHOLDS = {
     "primary_share": 0.60,
     "fallback_share": 0.40,
     "fallback_runner_up_max": 0.20,
+    "confidence_high": 0.80,
+    "confidence_medium": 0.50,
 }
 
 
@@ -134,16 +146,60 @@ def _classify_url(url_attrs: dict, rules: list) -> str:
     return "uncategorised"
 
 
-def _bucket_confidence(classified_count: int, organic_count: int) -> str:
-    """Count-based confidence (not ratio-based).
+def _bucket_coverage(classified_count: int, organic_count: int) -> str:
+    """How much of the result page was classified — NOT how clear the intent is.
 
     high   if classified >= 8 AND organic >= 8
     medium if classified >= 5 AND organic >= 5
     low    otherwise
+
+    This is a count, and the count is capped by ``enrichment.max_urls_per_keyword``:
+    ranks below that get a content type only where ``url_pattern_rules.yml``
+    matches. So it rises when the operator enriches more pages and says nothing
+    about whether the SERP's intent is clear. It is reported as "classification
+    coverage" for that reason (D-M-10); the certainty of the verdict is
+    :func:`_bucket_certainty`, which is about the shares.
+
+    The old name ``_bucket_confidence`` is kept as an alias because the output
+    key is a published contract (JSON, workbook, brief prompts) — the words a
+    reader sees changed; the field did not.
     """
     if classified_count >= 8 and organic_count >= 8:
         return "high"
     if classified_count >= 5 and organic_count >= 5:
+        return "medium"
+    return "low"
+
+
+#: Back-compatible alias. Same function, honest name above.
+_bucket_confidence = _bucket_coverage
+
+
+def _bucket_certainty(primary_share: float | None, thresholds: dict) -> str:
+    """How clearly one intent leads, from its share of the classified URLs.
+
+    ``high`` at or above ``confidence_high``, ``medium`` at or above
+    ``confidence_medium``, else ``low``; ``"not_measured"`` when nothing was
+    classified, because a share of nothing is not a weak lead (P1).
+
+    The share is over the **classified** URLs, not over the top 10, so it must
+    be read beside the coverage: eight of ten unclassified and the remaining
+    two agreeing is a share of 1.0 over a coverage of "low". The two figures
+    are deliberately independent — one says how much of the page was read, the
+    other how much of what was read agreed — and the report prints both. This
+    where ``serp_intent.thresholds.confidence_high`` / ``confidence_medium``
+    are read — before D6.3 they had no reader at all (D-C-17), so a user who
+    raised either saw no change and no warning.
+    """
+    if primary_share is None:
+        return "not_measured"
+    high = float(thresholds.get("confidence_high",
+                                DEFAULT_THRESHOLDS["confidence_high"]))
+    medium = float(thresholds.get("confidence_medium",
+                                  DEFAULT_THRESHOLDS["confidence_medium"]))
+    if primary_share >= high:
+        return "high"
+    if primary_share >= medium:
         return "medium"
     return "low"
 
@@ -257,14 +313,40 @@ def compute_serp_intent(
     else:
         mixed_components = []
 
-    confidence = _bucket_confidence(classified_total, organic_count)
+    coverage = _bucket_coverage(classified_total, organic_count)
+
+    # The leading intent's share of the classified URLs. `primary_intent` is
+    # None below five classified, and "mixed" when no intent clears the
+    # thresholds; in both cases the leader's share is still the honest input to
+    # certainty, so it is taken from the distribution rather than from the
+    # verdict word.
+    leader_share = None
+    if classified_total:
+        leader = max(
+            (v for k, v in intent_counts.items() if k != "uncategorised"),
+            default=0)
+        leader_share = round(leader / classified_total, 3)
+    certainty = _bucket_certainty(leader_share, th)
 
     return {
         "primary_intent": primary_intent,
         "intent_distribution": distribution,
         "is_mixed": is_mixed,
         "mixed_components": mixed_components,
-        "confidence": confidence,
+        # `confidence` is the published key and stays. It has always been the
+        # classification coverage, and `classification_coverage` is its honest
+        # name — the same value, so no consumer has to choose (D-M-10).
+        "confidence": coverage,
+        "classification_coverage": coverage,
+        # New in D6.3: how clearly one intent leads, read from
+        # serp_intent.thresholds.confidence_high / confidence_medium.
+        "intent_certainty": certainty,
+        # The LEADING intent's share, which is the primary intent only when
+        # one intent carried the verdict: it is computed even when the verdict
+        # was "mixed" or withheld for too little classification, so naming it
+        # after the primary intent invited the reader to attribute it to a
+        # word the figure does not describe (D6 cold review).
+        "leading_intent_share": leader_share,
         "evidence": {
             "organic_url_count": organic_count,
             "classified_organic_url_count": classified_total,
