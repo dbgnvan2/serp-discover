@@ -139,10 +139,7 @@
               },
               "ranking_keywords": {
                 "type": "object",
-                "required": [
-                  "status",
-                  "data_available"
-                ],
+                "description": "One Moz signal. The producer always emits `status` and `data_available`; neither is `required` here, because a v1.1 handoff written before review chunk D2b may carry a sub-block without them and this schema's consumer exits 1 on a validation error.",
                 "properties": {
                   "status": {
                     "type": "string"
@@ -157,10 +154,7 @@
               },
               "anchor_texts": {
                 "type": "object",
-                "required": [
-                  "status",
-                  "data_available"
-                ],
+                "description": "One Moz signal. The producer always emits `status` and `data_available`; neither is `required` here, because a v1.1 handoff written before review chunk D2b may carry a sub-block without them and this schema's consumer exits 1 on a validation error.",
                 "properties": {
                   "status": {
                     "type": "string"
@@ -175,10 +169,7 @@
               },
               "brand_authority": {
                 "type": "object",
-                "required": [
-                  "status",
-                  "data_available"
-                ],
+                "description": "One Moz signal. The producer always emits `status` and `data_available`; neither is `required` here, because a v1.1 handoff written before review chunk D2b may carry a sub-block without them and this schema's consumer exits 1 on a validation error.",
                 "properties": {
                   "status": {
                     "type": "string"
@@ -193,10 +184,7 @@
               },
               "link_momentum": {
                 "type": "object",
-                "required": [
-                  "status",
-                  "data_available"
-                ],
+                "description": "One Moz signal. The producer always emits `status` and `data_available`; neither is `required` here, because a v1.1 handoff written before review chunk D2b may carry a sub-block without them and this schema's consumer exits 1 on a validation error.",
                 "properties": {
                   "status": {
                     "type": "string"

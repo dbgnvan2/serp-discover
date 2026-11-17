@@ -325,8 +325,13 @@ All three are fixed:
    competitor has no anchor text". The block now carries `complete` and
    `signals_missing`, the missing page-signal stub carries the page shape
    (`items: []`, `returned: 0`, `truncated: false`) beside its status, and
-   both copies of `handoff_schema.json` require `status` + `data_available`
-   on every signal sub-object.
+   both copies of `handoff_schema.json` document `status`, `data_available`
+   and `reason` on every signal sub-object. They are deliberately NOT in
+   `required`: making them required rejected handoffs written before this
+   chunk, and serp-compete exits 1 on a validation error, so the stricter
+   schema broke five of its rendering tests. The producer always emits them
+   (an existing "one producer, one shape" test holds that); the schema
+   stays additive.
 3. **`_decode`'s fallback was `no_record`**, which is cacheable, so an
    unreadable cache blob was served as a measured absence and blocked its own
    refetch for the TTL. It now falls back to `not_fetched`.
