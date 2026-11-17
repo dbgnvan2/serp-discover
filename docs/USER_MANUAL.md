@@ -346,17 +346,26 @@ Any provider with the `anthropic` or `openai` dialect works. Google models are r
 ---
 
 ### **Step 4: Refresh Analysis Outputs** (Optional)
-**What:** Re-classifies URLs and rewrites reports without re-fetching SERPs.
+**What:** Re-classifies the URLs in a stored run and rebuilds what that classification feeds, without re-fetching SERPs.
 
-**When to use:** After you've manually corrected domain overrides (Step 6), you want to re-run intent/feasibility scoring with the corrections baked in.
+**When to use:** After you've manually corrected domain overrides (Step 6) and want the corrections reflected in the stored run.
 
 **Input:** Existing market_analysis JSON + updated domain_overrides.yml
 
 **Process:**
 - Re-reads JSON SERP data (does NOT re-fetch)
-- Re-applies classification rules with updated domain overrides
-- Re-calculates intent and feasibility
-- Rewrites JSON, XLSX, Markdown reports
+- Re-applies classification rules with updated domain overrides to `organic_results` in the JSON and to the `Organic_Results` sheet in the XLSX
+- Rebuilds `keyword_profiles` from the re-classified rows — the entity counts, the entity distribution and the AI-Overview citation analysis are all derived from them — and prints how many profiles changed
+- Regenerates `domain_override_candidates.md`
+
+**What it does NOT rebuild** (and says so when it runs):
+- The Markdown report. Re-render it yourself with
+  `python3 generate_insight_report.py --json <json> --out <md>`.
+- `keyword_feasibility`. Domain Authority comes from a paid API call, so the
+  DA figures stay those of the run that fetched them.
+
+A refresh is not a re-run. Anything that needs the SERP data itself, rather
+than the rows already on disk, still needs Step 1.
 
 **Cost:** Free (no API calls).
 

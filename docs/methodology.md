@@ -78,6 +78,21 @@ candidate pass reports how many rows it had to exclude.
 it has no usable domain, rather than overwriting it with `N/A` — which would
 turn an unknown into a measured negative. Each of the three reports its count.
 
+A refresh also rebuilds what the re-classification invalidates. The
+`keyword_profiles` block is derived from `organic_results` — the entity counts,
+the entity distribution, the AI-Overview citation analysis — so re-classifying
+the rows and leaving the profiles alone left the report quoting the entity mix
+of the previous taxonomy. `brief_data_extraction.build_keyword_profiles` is the
+one builder, shared with the audit, so the rebuild uses the same settings as
+the run; the refresh prints how many profiles changed. The citation rows carry
+no `Entity_Type` of their own (`ai_overview_citations` holds
+`Title`/`Link`/`Source`), so rebuilding the profiles is the whole of
+re-classifying the citations. What a refresh cannot rebuild it names: the
+Markdown report, which `generate_insight_report --out` re-renders, and
+`keyword_feasibility`, whose Domain Authority came from a paid API call.
+
+*Spec: review_2026-11-04 D4.12 (D-C-09). Implemented 2026-11-17.*
+
 A blanked link reaches one more verdict. A situational probe decides
 `Client_Cited` by looking for the client's domain among the AI-Overview
 citations, and a citation whose host could not be recovered cannot answer the
@@ -450,7 +465,86 @@ prose caveats don't false-positive — is a **hard** validation failure (no retr
 written to `*.validation.md`). The `test_validation_consistency.py` canary requires
 the field to have a matching rule.
 
-*Spec: seo_geo_review_20260704.md T.4. Implemented 2026-07-04.*
+The statement is matched wherever it is attributed to the keyword: the Section-2
+profile block, and any markdown heading that names the keyword, down to the next
+heading of the same or a higher level. A heading is attributed to the **longest**
+keyword it names, and only on a phrase boundary — real keyword files hold both
+`couples counselling` and `couples counselling for trust issues`, and matching
+the shorter one as a substring made the longer keyword's section its own, so
+this HARD rule aborted reports whose every statement was true. The label's
+parenthetical suffix is optional, so the configured `Extraction play (GEO)` is
+caught when the brief writes `Extraction play`. Anchoring on the Section-2 block and the full label
+alone meant the rule fired only on a phrasing the model does not use, in a
+section it does not use.
+
+*Spec: seo_geo_review_20260704.md T.4. Implemented 2026-07-04;
+review_2026-11-04 D4.11 (D-C-07), 2026-11-17.*
+
+### The numbers a brief restates are checked against the data
+
+`brief_validation.py::validate_llm_report` checks each figure the brief quotes
+for a keyword against the measured value on that keyword's profile:
+`client_rank`, `total_results` (only when `total_results_measured`),
+`avg_serp_da` and `gap` (from the keyword's primary `keyword_feasibility` row —
+a `Query_Label` of `"P"` measures the pivot keyword and is skipped). A figure
+outside the field's tolerance is an issue; a field that was never measured has
+no number to disagree with and is left to the gates that already cover it.
+
+A fifth field, `volume`, is checked against the keyword's Moz volume. The rank
+patterns are anchored on the word "client", because a keyword's own section also
+states competitor ranks. `keyword_feasibility` reaches the validator because
+`extract_analysis_data_from_json` returns the rows, not only the summary.
+
+The fields, their tolerances and the patterns that find a claim in the prose
+are editorial, in `brief_validation_rules.yml`, not in Python. The same file
+holds `market_size_phrases` — the market-size wording that requires a measured
+monthly volume. That is checked per keyword against that keyword's own `moz`
+block, because the claim is per keyword and so is the evidence; the run-wide
+form of the rule remains for demand language written outside any keyword's
+section.
+
+*Spec: review_2026-11-04 D4.16 (D-M-27). Implemented 2026-11-17.*
+
+### One home for the `# Content Briefs` assembly
+
+`generate_insight_report.build_content_briefs_section` builds the brief
+sequencing note and the ordered briefs. Both the audit and the documented
+`generate_insight_report --json … --out …` re-render call it, so the re-render
+produces the same file the pipeline does. The assembly lived in `serp_audit.main`
+only, and the re-render — which the GUI runs after feasibility — rewrote the
+same `.md` with the insight report alone and dropped every brief.
+
+*Spec: review_2026-11-04 D4.13 (D-C-12). Implemented 2026-11-17.*
+
+### A keyword that produced no SERP data
+
+`analysed_keywords` records the keyword list the run was asked for.
+`brief_validation.missing_serp_keywords` compares it against the keywords that
+produced an overview row or a profile; `root_keywords` are derived from the
+overview rows, so a keyword whose fetch failed after retries was invisible to
+every count and to `validate_extraction`.
+
+The run then says so three times: the report's Section 1b prints
+`Keywords Analyzed: N of M` — both counted in keywords, the numerator as
+distinct `Source_Keyword` values and the denominator as `analysed_keywords`,
+since `overview` holds one row per query job — and names the keywords every
+figure below it excludes (a run written before `analysed_keywords` existed
+instead states that its asked-for list was never recorded, rather than printing
+a count that reads as complete), `validate_extraction` warns per keyword, and the audit exits
+`pipeline_status.EXIT_PARTIAL` (2) rather than `EXIT_OK`. It is not
+`EXIT_FAILED`: that renames every output `<name>.failed` and leaves
+`config.yml` unchanged, which would discard a run whose outputs are correct
+for the keywords that did return. `EXIT_PARTIAL` keeps and records the
+outputs, and because the run-completed stamp is gated on `EXIT_OK` a partial
+keyword set cannot become the baseline a later run's rank deltas are measured
+against. `run_pipeline` continues through the remaining steps, reports the run
+as partial instead of a clean success, and returns 2 itself. The `PARTIAL`
+label is scoped to `serp_audit.py` and `run_pipeline.py`, because
+`validate_xlsx_vs_json.py` already returns 2 to mean its comparison raised. The
+GUI treats `EXIT_PARTIAL` like 0 when deciding whether to run the follow-on
+step — the outputs are on disk, and the status line already reads PARTIAL.
+
+*Spec: review_2026-11-04 D4.14 (D-C-13). Implemented 2026-11-17.*
 
 ### AI Overview Exposure (Section 5d — D1 / AV.1)
 

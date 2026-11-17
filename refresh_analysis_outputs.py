@@ -10,6 +10,7 @@ import os
 import openpyxl
 import yaml
 
+import brief_data_extraction
 from classifiers import EntityClassifier
 from generate_domain_override_candidates import (
     collect_candidates,
@@ -19,11 +20,16 @@ from generate_domain_override_candidates import (
 )
 
 
+def load_config(config_path="config.yml"):
+    """config.yml as a dict, or {} when it is absent."""
+    if not os.path.exists(config_path):
+        return {}
+    with open(config_path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
 def load_config_paths(config_path="config.yml"):
-    config = {}
-    if os.path.exists(config_path):
-        with open(config_path, "r", encoding="utf-8") as f:
-            config = yaml.safe_load(f) or {}
+    config = load_config(config_path)
     files_cfg = config.get("files", {})
     return {
         "json": files_cfg.get("output_json", "market_analysis_v2.json"),
@@ -117,6 +123,54 @@ def refresh_xlsx(xlsx_path, classifier):
     return updated, changed
 
 
+# What a refresh cannot rebuild: every output that needs the SERP data itself,
+# not just the rows already on disk. Printed so a refresh is not mistaken for
+# a re-run (P2).
+NOT_REBUILT = (
+    "the Markdown report (market_analysis_*.md) — it is written by the audit "
+    "and is not regenerated here; re-render it with "
+    "`python3 generate_insight_report.py --json <json> --out <md>`",
+    "keyword_feasibility — Domain Authority comes from a paid API call, so a "
+    "refresh leaves the DA figures of the run that fetched them",
+)
+
+
+def _write_json_atomically(path, data):
+    """Write ``data`` to ``path`` via a temp file and ``os.replace``.
+
+    A direct ``json.dump`` onto the live file truncates it first, so a failure
+    part-way through leaves a file that does not parse while the warning
+    printed beside it describes a file that does (P6).
+    """
+    tmp = f"{path}.tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    os.replace(tmp, path)
+
+
+def rebuild_keyword_profiles(data, config):
+    """Rebuild ``keyword_profiles`` from the re-classified rows.
+
+    Spec: review_2026-11-04 D4.12 (D-C-09)
+
+    The profiles are derived from ``organic_results`` — entity counts, the
+    entity distribution, the AIO citation analysis. Re-classifying the rows
+    and leaving the profiles alone left the report quoting the entity mix of
+    the previous taxonomy. Returns ``(built, changed)``: how many profiles the
+    rebuild produced, and how many differ from the ones on disk.
+
+    The citation rows carry no entity type of their own — their classification
+    is derived inside the profiles — so rebuilding the profiles re-classifies
+    the AIO citation analysis with them.
+    """
+    before = data.get("keyword_profiles") or {}
+    profiles = brief_data_extraction.build_keyword_profiles(data, config)
+    changed = sum(1 for k, v in profiles.items() if before.get(k) != v)
+    changed += sum(1 for k in before if k not in profiles)
+    data["keyword_profiles"] = profiles
+    return len(profiles), changed
+
+
 def regenerate_candidate_report(data, json_path, overrides_path, out_path):
     overrides = load_overrides(overrides_path)
     classifier = EntityClassifier(override_file=overrides_path)
@@ -133,9 +187,35 @@ def regenerate_candidate_report(data, json_path, overrides_path, out_path):
     return len(candidates)
 
 
-def refresh_analysis_outputs(json_path, xlsx_path, overrides_path, candidates_report_path):
+def refresh_analysis_outputs(json_path, xlsx_path, overrides_path, candidates_report_path,
+                             config=None):
     classifier = EntityClassifier(override_file=overrides_path)
+    config = load_config() if config is None else config
     data, json_updated, json_changed = refresh_json(json_path, classifier)
+    # D4.12: the profiles are derived from the rows that were just
+    # re-classified, so they are rebuilt in the same pass and written back.
+    profiles_built = profiles_changed = 0
+    profiles_error = None
+    try:
+        profiles_built, profiles_changed = rebuild_keyword_profiles(data, config)
+    except Exception as e:
+        # The re-classified rows are already written; an honest warning beats
+        # leaving stale profiles behind without saying so (P1/P2).
+        profiles_error = (f"keyword_profiles could not be rebuilt ({e}). The "
+                          f"organic rows were re-classified but the profiles "
+                          f"in {json_path} still describe the previous "
+                          f"taxonomy.")
+        print(f"  WARNING: {profiles_error}")
+    else:
+        try:
+            _write_json_atomically(json_path, data)
+        except Exception as e:
+            # A distinct failure from the one above, and a distinct message:
+            # the rebuild worked, the file on disk did not change.
+            profiles_error = (f"keyword_profiles were rebuilt but {json_path} "
+                              f"could not be written ({e}): the file still "
+                              f"holds the profiles from before the rebuild.")
+            print(f"  WARNING: {profiles_error}")
     xlsx_updated, xlsx_changed = refresh_xlsx(xlsx_path, classifier)
     candidate_count = regenerate_candidate_report(
         data,
@@ -146,6 +226,9 @@ def refresh_analysis_outputs(json_path, xlsx_path, overrides_path, candidates_re
     return {
         "json_updated": json_updated,
         "json_changed": json_changed,
+        "profiles_built": profiles_built,
+        "profiles_changed": profiles_changed,
+        "profiles_error": profiles_error,
         "xlsx_updated": xlsx_updated,
         "xlsx_changed": xlsx_changed,
         "candidate_count": candidate_count,
@@ -175,7 +258,15 @@ def main():
     print(
         f"Refreshed XLSX rows: {result['xlsx_updated']} (changed: {result['xlsx_changed']})"
     )
+    if result["profiles_error"] is None:
+        print(
+            f"Rebuilt keyword_profiles: {result['profiles_built']} "
+            f"(changed: {result['profiles_changed']})"
+        )
     print(f"Regenerated candidate report. Remaining candidates: {result['candidate_count']}")
+    print("Not rebuilt by a refresh:")
+    for item in NOT_REBUILT:
+        print(f"  - {item}")
 
 
 if __name__ == "__main__":

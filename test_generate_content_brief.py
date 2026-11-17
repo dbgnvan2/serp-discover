@@ -223,7 +223,20 @@ This may indicate a data collection issue.
             "This keyword gets 1,000 monthly searches.",
             extracted,
         )
-        self.assertTrue(any("monthly search volume" in issue.lower() for issue in issues))
+        # D4.16: the rule is about whether anything measured demand, not about
+        # the words. This fixture has no Moz volume, so the claim has nothing
+        # behind it.
+        self.assertTrue(any("searchers" in issue.lower() for issue in issues))
+
+        # With a measured volume the same sentence is a true statement and must
+        # not be rejected. The blanket ban would have rejected it.
+        for _p in extracted["keyword_profiles"].values():
+            _p["moz"] = {"data_available": True, "volume": 1000}
+        ok_issues = gcb.validate_llm_report(
+            "This keyword gets 1,000 monthly searches.",
+            extracted,
+        )
+        self.assertFalse(any("searchers" in issue.lower() for issue in ok_issues))
 
     def test_validate_llm_report_flags_speculative_anomaly_language(self):
         extracted = gcb.extract_analysis_data_from_json(

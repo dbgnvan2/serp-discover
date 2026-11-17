@@ -3,7 +3,10 @@
 Spec: serp_tool1_improvements_spec.md#I.5
 """
 import logging
+import os
 import re
+
+import yaml
 
 from brief_data_extraction import _normalize_text
 # recommended_play vocabulary is shared with the report renderers (single source
@@ -11,6 +14,166 @@ from brief_data_extraction import _normalize_text
 from play_rendering import load_play_vocab as _load_play_vocab
 
 logger = logging.getLogger(__name__)
+
+
+DEFAULT_RULES_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "brief_validation_rules.yml")
+
+_RULES_CACHE: dict | None = None
+
+
+def load_validation_rules(path: str | None = None) -> dict:
+    """Load brief_validation_rules.yml: numeric-claim phrasings + demand phrases.
+
+    Spec: review_2026-11-04 D4.16 (D-M-27)
+
+    A missing or malformed file degrades to no numeric rules and says so once,
+    rather than aborting a run — but it never degrades silently, because a rule
+    that is off is indistinguishable from a brief that passed it (P6).
+    """
+    global _RULES_CACHE
+    if _RULES_CACHE is not None and path is None:
+        return _RULES_CACHE
+    rules = {"numeric_claims": {}, "market_size_phrases": []}
+    try:
+        with open(path or DEFAULT_RULES_PATH, "r", encoding="utf-8") as fh:
+            raw = yaml.safe_load(fh) or {}
+        claims = {}
+        for field, spec in (raw.get("numeric_claims") or {}).items():
+            pats = []
+            for pat in (spec or {}).get("patterns") or []:
+                try:
+                    compiled = re.compile(pat, re.IGNORECASE)
+                except re.error as exc:
+                    logger.warning("brief_validation_rules.yml: %s pattern %r "
+                                   "is not a valid regex (%s) — skipped.",
+                                   field, pat, exc)
+                    continue
+                if compiled.groups != 1:
+                    logger.warning("brief_validation_rules.yml: %s pattern %r "
+                                   "needs exactly one capture group — skipped.",
+                                   field, pat)
+                    continue
+                pats.append(compiled)
+            if pats:
+                claims[field] = {
+                    "label": str((spec or {}).get("label") or field),
+                    "tolerance": float((spec or {}).get("tolerance") or 0),
+                    "patterns": pats,
+                }
+        rules["numeric_claims"] = claims
+        rules["market_size_phrases"] = [
+            str(x) for x in (raw.get("market_size_phrases") or [])]
+    except Exception as exc:
+        logger.warning("brief_validation_rules.yml did not load (%s): the "
+                       "numeric-claim and demand-language checks are inactive "
+                       "for this process.", exc)
+    if path is None:
+        _RULES_CACHE = rules
+    return rules
+
+
+def _claimed_numbers(regions, patterns):
+    """Every number the regions state through these patterns, as (text, float)."""
+    found = []
+    for region in regions:
+        for pattern in patterns:
+            for m in pattern.finditer(region):
+                raw = m.group(1)
+                try:
+                    found.append((m.group(0), float(raw.replace(",", ""))))
+                except (TypeError, ValueError):
+                    continue
+    return found
+
+
+def _check_numeric_claims(issues, keyword, actuals, regions, rules):
+    """A number the brief states for a measured field must match the field.
+
+    Spec: review_2026-11-04 D4.16 (D-M-27)
+
+    The validator could check the brief's wording but not its arithmetic, so a
+    client rank or SERP DA the brief restated wrongly was written as fact. Only
+    fields that were actually MEASURED are checked: an unmeasured field has no
+    number to disagree with, and that case belongs to the gates that already
+    cover it.
+    """
+    for field, spec in (rules.get("numeric_claims") or {}).items():
+        actual = actuals.get(field)
+        if actual is None:
+            continue
+        try:
+            actual_f = float(actual)
+        except (TypeError, ValueError):
+            continue
+        tol = spec["tolerance"]
+        for quote, claimed in _claimed_numbers(regions, spec["patterns"]):
+            if abs(claimed - actual_f) > tol:
+                issues.append(
+                    f"The {spec['label']} the report states for '{keyword}' "
+                    f"contradicts the data ({quote!r} vs {actual}) — the brief "
+                    f"may only restate the measured figure."
+                )
+                break
+
+
+def missing_serp_keywords(data) -> list:
+    """Keywords the run asked for that produced no SERP data, in run order.
+
+    Spec: review_2026-11-04 D4.14 (D-C-13)
+
+    `serp_audit` persists `analysed_keywords` (the CSV list). A keyword whose
+    fetch failed after retries has no overview row and no profile, so it
+    disappeared from every count — "7 keywords analysed" for a run of 8, with
+    nothing saying which one was missing (P2).
+    """
+    asked = [str(k) for k in (data.get("analysed_keywords") or []) if str(k).strip()]
+    if not asked:
+        return []
+    profiles = data.get("keyword_profiles") or {}
+    have = {_normalize_text(k) for k in profiles}
+    have |= {_normalize_text(r.get("Source_Keyword") or r.get("Keyword") or "")
+             for r in (data.get("overview") or [])}
+    return [k for k in asked if _normalize_text(k) not in have]
+
+
+def _keyword_volume(profile):
+    """The measured monthly volume for one keyword, or None.
+
+    Spec: review_2026-11-04 D4.16 (D-M-27)
+
+    One definition for both the per-keyword demand gate and the volume figure
+    the brief may restate.
+    """
+    moz = (profile or {}).get("moz")
+    if not isinstance(moz, dict) or not moz.get("data_available"):
+        return None
+    return moz.get("volume")
+
+
+def _any_demand_measured(keyword_profiles) -> bool:
+    """True when at least one keyword carries a measured monthly volume."""
+    return any(_keyword_volume(p) is not None
+               for p in (keyword_profiles or {}).values())
+
+
+def _check_keyword_demand(issues, keyword, profile, regions, rules):
+    """Market-size language inside ONE keyword's section needs ITS volume.
+
+    Spec: review_2026-11-04 D4.16 cold review (D-M-27)
+
+    The run-wide gate below licenses demand language for every keyword as soon
+    as one of them has a volume. The claim is per keyword; so is the evidence.
+    """
+    if _keyword_volume(profile) is not None or not regions:
+        return
+    for phrase in rules.get("market_size_phrases") or []:
+        if any(re.search(phrase, region) for region in regions):
+            issues.append(
+                f"Report describes search demand for '{keyword}' ({phrase!r}) "
+                f"but that keyword carries no measured monthly volume."
+            )
+            return
 
 
 def _play_assignment_phrase(label):
@@ -22,7 +185,76 @@ def _play_assignment_phrase(label):
     Returns None when there is no label to anchor on."""
     if not label:
         return None
-    return rf"recommended play[:\-\s]+{re.escape(label.lower())}"
+    # D-C-07 / D4.11: match the label's BASE, with the parenthetical suffix
+    # optional and markdown emphasis allowed. The rule used to require the
+    # exact configured string, so the real brief's "Recommended play:
+    # **Extraction play**" was missed while only "Extraction play (GEO)"
+    # tripped it — a HARD rule that could not fire on anything the model writes.
+    base = re.split(r"\s*\(", str(label).strip())[0].strip().lower()
+    if not base:
+        return None
+    return (rf"recommended play[:\-\s]*\**\s*{re.escape(base)}"
+            rf"(?:\s*\([^)]*\))?")
+
+
+#: Headings under which a play statement is attributed to a keyword. The brief's
+#: prompt puts "Recommended play: <label>" in Section 7, under a per-keyword
+#: heading, NOT in the Section-2 keyword block the other rules scan — so a rule
+#: that only read that block could never see the statement (D-C-07 / D4.11).
+_KEYWORD_SECTION_RE = r"\*\*{kw} \([^\n]+\)\*\*(.*?)(?:\n\n\*\*|\n### |\Z)"
+
+
+def _names_keyword(text, keyword) -> bool:
+    """True when ``text`` contains ``keyword`` as a phrase, not a fragment.
+
+    Spec: review_2026-11-04 D4.11 (D-C-07)
+
+    A plain ``in`` test made "counselling" a match inside "couples
+    counselling", so one keyword's heading was read as another's.
+    """
+    return re.search(rf"(?<![\w-]){re.escape(keyword)}(?![\w-])", text) is not None
+
+
+def _keyword_regions(report_text, keyword, other_keywords=()):
+    """Every stretch of the report that speaks about ONE keyword, normalised.
+
+    Spec: review_2026-11-04 D4.11 (D-C-07)
+
+    Two shapes count as attribution: the Section-2 profile block
+    (``**<kw> (intent)**`` up to the next block), and any markdown heading that
+    names the keyword, up to the next heading of the same or a higher level.
+
+    ``other_keywords`` is the rest of the run's keywords. Real keyword files
+    overlap — `couples counselling` and `couples counselling for trust issues`
+    are both in one CSV — so a heading is attributed to the LONGEST keyword it
+    names, and only on a phrase boundary. Matching the shorter keyword as a
+    substring made the longer keyword's section its own, and the HARD rules
+    that read these regions then aborted a report whose every statement was
+    true.
+    """
+    regions = []
+    block = re.search(_KEYWORD_SECTION_RE.format(kw=re.escape(keyword)),
+                      report_text, flags=re.IGNORECASE | re.DOTALL)
+    if block:
+        regions.append(_normalize_text(block.group(1)))
+
+    longer = [k for k in (other_keywords or ())
+              if k and k.lower() != keyword.lower()
+              and len(k) > len(keyword)
+              and _names_keyword(k.lower(), keyword.lower())]
+    for head in re.finditer(r"^(#{1,6})[ \t]*(.*)$", report_text, flags=re.MULTILINE):
+        level, title = len(head.group(1)), head.group(2)
+        title_l = title.lower()
+        if not _names_keyword(title_l, keyword.lower()):
+            continue
+        # The heading names a longer keyword that contains this one: it is that
+        # keyword's section, not this one's.
+        if any(_names_keyword(title_l, k.lower()) for k in longer):
+            continue
+        rest = report_text[head.end():]
+        nxt = re.search(rf"^#{{1,{level}}}[ \t]", rest, flags=re.MULTILINE)
+        regions.append(_normalize_text(rest[:nxt.start()] if nxt else rest))
+    return regions
 
 
 def _mixed_keyword_dominance_profiles(extracted_data):
@@ -54,6 +286,39 @@ def _label_requires_plurality(entity_label):
     return str(entity_label or "").endswith("_plurality")
 
 
+def _check_play_parity(issues, keyword, profile, regions):
+    """recommended_play parity (RP-C.4, HARD-FAIL) across every region.
+
+    Spec: seo_geo_review_20260704.md (T.4); review_2026-11-04 D4.11 (D-C-07)
+
+    The brief may only NARRATE the pre-computed play; asserting a DIFFERENT play
+    is a mechanically checkable contradiction. The play is a deterministic
+    verdict, so parity is enforced whenever one is present. Detection is
+    anchored to the canonical "Recommended play: <label>" statement, so the
+    brief can add honesty caveats in prose without a false contradiction.
+    """
+    rp = profile.get("recommended_play") or {}
+    pre_play = rp.get("play")
+    if not pre_play or not regions:
+        return
+    play_vocab = _load_play_vocab()
+    labels = play_vocab.get("play_labels", {}) or {}
+    pre_label = labels.get(pre_play) or rp.get("label")
+    for other_play, other_label in labels.items():
+        if other_play == pre_play:
+            continue
+        phrase = _play_assignment_phrase(other_label)
+        if not phrase:
+            continue
+        if any(re.search(phrase, region) for region in regions):
+            issues.append(
+                f"Report assigns a different play to '{keyword}' "
+                f"({other_label}), but keyword_profiles.recommended_play "
+                f"shows play='{pre_play}' (label='{pre_label}')."
+            )
+            return
+
+
 def validate_llm_report(report_text, extracted_data):
     issues = []
     report_l = _normalize_text(report_text)
@@ -63,6 +328,17 @@ def validate_llm_report(report_text, extracted_data):
         1 for profile in keyword_profiles.values()
         if profile.get("has_ai_overview")
     ) or sum(1 for q in extracted_data.get("queries", []) if q.get("has_ai_overview"))
+
+    _rules = load_validation_rules()
+    # One row per keyword, primary label only: a pivot row ("P") measures a
+    # different keyword and its DA must not be compared against this one.
+    _feasibility_by_keyword = {}
+    for _row in extracted_data.get("keyword_feasibility") or []:
+        if (_row.get("Query_Label") or _row.get("query_label")) == "P":
+            continue
+        _kw = _row.get("Keyword") or _row.get("keyword")
+        if _kw:
+            _feasibility_by_keyword.setdefault(_normalize_text(_kw), _row)
 
     speculative_patterns = [
         r"indicating (?:technical|content|data|system)\w*",
@@ -159,20 +435,26 @@ def validate_llm_report(report_text, extracted_data):
             "Report speculates about a data collection issue without verified extraction evidence."
         )
 
-    if re.search(r"monthly searches|monthly search volume", report_l):
-        issues.append(
-            "Report describes total_results as monthly search volume, which is not supported by the extracted data."
-        )
+    # D4.16: demand language is permitted when a demand figure exists. It was
+    # banned outright, which was right while the only "volume" in the data was
+    # Google's indexed-page count — but Moz keyword metrics now supply real
+    # monthly volumes, so the ban would reject a true statement. The rule is now
+    # about whether anything measured demand.
+    if not _any_demand_measured(keyword_profiles):
+        for _phrase in _rules.get("market_size_phrases") or []:
+            if re.search(_phrase, report_l):
+                issues.append(
+                    "Report describes search demand (%r) but no keyword in this "
+                    "run carries a measured monthly volume — Google's "
+                    "total-results figure counts indexed pages, not searchers."
+                    % _phrase
+                )
+                break
 
-    estrangement_profile = extracted_data.get("keyword_profiles", {}).get("estrangement", {})
-    entity_distribution = estrangement_profile.get("entity_distribution", {}) or {}
-    counselling_count = entity_distribution.get("counselling", 0)
-    legal_count = entity_distribution.get("legal", 0)
-    if counselling_count >= 3 and legal_count >= 3:
-        if "estrangement" in report_l and re.search(r"counselling-dominat|counselling services dominat", report_l):
-            issues.append(
-                "Report labels the broad estrangement landscape as counselling-dominant despite a mixed legal and counselling entity distribution."
-            )
+    # The keyword-specific "estrangement" rule was removed in D4.16: it was dead
+    # weight for every other keyword set, and the generic rules it duplicated
+    # (_mixed_keyword_dominance_profiles, _label_requires_mixed) cover the same
+    # contradiction for all keywords.
 
     for keyword, top_entity, top_count, second_count, top_share in _mixed_keyword_dominance_profiles(extracted_data):
         section_match = re.search(
@@ -193,7 +475,7 @@ def validate_llm_report(report_text, extracted_data):
         if not entity_label:
             continue
         section_match = re.search(
-            rf"\*\*{re.escape(keyword)} \([^\n]+\)\*\*(.*?)(?:\n\n\*\*|\n### |\Z)",
+            _KEYWORD_SECTION_RE.format(kw=re.escape(keyword)),
             report_text,
             flags=re.IGNORECASE | re.DOTALL,
         )
@@ -256,14 +538,39 @@ def validate_llm_report(report_text, extracted_data):
     }
 
     for keyword, profile in keyword_profiles.items():
+        # Every region that speaks about this keyword — the Section-2 profile
+        # block AND any heading naming it. The play verdict and the DA-direction
+        # claim are checked across all of them, because the prompt puts the
+        # play statement in Section 7 (D4.11); the prose rules below stay on the
+        # Section-2 block, the only place they are written.
+        play_regions = _keyword_regions(report_text, keyword,
+                                        other_keywords=keyword_profiles.keys())
+        rp = profile.get("recommended_play") or {}
+        pre_play = rp.get("play")
+        _check_play_parity(issues, keyword, profile, play_regions)
+        # D4.16: the numbers the brief restates must be the measured ones.
+        # client_rank / total_results come from the profile; the DA figures from
+        # the keyword's feasibility row, when feasibility ran.
+        _feas = _feasibility_by_keyword.get(_normalize_text(keyword), {})
+        _check_keyword_demand(issues, keyword, profile, play_regions, _rules)
+        _check_numeric_claims(issues, keyword, {
+            "volume": _keyword_volume(profile),
+            "client_rank": profile.get("client_rank"),
+            "total_results": (profile.get("total_results")
+                              if profile.get("total_results_measured") else None),
+            "avg_serp_da": _feas.get("avg_serp_da"),
+            "gap": _feas.get("gap"),
+        }, play_regions, _rules)
+
         section_match = re.search(
-            rf"\*\*{re.escape(keyword)} \([^\n]+\)\*\*(.*?)(?:\n\n\*\*|\n### |\Z)",
+            _KEYWORD_SECTION_RE.format(kw=re.escape(keyword)),
             report_text,
             flags=re.IGNORECASE | re.DOTALL,
         )
         if not section_match:
-            continue
-        section_l = _normalize_text(section_match.group(1))
+            section_l = ""
+        else:
+            section_l = _normalize_text(section_match.group(1))
 
         # ── serp_intent contradictions ──
         si = profile.get("serp_intent") or {}
@@ -351,32 +658,6 @@ def validate_llm_report(report_text, extracted_data):
                         )
                         break
 
-        # ── recommended_play parity (RP-C.4, HARD-FAIL) ──────────────────────
-        # The brief may only NARRATE the pre-computed play; asserting a DIFFERENT
-        # play than keyword_profiles.recommended_play is a mechanically checkable
-        # contradiction → HARD fail (see has_hard_validation_failures).
-        # Spec: seo_geo_review_20260704.md (T.4 rank-vs-citation two-score model).
-        rp = profile.get("recommended_play") or {}
-        pre_play = rp.get("play")
-        # The play is a DETERMINISTIC verdict (chip A), so parity is enforced
-        # whenever one is present — even a low-confidence / noted verdict is still
-        # the play the brief must follow. Detection is anchored to the canonical
-        # "Recommended play: <label>" statement, so the brief can freely add
-        # honesty caveats in prose without tripping a false contradiction.
-        if pre_play:
-            play_vocab = _load_play_vocab()
-            pre_label = play_vocab.get("play_labels", {}).get(pre_play) or rp.get("label")
-            for other_play, other_label in play_vocab.get("play_labels", {}).items():
-                if other_play == pre_play:
-                    continue
-                phrase = _play_assignment_phrase(other_label)
-                if phrase and re.search(phrase, section_l):
-                    issues.append(
-                        f"Report assigns a different play to '{keyword}' "
-                        f"({other_label}), but keyword_profiles.recommended_play "
-                        f"shows play='{pre_play}' (label='{pre_label}')."
-                    )
-                    break
 
         # ── DA-gap claim with no feasibility measured (HARD-FAIL) ────────────
         # D-M-07 / D4.3: the extraction and local-pivot plays are reachable on
@@ -397,8 +678,11 @@ def validate_llm_report(report_text, extracted_data):
                     "No da_gap_claim_phrases loaded from play_routing.yml: "
                     "the DA-gap-without-DA check is inactive for '%s'.",
                     keyword)
+            # The same blind spot as the play rule: the model narrates the
+            # play wherever it likes, so every region counts (P5).
             for pattern in patterns:
-                hit = pattern.search(section_l)
+                hit = next((m for m in (pattern.search(r) for r in play_regions)
+                            if m), None)
                 if hit:
                     issues.append(
                         f"Report states a Domain Authority direction for "
@@ -448,6 +732,15 @@ def validate_extraction(data):
     for kw in data.get("root_keywords", []):
         if kw not in data.get("keyword_profiles", {}):
             warnings.append(f"No keyword profile built for root keyword: {kw}")
+
+    # D-C-13 / D4.14: `root_keywords` are derived from the overview rows, so a
+    # keyword whose SERP fetch failed is not a root keyword and the check above
+    # cannot see it. The run's own keyword list can: a keyword that was asked
+    # for and produced nothing is the one case that must not pass in silence.
+    for kw in missing_serp_keywords(data):
+        warnings.append(
+            f"No SERP data returned for '{kw}': it was analysed but produced "
+            f"no results. Every figure in this report excludes it.")
 
     client_summary = data.get("client_position", {}).get("summary", {})
     if client_summary.get("total_organic_appearances", 0) == 0 and client_summary.get("total_aio_citations", 0) == 0 and client_summary.get("total_aio_text_mentions", 0) == 0 and client_summary.get("total_local_pack", 0) == 0:
@@ -507,20 +800,18 @@ def validate_advisory_briefing(report_text, extracted_data):
             )
             break
 
-    if re.search(r"monthly searches|monthly search volume", report_l):
-        issues.append(
-            "Advisory briefing describes total_results as monthly search volume, which is not supported by the extracted data."
-        )
-
-    estrangement_profile = extracted_data.get("keyword_profiles", {}).get("estrangement", {})
-    entity_distribution = estrangement_profile.get("entity_distribution", {}) or {}
-    counselling_count = entity_distribution.get("counselling", 0)
-    legal_count = entity_distribution.get("legal", 0)
-    if counselling_count >= 3 and legal_count >= 3:
-        if "estrangement" in report_l and re.search(r"counselling practices dominat|counselling services dominat", report_l):
-            issues.append(
-                "Advisory briefing overstates broad estrangement as counselling-dominant despite mixed legal and counselling signals."
-            )
+    # Same rule as the brief's, on the same editorial list (D4.16): demand
+    # language is permitted when a demand figure exists, and the keyword-specific
+    # estrangement rule is gone.
+    if not _any_demand_measured(extracted_data.get("keyword_profiles") or {}):
+        for _phrase in (load_validation_rules().get("market_size_phrases") or []):
+            if re.search(_phrase, report_l):
+                issues.append(
+                    "Advisory briefing describes search demand (%r) but no "
+                    "keyword in this run carries a measured monthly volume."
+                    % _phrase
+                )
+                break
 
     if re.search(r"eliminate your digital presence entirely|complete loss of (?:your )?digital presence", report_l):
         issues.append(
@@ -575,37 +866,3 @@ def partition_validation_issues(validation_issues):
         else:
             blocking.append(issue)
     return blocking, notes
-
-
-
-
-def validate_extraction(data):
-    warnings = []
-    if not data.get("root_keywords"):
-        warnings.append("No root keywords extracted.")
-
-    for kw in data.get("root_keywords", []):
-        if kw not in data.get("keyword_profiles", {}):
-            warnings.append(f"No keyword profile built for root keyword: {kw}")
-
-    client_summary = data.get("client_position", {}).get("summary", {})
-    if client_summary.get("total_organic_appearances", 0) == 0 and client_summary.get("total_aio_citations", 0) == 0 and client_summary.get("total_aio_text_mentions", 0) == 0 and client_summary.get("total_local_pack", 0) == 0:
-        warnings.append("Client was not detected in organic, AIO citations, AIO text, or local pack.")
-
-    queries_with_aio = sum(1 for q in data.get("queries", []) if q.get("has_ai_overview"))
-    total_queries = len(data.get("queries", []))
-    if total_queries > 0 and queries_with_aio == 0:
-        warnings.append("No queries triggered AI Overviews.")
-
-    if data.get("paa_analysis", {}).get("summary", {}).get("total_unique_questions", 0) < 5:
-        warnings.append("Very low PAA coverage (<5 questions).")
-
-    summary = data.get("organic_summary", {})
-    total = summary.get("total_rows", 0)
-    unclassified = summary.get("entity_unclassified_count", 0)
-    if total > 0 and (unclassified / total) > 0.4:
-        warnings.append(
-            f"High unclassified entity share: {unclassified}/{total} ({unclassified/total:.0%})."
-        )
-    return warnings
-

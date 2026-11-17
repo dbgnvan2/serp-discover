@@ -45,6 +45,7 @@ import pattern_matching
 from play_rendering import format_play_cell, format_play_line, load_play_vocab
 
 import aio_exposure
+import brief_validation
 import feasibility
 from feasibility import index_feasibility_by_keyword
 import commodity_score
@@ -1433,7 +1434,34 @@ def generate_report(data, db_path=None, run_ts=None):
     # 1b. Overview & Opportunity
     report.append("## 1b. Market Overview")
     if overview:
-        report.append(f"- **Keywords Analyzed:** {len(overview)}")
+        # D-C-13 / D4.14: a keyword whose SERP fetch failed has no overview row,
+        # so `len(overview)` alone said "7 keywords analysed" for a run of 8 and
+        # named neither the total nor the one that produced nothing (P2).
+        #
+        # Both numbers are counted in keywords. `overview` holds one row per
+        # QUERY JOB — `expand_keywords_for_ai` adds A.1/A.2 alternative rows for
+        # priority keywords — so counting its rows reported 13 for a run of 8.
+        _missing = brief_validation.missing_serp_keywords(data)
+        _answered = len({(r.get("Source_Keyword") or r.get("Keyword"))
+                         for r in overview
+                         if (r.get("Source_Keyword") or r.get("Keyword"))}) or len(overview)
+        _asked_list = [str(k) for k in (data.get("analysed_keywords") or [])
+                       if str(k).strip()]
+        report.append(f"- **Keywords Analyzed:** {_answered}"
+                      + (f" of {len(_asked_list)}" if _asked_list else ""))
+        if _missing:
+            report.append(
+                "- **No SERP data returned for:** "
+                + ", ".join(f"`{k}`" for k in _missing)
+                + " — every figure below excludes "
+                + ("them." if len(_missing) > 1 else "it."))
+        elif not _asked_list:
+            # A run written before `analysed_keywords` was recorded. Saying
+            # nothing would assert completeness this file cannot support (P35).
+            report.append(
+                "- **Coverage:** this run did not record the keyword list it was "
+                "asked for, so whether any keyword produced no SERP data cannot "
+                "be established from it.")
 
         # CD.6.1 — count how many keywords showed each feature instead of
         # unioning them under a "Dominant" label the data does not support: the
@@ -2164,6 +2192,63 @@ def _render_serp_intent_section(keyword_profiles: dict) -> list:
     return lines
 
 
+def build_content_briefs_section(data: dict, preferred_intents=None) -> list[str]:
+    """The ``# Content Briefs`` block: sequencing note + the ordered briefs.
+
+    Purpose: ONE home for the assembly. Spec: RC.8; review_2026-11-04 D4.13
+             (D-C-12)
+    Tests:   tests/test_d4c_the_brief_is_checked_and_whole.py
+
+    It lived in `serp_audit.main` only, so `generate_insight_report --out` — the
+    documented re-render, and what the GUI runs after feasibility — rewrote the
+    same `.md` with the insight report alone and silently dropped every brief.
+    Returns [] when the run has no strategic recommendations, which is the one
+    case where there are no briefs to write.
+    """
+    recs = data.get("strategic_recommendations") or []
+    if not recs:
+        return []
+
+    if preferred_intents is None:
+        try:
+            with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                   "config.yml"), "r", encoding="utf-8") as fh:
+                preferred_intents = ((yaml.safe_load(fh) or {}).get("client")
+                                     or {}).get("preferred_intents")
+        except Exception as exc:
+            logging.warning("Could not read client.preferred_intents (%s): "
+                            "ordering briefs on intent confidence alone.", exc)
+            preferred_intents = None
+    preferred_intents = preferred_intents or ["informational"]
+
+    best_kw, _ = _get_best_opportunity_keyword(
+        data.get("keyword_profiles", {}),
+        data.get("keyword_feasibility", []),
+        preferred_intents)
+    ordered = _order_briefs_by_opportunity(data, recs, best_kw)
+
+    out = ["# Content Briefs\n", "**Recommended writing order:**\n"]
+    for n, (_idx, pattern_name, most_rel_kw, _rest) in enumerate(ordered, 1):
+        out.append(f"{n}. `{pattern_name}` — targets `{most_rel_kw}`"
+                   if most_rel_kw
+                   else f"{n}. `{pattern_name}` — (no primary keyword match)")
+    if not any(item[2] for item in ordered):
+        out.append("\n*Without feasibility data, briefs are ordered by intent "
+                   "confidence (high → medium → low) of their most relevant "
+                   "keyword.*")
+    else:
+        out.append("\nWrite in this order to address the highest-opportunity "
+                   "keyword first. Each brief below is self-contained.")
+    out.append("")
+
+    import generate_content_brief
+    for n, (orig_idx, pattern_name, _kw, _rest) in enumerate(ordered, 1):
+        out.append(f"## Brief {n}: {pattern_name}")
+        out.append(generate_content_brief.generate_brief(data, rec_index=orig_idx))
+        out.append("\n---\n")
+    return out
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Generate Marketing Insights Report")
@@ -2202,6 +2287,22 @@ def main():
     # wall-clock stamp. Unparseable → run_ts None → render-only (no persistence).
     run_ts = args.run_ts or aio_exposure.run_ts_from_filename(args.json)
     report_content = generate_report(data, db_path=args.db, run_ts=run_ts)
+    # D4.13: the same .md the pipeline writes — report THEN briefs. Rendering
+    # only the report here is what dropped every brief from the GUI's
+    # post-feasibility regenerate.
+    # A brief that cannot be rendered must not take the report with it: before
+    # D4.13 this path always wrote the report, and an exception escaping here
+    # would write nothing at all (degrade, don't abort).
+    try:
+        briefs = build_content_briefs_section(data)
+    except Exception as exc:
+        logging.warning("Content briefs could not be rendered (%s): the report "
+                        "is written without them.", exc)
+        briefs = ["# Content Briefs\n",
+                  f"*The briefs could not be rendered for this run: {exc}. "
+                  f"The report above is unaffected.*"]
+    if briefs:
+        report_content = "\n".join([report_content, "\n---\n"] + briefs)
 
     try:
         with open(args.out, 'w', encoding='utf-8') as f:

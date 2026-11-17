@@ -486,16 +486,16 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-C-03 | S1 | D2 | Zero DA-covered keyword → "Low Feasibility"; no N-of-M | fixed `9784690` (D2a) |
 | D-C-04 | S1 | D2 | DataForSEO `rank: null` → DA 0, averaged, cached 30 days | fixed `9784690` (D2a); null encoding unverified against a live response |
 | D-C-05 | S1 | D3 | Skipped/failed engines get AIVI 0 persisted and ranked #1 | fixed (D3a) |
-| D-C-06 | S2 | D4 | CLI re-run overwrites previous timestamped outputs | open |
-| D-C-07 | S2 | D4 | Play-parity HARD-fail can never fire | open |
+| D-C-06 | S2 | D4 | CLI re-run overwrites previous timestamped outputs | fixed (0864d58) |
+| D-C-07 | S2 | D4 | Play-parity HARD-fail can never fire | fixed (D4c) |
 | D-C-08 | S2 | D2/D6 | `www.` hosts bypass `domain_overrides` (35/121 overrides) | fixed (D2c) |
-| D-C-09 | S2 | D4 | `refresh_analysis_outputs` leaves `keyword_profiles`/report stale | open |
+| D-C-09 | S2 | D4 | `refresh_analysis_outputs` leaves `keyword_profiles`/report stale | fixed (D4c) |
 | D-C-10 | S2 | D2 | Moz competitor block with one failed sub-call cached 30 days as `ok` | fixed (D2b) |
 | D-C-11 | S2 | D3 | Probe failures drop from denominators; empty answers = "not mentioned" | fixed (D3a) |
-| D-C-12 | S2 | D4 | GUI post-feasibility regenerate drops "# Content Briefs" | open |
-| D-C-13 | S2 | D4 | Keyword whose fetch failed vanishes without an N-of-M line | open |
+| D-C-12 | S2 | D4 | GUI post-feasibility regenerate drops "# Content Briefs" | fixed (D4c) |
+| D-C-13 | S2 | D4 | Keyword whose fetch failed vanishes without an N-of-M line | fixed (D4c) |
 | D-C-14 | S2 | D4 | §4 evidence block reads keys the producer never writes | fixed (D4a) |
-| D-C-15 | S2 | D4 | `stop_reason == max_tokens` never checked | open |
+| D-C-15 | S2 | D4 | `stop_reason == max_tokens` never checked | fixed (c742f68) |
 | D-C-16 | S3 | D6 | Failing Moz test is a hard-coded-date bomb | already fixed `abcc2aa` — close, do not re-fix |
 | D-C-17 | S3 | D6 | `serp_intent.thresholds.confidence_*` have no reader | open |
 | D-C-18 | S3 | D4 | §6 prints "unknown" for keys metrics never returns | fixed (D4a) |
@@ -529,7 +529,7 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-24 | Low | D6 | `feasibility_score` exceeds documented 0–1 | open |
 | D-M-25 | Low | D3 | Failed sentiment stored as "neutral" | fixed (D3b) |
 | D-M-26 | Low–Med | D6 | Bowen triggers include ubiquitous words; no counts | open |
-| D-M-27 | Low–Med | D4 | Validator cannot check the claims most likely wrong upstream | open |
+| D-M-27 | Low–Med | D4 | Validator cannot check the claims most likely wrong upstream | fixed (D4c) |
 | C-C-01 | S1 | C1 | `www.` domains derive brand "www" | fixed `f7b09bf` (C1) |
 | C-C-02 | S1 | C3 | `total_keywords` inflated by cross join | fixed `3d56e0a` (C3) |
 | C-C-03 | S1 | C2 | Missing/failed PA stored as 0 → Fragile Magnet | fixed `7a6405b` (C2) |

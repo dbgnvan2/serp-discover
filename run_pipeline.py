@@ -16,14 +16,27 @@ import yaml
 import pipeline_status
 
 
-def run_command(cmd, description):
+def run_command(cmd, description, allow_codes=()):
+    """Run one step. Returns its exit code; exits the pipeline on a failure.
+
+    ``allow_codes`` are non-zero codes this step may return without ending the
+    pipeline — the audit's ``EXIT_PARTIAL``, which means its outputs are on
+    disk but cover fewer keywords than were asked for. The code is returned so
+    the caller can carry it into the pipeline's own exit code rather than
+    printing a clean success (D4.14 / D-C-13).
+    """
     print(f"\n--- {description} ---")
     print(f"Running: {' '.join(cmd)}")
     result = subprocess.run(cmd, capture_output=False)
+    if result.returncode in allow_codes:
+        print(f"⚠️  {description} Completed with warnings. "
+              f"(Exit Code: {result.returncode})")
+        return result.returncode
     if result.returncode != 0:
         print(f"❌ {description} Failed! (Exit Code: {result.returncode})")
         sys.exit(result.returncode)
     print(f"✅ {description} Completed.")
+    return result.returncode
 
 
 def main():
@@ -35,8 +48,9 @@ def main():
     files_cfg = config.get("files", {})
 
     # 1. Run SERP Audit
-    run_command([sys.executable, "serp_audit.py"],
-                "Step 1.1: SERP Audit & Enrichment")
+    audit_code = run_command([sys.executable, "serp_audit.py"],
+                             "Step 1.1: SERP Audit & Enrichment",
+                             allow_codes=(pipeline_status.EXIT_PARTIAL,))
 
     # Re-read config: serp_audit.py writes the actual output paths on completion.
     if os.path.exists("config.yml"):
@@ -76,13 +90,18 @@ def main():
 
     # Markdown report shares the JSON stem (same topic + timestamp).
     md_file = json_file[:-5] + ".md" if json_file.endswith(".json") else "market_analysis.md"
-    print("\n🎉 Full Pipeline (item 1) Finished Successfully!")
+    if audit_code == pipeline_status.EXIT_PARTIAL:
+        print("\n⚠️  Full Pipeline (item 1) Finished — partial run: one or more "
+              "keywords produced no SERP data and are absent from every output.")
+    else:
+        print("\n🎉 Full Pipeline (item 1) Finished Successfully!")
     print(f"   - Report: {md_file}")
     print(f"   - Excel:  {xlsx_file}")
     print(f"   - JSON:   {json_file}")
     print(f"   - DB:     serp_data.db")
     print(f"   - Override Candidates: domain_override_candidates.md")
+    return audit_code
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

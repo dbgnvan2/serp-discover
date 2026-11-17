@@ -16,9 +16,22 @@ from yaml_io import save_yaml_preserving_comments
 
 EXIT_OK = 0
 EXIT_FAILED = 1
+# A run whose outputs are all on disk but which covers fewer keywords than it
+# was asked for: one keyword's SERP fetch returned nothing. The outputs are
+# real and usable for the keywords that did return, so they are kept and
+# config.yml points at them — but the exit code is not 0, so the run does not
+# become the baseline a later run's rank deltas are measured against, and the
+# pipeline says so instead of printing a clean success (finding D-C-13).
+EXIT_PARTIAL = 2
 
 # The one script whose exit code 1 means "ran, and found a difference".
 MISMATCH_SCRIPT = "validate_xlsx_vs_json.py"
+
+# The scripts whose exit code 2 means "ran, outputs written, fewer keywords
+# than asked for": the audit, and run_pipeline.py, which propagates the audit's
+# code. Elsewhere 2 is an ordinary failure: validate_xlsx_vs_json.py returns it
+# when the comparison itself raised.
+PARTIAL_SCRIPTS = ("serp_audit.py", "run_pipeline.py")
 
 
 def fetch_summary(planned, failed):
@@ -46,7 +59,8 @@ def missing_outputs(written):
 CONFIG_PATH_KEYS = {"json": "output_json", "xlsx": "output_xlsx", "md": "output_md"}
 
 
-def finish_run(written, paths, config_path="config.yml", input_csv=None):
+def finish_run(written, paths, config_path="config.yml", input_csv=None,
+               incomplete_keywords=None):
     """End-of-run status for the audit. Returns the process exit code.
 
     All outputs written: record their paths, and the keyword file they came
@@ -61,6 +75,11 @@ def finish_run(written, paths, config_path="config.yml", input_csv=None):
     since review chunk D1 that exit code is what stamps ``runs.completed_at``,
     which ``metrics.py`` then trusts as "this run's history is sound"
     (P6: verify status against the artifact).
+
+    ``incomplete_keywords`` is the keywords the run was asked for that
+    produced no SERP data. Every output written and some keywords missing is a
+    partial run: the outputs are kept and recorded, and the return is
+    ``EXIT_PARTIAL`` rather than ``EXIT_OK``.
     """
     missing = missing_outputs(written)
     if not missing:
@@ -100,6 +119,14 @@ def finish_run(written, paths, config_path="config.yml", input_csv=None):
         logging.error(f"Run failed: could not update {config_path} output paths ({e}). "
                       "Later steps would read the previous run's files.")
         return EXIT_FAILED
+    if incomplete_keywords:
+        logging.warning(
+            f"Run is partial: {len(incomplete_keywords)} keyword(s) produced no "
+            f"SERP data and are absent from every output: "
+            f"{', '.join(str(k) for k in incomplete_keywords)}. The outputs were "
+            f"kept and recorded; this run will not be used as a rank-delta "
+            f"baseline.")
+        return EXIT_PARTIAL
     return EXIT_OK
 
 
@@ -118,6 +145,8 @@ def exit_label(script, code, stop_reason=None):
         return "SUCCESS"
     if stop_reason:
         return stop_reason.upper()
+    if code == EXIT_PARTIAL and os.path.basename(script or "") in PARTIAL_SCRIPTS:
+        return "PARTIAL"
     if code == 1 and os.path.basename(script or "") == MISMATCH_SCRIPT:
         return "MISMATCH"
     return f"FAILED (exit {code})"

@@ -66,7 +66,7 @@ The launcher walks through each step in order. After a pipeline run it automatic
 | **1. Run Full Pipeline** | Fetches SERPs, classifies every URL, scores feasibility, writes JSON/XLSX/MD. This is the expensive step (SerpAPI calls). |
 | **2. Fetch SERPs Only** | Fetches without running validation — useful for debugging. |
 | **3. List Content Opportunities** | Calls the configured LLM to generate the content brief and advisory. Reads the JSON from Step 1. |
-| **4. Refresh Analysis Outputs** | Re-classifies URLs and rewrites reports without re-fetching SERPs. Use after approving domain overrides. |
+| **4. Refresh Analysis Outputs** | Re-classifies URLs in the stored JSON/XLSX, rebuilds the `keyword_profiles` derived from them, and regenerates the override-candidate report — without re-fetching SERPs. It does not rewrite the Markdown report and does not re-fetch Domain Authority; it prints what it has not rebuilt. Use after approving domain overrides. |
 | **5. Export History** | Dumps the SQLite rank history to CSV files. |
 | **6. Review Domain Overrides** | Opens a checklist of domains whose entity type (counselling, directory, legal, etc.) may need manual correction. Approve to update `domain_overrides.yml`. |
 | **7. Feasibility Analysis** | Re-runs Domain Authority gap scoring from the existing JSON. Cached — free to run multiple times. |

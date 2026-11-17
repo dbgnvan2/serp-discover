@@ -1,0 +1,60 @@
+# Editorial rules for brief_validation.py. Phrasings and thresholds only — no
+# Python. Added by review chunk D4c (D-M-27): the validator could check the
+# brief's wording but not the NUMBERS it restated, so a mis-measured client rank
+# or SERP DA was repeated faithfully and nothing noticed.
+#
+# Each numeric_claims entry maps a field the brief may state to the phrasings
+# that state it. Every pattern needs exactly one capture group holding the
+# number. Matching is case-insensitive against normalised text (whitespace
+# collapsed, lower-cased), so write patterns in lower case.
+
+numeric_claims:
+  # Where the value is read from, per keyword:
+  #   client_rank, total_results  -> keyword_profiles[kw]
+  #   volume                      -> keyword_profiles[kw].moz (when measured)
+  #   avg_serp_da, gap            -> the keyword's keyword_feasibility row
+  volume:
+    label: "monthly search volume"
+    tolerance: 0          # the figure is Moz's; restating it means restating it
+    patterns:
+      - '([\d,]+) monthly searches'
+      - 'monthly search volume(?: of| is| at|:)? ([\d,]+)'
+      - 'search volume of ([\d,]+)'
+      - '([\d,]+) searches per month'
+  client_rank:
+    label: "client rank"
+    tolerance: 0          # a rank is an integer; being out by one is wrong
+    # Anchored on "client": a keyword's own section also states COMPETITOR
+    # ranks ("havynbc.ca ranks #1"), and a bare "ranks #N" would read those as
+    # claims about the client.
+    patterns:
+      - 'client ranks?(?: at)?(?: position)? #?(\d+)'
+      - 'client is (?:at|in) position #?(\d+)'
+  total_results:
+    label: "total results"
+    tolerance: 0
+    patterns:
+      - '([\d,]+) total results'
+      - 'total results(?: of| is| at|:)?[\s]+([\d,]+)'
+  avg_serp_da:
+    label: "average SERP Domain Authority"
+    tolerance: 0.5        # the brief may round one decimal place
+    patterns:
+      - 'average (?:serp )?(?:domain authority|da)(?: of| is| at|:)? (\d+(?:\.\d+)?)'
+      - '(?:serp|competitor) (?:domain authority|da) (?:average|avg)(?: of| is| at|:)? (\d+(?:\.\d+)?)'
+      - 'avg da[:\s]+(\d+(?:\.\d+)?)'
+  gap:
+    label: "Domain Authority gap"
+    tolerance: 0.5
+    patterns:
+      - '(?:da|domain authority|authority) gap(?: of| is| at|:)? (\d+(?:\.\d+)?)'
+
+# Language that claims how much DEMAND a keyword has. Permitted only when some
+# keyword in the run carries a Moz volume (moz.data_available with a volume).
+# Google's Total_Results is a count of indexed pages, not of searchers (D-M-12),
+# so without a demand figure these phrases have nothing behind them.
+market_size_phrases:
+  - 'monthly searches'
+  - 'monthly search volume'
+  - 'search volume of'
+  - 'searches per month'

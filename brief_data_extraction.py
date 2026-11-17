@@ -2249,6 +2249,10 @@ def extract_analysis_data_from_json(
         "paa_analysis": paa_analysis,
         "paa_by_intent": paa_by_intent,
         "feasibility_summary": feasibility_summary,
+        # D4.16: the per-keyword rows, not just the summary. The brief
+        # validator checks the avg_serp_da and gap a brief restates against
+        # them; without the rows those two checks silently matched nothing.
+        "keyword_feasibility": feasibility_rows,
         "tool_recommendations_verified": tool_recommendations_verified,
         "client_position": client_position,
         "keyword_profiles": keyword_profiles,
@@ -2279,3 +2283,33 @@ def extract_analysis_data_from_json(
     }
 
 
+
+
+def build_keyword_profiles(data, config, client_domain=None):
+    """The ``keyword_profiles`` block for one analysis JSON.
+
+    Spec: review_2026-11-04 D4.12 (D-C-09)
+
+    One code path for both callers: ``serp_audit`` builds the profiles at the
+    end of a run, and ``refresh_analysis_outputs`` rebuilds them after the
+    organic rows have been re-classified. Two call sites each assembling their
+    own kwargs is how a rebuild came to be built from different settings than
+    the run it was rebuilding.
+    """
+    cfg = config or {}
+    report_cfg = cfg.get("analysis_report", {}) or {}
+    if client_domain is None:
+        client_domain = (
+            (cfg.get("client", {}) or {}).get("domain")
+            or report_cfg.get("client_domain", ""))
+    extracted = extract_analysis_data_from_json(
+        data,
+        client_domain=client_domain,
+        client_name_patterns=report_cfg.get("client_name_patterns", []),
+        known_brands=cfg.get("known_brands", []),
+        preferred_intents=(cfg.get("client", {}) or {}).get("preferred_intents", []),
+        min_volume_for_investment=(
+            (cfg.get("moz", {}) or {}).get("keyword_metrics", {})
+            .get("min_volume_for_investment")),
+    )
+    return extracted.get("keyword_profiles", {}) or {}

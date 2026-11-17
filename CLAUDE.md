@@ -161,6 +161,14 @@ Editorial content currently lives in:
   `engine_recommendations.py` (added review chunk D3a; the sentiment and
   foundational states added by its cold review in D3b)
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
+- `brief_validation_rules.yml` — what the brief validator checks the brief's numbers
+  against: `numeric_claims` (per field: the words of the issue message, the tolerance,
+  and the one-capture-group regexes that find the claim in the prose) for
+  `client_rank`, `total_results`, `volume`, `avg_serp_da` and `gap`, plus
+  `market_size_phrases`, the market-size wording that requires a measured monthly
+  volume — that keyword's own, inside its section. The ONLY home for these — `client_rank` and
+  `avg_serp_da` appeared nowhere in the validator, so a figure the model restated
+  wrongly was written out as fact (added review chunk D4c)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
 - `serp_vocab.yml` — SERP audit vocabulary: stop words, PAA category triggers, service tokens, AI-alternative query templates (added seo_geo_review C.4); `eeat_signals` credential tokens and review markers (added seo_geo_deferred G.3); `situational_templates` probe query templates — persona-keyed map `{persona_label: [templates...]}` supporting an optional `{service}` placeholder (added seo_geo_deferred T.5; restructured to persona-keyed by yoast_geo_upgrade Y.4)

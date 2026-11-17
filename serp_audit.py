@@ -20,6 +20,8 @@ import handoff_writer
 import yaml
 import metrics
 import pipeline_status
+import brief_validation
+import brief_data_extraction
 import serp_checkpoint
 import link_recovery
 import timeouts
@@ -1933,20 +1935,11 @@ def _run(run_id):
     # of generate_content_brief.py). Spec v2 DoD criterion #3.
     print("Building keyword_profiles...")
     try:
-        _gcb_cfg = CONFIG.get("analysis_report", {})
-        _gcb_extracted = generate_content_brief.extract_analysis_data_from_json(
-            full_data,
-            client_domain=CLIENT_DOMAIN,
-            client_name_patterns=_gcb_cfg.get("client_name_patterns", []),
-            known_brands=CONFIG.get("known_brands", []),
-            preferred_intents=CONFIG.get("client", {}).get("preferred_intents", []),
-            # D4.7: the demand floor is editorial, in config, not a constant
-            # in the strategy rule.
-            min_volume_for_investment=(
-                CONFIG.get("moz", {}).get("keyword_metrics", {})
-                .get("min_volume_for_investment")),
-        )
-        full_data["keyword_profiles"] = _gcb_extracted.get("keyword_profiles", {})
+        # D4.12: one builder, shared with refresh_analysis_outputs.py, so a
+        # rebuild after re-classification uses the same settings as the run.
+        # The demand floor and the preferred intents are editorial, in config.
+        full_data["keyword_profiles"] = brief_data_extraction.build_keyword_profiles(
+            full_data, CONFIG, client_domain=CLIENT_DOMAIN)
         print(f"Built keyword_profiles for {len(full_data['keyword_profiles'])} keywords.")
     except Exception as _kpe:
         logging.warning(f"keyword_profiles build failed — audit JSON will not include it: {_kpe}")
@@ -2118,50 +2111,13 @@ def _run(run_id):
         md_content.append(generate_insight_report.generate_report(full_data, db_path="serp_data.db", run_ts=generate_insight_report.aio_exposure.run_ts_from_filename(OUTPUT_MD)))
         md_content.append("\n---\n")
 
-        # 2. Content Briefs (RC.8 — brief sequencing)
-        recs = full_data.get("strategic_recommendations", [])
-        if recs:
-            md_content.append("# Content Briefs\n")
-
-            # RC.8 — Determine best opportunity keyword and order briefs
-            preferred_intents = CONFIG.get("client", {}).get("preferred_intents", ["informational"])
-            best_kw, _ = generate_insight_report._get_best_opportunity_keyword(
-                full_data.get("keyword_profiles", {}),
-                full_data.get("keyword_feasibility", []),
-                preferred_intents
-            )
-
-            # Get ordered brief metadata
-            ordered_briefs = generate_insight_report._order_briefs_by_opportunity(
-                full_data, recs, best_kw
-            )
-
-            # RC.8 — Render sequencing block
-            md_content.append("**Recommended writing order:**\n")
-            for brief_num, (orig_idx, pattern_name, most_rel_kw, _) in enumerate(ordered_briefs, 1):
-                if most_rel_kw:
-                    md_content.append(f"{brief_num}. `{pattern_name}` — targets `{most_rel_kw}`")
-                else:
-                    md_content.append(f"{brief_num}. `{pattern_name}` — (no primary keyword match)")
-
-            if not any(item[2] for item in ordered_briefs):
-                md_content.append(
-                    "\n*Without feasibility data, briefs are ordered by intent confidence "
-                    "(high → medium → low) of their most relevant keyword.*"
-                )
-            else:
-                md_content.append(
-                    "\nWrite in this order to address the highest-opportunity keyword first. "
-                    "Each brief below is self-contained."
-                )
-            md_content.append("")
-
-            # Render briefs in ordered sequence
-            for brief_num, (orig_idx, pattern_name, most_rel_kw, _) in enumerate(ordered_briefs, 1):
-                md_content.append(f"## Brief {brief_num}: {pattern_name}")
-                md_content.append(
-                    generate_content_brief.generate_brief(full_data, rec_index=orig_idx))
-                md_content.append("\n---\n")
+        # 2. Content Briefs (RC.8 — brief sequencing). The assembly lives in
+        # generate_insight_report so the documented `--out` re-render produces
+        # the same file this does; it used to live here only, and that
+        # re-render silently dropped every brief (D4.13 / D-C-12).
+        md_content.extend(generate_insight_report.build_content_briefs_section(
+            full_data,
+            preferred_intents=CONFIG.get("client", {}).get("preferred_intents")))
 
         with open(OUTPUT_MD, "w", encoding="utf-8") as f:
             f.write("\n".join(md_content))
@@ -2175,9 +2131,14 @@ def _run(run_id):
 
     # B3: fail the run unless every output was written; only then point
     # config.yml at the new files (run_pipeline.py and the refresh step read it).
+    # D4.14: a keyword that returned no SERP data is absent from every output.
+    # The run is partial, not failed: the outputs are real for the keywords
+    # that did return, so they are kept — but the exit code says so and the
+    # run is not stamped as a rank-delta baseline below.
+    _incomplete = brief_validation.missing_serp_keywords(full_data)
     exit_code = pipeline_status.finish_run(outputs_written, {
         "json": OUTPUT_JSON, "xlsx": OUTPUT_FILE, "md": OUTPUT_MD, "handoff": _handoff_path},
-        input_csv=INPUT_FILE)
+        input_csv=INPUT_FILE, incomplete_keywords=_incomplete)
 
     # Stamp the run as complete only once every output is on disk, so a run
     # that aborted part-way cannot become the baseline a later run's rank

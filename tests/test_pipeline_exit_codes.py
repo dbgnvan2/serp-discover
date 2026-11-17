@@ -144,7 +144,7 @@ def test_run_pipeline_fails_when_outputs_missing(tmp_path, monkeypatch, capsys):
     (tmp_path / "config.yml").write_text(
         "files:\n  output_xlsx: gone.xlsx\n  output_json: gone.json\n")
     steps = []
-    monkeypatch.setattr(run_pipeline, "run_command", lambda cmd, description: steps.append(description))
+    monkeypatch.setattr(run_pipeline, "run_command", lambda cmd, description, **kw: steps.append(description))
 
     with pytest.raises(SystemExit) as stop:
         run_pipeline.main()
@@ -161,7 +161,7 @@ def test_run_pipeline_runs_every_step_when_outputs_exist(tmp_path, monkeypatch, 
     (tmp_path / "a.json").write_text(json.dumps({}))
     (tmp_path / "config.yml").write_text("files:\n  output_xlsx: a.xlsx\n  output_json: a.json\n")
     steps = []
-    monkeypatch.setattr(run_pipeline, "run_command", lambda cmd, description: steps.append(cmd[1]))
+    monkeypatch.setattr(run_pipeline, "run_command", lambda cmd, description, **kw: steps.append(cmd[1]))
 
     run_pipeline.main()
 
