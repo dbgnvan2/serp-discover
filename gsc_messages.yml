@@ -1,0 +1,59 @@
+# gsc_messages.yml — the words a reader sees for each Google Search Console
+# fetch outcome.
+#
+# Spec: D2b.4 (docs/review_2026-11-04/PLAN_D2b_a_failed_fetch_is_not_an_answer.md)
+#
+# Why this file exists: a query GSC answered "no rows for this" and a query
+# the fetch never reached are different facts about the client, and before
+# D2b they shared one word ("no GSC data") because the wording was Python
+# literals in three places. Editorial content belongs in config (CLAUDE.md),
+# and one home stops the two states drifting back into one label.
+#
+# Keys must match the status constants in gsc_client.py:
+#   measured        — GSC returned a row: clicks/impressions are real.
+#   measured_absent — GSC answered, and holds no row for this query in the
+#                     window. A real finding about the client's traffic.
+#   not_reached     — the fetch failed or was truncated before this query
+#                     could be resolved. NOT a finding about the client.
+# A missing or malformed file degrades to the bare status string; it never
+# aborts a report.
+
+statuses:
+  measured:
+    label: "measured"
+    cell: "—"
+    coverage: "GSC returned data"
+  measured_absent:
+    label: "no impressions"
+    cell: "no impressions in window"
+    coverage: "GSC holds no row in the window"
+  not_reached:
+    label: "not reached"
+    cell: "not reached"
+    coverage: "the fetch did not reach these"
+
+# Lines the report and the logs print. `{...}` placeholders are filled by
+# run_gsc_analysis; an unknown placeholder falls back to built-in wording
+# rather than raising.
+lines:
+  coverage_measured_absent: >-
+    Queries GSC holds no data for: {count} (no impressions recorded in the
+    window — reported as absent, not as zero)
+  coverage_not_reached: >-
+    Queries the fetch could not reach: {count} (the GSC request failed or was
+    truncated — these are NOT recorded as having no impressions; re-run)
+  fetch_complete: >-
+    GSC answered for all {asked} query/queries: {measured} with data,
+    {measured_absent} with no impressions in the window.
+  fetch_incomplete: >-
+    GSC fetch INCOMPLETE — {measured} of {asked} query/queries returned data,
+    {not_reached} were never reached. The unreached queries are not recorded
+    as absent and are not cached; re-run to resolve them.
+  partial_warning: >-
+    **Incomplete fetch.** {not_reached} of {asked} queries were never reached,
+    so every count below is over {reached} queries, not {asked}. The missing
+    queries are not evidence of absent traffic. Re-run before quoting these
+    figures.
+  band_short_of_rows: >-
+    insufficient data (needs ≥{needed} queries per bucket; {not_reached}
+    queries were never reached, so this may be a fetch gap, not the client's)

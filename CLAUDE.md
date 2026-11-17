@@ -134,6 +134,13 @@ Editorial content currently lives in:
   "Not Measured") in different outputs. The minimum itself is a threshold, not
   wording, so it lives in config as `technical.min_da_for_verdict` and
   `feasibility.MIN_DA_FOR_VERDICT` reads it (added review chunk D2a)
+- `gsc_messages.yml` — Google Search Console fetch-outcome vocabulary: the
+  `label` / `cell` / `coverage` words for each of the three states
+  (`measured` / `measured_absent` / `not_reached`, the `gsc_client.STATUS_*`
+  constants) plus the report and log `lines`. The ONLY home for these words —
+  "GSC answered nothing" and "the fetch never reached this" shared one label
+  because the wording was Python literals in three places (added review
+  chunk D2b)
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)

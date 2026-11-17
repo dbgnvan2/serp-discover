@@ -174,9 +174,46 @@ moz:
     <competitor domain>:
       data_available: bool
       status: ok | no_record | error | skipped_run_cap | skipped_quota
-      ranking_keywords: {status, items[], returned, truncated}
-      anchor_texts:     {status, items[], returned, truncated}
+      complete: bool             # false when an enabled signal is missing
+      signals_missing: [<signal>, ...]
+      fetched_at: ISO-8601       # the OLDEST signal below; see "per signal"
+      signals_fetched_at: {<signal>: ISO-8601}
+      ranking_keywords: {status, data_available, reason, items[], returned,
+                         truncated, fetched_at}
+      anchor_texts:     {status, data_available, reason, items[], returned,
+                         truncated, fetched_at}
+      brand_authority:  {status, data_available, score?, fetched_at}
+      link_momentum:    {status, data_available, window, lost{...}, live{...},
+                         fetched_at}
 ```
+
+**Each signal is fetched, cached and dated on its own** (review chunk D2b,
+finding D-C-10). A sub-call that failed is never cached, so what a consumer
+reads is either a real measurement or an explicit failure — never a 30-day-old
+cached error standing in for one, and never an empty `items: []` that has to
+be guessed at:
+
+- `status` on a sub-block is `ok` / `no_record` / `error` / `disabled` /
+  `not_fetched`. `data_available` and `reason` are present on **every**
+  sub-block, with `reason` empty when there is nothing to say, so a consumer
+  never reads `None` where a sibling block has a string.
+- `error` means the Moz call failed. It is **not** a statement about the
+  domain, and Tool 1 will ask again on the next run — so repeated `errored`
+  readings across runs are repeated real outages, not one stale cached one.
+- `disabled` means the signal is switched off in this run's config;
+  `not_fetched` means it was not asked for (a per-run cap or the row quota).
+- `complete` is false, and `signals_missing` names them, when an **enabled**
+  signal was not obtained. A block can carry real ranking keywords beside a
+  failed anchor-text call, so `data_available: true` at the top level means
+  "something was measured", not "everything was". Read `complete` before
+  treating a signal's `items: []` as a finding about the domain. A missing
+  page signal still carries `items: []`, `returned: 0` and `truncated: false`
+  beside its status, so the shape never varies by outcome.
+- Each sub-block's `fetched_at` is when **that** signal was collected. The
+  domain's top-level `fetched_at` is the **oldest** of them: the block as a
+  whole is only as current as its stalest part. `signals_fetched_at` gives
+  them all. A ranking-keywords block from 27 days ago beside an anchor-text
+  block from today must not both read as today.
 
 **The block is top-level, never inside a target.** Both repos' schemas set
 `additionalProperties: false` on each target, and serp-compete's `Serp-compete/src/main.py`

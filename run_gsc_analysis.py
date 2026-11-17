@@ -40,6 +40,7 @@ import sys
 from datetime import date, datetime, timedelta
 from statistics import median
 
+import gsc_client
 import gsc_demand
 
 import yaml
@@ -165,7 +166,8 @@ def collect_queries(data: dict, max_paa: int = MAX_PAA_QUERIES) -> list[dict]:
 
 def compute_sponge_effect(rows: list[dict],
                           bands: list[tuple[float, float]] = None,
-                          min_bucket_size: int = MIN_BUCKET_SIZE) -> dict:
+                          min_bucket_size: int = MIN_BUCKET_SIZE,
+                          not_reached: int = 0) -> dict:
     """Median CTR at comparable position: AIO-present vs AIO-absent queries.
 
     Only queries with GSC data AND a known AIO state participate. Per
@@ -204,6 +206,10 @@ def compute_sponge_effect(rows: list[dict],
     return {
         "data_available": any(b["sufficient"] for b in out_bands),
         "min_bucket_size": min_bucket_size,
+        # D2b.8 — the denominator travels with the figures (P2).
+        "queries_considered": len(rows),
+        "queries_usable": len(usable),
+        "not_reached": int(not_reached or 0),
         "bands": out_bands,
     }
 
@@ -284,7 +290,8 @@ def _pct(value) -> str:
 def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
                     config: dict, source_json: str, date_range: tuple[str, str],
                     demand_score: dict | None = None,
-                    demand_trend: list | None = None) -> str:
+                    demand_trend: list | None = None,
+                    fetch_complete: bool = True) -> str:
     lines: list[str] = []
     client_name = (config.get("analysis_report", {}) or {}).get("client_name", "Client")
     gsc_cfg = config.get("gsc", {}) or {}
@@ -299,12 +306,37 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
         "as market-level claims.\n")
 
     with_data = [r for r in rows if r.get("found")]
+    unreached = [r for r in rows
+                 if r.get("gsc_status") == gsc_client.STATUS_NOT_REACHED]
+    # Not measured and not unreached is measured absence (D2b.5).
+    absent = [r for r in rows
+              if r.get("gsc_status") != gsc_client.STATUS_NOT_REACHED
+              and not r.get("found")]
     lines.append("## Coverage")
+    if unreached:
+        lines.append(gsc_client.line(
+            "partial_warning",
+            "**Incomplete fetch.** {not_reached} of {asked} queries were never "
+            "reached, so every count below is over {reached} queries.",
+            asked=len(rows), not_reached=len(unreached),
+            reached=len(rows) - len(unreached)))
+        lines.append("")
     lines.append(f"- Queries checked: {len(rows)}")
     lines.append(f"- Queries with GSC data (impressions in window): {len(with_data)}")
-    lines.append(
-        f"- Queries with no GSC data: {len(rows) - len(with_data)} "
-        "(no impressions recorded — reported as absent, not as zero)\n")
+    if absent:
+        lines.append("- " + gsc_client.line(
+            "coverage_measured_absent",
+            "Queries GSC holds no data for: {count} (no impressions recorded "
+            "in the window — reported as absent, not as zero)",
+            count=len(absent)))
+    if unreached:
+        lines.append("- " + gsc_client.line(
+            "coverage_not_reached",
+            "Queries the fetch could not reach: {count} (the GSC request "
+            "failed or was truncated — these are NOT recorded as having no "
+            "impressions; re-run)",
+            count=len(unreached)))
+    lines.append("")
 
     if demand_score is not None:
         lines.extend(gsc_demand.render_demand_section(demand_score, demand_trend))
@@ -324,15 +356,34 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
                 f"| {_pct(band['aio_median_ctr'])} | {_pct(band['no_aio_median_ctr'])} "
                 f"| {band['ctr_delta']:+.1%} |")
         else:
+            # D2b.8 — "insufficient data" must not read as the client's
+            # property when the rows are missing because the fetch failed.
+            if sponge.get("not_reached"):
+                reason = gsc_client.line(
+                    "band_short_of_rows",
+                    "insufficient data (needs ≥{needed} queries per bucket; "
+                    "{not_reached} queries were never reached)",
+                    needed=sponge["min_bucket_size"],
+                    not_reached=sponge["not_reached"])
+            else:
+                reason = (f"insufficient data (needs ≥{sponge['min_bucket_size']} "
+                          "queries per bucket)")
             lines.append(
                 f"| {band['band']} | {band['aio_query_count']} | {band['no_aio_query_count']} "
-                f"| — | {_pct(band['no_aio_median_ctr'])} | insufficient data "
-                f"(needs ≥{sponge['min_bucket_size']} queries per bucket) |")
+                f"| — | {_pct(band['no_aio_median_ctr'])} | {reason} |")
     if not sponge["data_available"]:
-        lines.append(
-            "\n*No band had enough queries in both buckets — the sponge comparison "
-            "is not measurable on this run. More keywords or a longer lookback "
-            "window will fill the buckets.*")
+        if sponge.get("not_reached"):
+            lines.append(
+                f"\n*No band had enough queries in both buckets, and "
+                f"{sponge['not_reached']} of {sponge.get('queries_considered', 0)} "
+                "queries were never reached — so this is a gap in the fetch, "
+                "not a measurement of the client. Re-run before reading "
+                "anything into it.*")
+        else:
+            lines.append(
+                "\n*No band had enough queries in both buckets — the sponge comparison "
+                "is not measurable on this run. More keywords or a longer lookback "
+                "window will fill the buckets.*")
     lines.append("")
 
     lines.append("## Reformat candidates — good position, starving CTR")
@@ -341,6 +392,18 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
         "for their position band. ⚑ marks queries whose keyword also carries a "
         "GEO alert (client ranks but the AI Overview cites other sources) — "
         "reformat those pages for answer extraction first.\n")
+    # D2b.8 — "no candidates" over 4 of 40 queries is not the same
+    # statement as "no candidates" over 40 of 40.
+    lines.append(
+        f"*Searched {sponge.get('queries_usable', 0)} of "
+        f"{sponge.get('queries_considered', len(rows))} queries — those with "
+        "a GSC position and a known AI Overview state.*")
+    if sponge.get("not_reached"):
+        lines.append(
+            f"*{sponge['not_reached']} query/queries were never reached, so "
+            "they could not be considered. A page missing from this list may "
+            "simply be one of them.*")
+    lines.append("")
     if candidates:
         lines.append("| Query | Label | Position | CTR | No-AIO median | AIO on SERP | GEO alert |")
         lines.append("|-------|-------|----------|-----|---------------|-------------|-----------|")
@@ -367,16 +430,22 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
                 f"| {row['impressions']} | {_pct(row['ctr'])} "
                 f"| {row['position']:.1f} | {aio} |")
         else:
+            # D2b.5 — the cell says which of the two it was.
+            cell = gsc_client.status_text(
+                row.get("gsc_status") or gsc_client.STATUS_MEASURED_ABSENT, "cell")
             lines.append(
-                f"| {row['query']} | {row['query_label']} | — | — | — | — | no GSC data |")
+                f"| {row['query']} | {row['query_label']} | — | — | — | — | {cell} |")
     lines.append("")
     return "\n".join(lines)
 
 
 def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
                   config: dict, source_json: str, date_range: tuple[str, str],
-                  demand_score: dict | None = None) -> dict:
+                  demand_score: dict | None = None,
+                  fetch_complete: bool = True) -> dict:
     gsc_cfg = config.get("gsc", {}) or {}
+    unreached = [r["query"] for r in rows
+                 if r.get("gsc_status") == gsc_client.STATUS_NOT_REACHED]
     return {
         "generated_at": datetime.now().isoformat(),
         "source_analysis": os.path.basename(source_json),
@@ -385,6 +454,13 @@ def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
         "date_range": {"start": date_range[0], "end": date_range[1]},
         "queries_checked": len(rows),
         "queries_with_data": sum(1 for r in rows if r.get("found")),
+        # D2b.6 — a consumer, the brief's LLM payload included, must tell
+        # "no search traffic" from "the fetch failed".
+        "fetch_complete": bool(fetch_complete) and not unreached,
+        "queries_not_reached": unreached,
+        "queries_no_impressions": [
+            r["query"] for r in rows
+            if r.get("gsc_status") == gsc_client.STATUS_MEASURED_ABSENT],
         "per_query": rows,
         "sponge": sponge,
         "reformat_candidates": candidates,
@@ -432,23 +508,44 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
     stats = client.get_query_stats([r["query"] for r in rows], *date_range)
 
     for row in rows:
-        query_stats = stats.get(row["query"].lower())
+        query_stats = stats.stats.get(row["query"].lower())
         if query_stats:
             row.update(query_stats)
             row["found"] = True
         else:
             row["found"] = False
-    logger.info("GSC returned data for %d of %d queries.",
-                sum(1 for r in rows if r["found"]), len(rows))
+        # D2b.4 — `found` alone cannot say why there are no figures: GSC
+        # answering "nothing" is a finding about the client, an unreached
+        # query is one about the fetch.
+        row["gsc_status"] = stats.status_for(row["query"])
 
-    sponge = compute_sponge_effect(rows)
+    measured = sum(1 for r in rows if r["gsc_status"] == gsc_client.STATUS_MEASURED)
+    absent = sum(1 for r in rows
+                 if r["gsc_status"] == gsc_client.STATUS_MEASURED_ABSENT)
+    unreached = sum(1 for r in rows
+                    if r["gsc_status"] == gsc_client.STATUS_NOT_REACHED)
+    if stats.complete and not unreached:
+        logger.info("%s", gsc_client.line(
+            "fetch_complete",
+            "GSC answered for all {asked} query/queries: {measured} with data, "
+            "{measured_absent} with no impressions in the window.",
+            asked=len(rows), measured=measured, measured_absent=absent))
+    else:
+        logger.warning("%s", gsc_client.line(
+            "fetch_incomplete",
+            "GSC fetch INCOMPLETE — {measured} of {asked} query/queries "
+            "returned data, {not_reached} were never reached.",
+            asked=len(rows), measured=measured, not_reached=unreached))
+
+    sponge = compute_sponge_effect(rows, not_reached=unreached)
     candidates = find_reformat_candidates(rows, sponge, geo_alert_keywords(data))
 
     # D2/AV.2 — branded vs non-branded demand. Classify the rows just pulled and
     # persist per-run (grain = run_ts, parsed from the source filename) so the
     # branded share trends across runs (D-D2a). Classification is recomputed every
     # run so a client_name_patterns edit reclassifies (never gated by the cache).
-    rows, demand_score = gsc_demand.compute_demand(rows, config)
+    rows, demand_score = gsc_demand.compute_demand(
+        rows, config, fetch_complete=stats.complete and not unreached)
     demand_trend = None
     run_ts = gsc_demand.run_ts_from_filename(source_json)
     property_ = (config.get("gsc", {}) or {}).get("property")
@@ -467,9 +564,11 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
 
     report = generate_report(rows, sponge, candidates, config, source_json,
                              date_range, demand_score=demand_score,
-                             demand_trend=demand_trend)
+                             demand_trend=demand_trend,
+                             fetch_complete=stats.complete and not unreached)
     sidecar = build_sidecar(rows, sponge, candidates, config, source_json,
-                            date_range, demand_score=demand_score)
+                            date_range, demand_score=demand_score,
+                            fetch_complete=stats.complete and not unreached)
     return report, sidecar
 
 
@@ -501,9 +600,7 @@ def main(argv: list[str] | None = None) -> int:
         data = json.load(f)
 
     gsc_cfg = config.get("gsc", {}) or {}
-    # Imported here, not at module top of any pipeline module (G.4.4) —
-    # but fine here: this script IS the only gsc_client consumer.
-    from gsc_client import GscClient
+    GscClient = gsc_client.GscClient
     try:
         client = GscClient(
             property_url=gsc_cfg.get("property", ""),

@@ -222,6 +222,13 @@ AI OVERVIEW:
   2% CTR"), NEVER as market-level claims ("CTR in this market is 2%").
   Queries absent from GSC have no impressions recorded — that is
   measured absence, not zero traffic to report as fact.
+  fetch_complete / queries_not_reached say whether the fetch itself
+  succeeded. When fetch_complete is false (or queries_not_reached is
+  above zero), the counts cover only the queries that were reached: say
+  the GSC data is incomplete and state no conclusion about the client's
+  traffic volume from it. A failed fetch is not a finding about the
+  client. When fetch_complete is null the run predates the distinction —
+  treat the coverage as unknown rather than complete.
 
 FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
 - bowen_reframe_faqs: PAA questions classified External Locus

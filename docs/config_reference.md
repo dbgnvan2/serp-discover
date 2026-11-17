@@ -199,6 +199,20 @@ the bare status string and never aborts a report.
 Not editorial, and so still in `feasibility.py`: `MIN_DA_FOR_VERDICT` (5), the
 number of measured ranking domains a verdict requires.
 
+### `gsc_messages.yml` — the Search Console fetch-outcome vocabulary (editorial)
+
+The words a reader sees for each GSC fetch outcome. A query Search Console
+answered "no rows for this" and a query the fetch never reached are different
+facts — one is about the client, one is about the fetch — and before review
+chunk D2b they shared one label ("no GSC data") because the wording was Python
+literals in three places. Read by `gsc_client.load_messages()`; a missing or
+malformed file degrades to the bare status key and never aborts a report.
+
+| Block | What it sets |
+|-------|--------------|
+| `statuses` | per status (`measured` / `measured_absent` / `not_reached`): `label`, `cell` (the per-query table cell) and `coverage` (the phrase beside a count). Keys must match the `gsc_client.STATUS_*` constants — a test asserts every state has all three |
+| `lines` | the report and log sentences: `coverage_measured_absent`, `coverage_not_reached`, `fetch_complete`, `fetch_incomplete`, `partial_warning`, `band_short_of_rows`. `{...}` placeholders are filled by `run_gsc_analysis`; an unknown placeholder falls back to the built-in wording rather than raising |
+
 ---
 
 ## Configuration Manager GUI

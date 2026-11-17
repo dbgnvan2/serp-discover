@@ -125,11 +125,16 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 *Status (2026-11-16):* split into three pushes. **D2a is done** — commit
 `9784690`, closing D-C-03, D-C-04, D-M-02, D-M-05, D-M-08; the plan, the
 15 acceptance criteria as built, and the 11 cold-review findings are in
-`PLAN_D2_null_is_not_zero.md`. **D2b** (D-C-02 GSC `_fetch_all_rows`, D-C-10
-Moz competitor partial cache) and **D2c** (D-C-08 `www.` normalisation,
-D-C-20 error pages, D-C-21 AIO fallback flag) are still open. The verdict
-label landed as `"Not Measured"`, not the `"No DA Data"` this plan wrote —
-one state, one label, held by a test.
+`PLAN_D2_null_is_not_zero.md`. **D2b is done** — closing D-C-02 and D-C-10;
+the plan, its 16 acceptance criteria as built and the three faults found
+while building are in `PLAN_D2b_a_failed_fetch_is_not_an_answer.md`. Both
+caches now record whether the provider answered, not only what it said:
+GSC caches an absence only on a completed fetch, and the Moz competitor
+cache is per signal with its own timestamps, so one failed sub-call costs
+one call next run instead of freezing four for 30 days. **D2c** (D-C-08
+`www.` normalisation, D-C-20 error pages, D-C-21 AIO fallback flag) is
+still open. The verdict label landed as `"Not Measured"`, not the
+`"No DA Data"` this plan wrote — one state, one label, held by a test.
 *Findings:* D-C-04/D-M-02 (S1), D-C-03/D-M-08 (S1), D-M-05 (client_da provenance, High), D-C-02 (S1 GSC), D-C-10 (S2 Moz competitor cache), D-C-08 (S2 `www.` bypasses overrides), D-C-20 (S3 error pages enriched), D-C-21 (S3 AIO fallback flag). *Effort:* L.
 - D-C-08: normalise once in `EntityClassifier.classify` (strip `www.`, lower-case) so the pipeline, `refresh_analysis_outputs` and the override-candidate report agree; test `classify("www.x.ca") == classify("x.ca")` for every override.
 - DA providers: return `None` for absent `rank` / `domain_authority` (`dataforseo_client.py:206`, `moz_client.py:334`); never cache a `None` as 0 (cache a `found=0` sentinel the consumer omits). `serp_audit.py:1625-1628,1752` and `run_feasibility.py:331-335` exclude `None`.
@@ -417,7 +422,7 @@ one state, one label, held by a test.
 | ID | Sev/Impact | Chunk | One line | Status (2026-11-16) |
 |---|---|---|---|---|
 | D-C-01 | S1 | D1 | SerpAPI per-page `position` stored as absolute `Rank` | fixed `2285828` |
-| D-C-02 | S1 | D2 | GSC transient failure cached as `found=0` for the TTL | open |
+| D-C-02 | S1 | D2 | GSC transient failure cached as `found=0` for the TTL | fixed (D2b) |
 | D-C-03 | S1 | D2 | Zero DA-covered keyword → "Low Feasibility"; no N-of-M | fixed `9784690` (D2a) |
 | D-C-04 | S1 | D2 | DataForSEO `rank: null` → DA 0, averaged, cached 30 days | fixed `9784690` (D2a); null encoding unverified against a live response |
 | D-C-05 | S1 | D3 | Skipped/failed engines get AIVI 0 persisted and ranked #1 | open |
@@ -425,7 +430,7 @@ one state, one label, held by a test.
 | D-C-07 | S2 | D4 | Play-parity HARD-fail can never fire | open |
 | D-C-08 | S2 | D2/D6 | `www.` hosts bypass `domain_overrides` (35/121 overrides) | open |
 | D-C-09 | S2 | D4 | `refresh_analysis_outputs` leaves `keyword_profiles`/report stale | open |
-| D-C-10 | S2 | D2 | Moz competitor block with one failed sub-call cached 30 days as `ok` | open |
+| D-C-10 | S2 | D2 | Moz competitor block with one failed sub-call cached 30 days as `ok` | fixed (D2b) |
 | D-C-11 | S2 | D3 | Probe failures drop from denominators; empty answers = "not mentioned" | open |
 | D-C-12 | S2 | D4 | GUI post-feasibility regenerate drops "# Content Briefs" | open |
 | D-C-13 | S2 | D4 | Keyword whose fetch failed vanishes without an N-of-M line | open |

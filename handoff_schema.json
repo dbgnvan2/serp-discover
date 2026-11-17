@@ -138,10 +138,95 @@
                 "type": "string"
               },
               "ranking_keywords": {
-                "type": "object"
+                "type": "object",
+                "required": [
+                  "status",
+                  "data_available"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "data_available": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
               },
               "anchor_texts": {
-                "type": "object"
+                "type": "object",
+                "required": [
+                  "status",
+                  "data_available"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "data_available": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "brand_authority": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "data_available"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "data_available": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "link_momentum": {
+                "type": "object",
+                "required": [
+                  "status",
+                  "data_available"
+                ],
+                "properties": {
+                  "status": {
+                    "type": "string"
+                  },
+                  "data_available": {
+                    "type": "boolean"
+                  },
+                  "reason": {
+                    "type": "string"
+                  }
+                }
+              },
+              "fetched_at": {
+                "type": "string",
+                "description": "When this block was collected (ISO 8601 UTC) \u2014 the OLDEST of its signals, since the block is only as current as its stalest part. Absent when nothing was collected."
+              },
+              "signals_fetched_at": {
+                "type": "object",
+                "description": "Per-signal collection time. Each signal is fetched and cached independently, so they can differ by up to the cache TTL (review chunk D2b)."
+              },
+              "complete": {
+                "type": "boolean",
+                "description": "False when an enabled signal was not obtained on this block. A block can carry real data for one signal and a gap in another (review chunk D2b)."
+              },
+              "signals_missing": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Enabled signals not obtained \u2014 failed, skipped by the cap or quota, or not yet fetched. Empty when the block is complete."
               }
             }
           }
@@ -163,10 +248,10 @@
             "anchor_texts": {
               "type": "object",
               "description": "The client's own inbound anchor-text distribution. Present only when moz.competitor.client_anchor_texts is enabled. Carried here rather than in `domains` because the handoff excludes the client by design."
-          },
-          "fetched_at": {
-            "type": "string",
-            "description": "When the client's anchor text was collected (ISO 8601 UTC). Present with anchor_texts."
+            },
+            "fetched_at": {
+              "type": "string",
+              "description": "When the client's anchor text was collected (ISO 8601 UTC). Present with anchor_texts."
             }
           }
         }

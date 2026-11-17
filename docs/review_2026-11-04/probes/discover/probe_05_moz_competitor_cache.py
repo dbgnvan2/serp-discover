@@ -7,11 +7,17 @@
     until 2026-08-31.  Today (2026-11-04) it is 95 days old -> correct miss ->
     2 POSTs.  Test bug (time bomb), not a cache bug.
 
-(B) D-C-05: a block whose ranking call succeeded but whose anchor-text call
-    hit a transient 5xx is stored with top-level status "ok" and served from
-    cache for 30 days carrying anchor_texts.status == "error".  The consumer
-    (serp-compete anchor_coverage) counts it 'errored' on every run in that
-    window and Tool 1 never retries it."""
+(B) D-C-10, FIXED in D2b (commit pending). Before: a block whose ranking call
+    succeeded but whose anchor-text call hit a transient 5xx was stored with
+    top-level status "ok" and served from cache for 30 days carrying
+    anchor_texts.status == "error". The consumer (serp-compete
+    anchor_coverage) counted it 'errored' on every run in that window and
+    Tool 1 never retried it.
+
+    After: caching is per signal. The failed anchor-text call is not cached,
+    so the next run asks for it again — and only for it, one call, not a
+    full four-call refetch of billed rows. Run this to see the second run
+    make exactly one call and serve real anchor text."""
 import os, sys, tempfile, sqlite3
 from datetime import datetime, timedelta, timezone
 REPO = "/Users/davemini2/ProjectsLocal/serp-discover"
@@ -43,8 +49,27 @@ with patch.object(mc, "moz_call", fake_moz_call), patch.object(mc, "row_budget",
     print("    cached row status:", sqlite3.connect(db).execute(
         "select status, anchor_texts from moz_competitor_cache").fetchall())
     calls.clear()
+
+# Second run, API now healthy for both methods.
+def healthy_moz_call(method, data):
+    calls.append(method)
+    if method == mc.RANKING_KEYWORDS_METHOD:
+        return {"ranking_keywords": [{"keyword": "bowen theory", "ranking_page": "/",
+                                      "rank_position": 3, "difficulty": 20,
+                                      "volume": 100}]}
+    if method == mc.ANCHOR_TEXT_METHOD:
+        return {"anchor_texts": [{"text": "bowen center", "external_root_domains": 9,
+                                  "external_pages": 30}]}
+    raise MozRpcError("Action not found", status=404, code=-32601)
+
+with patch.object(mc, "moz_call", healthy_moz_call), \
+        patch.object(mc, "row_budget", return_value=None):
     c2 = mc.MozCompetitorClient(db_path=db, locale="en-US")
     b2 = c2.fetch(["bowencenter.org"])["bowencenter.org"]
-    print("    second run (API now healthy): calls made =", len(calls),
+    print("    second run (API now healthy): calls made =", len(calls), calls,
           "| served anchor_texts.status =", b2["anchor_texts"]["status"],
           "| items =", b2["anchor_texts"]["items"])
+    assert calls == [mc.ANCHOR_TEXT_METHOD], \
+        "only the signal that failed should be refetched"
+    assert b2["anchor_texts"]["status"] == "ok"
+    assert b2["ranking_keywords"]["items"], "the cached signal must still be served"

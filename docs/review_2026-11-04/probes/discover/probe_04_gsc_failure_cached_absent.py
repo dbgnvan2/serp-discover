@@ -1,8 +1,15 @@
-"""D-C-04 probe: GscClient._fetch_all_rows breaks on an HTTP error / network
-failure and returns {} (partial).  get_query_stats then writes found=0 for
-EVERY unfetched query, so a 503 / expired token / 403 is cached as
-"measured absent" for cache_ttl_days.  A retry inside the TTL makes no
-request and reports every query as 'no GSC data'."""
+"""D-C-02 probe (FIXED in D2b, commit pending).
+
+Before: GscClient._fetch_all_rows broke on an HTTP error / network failure and
+returned {} (partial). get_query_stats then wrote found=0 for EVERY unfetched
+query, so a 503 / expired token / 403 was cached as "measured absent" for
+cache_ttl_days; a retry inside the TTL made no request and reported every
+query as 'no GSC data'.
+
+After: the fetch reports itself incomplete, nothing is cached as an absence,
+the retry asks again, and the report prints 'not reached' for a query the
+fetch never resolved. Run it to see the three expectations below hold.
+The same three are pinned as tests in tests/test_d2b_failure_is_not_absence.py."""
 import os, sys, tempfile, sqlite3
 REPO = "/Users/davemini2/ProjectsLocal/serp-discover"
 os.chdir(REPO); sys.path.insert(0, REPO)
@@ -24,7 +31,7 @@ print("cache rows now:", sqlite3.connect(db).execute(
 with patch.object(gsc_client, "_post_with_transient_retry", return_value=good) as post:
     r2 = c.get_query_stats(["couples counselling", "family therapy"], "2026-08-01", "2026-10-30")
     print("retry while API is healthy:", r2, "| posts made:", post.call_count,
-          "<- 0 means the outage was served from cache as 'absent'")
+          "<- must be 1; 0 would mean the outage was served from cache")
 
 # What run_gsc_analysis then prints for the user
 import run_gsc_analysis as rga
@@ -32,5 +39,12 @@ rows = [{"query": "couples counselling", "query_label": "A", "source_keyword": "
          "has_ai_overview": True}]
 for row in rows:
     row["found"] = False
-print("report line:", [l for l in rga.generate_report(rows, rga.compute_sponge_effect(rows), [],
-      {"gsc": {}}, "x.json", ("a", "b")).splitlines() if "no GSC data" in l][0])
+    row["gsc_status"] = gsc_client.STATUS_NOT_REACHED
+report = rga.generate_report(
+    rows, rga.compute_sponge_effect(rows, not_reached=1), [], {"gsc": {}},
+    "x.json", ("a", "b"), fetch_complete=False)
+for line in report.splitlines():
+    if "not reached" in line or "could not reach" in line or "Incomplete" in line:
+        print("report line:", line)
+assert "reported as absent, not as zero" not in report, \
+    "an unreached query must not be reported as measured absence"

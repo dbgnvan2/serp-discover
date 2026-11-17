@@ -100,6 +100,26 @@ RANKING_KEYWORD_FIELDS = (
 )
 ANCHOR_TEXT_FIELDS = ("text", "external_root_domains", "external_pages")
 
+#: The four signals a competitor block is made of, each fetched, cached and
+#: reported on its own. One failed sub-call used to freeze all four for 30
+#: days — the top-level status was `ok` whenever ANY sub-call returned data,
+#: and the cache gated on that — so its empty `items: []` read as a fact
+#: about the competitor (D-C-10 / D2b.9-D2b.13).
+SIGNAL_RANKING = "ranking_keywords"
+SIGNAL_ANCHORS = "anchor_texts"
+SIGNAL_BRAND = "brand_authority"
+SIGNAL_MOMENTUM = "link_momentum"
+SIGNALS = (SIGNAL_RANKING, SIGNAL_ANCHORS, SIGNAL_BRAND, SIGNAL_MOMENTUM)
+
+#: Per-signal `fetched_at` cache column. A ranking-keywords block collected
+#: 27 days ago must not read as same-day because an anchor-text block was
+#: refreshed today (P6, D2b.13).
+_SIGNAL_AT = {signal: f"{signal}_at" for signal in SIGNALS}
+
+#: A signal we have not got, and why — never a bare empty list (D2b.14).
+STATUS_NOT_FETCHED = "not_fetched"
+STATUS_DISABLED = "disabled"
+
 
 class MozCompetitorClient:
     """Fetches and caches per-domain competitor signals.
@@ -201,37 +221,36 @@ class MozCompetitorClient:
         unique = list(dict.fromkeys(d.lower() for d in domains if d))
         results: dict[str, dict] = {}
 
-        cached, to_fetch = self._cache_lookup(unique)
-        results.update(cached)
+        # Per signal, not per domain: a domain with three fresh signals and
+        # one that failed last run needs one call, not four (D2b.11/D2b.12).
+        cached, needed = self._cache_lookup(unique)
+        to_fetch = [d for d in unique if needed.get(d)]
+        for domain in unique:
+            if not needed.get(domain):
+                results[domain] = self._assemble(cached.get(domain, {}))
 
         if len(to_fetch) > self._max_competitors:
             skipped = to_fetch[self._max_competitors:]
             to_fetch = to_fetch[:self._max_competitors]
             logger.warning(
-                "Moz competitor: cap %d reached — %d of %d uncached domain(s) "
-                "skipped (%s)",
+                "Moz competitor: cap %d reached — %d of %d domain(s) needing a "
+                "fetch skipped (%s)",
                 self._max_competitors, len(skipped),
                 len(skipped) + len(to_fetch), ", ".join(skipped),
             )
             for domain in skipped:
-                results[domain] = absent(
-                    STATUS_SKIPPED_CAP,
-                    f"per-run cap of {self._max_competitors} competitors reached",
-                )
+                # What is cached is still served; only the rest is skipped.
+                results[domain] = self._assemble(
+                    cached.get(domain, {}), STATUS_SKIPPED_CAP,
+                    f"per-run cap of {self._max_competitors} competitors reached")
 
-        # Worst case per domain: a full page from each method.
-        per_domain = (self._ranking_keyword_limit + self._anchor_text_limit) \
-            * ROWS_PER_OBJECT
-        if self._brand_authority:
-            per_domain += 1
-        if self._link_momentum:
-            per_domain += 2 * self._link_momentum_limit * ROWS_PER_OBJECT
-        budget = row_budget(len(to_fetch) * per_domain, "competitor") \
-            if to_fetch else None
+        costs = {d: sum(self._signal_cost(sig) for sig in needed[d])
+                 for d in to_fetch}
+        budget = row_budget(sum(costs.values()), "competitor") if to_fetch else None
 
         fresh: dict[str, dict] = {}
         for index, domain in enumerate(to_fetch):
-            if budget is not None and budget < per_domain:
+            if budget is not None and budget < costs[domain]:
                 remaining = to_fetch[index:]
                 logger.warning(
                     "Moz competitor: quota exhausted — %d domain(s) skipped "
@@ -239,14 +258,13 @@ class MozCompetitorClient:
                     len(remaining), ", ".join(remaining),
                 )
                 for skipped_domain in remaining:
-                    results[skipped_domain] = absent(
-                        STATUS_SKIPPED_QUOTA,
-                        "monthly row quota would be exceeded",
-                    )
+                    results[skipped_domain] = self._assemble(
+                        cached.get(skipped_domain, {}), STATUS_SKIPPED_QUOTA,
+                        "monthly row quota would be exceeded")
                 break
-            block, billed = self._fetch_one(domain)
-            block["fetched_at"] = datetime.now(_UTC).isoformat()
-            fresh[domain] = block
+            blocks, billed = self._fetch_one(domain, needed[domain])
+            fresh[domain] = blocks
+            results[domain] = self._assemble({**cached.get(domain, {}), **blocks})
             self.rows_consumed += billed
             if budget is not None:
                 budget -= billed
@@ -254,49 +272,142 @@ class MozCompetitorClient:
         if fresh:
             self._cache_store(fresh)
             logger.info(
-                "Moz competitor: %d domain(s) fetched, %d row(s) billed this "
-                "session", len(fresh), self.rows_consumed,
+                "Moz competitor: %d domain(s) fetched (%s), %d row(s) billed "
+                "this session", len(fresh),
+                ", ".join(f"{d}: {'+'.join(needed[d])}" for d in fresh),
+                self.rows_consumed,
             )
-        results.update(fresh)
         return results
+
+    # ------------------------------------------------------------------
+    # Internal: signals
+    # ------------------------------------------------------------------
+
+    def enabled_signals(self) -> tuple[str, ...]:
+        """The signals this configuration asks for. The others are not gaps.
+
+        A signal switched off by config is not a partial block (D2b.9) and
+        must not trigger a refetch every run.
+        """
+        signals = [SIGNAL_RANKING, SIGNAL_ANCHORS]
+        if self._brand_authority:
+            signals.append(SIGNAL_BRAND)
+        if self._link_momentum:
+            signals.append(SIGNAL_MOMENTUM)
+        return tuple(signals)
+
+    def _signal_cost(self, signal: str) -> int:
+        """Worst-case rows one signal bills: a full page from each method."""
+        if signal == SIGNAL_RANKING:
+            return self._ranking_keyword_limit * ROWS_PER_OBJECT
+        if signal == SIGNAL_ANCHORS:
+            return self._anchor_text_limit * ROWS_PER_OBJECT
+        if signal == SIGNAL_BRAND:
+            return ROWS_PER_OBJECT
+        if signal == SIGNAL_MOMENTUM:
+            return 2 * self._link_momentum_limit * ROWS_PER_OBJECT
+        return 0
+
+    def _assemble(self, blocks: dict[str, dict],
+                  missing_status: str | None = None, reason: str = "") -> dict:
+        """One competitor block from its signals, however they were obtained.
+
+        One definition for the fully cached, partially refetched and skipped
+        paths alike. ``fetched_at`` is the OLDEST signal's: the block is only
+        as current as its stalest part (P6, D2b.13). ``signals_missing``
+        names every enabled signal not in hand, so a block with real ranking
+        keywords and a skipped anchor fetch cannot present itself as complete
+        just because `data_available` is true of one of its parts (P2).
+        """
+        out: dict[str, dict] = {}
+        absent_signals: list[str] = []
+        for signal in self.enabled_signals():
+            if signal in blocks:
+                out[signal] = blocks[signal]
+                continue
+            absent_signals.append(signal)
+            stub = {
+                "status": missing_status or STATUS_NOT_FETCHED,
+                "data_available": False,
+                "reason": reason or "not fetched on this run",
+            }
+            if signal in (SIGNAL_RANKING, SIGNAL_ANCHORS):
+                # The page shape, so a consumer reading `.get("items", [])`
+                # finds the same keys it finds on a real block and the empty
+                # list arrives with its explanation attached (P19).
+                stub.update(items=[], returned=0, truncated=False)
+            out[signal] = stub
+        for signal in SIGNALS:
+            # Switched off reports that rather than vanishing: a consumer
+            # must tell "off" from "failed".
+            out.setdefault(signal, {"status": STATUS_DISABLED,
+                                    "data_available": False})
+
+        ranking, anchors = out[SIGNAL_RANKING], out[SIGNAL_ANCHORS]
+        available = (bool(ranking.get("items")) or bool(anchors.get("items"))
+                     or bool(out[SIGNAL_BRAND].get("data_available")))
+        stamps = sorted(
+            b["fetched_at"] for b in out.values()
+            if isinstance(b, dict) and b.get("fetched_at"))
+
+        if not available and missing_status in (STATUS_SKIPPED_CAP,
+                                                STATUS_SKIPPED_QUOTA):
+            # Empty because we deliberately did not ask: the cap or the
+            # quota, not the domain. "no_record" here would be this chunk's
+            # own fault one level up (P1 — a skip is not a terminal absence).
+            block = absent(missing_status, reason)
+        elif not available:
+            statuses = {ranking.get("status"), anchors.get("status")}
+            status = STATUS_ERROR if STATUS_ERROR in statuses else STATUS_NO_RECORD
+            block = absent(status, "no ranking keywords or anchor text returned")
+        else:
+            block = {"data_available": True, "status": STATUS_OK}
+        block.update(out)
+        block["complete"] = not absent_signals
+        block["signals_missing"] = absent_signals
+        if absent_signals and block.get("status") == STATUS_OK:
+            block["reason"] = (
+                "partial: " + ", ".join(absent_signals) + " not obtained")
+        if stamps:
+            block["fetched_at"] = stamps[0]
+            block["signals_fetched_at"] = {
+                signal: sub.get("fetched_at")
+                for signal, sub in out.items() if isinstance(sub, dict)
+            }
+        return block
 
     # ------------------------------------------------------------------
     # Internal: API
     # ------------------------------------------------------------------
 
-    def _fetch_one(self, domain: str) -> tuple[dict, int]:
-        """Fetch both signals for *domain*. Returns ``(block, rows_billed)``.
+    def _fetch_one(self, domain: str,
+                   signals: tuple | list | None = None) -> tuple[dict, int]:
+        """Fetch *signals* for *domain*. Returns ``({signal: block}, rows)``.
 
-        A failure on one method does not discard the other: each carries its
-        own status, so a domain with anchor text but no ranking data reports
-        exactly that.
+        Only the signals asked for — on a partial cache hit, the one that
+        failed last run, not all four (D2b.12). Each block carries its own
+        status and ``fetched_at``. Assembly is :meth:`_assemble`'s job.
         """
-        ranking, ranking_rows = self._fetch_ranking_keywords(domain)
-        anchors, anchor_rows = self._fetch_anchor_text(domain)
-        brand, brand_rows = self._fetch_brand_authority(domain)
-        momentum, momentum_rows = self._fetch_link_momentum(domain)
-        extra_rows = brand_rows + momentum_rows
-
-        available = (bool(ranking.get("items")) or bool(anchors.get("items"))
-                     or bool(brand.get("data_available")))
-        if not available:
-            statuses = {ranking.get("status"), anchors.get("status")}
-            status = STATUS_ERROR if STATUS_ERROR in statuses else STATUS_NO_RECORD
-            block = absent(status, "no ranking keywords or anchor text returned")
-            block["ranking_keywords"] = ranking
-            block["anchor_texts"] = anchors
-            block["brand_authority"] = brand
-            block["link_momentum"] = momentum
-            return block, ranking_rows + anchor_rows + extra_rows
-
-        return {
-            "data_available": True,
-            "status": STATUS_OK,
-            "ranking_keywords": ranking,
-            "anchor_texts": anchors,
-            "brand_authority": brand,
-            "link_momentum": momentum,
-        }, ranking_rows + anchor_rows + extra_rows
+        fetchers = {
+            SIGNAL_RANKING: self._fetch_ranking_keywords,
+            SIGNAL_ANCHORS: self._fetch_anchor_text,
+            SIGNAL_BRAND: self._fetch_brand_authority,
+            SIGNAL_MOMENTUM: self._fetch_link_momentum,
+        }
+        wanted = tuple(signals) if signals is not None else self.enabled_signals()
+        blocks: dict[str, dict] = {}
+        billed = 0
+        for signal in wanted:
+            fetcher = fetchers.get(signal)
+            if fetcher is None:
+                continue
+            block, rows = fetcher(domain)
+            # Stamped at collection, so a block refreshed today cannot make
+            # a 27-day-old sibling look current.
+            block["fetched_at"] = datetime.now(_UTC).isoformat()
+            blocks[signal] = block
+            billed += rows
+        return blocks, billed
 
     def _fetch_ranking_keywords(self, domain: str) -> tuple[dict, int]:
         """Keywords *domain* ranks for. `locale` belongs inside target_query."""
@@ -360,8 +471,9 @@ class MozCompetitorClient:
         Uncached, like :meth:`brand_authority_for`: one domain per run.
         """
         if not domain:
-            return {"status": "not_fetched", "data_available": False,
-                    "items": [], "returned": 0, "truncated": False}
+            return {"status": STATUS_NOT_FETCHED, "data_available": False,
+                    "items": [], "returned": 0, "truncated": False,
+                    "reason": "no domain given"}
         block, rows = self._fetch_anchor_text(domain.lower())
         self.rows_consumed += rows
         return block
@@ -380,7 +492,7 @@ class MozCompetitorClient:
         competitor path, so a missing score is never a 0.
         """
         if not domain:
-            return {"status": "not_fetched", "data_available": False}
+            return {"status": STATUS_NOT_FETCHED, "data_available": False}
         block, rows = self._fetch_brand_authority(domain.lower())
         self.rows_consumed += rows
         return block
@@ -395,7 +507,7 @@ class MozCompetitorClient:
         substantive false claim (spec design principle 3).
         """
         if not self._brand_authority:
-            return {"status": "disabled", "data_available": False}, 0
+            return {"status": STATUS_DISABLED, "data_available": False}, 0
 
         data = {"site_query": {"query": domain, "scope": self._scope}}
         result, status = self._call(BRAND_AUTHORITY_METHOD, data, domain)
@@ -427,7 +539,7 @@ class MozCompetitorClient:
         read as something it is not.
         """
         if not self._link_momentum:
-            return {"status": "disabled", "data_available": False}, 0
+            return {"status": STATUS_DISABLED, "data_available": False}, 0
 
         blocks, rows = {}, 0
         for key, filters in (("lost", LOST_LINK_FILTERS),
@@ -454,8 +566,18 @@ class MozCompetitorClient:
             rows += len(raw) * ROWS_PER_OBJECT
 
         available = any(b.get("items") for b in blocks.values())
+        # This signal is two calls. If EITHER failed the signal is not an
+        # answer, however much the other returned: a cacheable `ok` here
+        # would freeze the failed half for the whole TTL and serve its
+        # `items: []` as a fact about the domain — D-C-10 one level down.
+        if any(b.get("status") == STATUS_ERROR for b in blocks.values()):
+            rollup = STATUS_ERROR
+        elif available:
+            rollup = STATUS_OK
+        else:
+            rollup = STATUS_NO_RECORD
         return {
-            "status": STATUS_OK if available else STATUS_NO_RECORD,
+            "status": rollup,
             "data_available": available,
             "window": "none — Moz exposes no time-filtered link data on this plan",
             **blocks,
@@ -468,12 +590,29 @@ class MozCompetitorClient:
         ``truncated`` distinguishes "this is the top N" from "this is all
         there is" — a caller reading a capped list as complete would
         understate a competitor (learnings P9).
+
+        ``data_available`` and ``reason`` travel beside the items so
+        ``items: []`` cannot be read as "this competitor has none": the list
+        alone is identical for "Moz holds nothing" and "the call 503'd"
+        (D2b.14).
         """
+        if status == STATUS_ERROR:
+            reason = ("the Moz call failed — this is not a measurement of the "
+                      "domain, and the next run will ask again")
+        elif status == STATUS_NO_RECORD and not items:
+            reason = "Moz holds no data for this domain"
+        else:
+            reason = ""
+        # `reason` is present on every block, empty when there is nothing to
+        # say: one producer, one shape, so a consumer never reads None where
+        # a sibling block has a string (learnings P19).
         return {
             "status": status,
+            "data_available": bool(items),
             "items": items,
             "returned": len(items),
             "truncated": len(items) < len(raw),
+            "reason": reason,
         }
 
     def _call(self, method: str, data: dict, domain: str):
@@ -521,11 +660,34 @@ class MozCompetitorClient:
                 if column not in existing:
                     conn.execute(
                         f"ALTER TABLE {CACHE_TABLE} ADD COLUMN {column} TEXT")
+            # D2b.10/D2b.13 — a per-signal fetched_at, so a signal can be
+            # refreshed, expire or be absent on its own. NULL on an existing
+            # database reads as "not recorded", so rows frozen by the old
+            # whole-domain cache clear themselves on the next run.
+            for column in _SIGNAL_AT.values():
+                if column not in existing:
+                    conn.execute(
+                        f"ALTER TABLE {CACHE_TABLE} ADD COLUMN {column} TEXT")
             conn.commit()
 
-    def _cache_lookup(self, domains: list[str]) -> tuple[dict[str, dict], list[str]]:
-        cached: dict[str, dict] = {}
+    def _cache_lookup(self, domains: list[str]) -> tuple[dict[str, dict[str, dict]],
+                                                          dict[str, list[str]]]:
+        """Split each domain's signals into (fresh-cached, still-needed).
+
+        Returns ``({domain: {signal: block}}, {domain: [signals to fetch]})``.
+        Signals whose own ``fetched_at`` is inside the TTL are served; the
+        rest are asked for. A failed signal is never cached, so it has no
+        timestamp and is needed again next run (D-C-10 / D2b.11).
+        """
+        cached: dict[str, dict[str, dict]] = {}
+        needed: dict[str, list[str]] = {}
         cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
+        wanted = self.enabled_signals()
+
+        columns = ["domain"]
+        for signal in SIGNALS:
+            columns.extend([signal, _SIGNAL_AT[signal]])
+        select = ", ".join(columns)
 
         rows = []
         with sqlite3.connect(self._db_path) as conn:
@@ -533,95 +695,114 @@ class MozCompetitorClient:
                 chunk = domains[start:start + 500]
                 placeholders = ",".join("?" * len(chunk))
                 rows.extend(conn.execute(
-                    f"SELECT domain, status, ranking_keywords, anchor_texts, "
-                    f"fetched_at, brand_authority, link_momentum "
-                    f"FROM {CACHE_TABLE} "
+                    f"SELECT {select} FROM {CACHE_TABLE} "
                     f"WHERE scope=? AND locale=? AND domain IN ({placeholders})",
                     [self._scope, self._locale, *chunk],
                 ).fetchall())
 
-        for (domain, status, ranking, anchors, fetched_at,
-             brand, momentum) in rows:
-            if not fetched_at or fetched_at < cutoff:
-                continue
-            if status == STATUS_NO_RECORD:
-                cached[domain] = absent(
-                    STATUS_NO_RECORD, "Moz holds no competitor data for this domain")
-                continue
-            if status != STATUS_OK:
-                continue  # never serve a cached failure
-            cached[domain] = {
-                "data_available": True,
-                "status": STATUS_OK,
-                # When these signals were actually collected, not when the
-                # handoff was assembled. A cached block can be up to
-                # cache_ttl_days old; without this the consumer can only see
-                # the assembly timestamp and would read 27-day-old anchors as
-                # same-day observations (P6).
-                "fetched_at": fetched_at,
-                "ranking_keywords": _decode(ranking),
-                "anchor_texts": _decode(anchors),
-                "brand_authority": _decode_signal(brand),
-                "link_momentum": _decode_signal(momentum),
-            }
+        by_domain = {row[0]: row[1:] for row in rows}
+        for domain in domains:
+            row = by_domain.get(domain)
+            fresh: dict[str, dict] = {}
+            if row is not None:
+                for index, signal in enumerate(SIGNALS):
+                    blob, stamp = row[index * 2], row[index * 2 + 1]
+                    if not blob or not stamp or stamp < cutoff:
+                        continue
+                    decoded = (_decode(blob) if signal in
+                               (SIGNAL_RANKING, SIGNAL_ANCHORS)
+                               else _decode_signal(blob))
+                    if decoded.get("status") not in _CACHEABLE:
+                        # Belt and braces: a failure must not be served even
+                        # if an older build managed to write one.
+                        continue
+                    # When this signal was collected, not when the handoff was
+                    # assembled — a cached signal can be nearly TTL-old (P6).
+                    decoded["fetched_at"] = stamp
+                    fresh[signal] = decoded
+            if fresh:
+                cached[domain] = fresh
+            missing = [signal for signal in wanted if signal not in fresh]
+            if missing:
+                needed[domain] = missing
+        return cached, needed
 
-        to_fetch = [d for d in domains if d not in cached]
-        return cached, to_fetch
+    def _cache_store(self, fetched: dict[str, dict[str, dict]]) -> None:
+        """Write the signals that answered, leaving the ones that failed unset.
 
-    def _cache_store(self, results: dict[str, dict]) -> None:
-        fetched_at = datetime.now(_UTC).isoformat()
-        rows = [
-            (
-                domain, self._scope, self._locale, block.get("status"),
-                json.dumps(block.get("ranking_keywords") or {}),
-                json.dumps(block.get("anchor_texts") or {}),
-                fetched_at,
-                json.dumps(block.get("brand_authority") or {}),
-                json.dumps(block.get("link_momentum") or {}),
-            )
-            for domain, block in results.items()
-            if block.get("status") in _CACHEABLE
-        ]
-        if not rows:
-            return
+        Column-wise, so a partial refetch does not blank the signals it did
+        not ask for. A non-cacheable status is skipped entirely — no blob, no
+        timestamp, so the next run asks again (D2b.9/D2b.10).
+        """
         with sqlite3.connect(self._db_path) as conn:
-            conn.executemany(
-                f"INSERT OR REPLACE INTO {CACHE_TABLE} "
-                f"(domain, scope, locale, status, ranking_keywords, "
-                f"anchor_texts, fetched_at, brand_authority, link_momentum) "
-                f"VALUES (?,?,?,?,?,?,?,?,?)",
-                rows,
-            )
+            for domain, blocks in fetched.items():
+                storable = {
+                    signal: block for signal, block in blocks.items()
+                    if signal in SIGNALS and block.get("status") in _CACHEABLE
+                }
+                if not storable:
+                    continue
+                assignments, values = [], []
+                for signal, block in storable.items():
+                    assignments.append(f"{signal}=?")
+                    assignments.append(f"{_SIGNAL_AT[signal]}=?")
+                    values.append(json.dumps(block))
+                    values.append(block.get("fetched_at")
+                                  or datetime.now(_UTC).isoformat())
+                # The row must exist before the column-wise update; `status`
+                # and the legacy whole-row `fetched_at` are kept for
+                # diagnostics only — nothing reads them to decide freshness.
+                conn.execute(
+                    f"INSERT OR IGNORE INTO {CACHE_TABLE} "
+                    f"(domain, scope, locale) VALUES (?,?,?)",
+                    (domain, self._scope, self._locale),
+                )
+                conn.execute(
+                    f"UPDATE {CACHE_TABLE} SET {', '.join(assignments)}, "
+                    f"status=?, fetched_at=? "
+                    f"WHERE domain=? AND scope=? AND locale=?",
+                    [*values, STATUS_OK, datetime.now(_UTC).isoformat(),
+                     domain, self._scope, self._locale],
+                )
             conn.commit()
 
 
 def _decode_signal(raw) -> dict:
     """Decode a cached T.5 sub-block, degrading to an honest absent block."""
     if not raw:
-        return {"status": "not_fetched", "data_available": False}
+        return {"status": STATUS_NOT_FETCHED, "data_available": False}
     try:
         decoded = json.loads(raw)
     except (ValueError, TypeError):
         logger.warning("Unreadable T.5 blob in %s — treating as absent", CACHE_TABLE)
         decoded = None
     if not isinstance(decoded, dict):
-        return {"status": "not_fetched", "data_available": False}
+        return {"status": STATUS_NOT_FETCHED, "data_available": False}
     return decoded
 
 
 def _decode(raw) -> dict:
-    """Decode a cached JSON blob, degrading to an empty block."""
+    """Decode a cached JSON blob, degrading to "not recorded".
+
+    The fallback is deliberately NOT ``no_record``: that is in
+    ``_CACHEABLE``, so an unreadable blob would be served as a measured
+    absence and would block its own refetch for the rest of the TTL
+    (D-C-10 again, via the decode path).
+    """
     if not raw:
-        return {"status": STATUS_NO_RECORD, "items": [],
-                "returned": 0, "truncated": False}
+        return {"status": STATUS_NOT_FETCHED, "data_available": False,
+                "items": [], "returned": 0, "truncated": False,
+                "reason": "nothing recorded for this signal"}
     try:
         decoded = json.loads(raw)
     except (ValueError, TypeError):
-        logger.warning("Unreadable blob in %s — treating as empty", CACHE_TABLE)
+        logger.warning("Unreadable blob in %s — treating as not recorded",
+                       CACHE_TABLE)
         decoded = None
     if not isinstance(decoded, dict):
-        return {"status": STATUS_NO_RECORD, "items": [],
-                "returned": 0, "truncated": False}
+        return {"status": STATUS_NOT_FETCHED, "data_available": False,
+                "items": [], "returned": 0, "truncated": False,
+                "reason": "the cached blob could not be read"}
     return decoded
 
 

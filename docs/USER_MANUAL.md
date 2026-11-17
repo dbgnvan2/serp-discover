@@ -1582,8 +1582,25 @@ what's the typical CTR when an AI Overview is present vs when it isn't?
   carry a GEO alert (the client ranks but the AI Overview cites other
   sources): reformat those pages for answer extraction FIRST, because
   fixing them can win back both the citation and the click.
-- Queries with "no GSC data" had no recorded impressions in the window —
-  reported as absent, never invented as zero.
+- A query can be missing from the figures for two different reasons, and
+  the report says which:
+  - **"no impressions in window"** — Search Console answered, and holds no
+    impressions for that query in the window. That is a real finding about
+    the client's traffic, reported as absent and never invented as zero.
+  - **"not reached"** — the Search Console request failed, or stopped
+    part-way through. That says nothing at all about the client. Nothing is
+    cached for those queries, so the next run asks for them again; the
+    report prints an **"Incomplete fetch"** warning at the top of the
+    Coverage section, every count below it covers only the queries that
+    were reached, and no branded-share figure is written to the trend
+    (a share of a truncated set is not comparable with other runs). When
+    you see that warning, re-run before quoting any of the numbers.
+- "Insufficient data" in a sponge band means the band genuinely did not have
+  enough queries — unless queries were never reached, in which case the row
+  says so, because a gap in the fetch is not a measurement of the client.
+- The reformat-candidates section states how many queries it searched. "No
+  candidates" over 4 of 40 queries is not the same statement as "no
+  candidates" over 40 of 40.
 
 **Setup (one-time, service account):**
 1. In Google Cloud Console, create (or reuse) a project, enable the

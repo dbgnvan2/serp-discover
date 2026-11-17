@@ -69,7 +69,7 @@ class TestGscClientAuthAndBatching(unittest.TestCase):
         self.assertEqual(payload["endDate"], "2026-07-01")
         # Property is URL-encoded into the endpoint path.
         self.assertIn("sc-domain%3Alivingsystems.ca", mock_post.call_args.args[0])
-        self.assertEqual(result["family counselling"]["clicks"], 10)
+        self.assertEqual(result.stats["family counselling"]["clicks"], 10)
 
     @patch("gsc_client.requests.post")
     def test_pagination_batches_until_short_page(self, mock_post):
@@ -83,14 +83,15 @@ class TestGscClientAuthAndBatching(unittest.TestCase):
         self.assertEqual(mock_post.call_count, 2)
         self.assertEqual(mock_post.call_args_list[0].kwargs["json"]["startRow"], 0)
         self.assertEqual(mock_post.call_args_list[1].kwargs["json"]["startRow"], 2)
-        self.assertEqual(len(result), 3)
+        self.assertEqual(len(result.stats), 3)
+        self.assertTrue(result.complete)
 
     @patch("gsc_client.requests.post")
     def test_matching_is_case_insensitive(self, mock_post):
         mock_post.return_value = _gsc_response([_api_row("family counselling")])
         result = self.client.get_query_stats(
             ["Family Counselling"], "2026-04-01", "2026-07-01")
-        self.assertIn("family counselling", result)
+        self.assertIn("family counselling", result.stats)
 
     @patch("gsc_client.requests.post")
     def test_http_error_returns_empty_not_fake_zeros(self, mock_post):
@@ -98,7 +99,16 @@ class TestGscClientAuthAndBatching(unittest.TestCase):
         response.json.return_value = {"error": "forbidden"}
         mock_post.return_value = response
         result = self.client.get_query_stats(["q"], "2026-04-01", "2026-07-01")
-        self.assertEqual(result, {})
+        self.assertEqual(result.stats, {})
+        # D2b.1/D2b.2 — a 403 is not an answer: the fetch reports itself
+        # incomplete, the query is named as unreached, and nothing is cached
+        # as an absence, so the next call asks again.
+        self.assertFalse(result.complete)
+        self.assertEqual(result.not_reached, ["q"])
+        self.assertEqual(result.measured_absent, [])
+        with sqlite3.connect(self.tmp.name) as conn:
+            self.assertEqual(
+                conn.execute("SELECT COUNT(*) FROM gsc_cache").fetchone()[0], 0)
 
     def test_missing_credentials_raise_clear_error(self):
         env = {k: v for k, v in os.environ.items() if k != "GSC_CREDENTIALS_PATH"}
@@ -138,7 +148,7 @@ class TestGscClientCache(unittest.TestCase):
         result = self.client.get_query_stats(
             ["family counselling"], self.START, self.END)
         mock_post.assert_not_called()
-        self.assertEqual(result["family counselling"]["clicks"], 5)
+        self.assertEqual(result.stats["family counselling"]["clicks"], 5)
 
     @patch("gsc_client.requests.post")
     def test_cached_absence_avoids_refetch(self, mock_post):
@@ -147,7 +157,12 @@ class TestGscClientCache(unittest.TestCase):
         self.client._cache_store({"unseen query": None}, self.START, self.END)
         result = self.client.get_query_stats(["unseen query"], self.START, self.END)
         mock_post.assert_not_called()
-        self.assertEqual(result, {})
+        self.assertEqual(result.stats, {})
+        # D2b.4 — and it is reported as measured absence, not as unreached.
+        self.assertEqual(result.measured_absent, ["unseen query"])
+        self.assertEqual(result.not_reached, [])
+        self.assertEqual(
+            result.status_for("unseen query"), gsc_client.STATUS_MEASURED_ABSENT)
 
     @patch("gsc_client.requests.post")
     def test_expired_cache_triggers_api_call(self, mock_post):
@@ -160,7 +175,7 @@ class TestGscClientCache(unittest.TestCase):
         result = self.client.get_query_stats(
             ["family counselling"], self.START, self.END)
         mock_post.assert_called_once()
-        self.assertEqual(result["family counselling"]["clicks"], 7)
+        self.assertEqual(result.stats["family counselling"]["clicks"], 7)
 
     @patch("gsc_client.requests.post")
     def test_different_date_range_is_a_cache_miss(self, mock_post):
@@ -170,7 +185,7 @@ class TestGscClientCache(unittest.TestCase):
         mock_post.return_value = _gsc_response([_api_row("q", clicks=9)])
         result = self.client.get_query_stats(["q"], "2026-01-01", "2026-03-31")
         mock_post.assert_called_once()
-        self.assertEqual(result["q"]["clicks"], 9)
+        self.assertEqual(result.stats["q"]["clicks"], 9)
 
     @patch("gsc_client.requests.post")
     def test_cache_lookup_batches_bound_variables(self, mock_post):
@@ -184,7 +199,7 @@ class TestGscClientCache(unittest.TestCase):
             self.START, self.END)
         result = self.client.get_query_stats(queries, self.START, self.END)
         mock_post.assert_not_called()
-        self.assertEqual(len(result), 1200)
+        self.assertEqual(len(result.stats), 1200)
 
     @patch("gsc_client.requests.post")
     def test_partial_cache_fetches_only_missing(self, mock_post):
@@ -195,8 +210,8 @@ class TestGscClientCache(unittest.TestCase):
         result = self.client.get_query_stats(
             ["cached q", "fresh q"], self.START, self.END)
         mock_post.assert_called_once()
-        self.assertIn("cached q", result)
-        self.assertIn("fresh q", result)
+        self.assertIn("cached q", result.stats)
+        self.assertIn("fresh q", result.stats)
         # And the freshly fetched row is now cached for next time.
         mock_post.reset_mock()
         self.client.get_query_stats(["fresh q"], self.START, self.END)
@@ -444,9 +459,11 @@ class TestEndToEndRun(unittest.TestCase):
             "analysis_report": {"client_name": "Living Systems Counselling"},
         }
         client = MagicMock()
-        client.get_query_stats.return_value = {
-            "kw one": {"clicks": 2, "impressions": 100, "ctr": 0.02, "position": 3.2},
-        }
+        client.get_query_stats.return_value = gsc_client.GscStats(
+            stats={"kw one": {"clicks": 2, "impressions": 100,
+                              "ctr": 0.02, "position": 3.2}},
+            complete=True, asked=["kw one", "kw two"],
+            measured_absent=["kw two"], not_reached=[])
         report, sidecar = rga.run_analysis(
             data, config, client, json_path, today=date(2026, 7, 4))
         return report, sidecar, client
@@ -460,12 +477,50 @@ class TestEndToEndRun(unittest.TestCase):
         self.assertEqual(args[1], "2026-04-05")
         self.assertEqual(args[2], "2026-07-04")
         self.assertIn("kw one", report)
-        self.assertIn("no GSC data", report)          # measured absence stated
+        # D2b.5 — measured absence stated as such, and named as GSC's answer
+        # rather than as a generic "no data".
+        self.assertIn("no impressions", report)
+        self.assertNotIn("not reached", report)
         self.assertIn("never quote them", report)     # private-data note
         self.assertEqual(sidecar["queries_checked"], 2)
         self.assertEqual(sidecar["queries_with_data"], 1)
+        self.assertTrue(sidecar["fetch_complete"])
+        self.assertEqual(sidecar["queries_not_reached"], [])
+        self.assertEqual(sidecar["queries_no_impressions"], ["kw two"])
         self.assertIn("sponge", sidecar)
         self.assertIn("reformat_candidates", sidecar)
+
+    def test_unreached_query_is_not_reported_as_absent(self):
+        """D2b.5 — an outage must not become a finding about the client."""
+        data = {
+            "overview": [
+                {"Query_Label": "A", "Source_Keyword": "kw one",
+                 "Executed_Query": "kw one", "Has_Main_AI_Overview": True},
+                {"Query_Label": "A", "Source_Keyword": "kw two",
+                 "Executed_Query": "kw two", "Has_Main_AI_Overview": False},
+            ],
+        }
+        config = {"gsc": {"enabled": True, "property": "sc-domain:x",
+                          "lookback_days": 90},
+                  "analysis_report": {"client_name": "C"}}
+        client = MagicMock()
+        client.get_query_stats.return_value = gsc_client.GscStats(
+            stats={}, complete=False, asked=["kw one", "kw two"],
+            measured_absent=[], not_reached=["kw one", "kw two"])
+        with tempfile.TemporaryDirectory() as tmpdir:
+            json_path = os.path.join(
+                tmpdir, "market_analysis_topic_20260701_1200.json")
+            with open(json_path, "w", encoding="utf-8") as f:
+                json.dump(data, f)
+            report, sidecar = rga.run_analysis(
+                data, config, client, json_path, today=date(2026, 7, 4))
+        self.assertIn("not reached", report)
+        self.assertIn("Incomplete fetch", report)
+        self.assertNotIn("reported as absent, not as zero", report)
+        self.assertFalse(sidecar["fetch_complete"])
+        self.assertEqual(sorted(sidecar["queries_not_reached"]),
+                         ["kw one", "kw two"])
+        self.assertEqual(sidecar["queries_no_impressions"], [])
 
     def test_output_base_matches_gitignored_glob(self):
         base = rga._derive_output_base("market_analysis_leila_20260504_2020.json")

@@ -12,6 +12,8 @@ SQLite at `serp_data.db`. Key tables:
 | `keyword_feasibility` | DA gap scores, feasibility status, pivot variants per run |
 | `da_cache` | DataForSEO domain rank cache (30-day TTL; 7 days for a row with no rank) |
 | `moz_cache` | Moz DA/PA cache (30-day TTL; 7 days for a row with no DA) |
+| `moz_competitor_cache` | Per-competitor Moz signals, cached **per signal** (30-day TTL) |
+| `gsc_cache` | Search Console query stats (7-day TTL; `found = 0` records a measured absence) |
 
 All schema changes use `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE … ADD COLUMN` wrapped in `try/except OperationalError` — migrations run automatically on first use.
 
@@ -71,3 +73,51 @@ reachable there is no figure, and a 0 would read as a measurement.
 
 A row is written by `storage.save_feasibility_from_row`, which takes the
 assessment dict whole rather than re-listing its fields at each call site.
+
+## Caches record whether the provider answered, not only what it said
+
+Review chunk D2b. Both caches used to store the provider's reply without
+storing whether there had been a reply, so a failure was served back as a
+measurement for the rest of the TTL — and the TTL is exactly the window in
+which a retry would have fixed it.
+
+### `gsc_cache` — `found = 0` means GSC answered "nothing"
+
+`found = 0` is a measured absence: Search Console answered, and holds no row
+for that query in the window. It is cached so a query the property genuinely
+has no impressions for is not re-pulled every run.
+
+It is written **only** when the fetch completed. When any page of the pull
+failed at the network layer, returned a non-OK status or returned non-JSON,
+`gsc_client.get_query_stats` writes nothing for the queries it could not
+resolve: no row means "not asked yet", so the next call asks again. Before
+D2b a 503 wrote `found = 0` for every unfetched query and the retry inside
+the TTL made no request at all (finding D-C-02).
+
+The three states a query can be in are `measured`, `measured_absent` and
+`not_reached` (`gsc_client.STATUS_*`); the words a reader sees for each live
+in `gsc_messages.yml`.
+
+### `moz_competitor_cache` — one row, four independently cached signals
+
+Each of `ranking_keywords`, `anchor_texts`, `brand_authority` and
+`link_momentum` has its own JSON column **and its own `<signal>_at`
+timestamp**. Freshness, expiry and refetch are decided per signal:
+
+- A sub-call that failed is not written, so it has no timestamp, so the next
+  run asks for it — and only for it. A failed anchor-text call costs one
+  call next run, not a four-call refetch of billed rows.
+- A sub-block served from cache reports **its own** `fetched_at`. The block's
+  top-level `fetched_at` is the **oldest** of them: the block as a whole is
+  only as current as its stalest part.
+- A signal switched off by config is not a gap. It reports
+  `status: disabled` and never triggers a refetch.
+
+The legacy whole-row `status` and `fetched_at` columns are kept for
+diagnostics only; nothing reads them to decide freshness. The per-signal
+columns start NULL on an existing database, which reads as *not recorded* and
+makes the next run ask — so rows frozen by the old whole-domain cache clear
+themselves on the next run. Before D2b, `_fetch_one` set the top-level status
+to `ok` whenever any sub-call returned data, `_cache_store` gated on that, and
+`_cache_lookup`'s "never serve a cached failure" branch therefore never fired
+(finding D-C-10).

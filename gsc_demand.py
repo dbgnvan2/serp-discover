@@ -121,13 +121,19 @@ def _band(share: float, bands: dict) -> str:
     return "top"
 
 
-def compute_demand(rows, cfg):
+def compute_demand(rows, cfg, fetch_complete: bool = True):
     """Branded-vs-non-branded rollup over the run's tracked queries.
 
     Returns ``(rows, score)`` — ``rows`` are annotated with ``is_branded``; ``score``
     carries branded/non-branded clicks & impressions, ``branded_click_share`` (no
     divide-by-zero), ``benchmark_band``, the matched patterns, counts, and the bands
-    used (``weights_json``)."""
+    used (``weights_json``).
+
+    *fetch_complete* is False when the GSC fetch did not resolve every query
+    it asked for — the case the no-clicks guard does not catch: the share is
+    computable but over a truncated denominator, and would enter the trend
+    beside complete runs as if comparable (D2b.7).
+    """
     patterns = ((cfg or {}).get("analysis_report") or {}).get("client_name_patterns", []) or []
     negatives = ((cfg or {}).get("gsc_demand") or {}).get("negative_terms", []) or []
     bands = resolve_bands(cfg)
@@ -145,7 +151,7 @@ def compute_demand(rows, cfg):
     # No clicks (fresh/empty property, or a transient fetch miss) → the branded
     # share is undefined; it must NOT be reported or persisted as a real
     # "0% / below average" verdict (P2 — failures hiding as findings).
-    data_available = tracked > 0 and total_clicks > 0
+    data_available = tracked > 0 and total_clicks > 0 and bool(fetch_complete)
     share = b_clicks / total_clicks if total_clicks else 0.0
     matched = sorted({
         str(p) for p in patterns
@@ -158,6 +164,9 @@ def compute_demand(rows, cfg):
         "branded_click_share": round(share, 4),
         "benchmark_band": _band(share, bands) if data_available else None,
         "data_available": data_available,
+        # Why it is unavailable, when it is — so the report can say "the fetch
+        # failed" rather than "the client has no demand" (D2b.7).
+        "fetch_complete": bool(fetch_complete),
         "matched_patterns": matched,
         "branded_query_count": len(branded),
         "tracked_query_count": tracked,
@@ -256,12 +265,20 @@ def render_demand_section(score, trend=None) -> list[str]:
     )
     out.append("")
     if not score.get("data_available"):
-        out.append(
-            f"*Insufficient GSC data this run — {score['tracked_query_count']} tracked "
-            f"query(ies) with data, {score['branded_clicks'] + score['nonbranded_clicks']} "
-            "clicks. Branded share is only computed once there are clicks to split; "
-            "connect GSC or widen the lookback window.*"
-        )
+        if not score.get("fetch_complete", True):
+            out.append(
+                "*No branded share this run — the GSC fetch did not reach every "
+                "query, so any share would be computed over a truncated set and "
+                "is not comparable with other runs. Nothing was recorded for the "
+                "trend. Re-run to measure it.*"
+            )
+        else:
+            out.append(
+                f"*Insufficient GSC data this run — {score['tracked_query_count']} tracked "
+                f"query(ies) with data, {score['branded_clicks'] + score['nonbranded_clicks']} "
+                "clicks. Branded share is only computed once there are clicks to split; "
+                "connect GSC or widen the lookback window.*"
+            )
         out.append("")
         return out
     share = score["branded_click_share"]

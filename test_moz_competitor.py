@@ -411,9 +411,11 @@ class TestHandoffContract(unittest.TestCase):
         "domains": {
             "bowencenter.org": {
                 "data_available": True, "status": STATUS_OK,
-                "ranking_keywords": {"status": "ok", "items": [], "returned": 0,
+                "ranking_keywords": {"status": "ok", "data_available": True,
+                                     "items": [], "returned": 0,
                                      "truncated": False},
-                "anchor_texts": {"status": "ok", "items": [], "returned": 0,
+                "anchor_texts": {"status": "ok", "data_available": True,
+                                 "items": [], "returned": 0,
                                  "truncated": False},
             }
         },
@@ -929,8 +931,14 @@ class TestCollectionFreshness(_CompCase):
         # does not expire with the calendar.
         from datetime import datetime, timedelta, timezone
         stale = (datetime.now(timezone.utc) - timedelta(days=5)).replace(microsecond=0).isoformat()
+        # D2b.13 — freshness is per signal now, so each signal's own stamp
+        # is what makes the row old (and what the block must report).
         with sqlite3.connect(self.tmp.name) as conn:
-            conn.execute("UPDATE moz_competitor_cache SET fetched_at=?", (stale,))
+            sets = ", ".join(f"{column}=?" for column
+                             in moz_competitor._SIGNAL_AT.values())
+            conn.execute(
+                f"UPDATE moz_competitor_cache SET fetched_at=?, {sets}",
+                (stale,) * (1 + len(moz_competitor._SIGNAL_AT)))
             conn.commit()
         mock_post.reset_mock()
         block = self.client.fetch(["bowencenter.org"])["bowencenter.org"]

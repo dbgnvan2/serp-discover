@@ -1008,6 +1008,11 @@ def _build_gsc_summary(sidecar):
         "date_range": sidecar.get("date_range"),
         "queries_checked": sidecar.get("queries_checked"),
         "queries_with_data": sidecar.get("queries_with_data"),
+        # D2b.6 — without these, "queries_with_data: 0" reads to the LLM as
+        # "no search traffic" when the fetch simply failed. Absent in an
+        # older sidecar means unknown, not complete.
+        "fetch_complete": sidecar.get("fetch_complete"),
+        "queries_not_reached": len(sidecar.get("queries_not_reached") or []),
         "sponge": sidecar.get("sponge"),
         "reformat_candidates": (sidecar.get("reformat_candidates") or [])[:10],
         "top_queries": [
