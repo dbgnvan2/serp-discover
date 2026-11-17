@@ -122,6 +122,14 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 - *After:* re-run `run_feasibility.py` and the brief on every `market_analysis_*.json` the owner still relies on; previous `client_rank`, feasibility and handoff files are wrong.
 
 #### Chunk D2 — Null is not zero (H2, discover side)
+*Status (2026-11-16):* split into three pushes. **D2a is done** — commit
+`9784690`, closing D-C-03, D-C-04, D-M-02, D-M-05, D-M-08; the plan, the
+15 acceptance criteria as built, and the 11 cold-review findings are in
+`PLAN_D2_null_is_not_zero.md`. **D2b** (D-C-02 GSC `_fetch_all_rows`, D-C-10
+Moz competitor partial cache) and **D2c** (D-C-08 `www.` normalisation,
+D-C-20 error pages, D-C-21 AIO fallback flag) are still open. The verdict
+label landed as `"Not Measured"`, not the `"No DA Data"` this plan wrote —
+one state, one label, held by a test.
 *Findings:* D-C-04/D-M-02 (S1), D-C-03/D-M-08 (S1), D-M-05 (client_da provenance, High), D-C-02 (S1 GSC), D-C-10 (S2 Moz competitor cache), D-C-08 (S2 `www.` bypasses overrides), D-C-20 (S3 error pages enriched), D-C-21 (S3 AIO fallback flag). *Effort:* L.
 - D-C-08: normalise once in `EntityClassifier.classify` (strip `www.`, lower-case) so the pipeline, `refresh_analysis_outputs` and the override-candidate report agree; test `classify("www.x.ca") == classify("x.ca")` for every override.
 - DA providers: return `None` for absent `rank` / `domain_authority` (`dataforseo_client.py:206`, `moz_client.py:334`); never cache a `None` as 0 (cache a `found=0` sentinel the consumer omits). `serp_audit.py:1625-1628,1752` and `run_feasibility.py:331-335` exclude `None`.
@@ -410,8 +418,8 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 |---|---|---|---|---|
 | D-C-01 | S1 | D1 | SerpAPI per-page `position` stored as absolute `Rank` | fixed `2285828` |
 | D-C-02 | S1 | D2 | GSC transient failure cached as `found=0` for the TTL | open |
-| D-C-03 | S1 | D2 | Zero DA-covered keyword → "Low Feasibility"; no N-of-M | open |
-| D-C-04 | S1 | D2 | DataForSEO `rank: null` → DA 0, averaged, cached 30 days | open |
+| D-C-03 | S1 | D2 | Zero DA-covered keyword → "Low Feasibility"; no N-of-M | fixed `9784690` (D2a) |
+| D-C-04 | S1 | D2 | DataForSEO `rank: null` → DA 0, averaged, cached 30 days | fixed `9784690` (D2a); null encoding unverified against a live response |
 | D-C-05 | S1 | D3 | Skipped/failed engines get AIVI 0 persisted and ranked #1 | open |
 | D-C-06 | S2 | D4 | CLI re-run overwrites previous timestamped outputs | open |
 | D-C-07 | S2 | D4 | Play-parity HARD-fail can never fire | open |
@@ -431,13 +439,13 @@ Effort: S (< ½ day), M (½–1 day), L (1–2 days) for an agent with the repo 
 | D-C-21 | S3 | D2 | `Has_Main_AI_Overview` set from the no-location fallback | open |
 | D-C-22 | S3 | D1 | Rank history polluted by aborted runs and alt-query rows | fixed `2285828` |
 | D-M-01 | High | D1 | = D-C-01 (methodology consequences) | fixed `2285828` |
-| D-M-02 | High | D2 | Unscorable domain enters the feasibility mean as 0 | open |
+| D-M-02 | High | D2 | Unscorable domain enters the feasibility mean as 0 | fixed `9784690` (D2a) |
 | D-M-03 | High | D3 | = D-C-05 plus Jaccard(∅,∅)=1 and prioritisation | open |
 | D-M-04 | High | D3 | Foundational structure sub-score measures competitors' schema | open |
-| D-M-05 | High | D2 | `client_da` fixed 35 vs live provider on a different scale | open |
+| D-M-05 | High | D2 | `client_da` fixed 35 vs live provider on a different scale | fixed `9784690` (D2a); config value is now an override |
 | D-M-06 | High | D4 | Best opportunity ignores the mandatory intent gate | open |
 | D-M-07 | High | D4 | Extraction play asserts "high DA gap" when unmeasured | open |
-| D-M-08 | High | D2 | = D-C-03 (fake verdict + paid pivot fetch) | open |
+| D-M-08 | High | D2 | = D-C-03 (fake verdict + paid pivot fetch) | fixed `9784690` (D2a) |
 | D-M-09 | Med | D6 | Mean DA is the wrong statistic; no n / min / entity split | open |
 | D-M-10 | Med | D6 | "Confidence" is a classification count capped by enrichment budget | open |
 | D-M-11 | Med | D4 | Mixed-intent strategy says "backdoor" when dominant is preferred; dict-order ties | open |
