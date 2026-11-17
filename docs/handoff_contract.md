@@ -74,6 +74,32 @@ For each keyword:
 
 If the same URL ranks for multiple keywords, it appears in `targets` multiple times (once per `source_keyword`). This is intentional — Tool 2 uses `source_keyword` to understand why each target matters.
 
+### The canonical host form (review chunk D2c / finding D-C-08)
+
+Every host in this document is written in one form: lowercase, no port, no
+credentials, and no leading `www.` (`domain_utils.normalize_domain`). That is
+what `targets[].domain` carries, and it is also the key of the optional `moz`
+block's `domains` map.
+
+The same normalisation is applied to both sides of every comparison that
+produces the file, so one site gets one answer regardless of how it was
+written:
+
+- the client domain from `config.yml`, so `client_domain: www.livingsystems.ca`
+  excludes `livingsystems.ca` and vice versa;
+- each entry of `audit_targets.omit_from_audit`, so an entry written with
+  `www.` still excludes the bare host;
+- each ranked URL's host.
+
+The client test is equality or a dot-suffix match (`blog.livingsystems.ca` is
+the client), **not** a substring match — the substring form silently dropped
+any competitor whose host merely contained the client's
+(`notlivingsystems.ca`).
+
+Tool 2 normalises hosts at ingest too (`src/brand_utils.py`,
+`src/handoff_moz.py`), so the two tools agree on the key without either side
+having to guess.
+
 ---
 
 ## `source_keyword` vs `primary_keyword_for_url`

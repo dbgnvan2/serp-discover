@@ -289,3 +289,22 @@ display_stop_words:
   - you
   - your
   - yours
+
+# ---------------------------------------------------------------------------
+# Fetch outcomes for the organic-row enrichment pass (review chunk D2c,
+# finding D-C-20). `Fetch_Status` carries one of these words on every organic
+# row, so a reader can tell "this page has no author byline" from "we never
+# read this page". The ONLY home for these words — a second copy in Python is
+# how one state came to carry two labels in different outputs (the D2a/D2b
+# lesson).
+fetch_status:
+  enriched: "Enriched"
+  blocked: "Blocked ({status})"
+  unreachable: "Unreachable"
+  not_attempted: "Not Fetched"
+  not_destination_page: "Not The Ranked Page"
+  blocked_warning: >-
+    {blocked} of {attempted} pages were not read (error status or
+    unreachable); their page-level figures read Not Measured rather than zero
+  no_url: "No URL"
+  enrichment_disabled: "Enrichment Off"

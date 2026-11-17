@@ -396,6 +396,18 @@ NULL when unranked), `client_aio_cited` (the AIO cites a client URL — the
 registrable-domain match computed upstream via `_is_client_domain`), and
 `aio_top_sources` (the cited domains).
 
+`has_ai_overview` means an AI Overview on the **located** SERP — the one this
+run asked for. In Balanced mode (`serpapi.ai_fallback_without_location`) a
+keyword whose located SERP has no overview is retried without the location; an
+overview only that probe returns is recorded as `Has_Unlocated_AI_Overview`
+with `AI_Overview_Mode: fallback_without_location` on the overview row, and
+reaches the brief payload as `has_ai_overview_unlocated`. It is evidence that
+Google has an overview for those words, not that a searcher in this market
+sees one, so no CTR loss is charged for it and extraction/reformat plays do
+not route on it (review chunk D2c, finding D-C-21). `AI_Overview_Mode` carries
+all four cases: `direct_in_main`, `token_followup`,
+`fallback_without_location`, `not_present`.
+
 The per-keyword estimate is a **heuristic**, not a measurement:
 `est_ctr_loss = ctr_base(position) × aio_ctr_multiplier`, reduced by
 `citation_credit` when the client is cited inside the AIO; `0` when there is no
@@ -475,6 +487,10 @@ Every AI Overview citation domain is entity-classified (same rules as organic re
 *Spec: seo_geo_review_20260704.md T.3 / T.4 / T.6. Implemented 2026-07-04.*
 
 ### Answer-extractability audit (report Section 5b evidence)
+
+**Which pages are read.** `enrichment.enrich_row` decides, per organic row, whether the ranked page was read at all, and records the outcome in `Fetch_Status`: enriched, blocked (with the HTTP status), unreachable (the fetch raised), not fetched (rank beyond `technical.max_urls_to_enrich`), or not the ranked page (a recovered link resolves to the site root). A response at or above 400 is **recorded and not parsed** — a Cloudflare challenge page's six words are not the ranked page's word count, and its missing byline is not the page's missing byline. The status still reaches SQLite via `save_url_features`, so a blocked page is a record rather than a hole, and "N of M pages returned an error status" reaches the Parsing_Warnings sheet. The outcome words are editorial and live in `serp_vocab.yml` (`fetch_status`). Every page-level measurement below is therefore over the pages that were read, and the rest read `Not Measured`, never zero. The machine-readable state is the row's `Fetch_State`; `Fetch_Status` is only its wording, so editing the vocabulary never moves a count. `brief_data_extraction._build_fetch_coverage` carries that per-keyword count into each of the four enriched-page signal blocks (`schema_signals`, `extractability`, `freshness`, `eeat_signals`) as `fetch_coverage`, so the brief reads every one of those figures against the number of pages actually read; when such a block is empty, its `reason` says whether the pages were blocked or the capture never ran.
+
+**Which host is which.** `domain_utils.normalize_domain` is the single definition used by `classifiers.EntityClassifier` (on the override keys at load and on the host before lookup), `refresh_analysis_outputs`, `generate_domain_override_candidates`, `brief_data_extraction` and `handoff_writer` (the client domain, every `omit_from_audit` entry and each target's host): netloc, lower-cased, no port, no leading `www.`. `www.x.ca` and `x.ca` are the same site and get the same entity type, so an override the user approves in Step 6 is applied on the next run whichever spelling Google returns. The competitor handoff's `targets[].domain` carries that canonical form, and the client test there is equality or a dot-suffix match, not a substring one (`notlivingsystems.ca` is a competitor).
 
 During enrichment, `url_enricher.py` measures how liftable each ranking page's answers are: the number of question-shaped H2/H3 headings (question detection reuses the `title_patterns.py` regexes), the body-text length before the first H2 (a long intro buries the answer), and FAQ presence. `brief_data_extraction._build_extractability` compares those signals on AIO-cited vs uncited pages per keyword (`keyword_profiles.extractability`) and locates the client's own page, so Section 5b formatting advice is grounded in measured differences rather than generic best practice.
 

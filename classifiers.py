@@ -6,6 +6,8 @@ import os
 import re
 import yaml
 
+from domain_utils import normalize_domain
+
 import json
 
 RULES_PATH = os.path.join(os.path.dirname(__file__), "classification_rules.json")
@@ -128,9 +130,28 @@ class EntityClassifier:
         if os.path.exists(override_file):
             try:
                 with open(override_file, 'r') as f:
-                    self.overrides = yaml.safe_load(f) or {}
+                    raw = yaml.safe_load(f) or {}
             except Exception as e:
                 print(f"Warning: Could not load domain overrides: {e}")
+            else:
+                # Both sides of the lookup are normalised, so an override
+                # written either way answers for a host arriving either way
+                # (D2c.2, finding D-C-08). Because normalisation collapses
+                # keys, two entries can land on one host: say so rather
+                # than let file order pick the winner silently (P2). A key
+                # that normalises to nothing is dropped — an empty key
+                # would otherwise answer for every unparseable host.
+                for key, value in raw.items():
+                    host = normalize_domain(key)
+                    if not host:
+                        print("Warning: domain override key "
+                              f"{key!r} is not a host — ignored.")
+                        continue
+                    if host in self.overrides and self.overrides[host] != value:
+                        print(f"Warning: domain overrides disagree on {host}: "
+                              f"{self.overrides[host]!r} then {value!r} "
+                              f"(from {key!r}); using {value!r}.")
+                    self.overrides[host] = value
 
     def classify(self, domain, soup):
         """
@@ -139,12 +160,14 @@ class EntityClassifier:
         """
         evidence = []
         patterns = RULES.get("entity_patterns", {})
-        domain_l = (domain or "").lower()
+        # One host, one answer: `www.x.ca` and `x.ca` are the same site, and
+        # 35 of the 121 overrides used to be applied to only one of them
+        # (D-C-08). The normalised host is what both the override lookup and
+        # the pattern matching below see.
+        domain_l = normalize_domain(domain)
         text = soup.get_text(" ", strip=True).lower() if soup else ""
 
         # 0. Manual Override
-        if domain in self.overrides:
-            return self.overrides[domain], 1.0, ["manual_override"]
         if domain_l in self.overrides:
             return self.overrides[domain_l], 1.0, ["manual_override"]
 

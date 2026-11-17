@@ -10,6 +10,20 @@ import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from urllib.parse import urlparse
+
+from domain_utils import normalize_domain
+
+#: The AI_Overview_Mode value that means "Google returned this overview only
+#: when asked without a location" — a different question from the one the run
+#: asked (finding D-C-21).
+UNLOCATED_AIO_MODE = "fallback_without_location"
+
+#: Content-type cells that record an absence of measurement rather than a
+#: type. Counting them as types made "Not Measured" the plurality category of
+#: every keyword once the enrichment cap applied it to ranks 6-10 (D2c review
+#: finding 1). "N/A" is the field's own missing marker; "Not Measured" is
+#: enrichment.NOT_MEASURED.
+_UNMEASURED_CONTENT_TYPES = {"n/a", "not measured", ""}
 import yaml
 
 from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
@@ -61,11 +75,7 @@ def load_service_like_tokens(path=None):
 
 def _domain_from_link(link):
     """Registrable host from a URL, lowercased, without a www. prefix."""
-    try:
-        netloc = urlparse(str(link or "")).netloc.lower()
-    except ValueError:
-        return ""
-    return netloc.removeprefix("www.")
+    return normalize_domain(link)
 
 
 def _is_client_domain(domain, client_domain_lower):
@@ -143,12 +153,9 @@ def load_client_context_from_config(config):
 
 
 def _extract_domain(url):
-    if not url:
-        return ""
-    try:
-        return urlparse(str(url)).netloc.replace("www.", "").lower()
-    except Exception:
-        return str(url).lower()
+    # `.replace("www.", "")` used to strip the sequence anywhere in the host
+    # (D-C-08); domain_utils is the one definition.
+    return normalize_domain(url)
 
 
 def _safe_int(v, default=0):
@@ -509,6 +516,75 @@ def _classify_paa_intent(paa_rows):
     return buckets
 
 
+#: Fetch states meaning "we never read this page's body", with the
+#: plain-English reason each one is. Keyed by enrichment.py's states.
+_UNREAD_FETCH_STATES = {
+    "blocked": "the site returned an error status",
+    "unreachable": "the page could not be reached",
+    "not_attempted": "the per-run page budget stopped before this rank",
+    "no_url": "the row carried no URL",
+    "enrichment_disabled": "page enrichment was switched off for this run",
+}
+
+
+def _build_fetch_coverage(kw_rows):
+    """Count which of a keyword's top-10 organic pages were actually read.
+
+    P2 / D-C-20: every signal below (schema, extractability, E-E-A-T,
+    freshness) is measured only on pages whose body was fetched. A page
+    the fetch never read contributes no signal, and that is a gap in the
+    measurement, not a finding about the page. This block is the
+    denominator those counts are read against.
+
+    Returns ``rows`` (top-10 rows considered), ``read``, ``unread``,
+    ``by_state`` ({state: count} for unread rows) and ``reason_absent``,
+    the sentence to print when a signal block has no data at all.
+    """
+    rows = kw_rows[:10]
+    unread = Counter()
+    read = 0
+    for row in rows:
+        state = str(row.get("fetch_state") or "")
+        if state in _UNREAD_FETCH_STATES:
+            unread[state] += 1
+        elif state:
+            read += 1
+    unread_total = sum(unread.values())
+    if unread_total:
+        reasons = ", ".join(
+            f"{count} because {_UNREAD_FETCH_STATES[state]}"
+            for state, count in unread.most_common()
+        )
+        reason_absent = (
+            f"{unread_total} of {len(rows)} top-10 pages were not read "
+            f"({reasons}); no page that was read carried this signal"
+        )
+    else:
+        reason_absent = (
+            "no page carried this signal: the analysis JSON predates "
+            "its capture, or page enrichment was switched off"
+        )
+    return {
+        "rows": len(rows),
+        "read": read,
+        "unread": unread_total,
+        "by_state": dict(unread.most_common()),
+        "reason_absent": reason_absent,
+    }
+
+
+def _with_fetch_coverage(signals, coverage):
+    """Attach the fetch coverage to one signal block.
+
+    When the block has no data, its ``reason`` names what happened
+    instead of calling a transient block a permanent absence (P1).
+    """
+    signals["fetch_coverage"] = coverage
+    if not signals.get("data_available"):
+        signals["reason"] = coverage["reason_absent"]
+    return signals
+
+
 def _build_schema_signals(kw_rows):
     """Summarise structured-data signals from enriched top-10 organic rows.
 
@@ -516,9 +592,10 @@ def _build_schema_signals(kw_rows):
     Spec: seo_geo_review_20260704.md T.1/G.2.
 
     Returns a dict with:
-    - ``data_available``: False when no row carries schema enrichment data
-      (e.g. analysis JSON predates schema capture, or enrichment disabled).
-      All other fields are zero/empty in that case.
+    - ``data_available``: False when no row carries schema enrichment
+      data. ``_with_fetch_coverage`` then writes a ``reason`` saying
+      which it was — pages the fetch never read, or a capture that
+      never ran. All other fields are zero/empty in that case.
     - ``enriched_count``: rows that were enriched with schema data.
     - ``schema_type_counts``: {schema.org @type: page count} across rows.
     - ``faq_page_count``: rows with an FAQ block (FAQPage schema or FAQ
@@ -569,8 +646,8 @@ def _build_extractability(kw_rows, cited_domains, paa_questions,
     those signals on pages the AI Overview cites vs pages that merely rank,
     and shows where the client's own page sits.
 
-    Returns data_available=False when no row carries extractability data
-    (analysis JSON predates capture, or enrichment disabled).
+    Returns data_available=False when no row carries extractability
+    data; the caller's ``fetch_coverage`` / ``reason`` say why.
     """
     normalized_paa = [_normalize_question(q) for q in (paa_questions or [])]
     normalized_paa = [q for q in normalized_paa if q]
@@ -629,8 +706,8 @@ def _build_eeat_signals(kw_rows, client_domain_lower):
     Lets the brief say "N of M enriched pages carry credentialed bylines;
     the client's page shows none/some".
 
-    Returns data_available=False when no row carries author-signal data
-    (analysis JSON predates capture, or enrichment disabled).
+    Returns data_available=False when no row carries author-signal
+    data; the caller's ``fetch_coverage`` / ``reason`` say why.
     """
     pages = []
     for row in kw_rows[:10]:
@@ -688,8 +765,8 @@ def _build_freshness(kw_rows, run_created_at, client_domain_lower):
     run's Created_At (NOT wall-clock) so re-extracting an old analysis
     JSON yields stable numbers.
 
-    Returns data_available=False when no row carries freshness data
-    (analysis JSON predates capture, or enrichment disabled). Undated
+    Returns data_available=False when no row carries freshness data;
+    the caller's ``fetch_coverage`` / ``reason`` say why. Undated
     pages are reported honestly via dated_page_count — an absent date is
     never treated as age 0.
     """
@@ -1211,7 +1288,10 @@ def extract_analysis_data_from_json(
         intent_mapping: pre-loaded mapping dict (from load_intent_mapping()).
             If None, loaded once from intent_mapping.yml at the project root.
     """
-    client_domain_lower = (client_domain or "").lower()
+    # Normalised, like every row domain it is compared against. `www.x.ca`
+    # in config.yml used to make every client match fail silently (D2c
+    # review finding 5).
+    client_domain_lower = normalize_domain(client_domain)
     client_name_patterns = client_name_patterns or []
     framework_terms = framework_terms or DEFAULT_CLIENT_CONTEXT["framework_terms"]
     client_phrase_patterns = _client_match_patterns(client_name_patterns)
@@ -1288,6 +1368,11 @@ def extract_analysis_data_from_json(
             "total_results": _safe_int(r.get("Total_Results"), 0),
             "serp_features": r.get("SERP_Features"),
             "has_ai_overview": bool(r.get("Has_Main_AI_Overview")),
+            # An overview only the un-located fallback probe returned is not
+            # one a searcher in this market sees (D2c.13, finding D-C-21).
+            "has_ai_overview_unlocated": bool(
+                r.get("Has_Unlocated_AI_Overview")),
+            "ai_overview_mode": r.get("AI_Overview_Mode"),
             "client_mentioned_in_aio_text": client_mentioned,
             "rank_1": {
                 "title": r.get("Rank_1_Title"),
@@ -1312,6 +1397,7 @@ def extract_analysis_data_from_json(
     rank_deltas = []
     total_organic_rows = 0
     entity_na = 0
+    content_unmeasured = 0
     client_organic = []
     top_sources_by_kw_counter = defaultdict(lambda: defaultdict(lambda: {"appearances": 0, "best_rank": 999, "entity_types": Counter()}))
     # {keyword: {domain: best_rank}} for label-A top-10 rows — feeds the
@@ -1339,9 +1425,11 @@ def extract_analysis_data_from_json(
             entity_by_kw[source_kw][entity] += 1
         else:
             entity_na += 1
-        if content_type != "N/A":
+        if content_type.strip().lower() not in _UNMEASURED_CONTENT_TYPES:
             content_counter[content_type] += 1
             content_breakdown_by_kw[source_kw][content_type] += 1
+        else:
+            content_unmeasured += 1
 
         if label == "A":
             # Fix 5b: apply URL pattern fallback for rows with no content
@@ -1383,6 +1471,11 @@ def extract_analysis_data_from_json(
             # E-E-A-T author signals (Spec: seo_geo_deferred_spec_v1.md
             # #G.3). Older analysis JSONs carry no Author_Present key,
             # which _build_eeat_signals treats as "no data captured".
+            # D-C-20: which pages were actually read. A blocked page's
+            # absent signals are a gap in the fetch, not a fact about the
+            # page, so the coverage travels with the signal counts below.
+            if "Fetch_State" in row:
+                row_profile["fetch_state"] = str(row.get("Fetch_State") or "")
             if "Author_Present" in row:
                 row_profile["author_present"] = bool(row.get("Author_Present"))
                 row_profile["credential_hits"] = row.get("Credential_Hits") or []
@@ -1439,7 +1532,19 @@ def extract_analysis_data_from_json(
     # {keyword: {domain: {count, example_link}}} — domain-level citation
     # records for surface/divergence analysis (Spec: seo_geo_review T.3/T.4).
     aio_citation_domains_by_kw = defaultdict(dict)
+    #: Keywords whose overview came from the un-located fallback probe. Their
+    #: citations are evidence about the topic, not about this market, so they
+    #: are counted apart rather than mixed in (D2c review finding 2).
+    unlocated_citation_count = 0
+    unlocated_keywords = sorted({
+        str(row.get("Source_Keyword"))
+        for row in citations
+        if row.get("AI_Overview_Mode") == UNLOCATED_AIO_MODE
+        and row.get("Source_Keyword")})
     for row in citations:
+        if row.get("AI_Overview_Mode") == UNLOCATED_AIO_MODE:
+            unlocated_citation_count += 1
+            continue
         src = row.get("Source")
         source_kw = row.get("Source_Keyword")
         link = str(row.get("Link") or "")
@@ -1651,8 +1756,16 @@ def extract_analysis_data_from_json(
             phrase = item["phrase"]
             if _contains_phrase(aio_text, _normalize_text(phrase)):
                 key_phrases.append(phrase)
+        unlocated = bool((a_query or {}).get("Has_Unlocated_AI_Overview"))
+        if unlocated:
+            # The words exist; they are just not the answer a searcher here
+            # is shown. Reporting the excerpt and the client mention as this
+            # market's would contradict has_aio: False on the same row.
+            client_mentioned, client_excerpt = False, None
+            sources_named, key_phrases = [], []
         aio_analysis[kw] = {
             "has_aio": bool((a_query or {}).get("Has_Main_AI_Overview")),
+            "has_aio_unlocated": unlocated,
             "aio_length_chars": len(aio_text),
             "sources_named_in_text": sources_named[:10],
             "client_mentioned": client_mentioned,
@@ -1726,6 +1839,7 @@ def extract_analysis_data_from_json(
     keyword_profiles = {}
     for kw in root_keywords:
         kw_rows = sorted(organic_rows_by_kw.get(kw, []), key=lambda x: x["rank"])
+        fetch_coverage = _build_fetch_coverage(kw_rows)
         top_sources = []
         for source, info in sorted(
             top_sources_by_kw_counter.get(kw, {}).items(),
@@ -1813,25 +1927,30 @@ def extract_analysis_data_from_json(
             "client_aio_cited": bool(kw_client_aio),
             "serp_intent": serp_intent,
             "title_patterns": title_patterns,
-            "schema_signals": _build_schema_signals(kw_rows),
+            "schema_signals": _with_fetch_coverage(
+                _build_schema_signals(kw_rows), fetch_coverage),
             "aio_divergence": _build_aio_divergence(
                 aio_citation_domains_by_kw.get(kw, {}),
                 organic_top10_domains_by_kw.get(kw, {}),
                 client_domain_lower,
                 client_cited=bool(kw_client_aio),
             ),
-            "extractability": _build_extractability(
-                kw_rows,
-                aio_citation_domains_by_kw.get(kw, {}),
-                paa_for_kw,
-                client_domain_lower,
-            ),
-            "freshness": _build_freshness(
-                kw_rows,
-                metadata.get("created_at"),
-                client_domain_lower,
-            ),
-            "eeat_signals": _build_eeat_signals(kw_rows, client_domain_lower),
+            "extractability": _with_fetch_coverage(
+                _build_extractability(
+                    kw_rows,
+                    aio_citation_domains_by_kw.get(kw, {}),
+                    paa_for_kw,
+                    client_domain_lower,
+                ), fetch_coverage),
+            "freshness": _with_fetch_coverage(
+                _build_freshness(
+                    kw_rows,
+                    metadata.get("created_at"),
+                    client_domain_lower,
+                ), fetch_coverage),
+            "eeat_signals": _with_fetch_coverage(
+                _build_eeat_signals(kw_rows, client_domain_lower),
+                fetch_coverage),
         }
 
     client_aio_text_mentions = []
@@ -1924,6 +2043,11 @@ def extract_analysis_data_from_json(
             "total_rows": total_organic_rows,
             "entity_classified_count": total_organic_rows - entity_na,
             "entity_unclassified_count": entity_na,
+            # The coverage travels with the figures: a content-type
+            # distribution over 5 of 10 rows is not a distribution over 10
+            # (P2, the D2a rule).
+            "content_type_measured_count": total_organic_rows - content_unmeasured,
+            "content_type_unmeasured_count": content_unmeasured,
         },
         "source_frequency_top30": source_counter.most_common(30),
         "content_type_distribution": content_counter.most_common(10),
@@ -1940,6 +2064,14 @@ def extract_analysis_data_from_json(
         "aio_total_citations": sum(aio_source_counter.values()),
         "aio_unique_sources": len(aio_source_counter),
         "aio_citation_surfaces": aio_citation_surfaces,
+        # P2 — what was left out, and why, travels with what was counted.
+        "aio_citations_excluded_unlocated": {
+            "count": unlocated_citation_count,
+            "keywords": unlocated_keywords,
+            "reason": ("these citations come from an AI Overview Google "
+                       "returned only when asked without a location, so they "
+                       "are evidence about the topic, not about this market"),
+        },
         "aio_trigger_analysis": _build_aio_trigger_analysis(overview, situational_probes),
         "bing_visibility": _build_bing_visibility(bing_rows, root_keywords),
         "forum_threads_by_keyword": dict(forum_threads_by_kw),

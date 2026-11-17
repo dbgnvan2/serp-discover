@@ -46,6 +46,7 @@ except ImportError:
     MozClient = None
     MOZ_AVAILABLE = False
 
+import enrichment
 import feasibility as feasibility_module
 import serp_pagination
 from serp_pagination import (
@@ -801,13 +802,26 @@ def parse_data(keyword, results, query_metadata):
     metrics["Featured_Snippet_Snippet"] = answer_box.get("snippet", "N/A")
 
     # --- AI OVERVIEW (SGE) ---
-    ai_candidate = (
-        results.get('google_ai_overview')
-        or results.get('google_ai_overview_probe')
-        or primary_results.get('ai_overview', {})
-    ) or {}
+    # Which source supplied the overview is part of the finding, not a detail
+    # of how it was fetched (D2c.10, finding D-C-21). The un-located fallback
+    # probe asks Google a different question from the one this run is about:
+    # an overview it alone returns is not an overview on the located SERP.
+    if results.get('google_ai_overview'):
+        ai_candidate = results['google_ai_overview']
+        ai_overview_mode = "token_followup"
+    elif results.get('google_ai_overview_probe'):
+        ai_candidate = results['google_ai_overview_probe']
+        ai_overview_mode = "fallback_without_location"
+    elif primary_results.get('ai_overview'):
+        ai_candidate = primary_results['ai_overview']
+        ai_overview_mode = "direct_in_main"
+    else:
+        ai_candidate = {}
+        ai_overview_mode = "not_present"
     # google_ai_overview returns a full response envelope with ai_overview nested.
     ai_overview_data = ai_candidate.get("ai_overview", ai_candidate)
+    if not ai_overview_data:
+        ai_overview_mode = "not_present"
 
     related_ai_items = []
     for page in results.get("google_related_questions", []) or []:
@@ -820,7 +834,23 @@ def parse_data(keyword, results, query_metadata):
         related_ai_text = _extract_text_blocks_text(related_ai_items[0])
 
     # B. Don't overload "Has_AI_Overview"
-    metrics["Has_Main_AI_Overview"] = bool(ai_overview_data)
+    unlocated = ai_overview_mode == "fallback_without_location"
+    metrics["AI_Overview_Mode"] = ai_overview_mode
+    # True only for an overview on the SERP this run actually asked for. An
+    # overview only the un-located probe returned gets its own flag: it is
+    # evidence that Google has an overview for the words, not that one
+    # appears for a searcher in this market.
+    metrics["Has_Main_AI_Overview"] = bool(ai_overview_data) and not unlocated
+    metrics["Has_Unlocated_AI_Overview"] = bool(ai_overview_data) and unlocated
+    if unlocated:
+        parsing_warnings.append({**common_fields, "Module": "ai_overview",
+                                 "Field": "Has_Main_AI_Overview",
+                                 "Message": (
+                                     "The located SERP returned no AI "
+                                     "Overview; this one came from the "
+                                     "un-located fallback probe, so it is "
+                                     "not charged as AIO exposure for this "
+                                     "market")})
 
     ai_overview_text = ai_overview_data.get("snippet") or _extract_text_blocks_text(ai_overview_data)
 
@@ -843,6 +873,7 @@ def parse_data(keyword, results, query_metadata):
             parsing_warnings.append({**common_fields,
                                      "Module": "ai_citations", "Field": "link", "Message": "Citation link not found"})
         ai_citations.append({**common_fields,
+                             "AI_Overview_Mode": ai_overview_mode,
                              "Title": citation.get("title"),
                              "Link": citation.get("link"),
                              "Source": citation.get("source"),
@@ -1458,14 +1489,20 @@ def _run(run_id):
                     bucket.extend(rows)
 
                 # --- ENRICHMENT LOOP ---
+                if not ENRICHMENT_ENABLED:
+                    for item in o:
+                        enrichment.mark_unmeasured(item, enrichment.DISABLED)
                 if ENRICHMENT_ENABLED:
                     print(f"  - Enriching {len(o)} organic results...")
                     # Update run params hash in storage now that we have it
                     storage.save_run(run_id, query_metadata["params_hash"])
 
+                    fetch_outcomes = {}
                     for item in o:
                         url = item.get("Link")
                         if not url or url == "N/A":
+                            enrichment.mark_unmeasured(
+                                item, enrichment.NO_URL)
                             continue
 
                         # 1. Save basic SERP result to DB
@@ -1476,81 +1513,50 @@ def _run(run_id):
                             query_label=query_label,
                         )
 
-                        # 2. Fetch & Enrich URL (Limit to top 5 to save time/bandwidth for now)
+                        # 2. Fetch & Enrich URL (Limit to top 5 to save
+                        # time/bandwidth for now)
                         try:
                             rank_val = int(item.get("Rank", 99))
                         except (ValueError, TypeError):
                             rank_val = 99
 
-                        # Classify every domain even when we skip HTML fetching for lower ranks.
-                        # This avoids treating "not enriched" as "unclassified" in downstream reports.
-                        e_type, e_conf, e_ev = entity_classifier.classify(domain, None)
+                        # Classify every domain even when we skip HTML
+                        # fetching for lower ranks. This avoids treating
+                        # "not enriched" as "unclassified" downstream.
+                        e_type, e_conf, e_ev = entity_classifier.classify(
+                            domain, None)
                         item['Entity_Type'] = e_type
                         storage.save_domain_features(domain, e_type)
 
-                        # A recovered link is the site root, not the ranked
-                        # page: fetching it would file the homepage's word
-                        # count, schema and author signals as the ranked
-                        # page's. Domain classification above is still sound.
-                        if not item.get("Is_Destination_Page", True):
-                            item['Content_Type'] = "Not Measured"
-                            item['Word_Count'] = "Not Measured"
-                            continue
+                        outcome = enrichment.enrich_row(
+                            item, url, rank_val, MAX_URLS_TO_ENRICH,
+                            enricher, content_classifier, entity_classifier,
+                            storage, domain=domain)
+                        fetch_outcomes[outcome] = fetch_outcomes.get(
+                            outcome, 0) + 1
 
-                        if rank_val <= MAX_URLS_TO_ENRICH:
-                            fetch_res = enricher.fetch_url(url)
-                            if fetch_res:
-                                features = enricher.extract_features(fetch_res)
-                                soup = features.get('soup')
-
-                                # Classify
-                                c_type, c_conf, c_ev = content_classifier.classify(
-                                    url, soup, fetch_res.get('headers'))
-                                e_type, e_conf, e_ev = entity_classifier.classify(
-                                    domain, soup)
-
-                                # Save Features
-                                storage.save_url_features(
-                                    url, fetch_res['status_code'], c_type,
-                                    features.get('schema_types', []),
-                                    features.get('word_count_est', 0),
-                                    c_ev
-                                )
-                                storage.save_domain_features(domain, e_type)
-
-                                # Optional: Add to item dict for Excel output?
-                                item['Content_Type'] = c_type
-                                item['Entity_Type'] = e_type
-                                item['Word_Count'] = features.get(
-                                    'word_count_est', "N/A")
-                                # Schema/FAQ signals feed the brief's
-                                # FAQ / Answer-Extraction Plan (Spec:
-                                # seo_geo_review_20260704.md T.1/G.2).
-                                item['Schema_Types'] = features.get(
-                                    'schema_types', [])
-                                item['FAQ_Present'] = features.get(
-                                    'faq_present', False)
-                                # Answer-extractability signals (T.2).
-                                item['Question_Heading_Count'] = features.get(
-                                    'question_heading_count', 0)
-                                item['Question_Headings'] = features.get(
-                                    'question_headings', [])
-                                item['Intro_Text_Length'] = features.get(
-                                    'intro_text_length', 0)
-                                # Content freshness signals (Spec:
-                                # seo_geo_deferred_spec_v1.md#G.6).
-                                item['Published_Time'] = features.get(
-                                    'published_time')
-                                item['Modified_Time'] = features.get(
-                                    'modified_time')
-                                # E-E-A-T author signals (Spec:
-                                # seo_geo_deferred_spec_v1.md#G.3).
-                                item['Author_Present'] = features.get(
-                                    'author_present', False)
-                                item['Credential_Hits'] = features.get(
-                                    'credential_hits', [])
-                                item['Review_Marker_Present'] = features.get(
-                                    'review_marker_present', False)
+                    # P2 — "N of M pages blocked" reaches a reader, not only
+                    # the log. parsing_warnings is the project's channel for
+                    # what the run could not read.
+                    unread = (fetch_outcomes.get(enrichment.BLOCKED, 0)
+                              + fetch_outcomes.get(enrichment.UNREACHABLE, 0))
+                    attempted = unread + fetch_outcomes.get(
+                        enrichment.ENRICHED, 0)
+                    if unread:
+                        all_parsing_warnings.append({
+                            "Root_Keyword": source_keyword,
+                            "Run_ID": run_id,
+                            "Created_At": query_metadata["created_at"],
+                            "Google_URL": query_metadata["google_url"],
+                            "Params_Hash": query_metadata["params_hash"],
+                            "Source_Keyword": source_keyword,
+                            "Query_Label": query_label,
+                            "Executed_Query": keyword,
+                            "Module": "url_enrichment",
+                            "Field": "Fetch_Status",
+                            "Message": enrichment.status_text(
+                                "blocked_warning", blocked=unread,
+                                attempted=attempted)})
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:

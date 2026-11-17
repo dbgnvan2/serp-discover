@@ -596,6 +596,19 @@ market-analysis report's **Section 5d — AI Overview Exposure** estimates, per
 keyword, how much of your organic click-through the AIO is likely intercepting,
 and whether *your* site is cited **inside** the Overview.
 
+**One AI Overview, two different questions.** The tool asks Google for your
+market (North Vancouver). When a keyword's located search returns no AI
+Overview, it asks the same words again *without* a location, because that
+tells you whether Google has an overview for the topic at all. The two are
+not the same finding, and the report keeps them apart: `AI_Overview_Mode` on
+the Overview sheet says which search the overview came from, and only an
+overview on the **located** search counts as AIO exposure for you. An
+overview that only the un-located search returned is reported as
+`Has_Unlocated_AI_Overview`. Read it as "Google has an answer box for these
+words somewhere, but not for a searcher here" — no estimated click loss is
+charged against it, and no extraction play is routed on it. The
+Parsing_Warnings sheet names every keyword where this happened.
+
 **Why it matters.** Rank no longer equals traffic. Ranking #1 under a rich AIO can
 lose more clicks than ranking #3 with no AIO. And being *cited inside the AIO* is
 the new "position zero" — it partially offsets the visibility the Overview takes.
@@ -812,6 +825,35 @@ Those rows are marked `Is_Destination_Page = FALSE`, and everything that is a
 property of the page reads **Not Measured** rather than a figure taken from
 the site's front page: `Word_Count`, `Content_Type`, the schema / FAQ / author
 signals, and `Page_Authority`.
+
+There is a second reason a row reads Not Measured, and the new
+**`Fetch_Status`** column tells you which it was:
+
+| `Fetch_Status` | What happened | What to do |
+|---|---|---|
+| `Enriched` | The page was read. | Nothing — the page-level figures are real. |
+| `Blocked (403)` / `(429)` / `(503)` | The site answered with an error or a bot challenge instead of the page. | Nothing is wrong with your analysis; the site refused this reader. The figures read Not Measured rather than zero. Re-running later often works, since a block is usually temporary. |
+| `Unreachable` | The request failed outright (timeout, DNS, connection refused). | As above — re-run; the site may have been down. |
+| `Not Fetched` | The result ranked below the enrichment cap (`technical.max_urls_to_enrich`), so the page was never asked for. | Raise the cap if you need page-level detail further down the SERP. |
+| `Not The Ranked Page` | Google hid the destination URL (see above). | Nothing — the site-level findings stand. |
+| `No URL` | The result carried no link at all. | Nothing — there was nothing to fetch. |
+| `Not Enriched (disabled)` | Page enrichment was switched off for this run (`technical.enrichment_enabled`). | Switch it on if you want page-level detail. |
+
+Beside the words there is a machine-readable **`Fetch_State`** column
+(`enriched`, `blocked`, `unreachable`, `not_attempted`,
+`not_destination_page`, `no_url`, `enrichment_disabled`). The words in
+`Fetch_Status` are editable in `serp_vocab.yml`; anything that filters or
+counts rows reads `Fetch_State`, so re-wording a status never changes a
+number.
+
+
+The distinction matters because a blocked page used to be read as a *measured*
+page. A Cloudflare "Checking your browser" page contains about six words, no
+author byline and no FAQ markup, and all three of those used to be filed as
+facts about the competitor's page: a thin, anonymous, unstructured article
+that your own page could easily beat. It was never that page. The run log and
+the **Parsing_Warnings** sheet now say "N of M pages returned an error status
+and were not read".
 
 What still works is everything that is a property of the site: who the
 competitor is, what kind of organisation they are, and the Domain Authority

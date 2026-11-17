@@ -161,8 +161,18 @@ STRATEGIC FLAGS (primary data source for Section 7 priorities):
 
 AI OVERVIEW:
 - aio_analysis: per-keyword AIO profile with has_aio,
-  sources_named_in_text, client_mentioned, client_excerpt,
-  key_phrases, opening_excerpt
+  has_aio_unlocated, sources_named_in_text, client_mentioned,
+  client_excerpt, key_phrases, opening_excerpt
+  - has_aio means an AI Overview on the SERP for THIS market. When
+    has_aio is false and has_aio_unlocated is true, Google returned an
+    overview only when asked without a location: say that Google has
+    an AI Overview for the topic but not for a searcher in this
+    market, and do NOT charge click loss or recommend an extraction
+    play on it. The text fields are deliberately empty for those
+    keywords; do not treat that as "the overview said nothing".
+- aio_citations_excluded_unlocated: count + keywords whose citations
+  were left out for that reason. Name the number if it is non-zero;
+  never add it back into the citation totals.
 - aio_citations_top25, aio_total_citations, aio_unique_sources
 - aio_citation_surfaces: WHERE citations point, entity-classified:
   - by_entity_type: citation count per entity type (directory,

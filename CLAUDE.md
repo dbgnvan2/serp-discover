@@ -134,6 +134,11 @@ Editorial content currently lives in:
   "Not Measured") in different outputs. The minimum itself is a threshold, not
   wording, so it lives in config as `technical.min_da_for_verdict` and
   `feasibility.MIN_DA_FOR_VERDICT` reads it (added review chunk D2a)
+- `serp_vocab.yml` `fetch_status` — the five words a row's `Fetch_Status` can
+  carry (`enriched`, `blocked` with `{status}`, `unreachable`, `not_attempted`,
+  `not_destination_page`) plus `blocked_warning`, the "N of M pages blocked"
+  line. The ONLY home for these words; `enrichment.status_text` reads them
+  (added review chunk D2c / D-C-20)
 - `gsc_messages.yml` — Google Search Console fetch-outcome vocabulary: the
   `label` / `cell` / `coverage` words for each of the three states
   (`measured` / `measured_absent` / `not_reached`, the `gsc_client.STATUS_*`

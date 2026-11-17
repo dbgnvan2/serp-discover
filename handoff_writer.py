@@ -23,11 +23,26 @@ run without it emits the smaller document Tool 2 already accepts.
 import json
 import logging
 import os
-from urllib.parse import urlparse
 
 import jsonschema
 
+from domain_utils import normalize_domain
+
 _HANDOFF_SCHEMA_PATH = os.path.join(os.path.dirname(__file__), "handoff_schema.json")
+
+
+def _is_client_host(domain, client_domain_lower):
+    """True when *domain* is the client's host or a subdomain of it.
+
+    D-C-08: the old test was ``client_domain_lower in domain``, a
+    substring match that dropped any competitor whose host merely
+    contained the client's — ``notlivingsystems.ca`` read as the client.
+    Both sides are already normalised by ``normalize_domain``.
+    """
+    if not domain or not client_domain_lower:
+        return False
+    return (domain == client_domain_lower
+            or domain.endswith("." + client_domain_lower))
 _HANDOFF_SCHEMA = None
 if os.path.exists(_HANDOFF_SCHEMA_PATH):
     with open(_HANDOFF_SCHEMA_PATH) as _f:
@@ -72,8 +87,13 @@ def build_competitor_handoff(
     if not all_organic:
         logging.info("No organic results — competitor handoff not produced.")
         return None
-    omit_set = {d.lower() for d in (omit_from_audit or [])}
-    client_domain_lower = (client_domain or "").lower()
+    # D-C-08: one host, one answer. The omit list, the client domain and
+    # each target's host go through the same normalisation, so an entry
+    # written as "www.x.ca" excludes x.ca and the handoff's competitor key
+    # is the canonical host serp-compete also normalises to at ingest.
+    omit_set = {normalize_domain(d) for d in (omit_from_audit or [])}
+    omit_set.discard("")
+    client_domain_lower = normalize_domain(client_domain)
 
     # Build per-keyword top-N lists; simultaneously track primary keyword per URL.
     # primary_keyword_for_url = keyword where this URL appears at its lowest rank.
@@ -135,9 +155,9 @@ def build_competitor_handoff(
             url = item.get("Link") or item.get("url", "")
             if not url or url == "N/A":
                 continue
-            domain = urlparse(url).netloc.lower()
+            domain = normalize_domain(url)
 
-            if domain == client_domain_lower or client_domain_lower in domain:
+            if _is_client_host(domain, client_domain_lower):
                 client_excluded += 1
                 continue
             if domain in omit_set:

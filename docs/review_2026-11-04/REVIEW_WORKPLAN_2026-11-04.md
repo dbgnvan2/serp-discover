@@ -131,9 +131,14 @@ while building are in `PLAN_D2b_a_failed_fetch_is_not_an_answer.md`. Both
 caches now record whether the provider answered, not only what it said:
 GSC caches an absence only on a completed fetch, and the Moz competitor
 cache is per signal with its own timestamps, so one failed sub-call costs
-one call next run instead of freezing four for 30 days. **D2c** (D-C-08
-`www.` normalisation, D-C-20 error pages, D-C-21 AIO fallback flag) is
-still open. The verdict label landed as `"Not Measured"`, not the
+one call next run instead of freezing four for 30 days. **D2c is done** —
+closing D-C-08, D-C-20 and D-C-21; the plan and its 14 acceptance criteria
+as built are in `PLAN_D2c_one_host_one_answer.md`. `domain_utils.normalize_domain`
+is now the one definition of a host, so all 121 overrides answer for `x.ca`
+and `www.x.ca` alike; a response at or above 400 is recorded and not read,
+with the outcome on every row as `Fetch_Status`; and an AI Overview only the
+un-located fallback probe returned no longer counts as exposure for this
+market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, not the
 `"No DA Data"` this plan wrote — one state, one label, held by a test.
 *Findings:* D-C-04/D-M-02 (S1), D-C-03/D-M-08 (S1), D-M-05 (client_da provenance, High), D-C-02 (S1 GSC), D-C-10 (S2 Moz competitor cache), D-C-08 (S2 `www.` bypasses overrides), D-C-20 (S3 error pages enriched), D-C-21 (S3 AIO fallback flag). *Effort:* L.
 - D-C-08: normalise once in `EntityClassifier.classify` (strip `www.`, lower-case) so the pipeline, `refresh_analysis_outputs` and the override-candidate report agree; test `classify("www.x.ca") == classify("x.ca")` for every override.
@@ -428,7 +433,7 @@ still open. The verdict label landed as `"Not Measured"`, not the
 | D-C-05 | S1 | D3 | Skipped/failed engines get AIVI 0 persisted and ranked #1 | open |
 | D-C-06 | S2 | D4 | CLI re-run overwrites previous timestamped outputs | open |
 | D-C-07 | S2 | D4 | Play-parity HARD-fail can never fire | open |
-| D-C-08 | S2 | D2/D6 | `www.` hosts bypass `domain_overrides` (35/121 overrides) | open |
+| D-C-08 | S2 | D2/D6 | `www.` hosts bypass `domain_overrides` (35/121 overrides) | fixed (D2c) |
 | D-C-09 | S2 | D4 | `refresh_analysis_outputs` leaves `keyword_profiles`/report stale | open |
 | D-C-10 | S2 | D2 | Moz competitor block with one failed sub-call cached 30 days as `ok` | fixed (D2b) |
 | D-C-11 | S2 | D3 | Probe failures drop from denominators; empty answers = "not mentioned" | open |
@@ -440,8 +445,8 @@ still open. The verdict label landed as `"Not Measured"`, not the
 | D-C-17 | S3 | D6 | `serp_intent.thresholds.confidence_*` have no reader | open |
 | D-C-18 | S3 | D4 | §6 prints "unknown" for keys metrics never returns | open |
 | D-C-19 | S3 | D1 | Two feasibility producers with different definitions | fixed `2285828` |
-| D-C-20 | S3 | D2 | 403/429/5xx bodies are classified as content | open |
-| D-C-21 | S3 | D2 | `Has_Main_AI_Overview` set from the no-location fallback | open |
+| D-C-20 | S3 | D2 | 403/429/5xx bodies are classified as content | fixed (D2c) |
+| D-C-21 | S3 | D2 | `Has_Main_AI_Overview` set from the no-location fallback | fixed (D2c) |
 | D-C-22 | S3 | D1 | Rank history polluted by aborted runs and alt-query rows | fixed `2285828` |
 | D-M-01 | High | D1 | = D-C-01 (methodology consequences) | fixed `2285828` |
 | D-M-02 | High | D2 | Unscorable domain enters the feasibility mean as 0 | fixed `9784690` (D2a) |

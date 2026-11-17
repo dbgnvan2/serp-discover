@@ -62,12 +62,29 @@ class TestEveryFetcherRecovers:
 
 class TestPageLevelFiguresAreNotTakenFromTheFrontPage:
     def test_enrichment_skips_a_recovered_link(self):
-        src = _source("serp_audit.py")
-        assert 'if not item.get("Is_Destination_Page", True):' in src, (
-            "fetching a recovered site root files the front page's word "
-            "count, schema and author signals as the ranked page's")
-        assert src.index('if not item.get("Is_Destination_Page", True):') < src.index(
-            "fetch_res = enricher.fetch_url(url)")
+        """A recovered site root is never fetched.
+
+        Fetching it would file the front page's word count, schema and author
+        signals as the ranked page's. Behavioural since review chunk D2c
+        moved the gate into enrichment.enrich_row.
+        """
+        import enrichment
+
+        class _Fetcher:
+            called = False
+
+            def fetch_url(self, url):
+                self.__class__.called = True
+                return {"status_code": 200, "content": b"<html></html>"}
+
+        item = {"Rank": 1, "Is_Destination_Page": False}
+        outcome = enrichment.enrich_row(
+            item, "https://x.ca/", 1, 5, _Fetcher(), None, None, None)
+        assert outcome == enrichment.NOT_DESTINATION_PAGE
+        assert _Fetcher.called is False
+        assert item["Word_Count"] == enrichment.NOT_MEASURED
+        assert item["Fetch_Status"] == enrichment.status_text(
+            enrichment.NOT_DESTINATION_PAGE)
 
     def test_the_flag_reaches_the_rows_enrichment_iterates(self):
         src = _source("serp_audit.py")

@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 import yaml
 
+import domain_utils
 import link_recovery
 from classifiers import EntityClassifier
 
@@ -34,13 +35,14 @@ def normalize_domain(url_or_domain):
     ``Link``, whose netloc is ``www.google.com``. Classifying that would put
     google.com into the override queue and onto the rows as a competitor
     (P1 — unknown is not a terminal value), so a wrapper has no domain here.
-    One definition: refresh_analysis_outputs imports this function.
+    One definition: refresh_analysis_outputs imports this function, and the
+    host normalisation itself is ``domain_utils.normalize_domain`` — the same
+    one ``EntityClassifier`` applies, so the report and the pipeline cannot
+    disagree about which host an override covers (D2c.3, finding D-C-08).
     """
     if link_recovery.is_google_redirect(url_or_domain):
         return ""
-    parsed = urlparse(str(url_or_domain or ""))
-    domain = parsed.netloc if parsed.netloc else str(url_or_domain or "")
-    return domain.lower().replace("www.", "").strip()
+    return domain_utils.normalize_domain(url_or_domain)
 
 
 def collect_candidates(data, overrides, classifier, min_rows=3, min_keywords=2):

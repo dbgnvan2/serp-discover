@@ -52,6 +52,8 @@ market_analysis_*.json
 | `storage.py` | SQLite persistence layer. `save_feasibility_from_row` persists a feasibility assessment from the dict `compute_feasibility` produced, so a field added to the row cannot be dropped on the way to the database (review chunk D2) |
 | `metrics.py` | Volatility & entity dominance calculations; baselines against the previous **completed** run, primary-query rows only (D-C-22) |
 | `url_enricher.py` | URL fetching & feature extraction |
+| `enrichment.py` | One organic row's page-level enrichment, and the fetch-outcome gate: a response at or above 400 is recorded, not read (D2c / D-C-20) |
+| `domain_utils.py` | `normalize_domain` — the one definition of "which host is this", shared by the classifier, the refresh path, the candidate report and the brief extractor (D2c / D-C-08) |
 | `serp-me.py` | Tkinter GUI launcher |
 | `run_pipeline.py` | Pipeline orchestration |
 | `run_control.py` | Launcher process control (no tkinter): one run at a time, stop a run with its child processes, detect a pipeline started elsewhere |
