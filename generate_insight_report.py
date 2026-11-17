@@ -45,6 +45,7 @@ import pattern_matching
 from play_rendering import format_play_cell, format_play_line, load_play_vocab
 
 import aio_exposure
+import feasibility
 from feasibility import index_feasibility_by_keyword
 import commodity_score
 import demand_dashboard
@@ -741,9 +742,22 @@ def _why_this_keyword(feas_record: dict, profile: dict) -> str:
             and gap is not None and avg_da_value is not None):
         bits.append(f"{status}." if status else
                     "No Domain Authority comparison was available for this keyword.")
+    elif status == feasibility.NOT_MEASURED:
+        # There is a mean and a gap here, but not enough of the window was
+        # scored for them to carry a verdict. Printing "they are stronger
+        # than you" off two of ten domains states as fact what the status
+        # line next to it refuses to conclude (P2/P6, finding F7). State the
+        # coverage; withhold the direction.
+        bits.append(
+            f"{status} — {feasibility.coverage_phrase(feas_record.get('da_count'), feas_record.get('da_missing'))}, "
+            "too little of this result page to call the Domain Authority "
+            "comparison either way.")
     else:
+        coverage = feasibility.coverage_phrase(feas_record.get("da_count"),
+                                               feas_record.get("da_missing"))
         against = (f"your site scores {client_da} against an average of "
-                   f"{round(avg_da_value, 1)} for the sites currently ranking")
+                   f"{round(avg_da_value, 1)} for the sites currently ranking "
+                   f"({coverage})")
         # Domain Authority is a third-party estimate on a 0-100 scale, so a gap of
         # a point or two is noise. Calling a direction on it would contradict the
         # feasibility status for no reason a reader could act on.
@@ -911,11 +925,18 @@ def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_
         confidence = profile.get("serp_intent", {}).get("confidence", "")
         is_mixed = profile.get("serp_intent", {}).get("is_mixed", False)
 
-        # Feasibility ranking (High=3, Moderate=2, Low=1, None=0)
+        # Feasibility ranking. "Not Measured" gets its own position below the
+        # three verdicts, and a keyword with no row at all sits below that.
+        # They used to share 0, which said an unmeasured keyword is a worse
+        # bet than one measured as hard — a claim from no data (finding F7).
+        # Last here means "cannot be ranked on Domain Authority", not
+        # "ranked worst": §5c states why for each one, and
+        # _get_best_opportunity_keyword will not recommend one at all.
         feas_rank = (
-            3 if "High" in feas_status
-            else 2 if "Moderate" in feas_status
-            else 1 if "Low" in feas_status
+            4 if "High" in feas_status
+            else 3 if "Moderate" in feas_status
+            else 2 if "Low" in feas_status
+            else 1 if feas_status == feasibility.NOT_MEASURED
             else 0
         )
 
@@ -954,12 +975,25 @@ def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: l
     if not keyword_profiles:
         return None, "No keywords to analyze."
 
-    # Filter to keywords with feasibility data
+    # Filter to keywords with a feasibility VERDICT. A "Not Measured" row is
+    # a record that the keyword was attempted, not a verdict, and naming one
+    # as the single best opportunity recommends a keyword on evidence the
+    # report itself says it does not have (finding F7).
     feas_map = index_feasibility_by_keyword(keyword_feasibility)
-    keywords_with_feas = [kw for kw in keyword_profiles if kw in feas_map]
+    keywords_with_feas = [
+        kw for kw in keyword_profiles
+        if kw in feas_map
+        and feas_map[kw].get("feasibility_status") != feasibility.NOT_MEASURED
+    ]
 
     if not keywords_with_feas:
-        # All keywords lack feasibility data
+        attempted = [kw for kw in keyword_profiles if kw in feas_map]
+        if attempted:
+            return None, (
+                "could not be determined: no keyword has enough Domain "
+                "Authority coverage for a feasibility verdict. Section 5c "
+                "states why for each one.")
+        # No feasibility row at all — the pass did not run.
         return None, "feasibility data is missing. Run with DA credentials to enable ranking. See Section 5c."
 
     # Rank only keywords with feasibility data
@@ -1612,15 +1646,11 @@ def generate_report(data, db_path=None, run_ts=None):
                         for r in feasibility_rows if r.get("Query_Label") == "P"}
 
         # Table header
-        report.append("| Keyword | Client DA | Avg Comp DA | Gap | Status | Recommended Play | Recommended Pivot |")
+        report.append("| Keyword | Client DA | Avg Comp DA | DA Coverage | Gap | Status | Recommended Play | Recommended Pivot |")
         report.append("|---------|-----------|-------------|-----|--------|------------------|-------------------|")
 
-        STATUS_ICONS = {
-            "High Feasibility":     "✅ High",
-            "Moderate Feasibility": "⚠️ Moderate",
-            "Low Feasibility":      "🔴 Low",
-            "Not Measured":         "⚠️ Not measured",
-        }
+        # Labels are editorial and live in feasibility_messages.yml; this was
+        # the fourth Python copy of the same map (review chunk D2a).
 
         def _local_pack_phrase(pack):
             # Honest rendering (B.2, same class as run_feasibility): None = the
@@ -1635,10 +1665,9 @@ def generate_report(data, db_path=None, run_ts=None):
 
         for row in primary_rows:
             kw       = row.get("Keyword") or row.get("original_keyword", "—")
-            client_da = row.get("client_da", "—")
             avg_da   = row.get("avg_serp_da")
             gap      = row.get("gap")
-            status   = STATUS_ICONS.get(row.get("feasibility_status", ""), row.get("feasibility_status", "—"))
+            status   = feasibility.status_label(row.get("feasibility_status", "")) or "—"
             # Coerce before formatting: these arrive from JSON and a string
             # here raises ValueError. §5c is NOT inside _safe_section, so that
             # takes the entire report down (same class as CD.11.5).
@@ -1646,6 +1675,12 @@ def generate_report(data, db_path=None, run_ts=None):
             gap_num    = _as_float(gap)
             avg_da_str = f"{avg_da_num:.0f}" if avg_da_num is not None else "—"
             gap_str    = f"{gap_num:+.0f}" if gap_num is not None else "—"
+            # The denominator travels with the mean (D2a.9, P2), and the
+            # client's own DA says whether it was measured at all (D-M-05).
+            coverage_str = feasibility.coverage_phrase(
+                row.get("da_count"), row.get("da_missing"), short=True)
+            client_da_str = feasibility.client_da_cell(
+                row.get("client_da"), row.get("client_da_source", ""))
 
             play_cell = format_play_cell((feas_kw_profiles.get(kw) or {}).get("recommended_play"))
 
@@ -1660,14 +1695,32 @@ def generate_report(data, db_path=None, run_ts=None):
                 if pivot_result:
                     pack_str = _local_pack_phrase(pivot_result.get("Client_In_Local_Pack"))
                     pivot_feas = pivot_result.get("feasibility_status", "")
-                    p_icon = STATUS_ICONS.get(pivot_feas, pivot_feas)
+                    p_icon = feasibility.status_label(pivot_feas)
                     pivot_cell = f"**{suggested}** — {p_icon}{pack_str}"
                 else:
                     pivot_cell = f"**{suggested}**"
 
-            report.append(f"| {kw} | {client_da} | {avg_da_str} | {gap_str} | {status} | {play_cell} | {pivot_cell} |")
+            report.append(f"| {kw} | {client_da_str} | {avg_da_str} | {coverage_str} "
+                          f"| {gap_str} | {status} | {play_cell} | {pivot_cell} |")
 
         report.append("")
+
+        # Why each unmeasured keyword has no verdict. The reason was computed
+        # and stored on the row, and then rendered nowhere: the only consumer
+        # of `strategy` was the Low Feasibility block below, which a
+        # "Not Measured" row never enters (P21/P25, finding F3).
+        unmeasured_rows = [r for r in primary_rows
+                           if r.get("feasibility_status") == feasibility.NOT_MEASURED]
+        if unmeasured_rows:
+            report.append("### Not measured — why\n")
+            for row in unmeasured_rows:
+                kw = row.get("Keyword") or row.get("original_keyword", "")
+                reason = (row.get("no_measurement_reason") or "").strip()
+                coverage = feasibility.coverage_phrase(
+                    row.get("da_count"), row.get("da_missing"))
+                report.append(f"- **{kw}** — {reason or coverage}"
+                              + (f" ({coverage})" if reason else ""))
+            report.append("")
 
         # Pivot strategy explanations for Low Feasibility keywords
         low_feas = [r for r in primary_rows if r.get("feasibility_status") == "Low Feasibility"]

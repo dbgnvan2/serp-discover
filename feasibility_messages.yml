@@ -1,0 +1,93 @@
+# Feasibility vocabulary — the words and icons the reports use for a
+# feasibility verdict, and the sentences they print when there is no verdict
+# to give.
+#
+# Editorial content: every string here is a judgement about how to tell the
+# reader what was and was not measured, and a non-developer may reasonably
+# want to reword any of it. It lived in Python in four places — two inline
+# dicts in serp_audit.py, one module constant in run_feasibility.py and one
+# function-local dict in generate_insight_report.py — which is how
+# "No DA Data" and "Not Measured" came to mean the same thing with different
+# wording in different outputs.
+#
+# Added by review chunk D2a (D-C-03/D-M-08). Loaded by
+# feasibility.load_messages(); a missing or malformed file degrades to the
+# bare status string, never an aborted report.
+
+# One label per status. The keys are the statuses feasibility.py returns and
+# must match feasibility.StatusLiteral exactly — a test asserts they do.
+#
+# `icon` is the bare glyph (the audit's console line); `label` is the glyph
+# plus the words (the report tables and the feasibility markdown).
+statuses:
+  High Feasibility:
+    icon: "✅"
+    label: "✅ High"
+  Moderate Feasibility:
+    icon: "⚠️"
+    label: "⚠️ Moderate"
+  Low Feasibility:
+    icon: "🔴"
+    label: "🔴 Low"
+  Not Measured:
+    icon: "❓"
+    label: "⚠️ Not measured"
+
+# What to say when a keyword has no measurable gap. The three cases call for
+# different action, so they are not one sentence: no provider is an operator
+# fix, an unscored SERP is a fact about that keyword, and thin coverage is a
+# number the reader should see.
+#
+# Placeholders: {provider} the DA provider's name, {measured} how many ranking
+# domains had a DA record, {window} how many were considered, {minimum} how
+# many a verdict needs.
+no_measurement:
+  no_provider: >-
+    No DA provider reachable — set DATAFORSEO_LOGIN/PASSWORD or MOZ_TOKEN and
+    run again.
+  nothing_in_window: >-
+    No ranking competitor could be scored for this keyword ({provider} was
+    queried). Nothing to pivot away from yet.
+  below_minimum: >-
+    Only {measured} of {window} ranking domain(s) have a DA record from
+    {provider}, below the {minimum} a verdict needs. The mean is reported with
+    its coverage; no pivot is recommended from it.
+
+# How a row states what its average rests on. Rendered beside every mean so a
+# figure drawn from three of ten domains cannot read like one drawn from all
+# ten (P2).
+#
+# Placeholders: {measured}, {window}, {missing} as above.
+coverage:
+  complete: "mean of all {window} ranking domains"
+  partial: "mean of {measured} of {window} ranking domains ({missing} unscored)"
+  none: "no ranking domain scored"
+
+# The same fact in a table column, where the sentence above will not fit. The
+# numbers are the same numbers; only the words are shorter.
+coverage_short:
+  complete: "{window}/{window}"
+  partial: "{measured}/{window} ({missing} unscored)"
+  none: "0/{window}"
+
+# A row from a run written before coverage was recorded. Absent is a third
+# state: printing it as 0 of 0 states a complete failure to measure beside a
+# mean that was in fact measured.
+coverage_unknown:
+  long: "coverage not recorded for this run"
+  short: "—"
+
+# How a Client DA cell says where its own figure came from. A config value is
+# not a measurement, and a report that prints it bare invites the reader to
+# subtract it from a measured competitor mean as though the two were on one
+# scale (D-M-05).
+#
+# Placeholders: {da} the value, {provider} the active DA provider.
+client_da:
+  measured: "{da}"
+  override: "{da} (override)"
+  config_fallback: "{da} (config, not measured by {provider})"
+  not_measured: "not measured"
+  # A row with no client_da_source: written before the provenance was
+  # recorded, so whether this figure was measured is unknown. Not "measured".
+  unknown_source: "{da} (source not recorded)"

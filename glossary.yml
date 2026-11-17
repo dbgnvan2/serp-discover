@@ -177,7 +177,31 @@ columns:
     sheet: Keyword_Feasibility
     definition: >-
       The average Domain Authority of the sites currently ranking for this keyword.
-      This is what you are being compared against.
+      This is what you are being compared against. It averages only the ranking
+      domains that had a Domain Authority record — read da_count beside it, since
+      an average of three domains and an average of ten look identical here.
+  - column: da_count / da_missing
+    sheet: Keyword_Feasibility
+    definition: >-
+      How many of the ranking domains had a Domain Authority record (da_count) and
+      how many did not (da_missing). Together they are the window avg_serp_da was
+      taken over. A domain with no record is left out of the average, never counted
+      as a Domain Authority of zero — counting absences as zeros pulled the average
+      down and made hard keywords look winnable.
+  - column: da_provider
+    sheet: Keyword_Feasibility
+    definition: >-
+      Which service supplied the Domain Authority figures on this row — dataforseo
+      or moz. Their scores are not interchangeable, so never compare a figure from
+      one against a figure from the other, or track a trend across both.
+  - column: client_da_source
+    sheet: Keyword_Feasibility
+    definition: >-
+      Where your own Domain Authority on this row came from: the provider plus the
+      date it was measured, "operator override" if you passed one on the command
+      line, or "config fallback (unmeasured, ...)" when the provider had no record
+      and the value in config.yml stood in. A config value is not a measurement and
+      may be on a different vendor's scale, so a gap built on one is indicative.
   - column: gap
     sheet: Keyword_Feasibility
     definition: >-
@@ -188,8 +212,10 @@ columns:
     sheet: Keyword_Feasibility
     definition: >-
       The gap turned into a normalised score and a High / Moderate / Low verdict.
-      "Not Measured" means Domain Authority could not be fetched, which is different
-      from a low score.
+      "Not Measured" means there was not enough measured Domain Authority to give a
+      verdict — fewer than five ranking domains had a record, or your own Domain
+      Authority was never measured. That is different from a low score, and the row
+      still shows whatever numbers were measured.
   - column: pivot_status / suggested_keyword / all_variants
     sheet: Keyword_Feasibility
     definition: >-
@@ -289,9 +315,31 @@ terms:
   - term: DA gap
     aliases: ["DA gap", "Gap", "Avg Comp DA"]
     definition: >-
-      Your Domain Authority minus the average of the sites currently ranking. A
-      negative gap means you are stronger than the page you would be competing with,
-      so ranking is realistic. A positive gap means they are stronger.
+      The average Domain Authority of the sites currently ranking, minus yours. A
+      negative gap means you are stronger than the pages you would be competing
+      with, so ranking is realistic. A positive gap means they are stronger.
+
+  - term: DA coverage
+    aliases: ["DA Coverage", "DA coverage", "unscored"]
+    definition: >-
+      How much of the ranking page the average rests on, written as "7/10 (3
+      unscored)": seven of the ten ranking domains had a Domain Authority record
+      and three did not. Read it before the gap. The same gap from three domains is
+      a weaker claim than from ten, and nothing else on the row tells you which
+      you are looking at. A dash means the coverage was not recorded for that run
+      (an older report), which is not the same as nothing having been scored.
+
+  - term: Not measured
+    aliases: ["Not measured", "Not Measured"]
+    definition: >-
+      The tool tried and could not get enough data to answer, so it says so instead
+      of guessing. For feasibility it means fewer than five ranking domains carried
+      a Domain Authority record, or your own was never measured — not that the
+      keyword is hard. The keyword is still listed, with a line under "Not
+      measured — why" saying which case it is, and the tool withholds the things
+      that would rest on a verdict: no pivot recommendation, no "you are stronger"
+      comparison, and no place in the best-opportunity pick. Re-run once the data
+      provider is reachable.
 
   - term: organic position
     aliases: ["organic position", "organic rank", "organic results"]

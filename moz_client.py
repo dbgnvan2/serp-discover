@@ -74,6 +74,8 @@ from typing import Iterator
 
 from moz_jsonrpc import MozRpcError, moz_call
 
+import feasibility
+
 logger = logging.getLogger(__name__)
 
 # Python 3.11+ exposes datetime.UTC; earlier versions need timezone.utc
@@ -91,6 +93,10 @@ except ImportError:
 SITE_METRICS_METHOD = "data.site.metrics.fetch.multiple"
 
 #: Maximum targets per Moz API request.
+# Fallback for how many days a cached absence stays good. The real value is
+# `moz.negative_cache_ttl_days` in config.yml, mapped in from_config (P4).
+DEFAULT_NEGATIVE_CACHE_TTL_DAYS = 7
+
 MOZ_BATCH_SIZE: int = 50
 
 #: Request timeout in seconds.
@@ -148,6 +154,17 @@ def _cache_key(url: str) -> str:
 # Client
 # ---------------------------------------------------------------------------
 
+def _int_or_none(value):
+    """``int(value)`` when Moz sent a number, else ``None``.
+
+    ``int(value or 0)`` cannot tell "Moz says 0" from "Moz sent nothing", and
+    booleans are ints in Python, so they are excluded explicitly.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    return int(value)
+
+
 class MozClient:
     """Moz Data API site-metrics client with a local SQLite cache.
 
@@ -159,6 +176,10 @@ class MozClient:
     cache_ttl_days:
         Number of days before a cached result is considered stale.
         Defaults to 30.  DA changes slowly so frequent refreshes are wasteful.
+    negative_cache_ttl_days:
+        Days before a cached *absence* (a row with no domain_authority) is
+        asked again. Supplied from ``config.yml``
+        ``moz.negative_cache_ttl_days``; clamped to ``cache_ttl_days``.
     scope:
         Moz site-query scope. See :data:`DEFAULT_SITE_SCOPE`.
     batch_size:
@@ -178,6 +199,7 @@ class MozClient:
         self,
         db_path: str = "serp_data.db",
         cache_ttl_days: int = 30,
+        negative_cache_ttl_days: int | None = None,
         scope: str = DEFAULT_SITE_SCOPE,
         batch_size: int = MOZ_BATCH_SIZE,
         link_count_fields: tuple[str, ...] | list[str] | None = None,
@@ -191,6 +213,11 @@ class MozClient:
         self._auth_header = {"x-moz-token": token}
         self._db_path = db_path
         self._cache_ttl = timedelta(days=cache_ttl_days)
+        # An absence expires sooner than a measurement: see _cache_lookup.
+        if negative_cache_ttl_days is None:
+            negative_cache_ttl_days = DEFAULT_NEGATIVE_CACHE_TTL_DAYS
+        self._negative_cache_ttl = timedelta(
+            days=min(int(negative_cache_ttl_days), cache_ttl_days))
         self._scope = scope or DEFAULT_SITE_SCOPE
         self._batch_size = batch_size or MOZ_BATCH_SIZE
         self._link_count_fields = tuple(
@@ -217,6 +244,8 @@ class MozClient:
         return cls(
             db_path=db_path,
             cache_ttl_days=int(moz_cfg.get("cache_ttl_days", 30)),
+            negative_cache_ttl_days=int(moz_cfg.get(
+                "negative_cache_ttl_days", DEFAULT_NEGATIVE_CACHE_TTL_DAYS)),
             scope=site_cfg.get("scope") or DEFAULT_SITE_SCOPE,
             batch_size=int(site_cfg.get("batch_size") or MOZ_BATCH_SIZE),
             link_count_fields=site_cfg.get("link_count_fields"),
@@ -241,8 +270,14 @@ class MozClient:
         Returns
         -------
         dict mapping **each input URL** to
-        ``{"da": int, "pa": int, "spam_score": int | None,
+        ``{"da": int | None, "pa": int | None, "spam_score": int | None,
         "link_counts": dict, "fetched_at": str}``.
+
+        ``da``/``pa`` are ``None`` when Moz answered about the URL but holds
+        no authority figure for it. That is a different fact from the URL
+        being absent from the result, which means it was never successfully
+        asked about; only the first may be cached, and neither may be read as
+        a DA of 0 (review chunk D2, finding D-C-04).
 
         URLs that could not be fetched (HTTP error, timeout, no Moz record)
         are omitted from the result rather than raising, so a partial batch
@@ -319,20 +354,35 @@ class MozClient:
                 "Moz site metrics: %d of %d targets returned no metrics (first: %s)",
                 len(missing), len(urls), missing[0],
             )
+        # A row Moz returned can still hold no domain_authority (review
+        # chunk D2 stopped coercing that to 0). The count above only sees
+        # rows that are absent altogether, so a batch of answered rows with
+        # no DA in any of them logged as a clean fetch (P2).
+        coverage = feasibility.batch_coverage(results, asked=urls)
+        if coverage.unmeasured:
+            logger.warning(
+                "Moz site metrics: %d of %d returned rows hold no "
+                "domain_authority — those targets are unmeasured, not DA 0",
+                coverage.unmeasured, coverage.records,
+            )
         return results
 
     def _parse_site_metrics(self, metrics: dict, fetched_at: str) -> dict:
         """Map one Moz ``site_metrics`` object to this client's return shape.
 
-        ``da``/``pa`` keep the legacy ``or 0`` coercion so feasibility scoring
-        is unchanged by this upgrade (spec decision gate D-3). ``spam_score``
-        is ``None`` when Moz has no value — never a fabricated 0, which would
-        read as "clean site" (spec design principle 3).
+        ``da``/``pa`` are ``None`` when Moz holds no value, for the same reason
+        ``spam_score`` always was: a fabricated 0 reads as a measurement. The
+        legacy ``or 0`` coercion here was kept deliberately by the Moz upgrade
+        (spec decision gate D-3, "feasibility scoring is unchanged by this
+        upgrade"), and review chunk D2 reverses that decision — a DA of 0 for
+        an unscored domain dragged the competitor mean down, which shrank the
+        gap and flipped verdicts toward feasible (D-C-04/D-M-02). The gate is
+        annotated in moz_api_upgrade_spec_v1.md.
         """
         spam = metrics.get("spam_score")
         return {
-            "da": int(metrics.get("domain_authority") or 0),
-            "pa": int(metrics.get("page_authority") or 0),
+            "da": _int_or_none(metrics.get("domain_authority")),
+            "pa": _int_or_none(metrics.get("page_authority")),
             "spam_score": (
                 int(spam) if isinstance(spam, (int, float))
                 and not isinstance(spam, bool) else None
@@ -385,9 +435,18 @@ class MozClient:
         A cached entry is considered fresh if its ``fetched_at`` timestamp is
         within :attr:`_cache_ttl` of now. Cached results are returned keyed by
         the caller's input URL, not by the normalised cache key.
+
+        A row whose ``domain_authority`` is NULL records an absence, not a
+        measurement, and an absence stops being true the moment Moz indexes
+        the domain. It therefore expires on the shorter
+        :attr:`_negative_cache_ttl`; holding it for the full TTL left a
+        keyword reading "Not Measured" for a month after the figure became
+        available, with no path back (P1; review chunk D2, finding F6).
         """
         cached: dict[str, dict] = {}
-        cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
+        now = datetime.now(_UTC)
+        cutoff = (now - self._cache_ttl).isoformat()
+        negative_cutoff = (now - self._negative_cache_ttl).isoformat()
 
         key_to_urls: dict[str, list[str]] = {}
         for url in urls:
@@ -409,7 +468,9 @@ class MozClient:
                 ).fetchall())
 
         for key, da, pa, fetched_at, spam_score, link_counts in rows:
-            if not fetched_at or fetched_at < cutoff:
+            if not fetched_at:
+                continue
+            if fetched_at < (cutoff if da is not None else negative_cutoff):
                 continue
             entry = {
                 "da": da,
@@ -425,7 +486,15 @@ class MozClient:
         return cached, to_fetch
 
     def _cache_store(self, results: dict[str, dict]) -> None:
-        """Upsert *results* into the cache table under normalised keys."""
+        """Upsert *results* into the cache table under normalised keys.
+
+        ``domain_authority`` and ``page_authority`` are nullable, and a
+        ``None`` is stored as SQL NULL on purpose: it is the ``found=0``
+        sentinel. The row says Moz was asked and answered, so the URL is not
+        refetched inside the TTL; the NULL says there is no figure, so no
+        consumer may average it. A 0 here would be indistinguishable from a
+        real DA of 0 (D-C-04).
+        """
         rows = [
             (
                 _cache_key(url),

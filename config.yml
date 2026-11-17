@@ -39,6 +39,13 @@ app:
   - enter_cautiously
 moz:
   cache_ttl_days: 30
+  # Days a cached *absence* stays good. A row whose domain_authority is NULL
+  # records "the provider was asked and holds no figure" — a fact that can
+  # change the moment the provider crawls the domain, unlike a measured DA.
+  # Holding it for the full cache_ttl_days means a keyword reads
+  # "Not Measured" for a month after the figure became available, so
+  # absences expire sooner and are re-asked (review chunk D2, finding F6).
+  negative_cache_ttl_days: 7
   # Master switch for the Moz Data API (api.moz.com/jsonrpc). Per-method
   # flags are added by their own tasks and gate spend independently.
   enabled: true

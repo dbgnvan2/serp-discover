@@ -198,10 +198,15 @@ class TestTheExtractedHelpersBehave:
         """P9/P31 — filtering first slides rank 11 into "the top 10"."""
         rows = [{"Link": "N/A" if i <= 3 else f"https://r{i}.ca"}
                 for i in range(1, 15)]
-        urls = feasibility.url_window(rows)
-        assert len(urls) == feasibility.TOP_N_FOR_FEASIBILITY - 3, urls
-        assert "https://r11.ca" not in urls, (
+        window = feasibility.url_window(rows)
+        assert len(window.urls) == feasibility.TOP_N_FOR_FEASIBILITY - 3, window
+        assert "https://r11.ca" not in window.urls, (
             "rank 11 was pulled into the window to replace a blank")
+        # D2a: the three unresolved positions are reported, not discarded —
+        # the denominator a mean is quoted over is the window, not the
+        # usable rows.
+        assert (window.unresolved, window.window) == (
+            3, feasibility.TOP_N_FOR_FEASIBILITY), window
 
     def test_the_hole_is_reported(self):
         logged = []

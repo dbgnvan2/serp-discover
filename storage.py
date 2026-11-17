@@ -105,6 +105,14 @@ class SerpStorage:
             feasibility_status  TEXT,
             client_in_local_pack INTEGER,   -- 0/1; NULL for primary keywords
             pivot_variants      TEXT,       -- JSON array of neighbourhood variants
+            -- Coverage travels with the mean: avg_serp_da over 2 of 10 domains
+            -- and over 10 of 10 are different facts that read identically
+            -- without these (review chunk D2, finding F9). NULL = a row
+            -- written before D2a, which is "unknown", not 0 of 0.
+            da_count            INTEGER,    -- domains with a DA figure
+            da_missing          INTEGER,    -- window positions with none
+            da_provider         TEXT,       -- "dataforseo" | "moz" | "none"
+            client_da_source    TEXT,       -- how client_da was obtained
             computed_at         TEXT,
             PRIMARY KEY (keyword_text, run_id),
             FOREIGN KEY(run_id) REFERENCES runs(run_id)
@@ -130,6 +138,12 @@ class SerpStorage:
         for table, col, col_type in [
             ("runs", "completed_at", "TEXT"),
             ("serp_results", "query_label", "TEXT"),
+            # D2a coverage/provenance. Rows written before this keep NULL,
+            # which means "not recorded", never "0 of 0" (finding F9).
+            ("keyword_feasibility", "da_count", "INTEGER"),
+            ("keyword_feasibility", "da_missing", "INTEGER"),
+            ("keyword_feasibility", "da_provider", "TEXT"),
+            ("keyword_feasibility", "client_da_source", "TEXT"),
         ]:
             try:
                 c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
@@ -244,12 +258,16 @@ class SerpStorage:
         run_id: str,
         query_label: str,
         avg_serp_da: float | None,
-        client_da: int,
+        client_da: int | None,
         gap: float | None,
         feasibility_status: str,
         feasibility_score: float | None,
         client_in_local_pack: int | None,
         pivot_variants: list,
+        da_count: int | None = None,
+        da_missing: int | None = None,
+        da_provider: str | None = None,
+        client_da_source: str | None = None,
     ) -> None:
         """Upsert a feasibility assessment row.
 
@@ -265,12 +283,16 @@ class SerpStorage:
             Mean Domain Authority of the top-10 competitors (``None`` if
             no Moz data was available).
         client_da:
-            Domain Authority of the non-profit client.
+            Domain Authority of the non-profit client, or ``None`` when no
+            provider returned one and no config fallback applied. A fabricated
+            0 here would read as a measurement (review chunk D2).
         gap:
             ``avg_serp_da - client_da`` (``None`` if no Moz data).
         feasibility_status:
-            ``"High Feasibility"``, ``"Moderate Feasibility"``, or
-            ``"Low Feasibility"``.
+            ``"High Feasibility"``, ``"Moderate Feasibility"``,
+            ``"Low Feasibility"``, or ``"Not Measured"`` when too little of
+            the window had a DA record for a verdict
+            (``feasibility.NOT_MEASURED``).
         feasibility_score:
             Normalised score 0.0–1.0 (``None`` if no Moz data).
         client_in_local_pack:
@@ -278,6 +300,19 @@ class SerpStorage:
             keyword, ``0`` if not, ``None`` for primary keywords (not checked).
         pivot_variants:
             List of neighbourhood-variant keyword strings.
+        da_count / da_missing:
+            How many of the window's positions carried a DA figure and how
+            many did not. ``None`` means the caller did not record it, which
+            is not the same as 0 of 0 — every reader of these two must keep
+            absent and zero apart (finding F9).
+        da_provider:
+            Which provider was asked (``"dataforseo"``, ``"moz"``,
+            ``"none"``). The two providers' 0–100 scales are different
+            vendors' models, so a gap is only like-for-like within one.
+        client_da_source:
+            How ``client_da`` was obtained — a measurement, the config
+            fallback, or not measured. Reported beside the figure so a
+            config value is never read as a measurement.
         """
         pivot_json = json.dumps(pivot_variants)
         computed_at = datetime.now().isoformat()
@@ -286,12 +321,53 @@ class SerpStorage:
                 """INSERT OR REPLACE INTO keyword_feasibility
                    (keyword_text, run_id, query_label, avg_serp_da, client_da,
                     gap, feasibility_score, feasibility_status,
-                    client_in_local_pack, pivot_variants, computed_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                    client_in_local_pack, pivot_variants, da_count,
+                    da_missing, da_provider, client_da_source, computed_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
                 (keyword_text, run_id, query_label, avg_serp_da, client_da,
                  gap, feasibility_score, feasibility_status,
-                 client_in_local_pack, pivot_json, computed_at),
+                 client_in_local_pack, pivot_json, da_count, da_missing,
+                 da_provider, client_da_source, computed_at),
             )
+
+    def save_feasibility_from_row(
+        self,
+        row: dict,
+        run_id: str,
+        query_label: str,
+        client_in_local_pack: int | None = None,
+        pivot_variants: list | None = None,
+    ) -> None:
+        """Persist one feasibility row as :func:`compute_feasibility` produced it.
+
+        The caller already holds the whole assessment as a dict — the mean,
+        the gap, the verdict, the coverage and the provenance. Re-listing
+        those fields at each call site is how the coverage came to be written
+        to the JSON and the report but not to the database: two new fields,
+        two call sites, and nothing that fails when one is forgotten
+        (finding F9). Everything this table records travels in *row*; only
+        the three things that are not part of the assessment are arguments.
+
+        Unknown keys are ignored, so a row from an older run (no
+        ``da_count``) stores NULL rather than raising — NULL being "not
+        recorded", never 0.
+        """
+        self.save_keyword_feasibility(
+            keyword_text=row.get("Keyword") or row.get("keyword_text") or "",
+            run_id=run_id,
+            query_label=query_label,
+            avg_serp_da=row.get("avg_serp_da"),
+            client_da=row.get("client_da"),
+            gap=row.get("gap"),
+            feasibility_status=row.get("feasibility_status", ""),
+            feasibility_score=row.get("feasibility_score"),
+            client_in_local_pack=client_in_local_pack,
+            pivot_variants=pivot_variants or [],
+            da_count=row.get("da_count"),
+            da_missing=row.get("da_missing"),
+            da_provider=row.get("da_provider"),
+            client_da_source=row.get("client_da_source"),
+        )
 
     def get_keyword_feasibility(self, run_id: str) -> list[dict]:
         """Return all feasibility rows for *run_id*, ordered by gap descending.

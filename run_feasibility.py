@@ -196,18 +196,22 @@ def _fetch_pivot_local_pack(keyword: str, config: dict) -> tuple[list[dict], boo
 def _fetch_pivot_organic_urls(
     keyword: str, config: dict,
     max_urls: int = feasibility_module.TOP_N_FOR_FEASIBILITY,
-) -> tuple[list[str], bool]:
-    """Fetch organic results for a pivot keyword and return ``(urls, ok)``.
+) -> tuple[feasibility_module.URLWindow, bool]:
+    """Fetch a pivot keyword's organic window and return ``(window, ok)``.
 
     ``ok`` is ``False`` when the fetch could not be performed or failed, so the
     caller can distinguish a measurement failure from a genuinely empty SERP
     (B.2). URLs in any raised exception are scrubbed of the API key (B.3).
+
+    The window is sliced before the linkless positions are dropped, and the
+    holes are counted, for the reason `feasibility.url_window` gives.
     """
+    empty = feasibility_module.URLWindow([], 0, 0)
     if not REQUESTS_AVAILABLE:
-        return [], False
+        return empty, False
     serpapi_key = os.environ.get("SERPAPI_KEY", "")
     if not serpapi_key:
-        return [], False
+        return empty, False
     serpapi_cfg = config.get("serpapi", {})
     params = {
         "api_key": serpapi_key,
@@ -227,10 +231,14 @@ def _fetch_pivot_organic_urls(
         # unwrap Google's redirect links itself (P5: the same fix on every
         # sibling call site).
         link_recovery.recover_response(data)
-        return [r.get("link", "") for r in data.get("organic_results", [])[:max_urls] if r.get("link")], True
+        window = data.get("organic_results", [])[:max_urls]
+        urls = [r.get("link", "") for r in window if r.get("link")]
+        return feasibility_module.URLWindow(
+            urls=urls, unresolved=len(window) - len(urls),
+            window=len(window)), True
     except Exception as exc:
         logger.warning("Pivot organic fetch failed for '%s': %s", keyword, _scrub_secrets(exc))
-        return [], False
+        return empty, False
 
 
 # ---------------------------------------------------------------------------
@@ -240,35 +248,54 @@ def _fetch_pivot_organic_urls(
 def _get_organic_urls_by_keyword(
     data: dict,
     max_per_keyword: int = feasibility_module.TOP_N_FOR_FEASIBILITY,
-) -> dict[str, list[str]]:
-    """Return top organic URLs keyed by keyword (primary queries only)."""
-    by_kw: dict[str, list[str]] = {}
-    wrapped = 0
+) -> dict[str, feasibility_module.URLWindow]:
+    """Return each keyword's top-N window (primary queries only).
+
+    Slice first, then drop what cannot be scored, and count the holes — the
+    same order as `feasibility.url_window`, for the reason its docstring
+    gives. Filtering before slicing slid ranks 11, 12 ... into a set every
+    output calls "the top 10", and published it as complete coverage
+    (P9/P31).
+    """
+    by_kw: dict[str, list] = {}
     for row in data.get("organic_results", []):
         if row.get("Query_Label") != "A":
             continue
         kw = row.get("Source_Keyword")
-        url = row.get("Link") or row.get("URL") or ""
-        rank = int(row.get("Rank") or 999)
-        if not kw or not url:
-            continue
-        # A run written before link recovery stored Google's redirect wrapper.
-        # Its domain reads google.com, so it would be scored as a competitor
-        # with Google's authority; drop it and count it instead (P2).
-        if link_recovery.is_google_redirect(url):
-            wrapped += 1
+        if not kw:
             continue
         by_kw.setdefault(kw, [])
-        by_kw[kw].append((rank, url))
+        by_kw[kw].append((int(row.get("Rank") or 999),
+                          row.get("Link") or row.get("URL") or ""))
+
+    wrapped = 0
+    result: dict[str, feasibility_module.URLWindow] = {}
+    for kw, pairs in by_kw.items():
+        pairs.sort(key=lambda x: x[0])
+        window = pairs[:max_per_keyword]
+        urls = []
+        for _, url in window:
+            # A run written before link recovery stored Google's redirect
+            # wrapper. Its domain reads google.com, so it would be scored as
+            # a competitor with Google's authority. It is a position that
+            # cannot be measured, not a position with no authority (P2).
+            if url and link_recovery.is_google_redirect(url):
+                wrapped += 1
+                continue
+            # feasibility.usable_url, not a local emptiness test: an "N/A"
+            # link passed the local test and was sent to the provider as a
+            # target (one definition, review chunk D2).
+            if feasibility_module.usable_url(url):
+                urls.append(url)
+        result[kw] = feasibility_module.URLWindow(
+            urls=urls, unresolved=len(window) - len(urls),
+            window=len(window))
     if wrapped:
         logger.warning(
             "%d organic row(s) in this run's output still hold a Google "
-            "redirect wrapper instead of a destination URL and were skipped; "
-            "re-run the audit to measure them.", wrapped)
-    result = {}
-    for kw, pairs in by_kw.items():
-        pairs.sort(key=lambda x: x[0])
-        result[kw] = [url for _, url in pairs[:max_per_keyword]]
+            "redirect wrapper instead of a destination URL and could not be "
+            "scored; they are reported as unscored coverage. Re-run the audit "
+            "to measure them.", wrapped)
     return result
 
 
@@ -284,12 +311,14 @@ def run_feasibility_analysis(
     generate_insight_report.py Section 5b.
     """
     feasibility_cfg = config.get("feasibility", {})
-    client_da = client_da_override or feasibility_cfg.get("client_da", 35)
+    config_client_da = feasibility_cfg.get("client_da", 35)
     neighborhoods = feasibility_cfg.get("neighborhoods", ["Lonsdale"])
     location = feasibility_cfg.get("non_profit_location", "North Vancouver")
     client_domain = (config.get("analysis_report", {}).get("client_domain") or "").lower()
 
     cache_ttl = config.get("moz", {}).get("cache_ttl_days", 30)
+    # An absence is re-asked sooner than a measurement is refreshed (F6).
+    negative_ttl = config.get("moz", {}).get("negative_cache_ttl_days", 7)
 
     # DA client: prefer DataForSEO, fall back to Moz
     da_client = None
@@ -297,7 +326,9 @@ def run_feasibility_analysis(
 
     if DATAFORSEO_AVAILABLE and os.environ.get("DATAFORSEO_LOGIN") and os.environ.get("DATAFORSEO_PASSWORD"):
         try:
-            da_client = DataForSEOClient(cache_ttl_days=cache_ttl)
+            da_client = DataForSEOClient(
+                cache_ttl_days=cache_ttl,
+                negative_cache_ttl_days=negative_ttl)
             da_source = "dataforseo"
             logger.info("DA client: DataForSEO (cache TTL: %d days)", cache_ttl)
         except RuntimeError as exc:
@@ -314,7 +345,7 @@ def run_feasibility_analysis(
     if da_client is None:
         logger.warning(
             "No DA client available — set DATAFORSEO_LOGIN/PASSWORD or MOZ_TOKEN in .env. "
-            "Keywords will be marked 'No DA Data'."
+            "Keywords will be marked 'Not Measured'."
         )
 
     # Unified fetch method regardless of which client is active
@@ -326,19 +357,34 @@ def run_feasibility_analysis(
         return da_client.get_moz_metrics(urls)  # Moz interface
 
     urls_by_kw = _get_organic_urls_by_keyword(data)
-    all_urls = list({url for urls in urls_by_kw.values() for url in urls})
+    all_urls = list({url for w in urls_by_kw.values() for url in w.urls})
+
+    # The client goes into the same batch as the competitors, so both sides of
+    # the gap come off one provider's scale (D-M-05). One definition, shared
+    # with serp_audit's in-pipeline pass.
+    all_urls = feasibility_module.with_client_url(
+        all_urls, f"https://{client_domain}" if client_domain else "")
 
     da_metrics: dict[str, dict] = {}
-    da_data_available = False
     if da_client and all_urls:
         logger.info("Fetching DA for %d unique URLs via %s...", len(all_urls), da_source)
         da_metrics = _get_metrics(all_urls)
-        da_data_available = bool(da_metrics)
-        logger.info("%s returned DA for %d URLs", da_source, len(da_metrics))
-        if not da_data_available:
+        # len(da_metrics) is not the number of DA figures: since D2 a URL the
+        # provider answered about but holds no rank for is present with
+        # da: None. Logging the record count read as "DA for 3 URLs" when
+        # none carried one, and `if not da_metrics` never fired on a batch
+        # that measured nothing (P2/P6).
+        cov = feasibility_module.batch_coverage(da_metrics, asked=all_urls)
+        logger.info(
+            "%s answered for %d of %d URLs; %d carry a DA figure, %d have no "
+            "DA record", da_source, cov.records, cov.asked, cov.measured,
+            cov.unmeasured,
+        )
+        if not cov.measured:
             logger.warning(
-                "%s returned no data — keywords will be marked 'No DA Data'. "
-                "Check credentials and account limits.", da_source
+                "%s measured no DA at all — every keyword will read "
+                "'Not Measured'. Check credentials and account limits.",
+                da_source
             )
 
     results: list[dict] = []
@@ -357,18 +403,24 @@ def run_feasibility_analysis(
         if domain_part and domain_part not in domain_to_da:
             domain_to_da[domain_part] = metrics
 
+    client_da, client_da_source = feasibility_module.resolve_client_da(
+        client_domain,
+        lambda d: (domain_to_da.get(d) or {}),
+        da_source, config_client_da, client_da_override, logger.info,
+        logger.warning)
+
     keywords = sorted(urls_by_kw.keys())
     logger.info("Scoring feasibility for %d keywords...", len(keywords))
 
     for kw in keywords:
-        urls = urls_by_kw[kw]
+        kw_window = urls_by_kw[kw]
         # One definition of the input set, shared with the in-pipeline pass in
-        # serp_audit (feasibility.select_competitor_das — finding D-C-19).
+        # serp_audit (feasibility.competitor_da_window — finding D-C-19).
         # `urls` is already the top N by absolute Rank; the helper drops the
         # client's own domain from that window and omits URLs with no DA
         # record (None is not a DA of 0).
-        competitor_das = feasibility_module.select_competitor_das(
-            urls,
+        da_window = feasibility_module.competitor_da_window(
+            kw_window,
             lambda u: (domain_to_da.get(feasibility_module.domain_of(u)) or {}).get("da"),
             client_domain=client_domain,
         )
@@ -376,24 +428,38 @@ def run_feasibility_analysis(
         # Gate: only service-intent keywords get a neighbourhood pivot/variants.
         # Informational keywords ("how does birth order affect personality West
         # Vancouver") get none — a geo variant is nonsense (B.1.c). Computed once
-        # so BOTH the scored and No-DA branches honour it.
+        # so BOTH the scored and unmeasured branches honour it.
         kw_service_like = _is_service_like(kw, SERVICE_LIKE_TOKENS, location) \
             if SERVICE_GATE_AVAILABLE else True
 
-        if not da_data_available:
-            # No Moz data — report without scores rather than falsely showing all as Low
-            feas = {
-                "avg_serp_da": None,
-                "client_da": client_da,
-                "gap": None,
-                "feasibility_score": None,
-                "feasibility_status": "No DA Data",
+        # Availability is decided per keyword, not per run. `bool(da_metrics)`
+        # made one measured keyword score every unmeasured one, and one
+        # unmeasured provider response blank the keywords that did have
+        # records (D-C-03). compute_feasibility reports the coverage either
+        # way, so there is no second "no data" shape to keep in step.
+        feas = compute_feasibility(client_da, da_window)
+        if feas["feasibility_status"] == feasibility_module.NOT_MEASURED:
+            # No verdict for this keyword: no pivot recommendation and no paid
+            # Maps fetch to support one. Gating on `gap is None` instead let a
+            # thin window through — it has a real gap — and
+            # generate_hyper_local_pivot then answered a "Not Measured" status
+            # with "Current keyword is feasible. No pivot required.", a verdict
+            # in the opposite direction from the data (P14/P6).
+            pivot = {
+                "pivot_status": "Stay the course",
+                "suggested_keyword": None,
+                # Its own field, not `strategy`: `strategy` means "what to do
+                # about a Low-Feasibility keyword" and is rendered only in
+                # that block, which is how the reason came to be written and
+                # never shown (finding F3). This field is rendered by both
+                # report writers and passed to the brief (F8).
+                "no_measurement_reason":
+                    feasibility_module.no_measurement_text(da_source, da_window),
+                "strategy": "",
+                "all_variants": [f"{kw} {nb}" for nb in neighborhoods]
+                                if kw_service_like else [],
             }
-            pivot = {"pivot_status": "Stay the course", "suggested_keyword": None,
-                     "strategy": "Moz DA data unavailable — run again once MOZ_TOKEN is set.",
-                     "all_variants": [f"{kw} {nb}" for nb in neighborhoods] if kw_service_like else []}
         else:
-            feas = compute_feasibility(client_da, competitor_das)
             pivot_input = {
                 "status": feas["feasibility_status"],
                 "avg_competitor_da": feas["avg_serp_da"],
@@ -411,15 +477,25 @@ def run_feasibility_analysis(
             "gap": feas["gap"],
             "feasibility_score": feas["feasibility_score"],
             "feasibility_status": feas["feasibility_status"],
+            "da_count": feas["da_count"],
+            "da_missing": feas["da_missing"],
+            "da_provider": da_source,
+            "client_da_source": client_da_source,
             "pivot_status": pivot["pivot_status"],
             "suggested_keyword": pivot["suggested_keyword"],
             "strategy": pivot["strategy"],
+            # Empty for every measured keyword; the sentence for the rest.
+            "no_measurement_reason": pivot.get("no_measurement_reason", ""),
             "all_variants": pivot["all_variants"],
             "Client_In_Local_Pack": None,
         }
         results.append(row)
 
-        if pivot["pivot_status"] == "Pivoting to Hyper-Local" and pivot["suggested_keyword"]:
+        # `gap is not None` is the gate: a pivot job is a paid Maps fetch and
+        # a published recommendation, and both rest on a measured gap.
+        if (feas["gap"] is not None
+                and pivot["pivot_status"] == "Pivoting to Hyper-Local"
+                and pivot["suggested_keyword"]):
             pivot_jobs.append({
                 "source_keyword": kw,
                 "pivot_keyword": pivot["suggested_keyword"],
@@ -448,18 +524,18 @@ def run_feasibility_analysis(
                     # that renders as "✗ not in local pack" (B.2, P1/P2/P14).
                     client_in_local_pack = None
 
-                pivot_das = []
+                pivot_das = feasibility_module.DAWindow([], 0, 0, 0)
                 organic_ok = True
                 if da_client:
                     pivot_urls, organic_ok = _fetch_pivot_organic_urls(pivot_kw, config)
-                    if pivot_urls:
-                        pivot_da_data = _get_metrics(pivot_urls)
+                    if pivot_urls.urls:
+                        pivot_da_data = _get_metrics(pivot_urls.urls)
                         # The same definition as the primary pass: rank-ordered
                         # top N, client's own domain dropped, URLs with no DA
                         # omitted rather than carried as None. Taking every
                         # value averaged the client in as its own competitor
                         # and could put a None into the mean (D-C-19, P5).
-                        pivot_das = feasibility_module.select_competitor_das(
+                        pivot_das = feasibility_module.competitor_da_window(
                             pivot_urls,
                             lambda u: (pivot_da_data.get(u)
                                        or pivot_da_data.get(
@@ -473,7 +549,9 @@ def run_feasibility_analysis(
                 if not organic_ok:
                     pivot_feas = {
                         "avg_serp_da": None, "client_da": client_da, "gap": None,
-                        "feasibility_score": None, "feasibility_status": "Not Measured",
+                        "feasibility_score": None,
+                        "feasibility_status": feasibility_module.NOT_MEASURED,
+                        "da_count": 0, "da_missing": 0,
                     }
                 else:
                     pivot_feas = compute_feasibility(client_da, pivot_das)
@@ -487,6 +565,10 @@ def run_feasibility_analysis(
                     "gap": pivot_feas["gap"],
                     "feasibility_score": pivot_feas["feasibility_score"],
                     "feasibility_status": pivot_feas["feasibility_status"],
+                    "da_count": pivot_feas["da_count"],
+                    "da_missing": pivot_feas["da_missing"],
+                    "da_provider": da_source,
+                    "client_da_source": client_da_source,
                     "Client_In_Local_Pack": client_in_local_pack,
                     "pivot_status": None,
                     "suggested_keyword": None,
@@ -504,13 +586,10 @@ def run_feasibility_analysis(
 # Report generation
 # ---------------------------------------------------------------------------
 
-STATUS_ICONS = {
-    "High Feasibility":     "✅ High",
-    "Moderate Feasibility": "⚠️ Moderate",
-    "Low Feasibility":      "🔴 Low",
-    "No DA Data":           "❓ No DA Data",
-    "Not Measured":         "⚠️ Not measured",
-}
+# Status labels and icons are editorial and live in
+# feasibility_messages.yml (feasibility.status_label). Four Python copies of
+# this map are how one unmeasured state came to carry two different labels in
+# different outputs; there is now one label per status (review chunk D2a).
 
 
 def _local_pack_phrase(pack: object) -> str:
@@ -558,22 +637,33 @@ def generate_feasibility_report(
         for r in feasibility_rows if r.get("Query_Label") == "P"
     }
 
-    moz_available = any(r.get("avg_serp_da") is not None for r in primary)
-    if not moz_available:
-        lines.append(
-            "> **Note:** No Moz DA data was available. Set `MOZ_TOKEN` in your `.env` file "
-            "to enable DA-based feasibility scoring.\n"
-        )
-
-    # Summary counts
+    # Summary counts. "Not Measured" is counted with the rest: leaving it out
+    # made the four totals disagree with the keyword count, so a run that
+    # scored 3 of 10 keywords read as a run with 3 keywords (D2a.5/D2a.6, P2).
     high = [r for r in primary if r.get("feasibility_status") == "High Feasibility"]
     mod  = [r for r in primary if r.get("feasibility_status") == "Moderate Feasibility"]
     low  = [r for r in primary if r.get("feasibility_status") == "Low Feasibility"]
+    unmeasured = [r for r in primary
+                  if r.get("feasibility_status") == feasibility_module.NOT_MEASURED]
+
+    if unmeasured:
+        # Per keyword, not per run: one scored keyword used to silence this
+        # note for the other nine.
+        lines.append(
+            f"> **Note:** {len(unmeasured)} of {len(primary)} keyword(s) have "
+            f"no feasibility verdict — not enough ranking domains carried a "
+            f"Domain Authority record. Set `DATAFORSEO_LOGIN`/"
+            f"`DATAFORSEO_PASSWORD` (primary) or `MOZ_TOKEN` (fallback) in "
+            f"`.env`, or read the per-keyword reason under "
+            f"**Not measured — why** below.\n"
+        )
+
     lines.append("## Summary")
     lines.append(f"- **Total keywords:** {len(primary)}")
     lines.append(f"- ✅ High Feasibility: {len(high)}")
     lines.append(f"- ⚠️ Moderate Feasibility: {len(mod)}")
     lines.append(f"- 🔴 Low Feasibility: {len(low)}")
+    lines.append(f"- ⚠️ Not measured: {len(unmeasured)}")
     lines.append(f"- Pivot SERPs fetched: {len(pivot_map)}\n")
 
     # Main table
@@ -585,16 +675,22 @@ def generate_feasibility_report(
         "citation target). Service keywords whose ranking is out of reach still show a "
         "hyper-local **Recommended Pivot**; a `—` play cell means no verdict was computed.\n"
     )
-    lines.append("| Keyword | Client DA | Avg Comp DA | Gap | Status | Recommended Play | Recommended Pivot |")
-    lines.append("|---------|-----------|-------------|-----|--------|------------------|-------------------|")
+    lines.append("| Keyword | Client DA | Avg Comp DA | DA Coverage | Gap | Status | Recommended Play | Recommended Pivot |")
+    lines.append("|---------|-----------|-------------|-------------|-----|--------|------------------|-------------------|")
 
     for row in primary:
         kw = row.get("Keyword", "—")
         avg_da = row.get("avg_serp_da")
         gap = row.get("gap")
-        status = STATUS_ICONS.get(row.get("feasibility_status", ""), row.get("feasibility_status", "—"))
+        status = feasibility_module.status_label(row.get("feasibility_status", "")) or "—"
         avg_da_str = f"{avg_da:.0f}" if avg_da is not None else "—"
         gap_str    = f"{gap:+.0f}" if gap is not None else "—"
+        # The denominator travels with the mean (D2a.9, P2): 85 over 3 of 10
+        # domains and 85 over all 10 are not the same finding.
+        coverage_str = feasibility_module.coverage_phrase(
+            row.get("da_count"), row.get("da_missing"), short=True)
+        client_da_str = feasibility_module.client_da_cell(
+            row.get("client_da", client_da), row.get("client_da_source", ""))
 
         # RP-C.1 — Recommended Play from the pre-computed verdict. This is the new
         # home for non-service guidance (chip B stops emitting pivots for those,
@@ -611,15 +707,31 @@ def generate_feasibility_report(
             pivot_result = pivot_map.get(kw)
             if pivot_result:
                 pack_str = _local_pack_phrase(pivot_result.get("Client_In_Local_Pack"))
-                p_icon = STATUS_ICONS.get(pivot_result.get("feasibility_status", ""),
-                                          pivot_result.get("feasibility_status", ""))
+                p_icon = feasibility_module.status_label(
+                    pivot_result.get("feasibility_status", ""))
                 pivot_cell = f"**{suggested}** — {p_icon}{pack_str}"
             else:
                 pivot_cell = f"**{suggested}**"
 
-        lines.append(f"| {kw} | {client_da} | {avg_da_str} | {gap_str} | {status} | {play_cell} | {pivot_cell} |")
+        lines.append(f"| {kw} | {client_da_str} | {avg_da_str} | {coverage_str} "
+                     f"| {gap_str} | {status} | {play_cell} | {pivot_cell} |")
 
     lines.append("")
+
+    # Why each unmeasured keyword has no verdict. `no_measurement_text` wrote
+    # this onto the row and nothing rendered it: the only consumer of
+    # `strategy` was the Low Feasibility block, which a "Not Measured" row
+    # never enters (P21/P25, finding F3).
+    if unmeasured:
+        lines.append("## Not measured — why\n")
+        for row in unmeasured:
+            reason = (row.get("no_measurement_reason") or "").strip()
+            coverage = feasibility_module.coverage_phrase(
+                row.get("da_count"), row.get("da_missing"))
+            lines.append(f"- **{row.get('Keyword', '')}** — "
+                         f"{reason or coverage}"
+                         + (f" ({coverage})" if reason else ""))
+        lines.append("")
 
     # A geographic pivot only applies to service-intent keywords. Informational
     # Low-Feasibility keywords are handled separately (B.1.c) — no geo pivot.
@@ -651,7 +763,7 @@ def generate_feasibility_report(
                     pivot_result = pivot_map.get(kw)
                     if pivot_result and pivot_result.get("Keyword") == v:
                         pack_str = _local_pack_phrase(pivot_result.get("Client_In_Local_Pack"))
-                        feas = STATUS_ICONS.get(pivot_result.get("feasibility_status", ""), "")
+                        feas = feasibility_module.status_label(pivot_result.get("feasibility_status", ""))
                         lines.append(f"- {v} — {feas}{pack_str}")
                     else:
                         lines.append(f"- {v}")

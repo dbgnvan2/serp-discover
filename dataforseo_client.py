@@ -52,6 +52,8 @@ import requests
 
 from http_retry import post_with_transient_retry as _post_with_transient_retry
 
+import feasibility
+
 logger = logging.getLogger(__name__)
 
 try:
@@ -71,6 +73,13 @@ DFS_BATCH_SIZE: int = 1000
 
 REQUEST_TIMEOUT: int = 30
 
+# Fallback for how many days a cached absence (a row with no rank) stays good
+# before it is asked again. The real value is `moz.negative_cache_ttl_days` in
+# config.yml, passed in by the caller alongside cache_ttl_days — this client
+# does not read config.yml itself (P4: the knob is in config, and there is one
+# place that reads it).
+DEFAULT_NEGATIVE_CACHE_TTL_DAYS = 7
+
 CACHE_TABLE = "da_cache"
 
 
@@ -87,6 +96,10 @@ class DataForSEOClient:
         SQLite database path. Defaults to ``"serp_data.db"``.
     cache_ttl_days:
         Days before a cached result is considered stale. Defaults to 30.
+    negative_cache_ttl_days:
+        Days before a cached *absence* (a row with no rank) is re-asked.
+        Defaults to ``moz.negative_cache_ttl_days`` in ``config.yml``, and is
+        clamped to ``cache_ttl_days``.
 
     Raises
     ------
@@ -94,7 +107,8 @@ class DataForSEOClient:
         If ``DATAFORSEO_LOGIN`` or ``DATAFORSEO_PASSWORD`` env vars are absent.
     """
 
-    def __init__(self, db_path: str = "serp_data.db", cache_ttl_days: int = 30) -> None:
+    def __init__(self, db_path: str = "serp_data.db", cache_ttl_days: int = 30,
+                 negative_cache_ttl_days: int | None = None) -> None:
         login = os.getenv("DATAFORSEO_LOGIN", "").strip()
         password = os.getenv("DATAFORSEO_PASSWORD", "").strip()
         if not login or not password:
@@ -106,6 +120,12 @@ class DataForSEOClient:
         self._auth_header = {"Authorization": f"Basic {token}"}
         self._db_path = db_path
         self._cache_ttl = timedelta(days=cache_ttl_days)
+        # A cached absence expires sooner than a cached measurement: see
+        # _cache_lookup. Never longer than the positive TTL.
+        if negative_cache_ttl_days is None:
+            negative_cache_ttl_days = DEFAULT_NEGATIVE_CACHE_TTL_DAYS
+        self._negative_cache_ttl = timedelta(
+            days=min(int(negative_cache_ttl_days), cache_ttl_days))
         self._init_cache_table()
 
     # ------------------------------------------------------------------
@@ -120,8 +140,14 @@ class DataForSEOClient:
 
         Returns
         -------
-        dict mapping each input URL to ``{"da": int, "pa": int, "fetched_at": str}``.
-        URLs whose domain could not be resolved or fetched are omitted.
+        dict mapping each input URL to
+        ``{"da": int | None, "pa": int | None, "fetched_at": str}``.
+        URLs whose domain could not be resolved or fetched are omitted
+        entirely; a domain DataForSEO *answered about* but holds no rank for
+        is present with ``da: None``. The two are different facts — "we never
+        asked" and "there is no figure" — and only the second may be cached.
+        A consumer must omit a ``None`` from any average rather than read it
+        as 0 (`feasibility.competitor_da_window` does).
         """
         if not url_list:
             return {}
@@ -150,6 +176,23 @@ class DataForSEOClient:
         for url, domain in url_to_domain.items():
             if domain in all_domain_data:
                 result[url] = all_domain_data[domain]
+
+        # A domain DataForSEO answered about but holds no rank for is present
+        # with da: None (review chunk D2). len(result) therefore counts
+        # records, not measurements, so say how many carry a figure — a batch
+        # that measured nothing otherwise looked like a successful fetch
+        # (P2/P6).
+        coverage = feasibility.batch_coverage(result, asked=unique_urls)
+        logger.info(
+            "DataForSEO: %d of %d URLs answered, %d carry a rank, %d have no "
+            "rank record", coverage.records, coverage.asked,
+            coverage.measured, coverage.unmeasured,
+        )
+        if coverage.records and not coverage.measured:
+            logger.warning(
+                "DataForSEO holds no rank for any of the %d domains answered "
+                "— those domains are unmeasured, not DA 0", coverage.records,
+            )
 
         return result
 
@@ -203,7 +246,31 @@ class DataForSEOClient:
                     domain = item.get("target", "").removeprefix("www.")
                     if not domain:
                         continue
-                    rank = int(item.get("rank") or 0)
+                    # A domain DataForSEO has not crawled comes back with no
+                    # rank, or with null. `int(... or 0)` turned that into a
+                    # measured DA of 0, which dragged the competitor mean down
+                    # and so shrank the gap, flipping verdicts toward feasible
+                    # — the tool recommended chasing keywords held by DA-90
+                    # directories (D-C-04/D-M-02). None is "not measured"; the
+                    # domain still appears in the result, so the caller can
+                    # tell it apart from one that was never asked about.
+                    #
+                    # Provenance: that DataForSEO encodes "no rank" as a
+                    # missing or null `rank` (rather than, say, omitting the
+                    # item) is unverified against a live response — no
+                    # DATAFORSEO_LOGIN/PASSWORD was reachable when this was
+                    # written (2026-11-16). The premise comes from the
+                    # synthetic payload in
+                    # docs/review_2026-11-04/probes/discover/probe_03_dataforseo_null_rank.py.
+                    # The branch is safe either way: a numeric rank is kept,
+                    # anything else becomes None, so a shape we have not seen
+                    # degrades to "not measured" rather than to a fabricated
+                    # 0. Confirm against a real response when credentials
+                    # are available.
+                    raw_rank = item.get("rank")
+                    rank = (int(raw_rank)
+                            if isinstance(raw_rank, (int, float))
+                            and not isinstance(raw_rank, bool) else None)
                     results[domain] = {
                         "da": rank,
                         "pa": rank,   # DataForSEO bulk_ranks is domain-level only
@@ -232,7 +299,16 @@ class DataForSEOClient:
         if not domains:
             return {}, []
         cached: dict[str, dict] = {}
-        cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
+        now = datetime.now(_UTC)
+        cutoff = (now - self._cache_ttl).isoformat()
+        # A measured DA is a fact about a crawled domain; an absence is a fact
+        # about what the provider had crawled *at the time of asking*, and it
+        # stops being true as soon as the domain is crawled. Caching both for
+        # 30 days left a keyword reading "Not Measured" for a month after the
+        # figure existed, with no path back (P1 — a transient absence held as
+        # a terminal one). Absences expire on the shorter TTL and are asked
+        # again (review chunk D2, finding F6).
+        negative_cutoff = (now - self._negative_cache_ttl).isoformat()
         # Batch the IN(...) query — SQLite caps bound variables (999 in
         # older builds), and large runs can exceed it (seo_geo_review C.7).
         rows = []
@@ -247,13 +323,25 @@ class DataForSEOClient:
                 ).fetchall())
         fresh = set()
         for domain, da, pa, fetched_at in rows:
-            if fetched_at and fetched_at >= cutoff:
+            if not fetched_at:
+                continue
+            limit = cutoff if da is not None else negative_cutoff
+            if fetched_at >= limit:
                 cached[domain] = {"da": da, "pa": pa, "fetched_at": fetched_at}
                 fresh.add(domain)
         to_fetch = [d for d in domains if d not in fresh]
         return cached, to_fetch
 
     def _cache_store(self, results: dict[str, dict]) -> None:
+        """Persist one batch, including the absences.
+
+        ``domain_authority`` is a nullable column and a ``None`` is stored as
+        SQL NULL on purpose: it is the ``found=0`` sentinel. The row's presence
+        says DataForSEO was asked and answered, so the domain is not refetched
+        inside the TTL; the NULL says there is no figure, so no consumer may
+        average it. Storing a 0 here instead would be indistinguishable from a
+        real rank of 0 (D-C-04).
+        """
         rows = [
             (domain, v["da"], v["pa"], v["fetched_at"])
             for domain, v in results.items()

@@ -86,13 +86,13 @@ class TestEnvOverride(unittest.TestCase):
             os.unlink(override_path)
 
     def test_default_thresholds_without_override(self):
-        # No shared config file -> code defaults (5 / 15 / 30).
+        # No shared config file -> code defaults (5 / 15 / 30 / 5).
         missing = os.path.join(tempfile.gettempdir(), "nonexistent_shared_config_c9.json")
         self._reload_feasibility_with({shared_config.ENV_VAR: missing})
         self.assertEqual(feasibility._gap_to_status(3), "High Feasibility")
         self.assertEqual(feasibility._gap_to_status(10), "Moderate Feasibility")
         self.assertEqual(feasibility._gap_to_status(20), "Low Feasibility")
-        self.assertEqual(feasibility.load_thresholds(), (5, 15, 30.0))
+        self.assertEqual(feasibility.load_thresholds(), (5, 15, 30.0, 5))
 
 
 class TestMalformedConfig(unittest.TestCase):

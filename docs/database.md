@@ -10,8 +10,8 @@ SQLite at `serp_data.db`. Key tables:
 | `domain_features` | Entity type per domain |
 | `autocomplete_suggestions` | Search autocomplete data |
 | `keyword_feasibility` | DA gap scores, feasibility status, pivot variants per run |
-| `da_cache` | DataForSEO domain rank cache (30-day TTL) |
-| `moz_cache` | Moz DA/PA cache (30-day TTL) |
+| `da_cache` | DataForSEO domain rank cache (30-day TTL; 7 days for a row with no rank) |
+| `moz_cache` | Moz DA/PA cache (30-day TTL; 7 days for a row with no DA) |
 
 All schema changes use `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE … ADD COLUMN` wrapped in `try/except OperationalError` — migrations run automatically on first use.
 
@@ -45,3 +45,29 @@ carry NULL in both, which means *unknown* — not "completed" and not "primary".
 Runs recorded before 2026-11-16 therefore produce no deltas: `metrics.py`
 returns an `empty_data` status naming the missing labels instead of comparing
 rows it cannot interpret. Re-running rebuilds the history.
+
+## Feasibility coverage and provenance
+
+`keyword_feasibility` carries four columns added by review chunk D2
+(finding F9), so the figure and the confidence in it travel together into
+rank history:
+
+- **`da_count` / `da_missing`** — how many of the keyword's top-10 positions
+  carried a DA figure and how many did not. `avg_serp_da` over two domains
+  and over ten read identically without them.
+- **`da_provider`** — which provider was asked (`dataforseo`, `moz`,
+  `none`). DataForSEO's backlink rank and Moz's Domain Authority are both
+  0–100 and are different vendors' models, so a trend that mixes them is not
+  a trend.
+- **`client_da_source`** — how `client_da` was obtained: measured by the
+  active provider, an operator override, the `config.yml` fallback (whose
+  scale against that provider is unverified), or not measured at all.
+
+Rows written before the migration hold NULL in all four. NULL means *not
+recorded*, never `0 of 0`: every reader keeps absent and zero apart, and the
+reports print "coverage not recorded for this run" rather than inventing a
+denominator. `client_da` is nullable for the same reason — with no provider
+reachable there is no figure, and a 0 would read as a measurement.
+
+A row is written by `storage.save_feasibility_from_row`, which takes the
+assessment dict whole rather than re-listing its fields at each call site.

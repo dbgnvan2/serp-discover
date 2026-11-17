@@ -1091,13 +1091,23 @@ def _build_feasibility_summary(feasibility_rows):
       Low Feasibility primary keywords (query_label != "P").
     - ``moderate_feasibility``: list of keyword strings.
     - ``high_feasibility``: list of keyword strings.
+    - ``not_measured``: list of {keyword, coverage} for primary keywords with
+      no feasibility verdict.
+    - ``coverage``: {"with_verdict": int, "attempted": int} over the primary
+      keywords.
     - ``pivot_serp_results``: list of {keyword, suggested_pivot, client_in_local_pack}
       for pivot keywords (query_label == "P") where pivot data was fetched.
+
+    The three verdict buckets used to be the whole summary, so a keyword with
+    no Domain Authority coverage was absent from the prompt with no count:
+    the LLM saw two low-feasibility keywords out of ten and wrote as though
+    the run had analysed two keywords (P2, finding F8). The unmeasured ones
+    are listed with their coverage, and the count travels with them.
     """
     primary = [r for r in feasibility_rows if r.get("Query_Label") != "P" and r.get("query_label") != "P"]
     pivots  = [r for r in feasibility_rows if r.get("Query_Label") == "P" or r.get("query_label") == "P"]
 
-    low, moderate, high = [], [], []
+    low, moderate, high, not_measured = [], [], [], []
     for row in primary:
         status = row.get("feasibility_status", "")
         kw = row.get("Keyword") or row.get("keyword_text") or ""
@@ -1109,6 +1119,13 @@ def _build_feasibility_summary(feasibility_rows):
             moderate.append(kw)
         elif status == "High Feasibility":
             high.append(kw)
+        else:
+            not_measured.append({
+                "keyword": kw,
+                "coverage": feasibility_module.coverage_phrase(
+                    row.get("da_count"), row.get("da_missing")),
+                "reason": row.get("no_measurement_reason") or "",
+            })
 
     pivot_results = []
     for row in pivots:
@@ -1125,6 +1142,11 @@ def _build_feasibility_summary(feasibility_rows):
         "low_feasibility": low,
         "moderate_feasibility": moderate,
         "high_feasibility": high,
+        "not_measured": not_measured,
+        "coverage": {
+            "with_verdict": len(low) + len(moderate) + len(high),
+            "attempted": len(primary),
+        },
         "pivot_serp_results": pivot_results,
     }
 

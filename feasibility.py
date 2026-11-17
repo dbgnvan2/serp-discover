@@ -21,8 +21,12 @@ isolation and reused without side effects.
 
 from __future__ import annotations
 
+import logging
+import os
 import random as _random
-from typing import Callable, Literal
+from typing import Callable, Literal, NamedTuple
+
+import yaml
 from urllib.parse import urlparse
 
 from shared_config import load_shared_config
@@ -43,9 +47,19 @@ def load_thresholds():
         tech.get("feasibility_threshold", 5),
         tech.get("moderate_feasibility_max_gap", 15),
         tech.get("score_normaliser", 30.0),
+        tech.get("min_da_for_verdict", 5),
     )
 
-HIGH_FEASIBILITY_MAX_GAP, MODERATE_FEASIBILITY_MAX_GAP, SCORE_NORMALISER = load_thresholds()
+(HIGH_FEASIBILITY_MAX_GAP, MODERATE_FEASIBILITY_MAX_GAP, SCORE_NORMALISER,
+ MIN_DA_FOR_VERDICT) = load_thresholds()
+
+#: The status a row carries when nothing (or too little) was measured. A key,
+#: not wording — the words a reader sees come from ``feasibility_messages.yml``
+#: via :func:`status_label`. It is a constant because consumers branch on it
+#: (the report withholds its DA comparison, run_feasibility skips the pivot),
+#: and four files comparing against their own copy of the string is how one
+#: unmeasured state came to carry two labels before D2a.
+NOT_MEASURED = "Not Measured"
 
 StatusLiteral = Literal["High Feasibility", "Moderate Feasibility",
                        "Low Feasibility", "Not Measured"]
@@ -69,6 +83,15 @@ StatusLiteral = Literal["High Feasibility", "Moderate Feasibility",
 #: How many of a keyword's ranking URLs the DA average is taken over.
 TOP_N_FOR_FEASIBILITY = 10
 
+#: How many competitor DAs a published verdict needs — read above from
+#: ``technical.min_da_for_verdict`` in the shared config, default 5. A mean of
+#: one or two domains out of a top 10 is not a measurement of that SERP's
+#: authority, and a verdict drawn from it reads exactly like one drawn from all
+#: ten. Below this the status is "Not Measured" and the numbers are reported
+#: with their coverage rather than suppressed (D-C-03/D-M-08). It decides how
+#: many verdicts a report publishes at all, so it is an operator's dial and
+#: lives beside the gap thresholds rather than in this file.
+
 
 def domain_of(url: str) -> str:
     """Return the bare, lower-cased domain of *url*, ``www.`` removed.
@@ -88,41 +111,91 @@ def domain_of(url: str) -> str:
         return ""
 
 
-def url_window(rows, what="", log=None):
-    """The top-N URLs by absolute rank, with the unmeasurable ones dropped.
+class URLWindow(NamedTuple):
+    """The window's resolvable URLs and the positions it could not resolve.
 
-    One definition of the window, beside ``select_competitor_das`` which
-    consumes it. Filtering before slicing would slide ranks 11, 12 ... into a
+    The hole count has to leave this function with the URLs. Returning the
+    filtered list alone threw the real denominator away one line after
+    computing it, so a top 10 with four unresolvable links published
+    ``da_missing=0`` and a coverage of "all 6 ranking domains" — a complete
+    measurement of a window that was 60% measured (P9/P31).
+    """
+
+    urls: list       #: the resolvable URLs, best-ranked first
+    unresolved: int  #: positions in the window with no usable URL
+    window: int      #: positions considered — ``len(urls) + unresolved``
+
+
+def usable_url(url) -> bool:
+    """True when *url* is something a DA provider can be asked about.
+
+    One definition of "this position has no URL". An empty value and the
+    literal ``"N/A"`` both mean link recovery could not resolve the row, and
+    both must count against coverage rather than be sent to the provider as
+    a target. Three call sites tested for this separately and one of them
+    tested only for emptiness, so an ``"N/A"`` reached the fetch batch.
+    """
+    return bool(url) and str(url).strip() not in ("N/A", "n/a")
+
+
+def url_window(rows, what="", log=None) -> URLWindow:
+    """The top-N URLs by absolute rank, with the unmeasurable ones counted.
+
+    One definition of the window, beside :func:`competitor_da_window`
+    which consumes it. Filtering before slicing would slide ranks 11, 12 ... into a
     set the report, the handoff and docs/feasibility.md all call "the top 10"
     (P9/P31). The window is the top N rows; a row whose link recovery could
-    not resolve leaves a hole in it, and the hole is reported rather than
-    quietly backfilled from deeper, weaker results.
+    not resolve leaves a hole in it, and the hole travels with the URLs rather
+    than being quietly backfilled from deeper, weaker results or dropped from
+    the denominator.
     """
     window_rows = rows[:TOP_N_FOR_FEASIBILITY]
-    urls = [r.get("Link") for r in window_rows
-            if r.get("Link") and r.get("Link") != "N/A"]
-    missing = len(window_rows) - len(urls)
-    if missing and log is not None:
-        log(f"{what}: {missing} of the top {len(window_rows)} result(s) have "
-            f"no URL, so the Domain Authority average is taken from "
-            f"{len(urls)} of them, not {len(window_rows)}.")
-    return urls
+    urls = [r.get("Link") for r in window_rows if usable_url(r.get("Link"))]
+    unresolved = len(window_rows) - len(urls)
+    if unresolved and log is not None:
+        log(f"{what}: {unresolved} of the top {len(window_rows)} result(s) "
+            f"have no URL, so the Domain Authority average is taken from "
+            f"{len(urls)} of them, not {len(window_rows)}. The rows report "
+            f"the shortfall as unscored coverage.")
+    return URLWindow(urls=urls, unresolved=unresolved,
+                     window=len(window_rows))
 
 
-def select_competitor_das(
-    ranked_urls: list[str],
+class DAWindow(NamedTuple):
+    """The feasibility input set, with the measurement it is missing.
+
+    ``das`` alone cannot say whether a mean of three came from a SERP with
+    three competitors or from a top 10 where seven were never scored. Both
+    numbers travel together so every row can state its own coverage
+    ("mean of N of M ranking domains, K unscored") instead of publishing a
+    figure whose basis is invisible (D-C-03/D-M-08, P2).
+    """
+
+    das: list       #: the measured competitor DAs, best-ranked first
+    measured: int   #: how many competitors had a DA record (``len(das)``)
+    missing: int    #: competitors in the window with no DA record
+    window: int     #: competitors considered — ``measured + missing``
+
+
+def competitor_da_window(
+    ranked_urls,
     da_for_url: Callable[[str], object],
     client_domain: str = "",
     top_n: int = TOP_N_FOR_FEASIBILITY,
-) -> list:
+) -> DAWindow:
     """Return the competitor DA values the feasibility gap is measured over.
 
-    *ranked_urls* must already be in rank order, best first; since review
-    chunk D1 the merged SERP rows are, because ``Rank`` is absolute. The
-    window is the first *top_n* URLs **of the SERP**, and the client's own
+    *ranked_urls* is a :class:`URLWindow` from :func:`url_window` — already
+    sliced, carrying the positions it could not resolve — or a plain list in
+    rank order, best first, which is sliced here. Since review chunk D1 the
+    merged SERP rows are in absolute rank order, because ``Rank`` is absolute.
+    The window is the first *top_n* URLs **of the SERP**, and the client's own
     domain is then dropped from that window — so a keyword where the client
     ranks 4th is scored against the 9 competitors in its true top 10, not
     against 10 competitors drawn from further down the page.
+
+    A position with no usable URL counts against coverage, not as a competitor
+    with no authority: ``URLWindow.unresolved`` seeds ``missing``.
 
     *da_for_url* returns the DA for one URL, or ``None`` when that URL has no
     DA record. ``None`` is not zero: an unscored domain is left out of the
@@ -133,18 +206,333 @@ def select_competitor_das(
 
     Callers must take their slice from ``TOP_N_FOR_FEASIBILITY`` rather than
     their own literal, or raising it here would have no effect.
+
+    This is the only place the window is built. Returning the coverage from
+    the same loop is deliberate: a second function counting the denominator
+    would be a second definition of the window, and the two would drift.
     """
     client = domain_of(client_domain) if client_domain else ""
     das = []
-    for url in (ranked_urls or [])[:top_n]:
-        if not url or url == "N/A":
+    if isinstance(ranked_urls, URLWindow):
+        # Already the window: slicing again would be applying it twice, and
+        # the unresolved positions are holes in this same window.
+        urls, missing = list(ranked_urls.urls), ranked_urls.unresolved
+    else:
+        urls, missing = list(ranked_urls or [])[:top_n], 0
+    for url in urls:
+        if not usable_url(url):
+            # No URL at all: link recovery could not resolve it, so this
+            # position was never measured and is not a competitor with no
+            # authority. It counts against coverage (P1/P14).
+            missing += 1
             continue
         if client and domain_of(url) == client:
             continue
         da = da_for_url(url)
-        if da is not None:
+        if da is None:
+            missing += 1
+        else:
             das.append(da)
-    return das
+    return DAWindow(das=das, measured=len(das), missing=missing,
+                    window=len(das) + missing)
+
+
+#: Where the status labels, icons, no-measurement sentences and coverage
+#: phrases live. Editorial content, so it is a config file, not a dict here.
+MESSAGES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                             "feasibility_messages.yml")
+
+_MESSAGES_CACHE = None
+
+
+def load_messages() -> dict:
+    """Read ``feasibility_messages.yml``, or ``{}`` when it cannot be read.
+
+    A missing or malformed file degrades to the bare status string rather than
+    aborting a report: the words are presentation, and losing them must not
+    cost the run. Read once and cached, since every row asks for them.
+    """
+    global _MESSAGES_CACHE
+    if _MESSAGES_CACHE is not None:
+        return _MESSAGES_CACHE
+    data = {}
+    try:
+        with open(MESSAGES_FILE, encoding="utf-8") as handle:
+            loaded = yaml.safe_load(handle)
+        if isinstance(loaded, dict):
+            data = loaded
+    except (OSError, yaml.YAMLError) as exc:
+        logging.warning(
+            "feasibility_messages.yml could not be read (%s); feasibility "
+            "statuses will render as plain text.", exc)
+    _MESSAGES_CACHE = data
+    return data
+
+
+def status_label(status, bare_icon=False) -> str:
+    """The configured label (or icon) for *status*, else *status* itself."""
+    entry = (load_messages().get("statuses") or {}).get(status) or {}
+    key = "icon" if bare_icon else "label"
+    value = entry.get(key)
+    return str(value) if value else ("" if bare_icon else str(status or ""))
+
+
+def _render(template, fallback, **values) -> str:
+    """Format a configured string, falling back rather than raising.
+
+    §5c is deliberately not inside ``_safe_section``, so a ``KeyError`` from a
+    placeholder someone added to ``feasibility_messages.yml`` would take down
+    the whole market report — the opposite of the documented contract that a
+    malformed messages file degrades to plain text and never aborts a run.
+    """
+    if not template:
+        return fallback
+    try:
+        return str(template).format(**values)
+    except (KeyError, IndexError, ValueError, TypeError) as exc:
+        logging.warning(
+            "feasibility_messages.yml: %r could not be rendered (%s); using "
+            "the built-in wording.", template, exc)
+        return fallback
+
+
+def _as_count(value) -> int | None:
+    """*value* as a non-negative count, or ``None`` when it is not one.
+
+    Counts arrive from JSON, where an old run has no such key at all and a
+    hand-edited one can hold a string. ``int(x or 0)`` turned both into a
+    measured zero (P35).
+    """
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+    return count if count >= 0 else None
+
+
+def coverage_phrase(da_count, da_missing, short=False) -> str:
+    """"mean of 7 of 10 ranking domains (3 unscored)" for one row.
+
+    The denominator travels with the mean wherever it is printed, because a
+    mean of three domains and a mean of ten read identically otherwise (P2,
+    finding D-C-03). *short* gives the table-cell form ("7/10 (3 unscored)")
+    — the same numbers from the same config file, for a column that cannot
+    hold the sentence.
+    """
+    measured = _as_count(da_count)
+    missing = _as_count(da_missing)
+    if measured is None or missing is None:
+        # A row from before coverage was recorded. Unknown, not zero: "0/0"
+        # beside a real mean says the window was never measured, which is a
+        # different and false claim (P35, finding F4).
+        unknown = load_messages().get("coverage_unknown") or {}
+        return _render(unknown.get("short" if short else "long"),
+                       "—" if short else "coverage not recorded for this run")
+    window = measured + missing
+    phrases = load_messages().get(
+        "coverage_short" if short else "coverage") or {}
+    if not measured:
+        key = "none"
+    elif missing:
+        key = "partial"
+    else:
+        key = "complete"
+    if short:
+        fallback = f"{measured}/{window}" if window else "—"
+    else:
+        fallback = (f"mean of {measured} of {window} ranking domains"
+                    if window else "no ranking domain scored")
+    return _render(phrases.get(key), fallback, measured=measured,
+                   window=window, missing=missing)
+
+
+def client_da_cell(client_da, source="") -> str:
+    """The client's DA for a report cell, with its provenance when it has one.
+
+    A config value printed bare reads as a measurement, and the reader then
+    subtracts it from a measured competitor mean as though both were on one
+    provider's scale — the fault D-M-05 records. ``client_da_source`` is on
+    every row for this reason, and this is where it becomes visible.
+    """
+    if client_da is None:
+        key = "not_measured"
+    elif not str(source or "").strip():
+        # No provenance on the row: a run written before it was recorded.
+        # Rendering it bare asserts it was measured, which is the D-M-05
+        # fault for every legacy report (finding F4).
+        key = "unknown_source"
+    elif str(source).startswith("operator override"):
+        key = "override"
+    elif str(source).startswith("config fallback"):
+        key = "config_fallback"
+    else:
+        key = "measured"
+    provider = str(source).split("unmeasured, ")[-1].rstrip(")") \
+        if key == "config_fallback" else str(source)
+    templates = load_messages().get("client_da") or {}
+    fallbacks = {"not_measured": "not measured", "override": "{da} (override)",
+                 "config_fallback": "{da} (config, not measured by {provider})",
+                 "unknown_source": "{da} (source not recorded)",
+                 "measured": "{da}"}
+    return _render(templates.get(key), fallbacks[key],
+                   da=client_da, provider=provider)
+
+
+def no_measurement_text(provider, da_window) -> str:
+    """Why this keyword has no verdict, in the words config gives.
+
+    Three cases, deliberately not one sentence: no provider is an operator
+    fix, an empty window is a fact about the keyword, and thin coverage is a
+    number the reader should see.
+    """
+    templates = load_messages().get("no_measurement") or {}
+    measured = getattr(da_window, "measured", 0) or 0
+    window = getattr(da_window, "window", 0) or 0
+    if not provider or provider == "none":
+        key, fallback = "no_provider", (
+            "No DA provider reachable — set DATAFORSEO_LOGIN/PASSWORD or "
+            "MOZ_TOKEN and run again.")
+    elif window == 0:
+        key, fallback = "nothing_in_window", (
+            f"No ranking competitor could be scored for this keyword "
+            f"({provider} was queried).")
+    else:
+        key, fallback = "below_minimum", (
+            f"Only {measured} of {window} ranking domain(s) have a DA record "
+            f"from {provider}, below the {MIN_DA_FOR_VERDICT} a verdict needs.")
+    return _render(templates.get(key), fallback, provider=provider,
+                   measured=measured, window=window,
+                   minimum=MIN_DA_FOR_VERDICT)
+
+
+def resolve_client_da(client_domain, metrics_for_domain, provider,
+                      config_value=None, override=None,
+                      log_info=None, log_warning=None):
+    """``(client_da, source)`` — where the client's own DA came from.
+
+    Both sides of the gap must come off one scale. DataForSEO's backlink rank
+    and Moz's Domain Authority are both 0-100 and are not the same number:
+    the code's own worked example puts this client at 19 on DataForSEO against
+    the 35 in ``config.yml``. Subtracting one from the other produced a gap
+    that measured the difference between two vendors (D-M-05).
+
+    Precedence: an explicit operator override wins, because it was asked for;
+    then the live provider figure, looked up in the same batch as the
+    competitors; then ``config.yml``, a fallback whose scale is unverified and
+    which is labelled as such on every row. With no provider reachable the DA
+    is ``None``, and :func:`compute_feasibility` then reports "Not Measured"
+    rather than scoring live competitors against a constant.
+
+    One definition for both producers: the in-pipeline pass in ``serp_audit``
+    and the standalone ``run_feasibility`` pass had to agree about the client
+    for the same reason they had to agree about the window (D-C-19).
+
+    *metrics_for_domain* maps a bare domain to that domain's metrics dict, so
+    this function does no I/O; *provider* is its name, or "none".
+
+    Spec: docs/review_2026-11-04/PLAN_D2_null_is_not_zero.md#D2a.12-D2a.15
+    Tests: tests/test_d2_null_is_not_zero.py::TestClientProvenance
+    """
+    info = log_info or (lambda *a: None)
+    warn = log_warning or (lambda *a: None)
+
+    if override is not None:
+        info("Client DA: %s from an explicit override (overrides %s and the "
+             "config value %s)", override, provider, config_value)
+        return override, "operator override"
+
+    measured = metrics_for_domain(domain_of(client_domain)) if client_domain else {}
+    da = (measured or {}).get("da")
+    if da is not None:
+        fetched = str((measured or {}).get("fetched_at") or "")[:10]
+        if config_value is not None and config_value != da:
+            info("Client DA: %s measured by %s%s — the config value %s is not "
+                 "used (it may be on another provider's scale)",
+                 da, provider, f" on {fetched}" if fetched else "", config_value)
+        return da, f"{provider}@{fetched}" if fetched else provider
+
+    if not provider or provider == "none":
+        warn("Client DA: no DA provider reachable, so the client's own "
+             "authority was not measured; every keyword reads 'Not Measured' "
+             "rather than being scored against the config value %s.",
+             config_value)
+        return None, "not measured (no provider)"
+
+    warn("Client DA: %s returned no record for '%s'; falling back to the "
+         "config value %s, whose scale against %s is unverified. Rows carry "
+         "client_da_source so the gap is not read as like-for-like.",
+         provider, client_domain, config_value, provider)
+    return config_value, f"config fallback (unmeasured, {provider})"
+
+
+class BatchCoverage(NamedTuple):
+    """How much of a provider's answer carries an actual figure.
+
+    *measured* counts the records whose ``da`` is a number; *records* counts
+    the records returned at all; *asked* counts the targets sent.
+    """
+
+    measured: int
+    records: int
+    asked: int
+
+    @property
+    def unmeasured(self) -> int:
+        """Records the provider answered about but holds no DA for."""
+        return self.records - self.measured
+
+
+def batch_coverage(metrics_by_target, asked=None) -> BatchCoverage:
+    """Count the measured DA values in a provider's batch result.
+
+    ``len(result)`` is not the number of DA figures: since review chunk D2 a
+    target the provider answered about but holds no rank for is present with
+    ``da: None`` (the presence says "asked and answered", the null says
+    "no figure"). A caller that logs ``len(result)`` as "returned DA for N
+    URLs", or gates on ``if not result``, reports measurements that do not
+    exist and never warns on a batch that measured nothing (P2/P6).
+
+    This is the one definition of that count, shared by both DA providers
+    and both feasibility producers.
+    """
+    records = metrics_by_target or {}
+    measured = sum(
+        1 for v in records.values()
+        if isinstance(v, dict) and v.get("da") is not None
+    )
+    return BatchCoverage(
+        measured=measured,
+        records=len(records),
+        asked=len(records) if asked is None else len(asked),
+    )
+
+
+def with_client_url(urls, client_url):
+    """*urls* plus the client's own URL, so one batch carries both sides.
+
+    The client's DA has to come off the same provider, on the same scale, as
+    the competitors it is subtracted from (D-M-05). Fetching it in the same
+    batch is what makes that true, and the provider caches by URL, so it
+    costs one row on the first keyword and nothing after. One definition for
+    both producers, for the reason given on :func:`resolve_client_da`.
+    """
+    batch = list(urls or [])
+    if client_url and client_url not in batch:
+        batch.append(client_url)
+    return batch
+
+
+def client_da_from_batch(metrics_by_url, client_domain, provider,
+                         config_value=None, override=None,
+                         log_info=None, log_warning=None):
+    """:func:`resolve_client_da` against a batch of metrics keyed by URL."""
+    return resolve_client_da(
+        client_domain,
+        lambda d: next((m for u, m in (metrics_by_url or {}).items()
+                        if domain_of(u) == d), {}),
+        provider, config_value, override, log_info, log_warning)
 
 
 def index_feasibility_by_keyword(feasibility_rows) -> dict:
@@ -173,7 +561,8 @@ def index_feasibility_by_keyword(feasibility_rows) -> dict:
 
 def compute_feasibility(
     client_da: int,
-    competitor_das: list[int],
+    competitor_das,
+    window: int | None = None,
 ) -> dict:
     """Return a feasibility assessment for a keyword.
 
@@ -182,15 +571,22 @@ def compute_feasibility(
     client_da:
         Domain Authority of the non-profit client (0–100).
     competitor_das:
-        DA values for the top-10 organic results, as chosen by
-        :func:`select_competitor_das`.  An empty list means **no competitor DA
-        was measured** for this keyword, and returns a ``status`` of
-        ``"Not Measured"`` with all numeric fields ``None``. It used to return
-        ``"Low Feasibility"``, which published a verdict — and a hyper-local
-        pivot recommendation, and a Maps fetch to support it — from zero
-        measurements (P1/P14: unknown is not a terminal negative). Callers
-        still do not have to special-case missing data; they just no longer
-        get a false negative.
+        A :class:`DAWindow` from :func:`competitor_da_window`, or a plain list
+        of DA values. An empty set means **no competitor DA was measured** for
+        this keyword, and returns a ``status`` of ``"Not Measured"`` with all
+        numeric fields ``None``. It used to return ``"Low Feasibility"``, which
+        published a verdict — and a hyper-local pivot recommendation, and a
+        Maps fetch to support it — from zero measurements (P1/P14: unknown is
+        not a terminal negative). Callers still do not have to special-case
+        missing data; they just no longer get a false negative.
+
+        Fewer than :data:`MIN_DA_FOR_VERDICT` measured competitors is also
+        ``"Not Measured"``: the mean and the gap are still reported, with
+        ``da_count``/``da_missing`` saying what they rest on, but no verdict
+        is published from them.
+    window:
+        How many competitors were considered, when *competitor_das* is a plain
+        list. Ignored when it is a :class:`DAWindow`, which carries its own.
 
     Returns
     -------
@@ -200,26 +596,43 @@ def compute_feasibility(
         gap               : float | None  – avg_serp_da − client_da
         feasibility_score : float | None  – 0.0 (worst) … 1.0 (best)
         feasibility_status: str           – human-readable label
+        da_count          : int           – competitors with a DA record
+        da_missing        : int           – competitors with none
 
     Examples
     --------
-    >>> compute_feasibility(35, [40, 38, 52, 61, 45, 33, 27, 50, 44, 39])
-    {'avg_serp_da': 42.9, 'client_da': 35, 'gap': 7.9,
-     'feasibility_score': 0.74, 'feasibility_status': 'Moderate Feasibility'}
+    >>> r = compute_feasibility(35, [40, 38, 52, 61, 45, 33, 27, 50, 44, 39])
+    >>> r["gap"], r["feasibility_status"], r["da_count"]
+    (7.9, 'Moderate Feasibility', 10)
     """
-    if not competitor_das:
+    if isinstance(competitor_das, DAWindow):
+        das = list(competitor_das.das)
+        missing = competitor_das.missing
+    else:
+        das = list(competitor_das or [])
+        # With no window given, nothing is known to be missing. A caller that
+        # wants honest coverage passes a DAWindow.
+        missing = max(0, (window or len(das)) - len(das))
+
+    if not das or client_da is None:
         return {
             "avg_serp_da": None,
             "client_da": client_da,
             "gap": None,
             "feasibility_score": None,
-            "feasibility_status": "Not Measured",
+            "feasibility_status": NOT_MEASURED,
+            "da_count": len(das),
+            "da_missing": missing,
         }
 
-    avg_serp_da = round(sum(competitor_das) / len(competitor_das), 1)
+    avg_serp_da = round(sum(das) / len(das), 1)
     gap = round(avg_serp_da - client_da, 1)
-    status = _gap_to_status(gap)
     score = round(max(0.0, 1.0 - gap / SCORE_NORMALISER), 2)
+    # The numbers stand; the verdict does not. Reporting the mean of two
+    # domains beside "Low Feasibility" would read as a measurement of the
+    # SERP, which it is not.
+    status = (_gap_to_status(gap) if len(das) >= MIN_DA_FOR_VERDICT
+              else NOT_MEASURED)
 
     return {
         "avg_serp_da": avg_serp_da,
@@ -227,6 +640,8 @@ def compute_feasibility(
         "gap": gap,
         "feasibility_score": score,
         "feasibility_status": status,
+        "da_count": len(das),
+        "da_missing": missing,
     }
 
 
@@ -344,6 +759,28 @@ def generate_hyper_local_pivot(
         }
 
     all_variants = [f"{primary_keyword} {nb}" for nb in neighborhoods] if neighborhoods else []
+
+    if status == NOT_MEASURED:
+        # No verdict is not a verdict of feasible. This fell into the branch
+        # below and answered an unmeasured keyword with "Current keyword is
+        # feasible. No pivot required." — a claim in the opposite direction
+        # from the data (P6/P14, finding F2). run_feasibility does not call
+        # this for an unmeasured keyword at all; the branch is here because
+        # serp_audit's in-pipeline pass does, and a caller that forgets must
+        # not be able to publish the false sentence.
+        return {
+            "original_keyword": primary_keyword,
+            "pivot_status": "Stay the course",
+            "suggested_keyword": None,
+            "all_variants": all_variants,
+            "strategy": (
+                "No feasibility verdict for this keyword — too little of the "
+                "result page has a Domain Authority record to say whether a "
+                "pivot is needed. Nothing here recommends staying or pivoting."
+            ),
+            "avg_competitor_da": avg_da,
+            "recommended_play": None,
+        }
 
     if status != "Low Feasibility" or not neighborhoods:
         return {

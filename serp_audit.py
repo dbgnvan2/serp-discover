@@ -156,6 +156,9 @@ FEASIBILITY_PIVOT_FETCH  = _feas_cfg.get("pivot_serp_fetch", True)
 FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
 CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.get("analysis_report", {}).get("client_domain", ""))
 MOZ_CACHE_TTL_DAYS       = int(CONFIG.get("moz", {}).get("cache_ttl_days", 30))
+#: The client's own domain as a URL, so its DA can be fetched in the same
+#: batch as the competitors' (D-M-05).
+CLIENT_DA_URL            = f"https://{CLIENT_DOMAIN}" if CLIENT_DOMAIN else ""
 
 # Editorial vocabulary lives in serp_vocab.yml (Spec: seo_geo_review C.4).
 # The shared cross-tool config's "stop_words" still wins when present
@@ -1554,17 +1557,29 @@ def _run(run_id):
                     keyword_urls = feasibility_module.url_window(
                         o, f"'{source_keyword}' feasibility", logging.warning)
 
-                    if keyword_urls:
-                        moz_results = moz_client.get_moz_metrics(keyword_urls)
-                        moz_client_mod.write_metrics(
-                            o, moz_results, storage, ENRICHMENT_ENABLED)
+                    if keyword_urls.window:
+                        # Both sides of the gap off one provider's scale
+                        # (D-M-05), in one cached batch. A window whose every
+                        # position is unresolvable still gets a row, with
+                        # coverage 0 of N — skipping it dropped the keyword
+                        # out of the report with no record (P2).
+                        moz_results = {}
+                        if keyword_urls.urls:
+                            moz_results = moz_client.get_moz_metrics(
+                                feasibility_module.with_client_url(
+                                    keyword_urls.urls, CLIENT_DA_URL))
+                            moz_client_mod.write_metrics(
+                                o, moz_results, storage, ENRICHMENT_ENABLED)
+                        client_da, client_da_source = \
+                            feasibility_module.client_da_from_batch(
+                                moz_results, CLIENT_DOMAIN, "moz",
+                                FEASIBILITY_CLIENT_DA, None,
+                                logging.info, logging.warning)
 
                         # One definition of the input set, shared with
-                        # run_feasibility.py (finding D-C-19): the top 10 by
-                        # absolute Rank, the client's own domain dropped from
-                        # that window. `o` is in rank order because the merged
-                        # SERP rows are (D-C-01).
-                        competitor_das = feasibility_module.select_competitor_das(
+                        # run_feasibility.py (D-C-19). `o` is in rank order
+                        # because the merged SERP rows are (D-C-01).
+                        competitor_das = feasibility_module.competitor_da_window(
                             keyword_urls,
                             lambda u: (moz_results.get(u) or {}).get("da"),
                             client_domain=CLIENT_DOMAIN,
@@ -1582,7 +1597,7 @@ def _run(run_id):
                         # attempted (P2: surface, never silently drop).
                         if query_label == "A":
                             feas = feasibility_module.compute_feasibility(
-                                FEASIBILITY_CLIENT_DA, competitor_das
+                                client_da, competitor_das
                             )
                             # Gate the pivot on service intent — informational
                             # keywords get no neighbourhood variant (B.1.d).
@@ -1599,32 +1614,27 @@ def _run(run_id):
                                 is_service_like=kw_service_like,
                             )
 
-                            if ENRICHMENT_ENABLED:
-                                storage.save_keyword_feasibility(
-                                    keyword_text=source_keyword,
-                                    run_id=run_id,
-                                    query_label=query_label,
-                                    avg_serp_da=feas["avg_serp_da"],
-                                    client_da=FEASIBILITY_CLIENT_DA,
-                                    gap=feas["gap"],
-                                    feasibility_status=feas["feasibility_status"],
-                                    feasibility_score=feas["feasibility_score"],
-                                    client_in_local_pack=None,
-                                    pivot_variants=pivot_result.get("all_variants", []),
-                                )
-
                             feas_row = {
                                 **feas,
                                 **pivot_result,
                                 "Keyword": source_keyword,
                                 "Query_Label": query_label,
+                                "da_provider": "moz",
+                                "client_da_source": client_da_source,
                                 "Client_In_Local_Pack": None,
                             }
                             all_feasibility.append(feas_row)
 
-                            status_icon = {"High Feasibility": "✅", "Moderate Feasibility": "⚠️",
-                                           "Low Feasibility": "🔴",
-                                           "Not Measured": "❓"}.get(feas["feasibility_status"], "")
+                            # The row IS the assessment: one argument, so a
+                            # field added to it cannot be forgotten here (F9).
+                            if ENRICHMENT_ENABLED:
+                                storage.save_feasibility_from_row(
+                                    feas_row, run_id, query_label,
+                                    pivot_variants=pivot_result.get(
+                                        "all_variants", []))
+
+                            status_icon = feasibility_module.status_label(
+                                feas["feasibility_status"], bare_icon=True)
                             print(f"  [Feasibility] {source_keyword}: "
                                   f"{status_icon} {feas['feasibility_status']} "
                                   f"(gap={feas['gap']}, avg_da={feas['avg_serp_da']})")
@@ -1707,53 +1717,44 @@ def _run(run_id):
         print(f"  [Local pack] {pack_icon}")
 
         # Moz for pivot organic results
-        pivot_das: list[int] = []
+        pivot_das = feasibility_module.DAWindow([], 0, 0, 0)
+        pivot_client_da, pivot_client_source = None, "not measured (no provider)"
         if moz_client is not None:
             pivot_urls = feasibility_module.url_window(
                 p_organic, f"'{pivot_keyword}' pivot feasibility",
                 logging.warning)
-            if pivot_urls:
-                pivot_moz = moz_client.get_moz_metrics(pivot_urls)
-                # The same definition as the primary pass (finding D-C-19):
-                # rank-ordered top N, the client's own domain dropped. Taking
-                # every measured DA instead averaged the client in as its own
-                # competitor whenever it ranked in the pivot SERP, pulling
-                # avg_serp_da toward client_da and making the pivot read as
-                # more feasible than it is.
-                pivot_das = feasibility_module.select_competitor_das(
+            if pivot_urls.window:
+                pivot_moz = {}
+                if pivot_urls.urls:
+                    pivot_moz = moz_client.get_moz_metrics(
+                        feasibility_module.with_client_url(
+                            pivot_urls.urls, CLIENT_DA_URL))
+                    moz_client_mod.write_metrics(
+                        p_organic, pivot_moz, storage, ENRICHMENT_ENABLED)
+                pivot_client_da, pivot_client_source = \
+                    feasibility_module.client_da_from_batch(
+                        pivot_moz, CLIENT_DOMAIN, "moz",
+                        FEASIBILITY_CLIENT_DA, None,
+                        logging.info, logging.warning)
+                # The same window as the primary pass (D-C-19).
+                pivot_das = feasibility_module.competitor_da_window(
                     pivot_urls,
                     lambda u: (pivot_moz.get(u) or {}).get("da"),
                     client_domain=CLIENT_DOMAIN,
                 )
-                moz_client_mod.write_metrics(
-                    p_organic, pivot_moz, storage, ENRICHMENT_ENABLED)
 
-        if pivot_das:
-            pivot_feas = feasibility_module.compute_feasibility(FEASIBILITY_CLIENT_DA, pivot_das)
-        else:
-            # No competitor DA measured — honest, never a false "Low Feasibility" (B.2, P1/P14).
-            pivot_feas = {"avg_serp_da": None, "client_da": FEASIBILITY_CLIENT_DA, "gap": None,
-                          "feasibility_score": None, "feasibility_status": "Not Measured"}
-
-        if ENRICHMENT_ENABLED:
-            storage.save_keyword_feasibility(
-                keyword_text=pivot_keyword,
-                run_id=run_id,
-                query_label="P",
-                avg_serp_da=pivot_feas["avg_serp_da"],
-                client_da=FEASIBILITY_CLIENT_DA,
-                gap=pivot_feas["gap"],
-                feasibility_status=pivot_feas["feasibility_status"],
-                feasibility_score=pivot_feas["feasibility_score"],
-                client_in_local_pack=int(client_in_local_pack),
-                pivot_variants=[],
-            )
+        # An empty window is nothing measured, not zero authority:
+        # compute_feasibility reports "Not Measured" (D2a, P1/P14).
+        pivot_feas = feasibility_module.compute_feasibility(
+            pivot_client_da, pivot_das)
 
         pivot_feas_row = {
             **pivot_feas,
             "Keyword": pivot_keyword,
             "Source_Keyword": source_keyword,
             "Query_Label": "P",
+            "da_provider": "moz",
+            "client_da_source": pivot_client_source,
             "Client_In_Local_Pack": client_in_local_pack,
             "pivot_status": "Pivot result",
             "suggested_keyword": None,
@@ -1763,8 +1764,13 @@ def _run(run_id):
         }
         all_feasibility.append(pivot_feas_row)
 
-        status_icon = {"High Feasibility": "✅", "Moderate Feasibility": "⚠️",
-                       "Low Feasibility": "🔴"}.get(pivot_feas["feasibility_status"], "")
+        if ENRICHMENT_ENABLED:
+            storage.save_feasibility_from_row(
+                pivot_feas_row, run_id, "P",
+                client_in_local_pack=int(client_in_local_pack))
+
+        status_icon = feasibility_module.status_label(
+            pivot_feas["feasibility_status"], bare_icon=True)
         print(f"  [Pivot result] {status_icon} {pivot_feas['feasibility_status']} "
               f"gap={pivot_feas['gap']} avg_da={pivot_feas['avg_serp_da']}")
 

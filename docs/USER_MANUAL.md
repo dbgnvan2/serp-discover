@@ -100,19 +100,79 @@ Serp-Discover answers these questions by:
 **What it does:** Calculates how hard each keyword is to rank for using Domain Authority (DA) gap analysis.
 
 **How it works:**
-- Fetches Domain Authority for Living Systems (fixed value, e.g., 35)
-- Fetches Domain Authority for top-5 competitors ranking for that keyword
+- Fetches Domain Authority for the top 10 competitors ranking for that keyword
+- Fetches Domain Authority for Living Systems **in the same request**, so both
+  sides of the gap come off the same provider's scale (see "Whose DA is it?"
+  below — this matters more than it sounds)
 - Calculates gap: `(average competitor DA) − (Living Systems DA)`
 - Assigns feasibility level:
   - **High Feasibility:** Gap ≤ 5 (rankable with quality content alone)
   - **Moderate Feasibility:** Gap 6–15 (needs local backlinks)
   - **Low Feasibility:** Gap > 15 (high-authority incumbents, pivot suggested)
-  - **Not Measured:** no competitor Domain Authority could be fetched for that
-    keyword. The keyword is still listed, with no verdict and no pivot — an
-    unmeasured keyword used to be reported as "Low Feasibility", which looks
-    identical to a real finding and triggered a pivot recommendation of its own.
+  - **Not Measured:** fewer than 5 of the ranking domains carried a Domain
+    Authority record, or Living Systems' own DA was never measured. The
+    keyword is still listed, with the numbers that *were* measured, but with
+    no verdict and no pivot — an unmeasured keyword used to be reported as
+    "Low Feasibility", which looks identical to a real finding and triggered
+    a pivot recommendation of its own.
 
-- Results are cached 30 days — re-running costs nothing
+**What the DA Coverage column tells you.** Both reports print the coverage the
+average rests on: `7/10 (3 unscored)` means seven of the ten ranking domains
+had a DA record and three did not. Read it before you read the gap. A gap
+built on three domains is a weaker claim than the same gap built on ten, and
+the two look identical without this column.
+
+A domain the provider holds no authority for is **left out of the average**,
+never counted as a DA of zero. Counting absences as zeros pulled the
+competitor average down, which made the gap look *smaller* and the keyword
+look winnable — so the tool recommended chasing keywords that DA-90
+directories own, because the domains nobody scored counted as having no
+authority at all. If you have older reports, their feasibility figures were
+computed that way and should be regenerated.
+
+**Whose DA is it?** The tool has two DA providers (DataForSEO first, Moz as
+fallback) and *their numbers are not interchangeable*: both are 0–100 and both
+are called "DA", but they are different vendors' models. Living Systems scores
+19 on DataForSEO against the 35 recorded in `config.yml`. So the tool now
+looks up Living Systems' own DA through whichever provider scored the
+competitors, and the `Client DA` cell says where the figure came from:
+
+- `19` — measured by the active provider. This is the number the gap uses.
+- `19 (override)` — you passed `--client-da 19` yourself.
+- `35 (config, not measured by moz)` — the provider had no record, so the
+  `config.yml` value stands in. Its scale against that provider is unverified,
+  so treat the gap as indicative, not like-for-like.
+- `not measured` — no provider was reachable. Every keyword reads "Not
+  measured"; the tool will not score live competitors against a fixed number.
+
+**Where to look when a keyword has no verdict.** Both reports carry a **Not
+measured — why** list under the feasibility table, one line per keyword,
+saying which of three things happened: no DA provider was reachable (an
+operator fix — set the credentials and run again), nothing in the keyword's
+top ten could be scored at all, or too few of the ten carried a record for a
+verdict. The line names the coverage, so you can see how close the run came.
+
+**What a withheld verdict also withholds.** A keyword with no verdict is not
+quietly treated as a bad keyword, and not treated as a good one either:
+
+- No neighbourhood pivot is recommended and no paid Maps fetch is made for
+  one. Earlier versions answered an unmeasured keyword with "Current keyword
+  is feasible. No pivot required." — a conclusion in the opposite direction
+  from the data.
+- Section 1 states the coverage instead of saying whose site is stronger. A
+  mean over two of ten domains is not a comparison.
+- Section 0 will not name it as the single best opportunity. If no keyword in
+  the run has a verdict, Section 0 says so and points at 5c rather than
+  picking one on intent alone.
+- It still appears everywhere a measured keyword does, including the brief's
+  payload, so neither you nor the LLM sees a run of ten keywords as a run of
+  the three that happened to be scored.
+
+- Results are cached 30 days — re-running costs nothing. An *absence* is
+  cached for 7 days rather than 30: "the provider has no figure for this
+  domain" stops being true as soon as the provider crawls it, so the tool
+  asks again sooner rather than reporting "Not measured" for a month after
+  the figure became available
 - For low-feasibility **service** keywords, suggests neighbourhood pivots (e.g., "Couples Counselling" → "Couples Counselling Lonsdale")
 - Informational keywords (e.g. "how does birth order affect personality") get **no** neighbourhood pivot — a geographic variant is meaningless for a question nobody searches with a neighbourhood. They are listed separately for the content extraction play instead.
 - If a pivot's validation SERP fetch fails, the tool says **"not measured"** rather than falsely reporting the client as absent from the local pack.
@@ -477,7 +537,12 @@ for a URL the field is blank rather than 0, so "no data" is never shown as "clea
 | ≤ 5 | ✅ High Feasibility | Rankable with quality content + on-page SEO alone |
 | 6–15 | ⚠️ Moderate Feasibility | Needs local backlink building + content quality |
 | > 15 | 🔴 Low Feasibility | Dominated by high-authority sites; **service** keywords pivot to neighbourhood variants, informational keywords route to the extraction play |
-| — | ❓ Not Measured | No competitor DA was fetched for this keyword. Not a verdict: re-run once the DA provider is reachable |
+| — | ⚠️ Not measured | Fewer than 5 ranking domains carried a DA record, or Living Systems' own DA was not measured. Not a verdict: the row says which case it is, and re-running once the DA provider is reachable fixes it |
+
+A verdict needs at least **5** of the ranking domains to carry a DA record
+(`feasibility.MIN_DA_FOR_VERDICT`). Below that the average, gap and score are
+still shown — they are what was measured — but the status is withheld. Four
+domains out of ten is not a finding about a SERP.
 
 ### SERP Intent
 

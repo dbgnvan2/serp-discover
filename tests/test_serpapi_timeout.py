@@ -8,6 +8,7 @@ import logging
 import pytest
 import requests
 
+import feasibility
 import run_feasibility
 import serp_audit
 import timeouts
@@ -131,4 +132,11 @@ def test_feasibility_serpapi_calls_use_the_configured_timeout(fetch, monkeypatch
 
     rows, ok = getattr(run_feasibility, fetch)("kw", {"serpapi": {"timeout_seconds": 33}})
 
-    assert seen == [33.0] and ok is False and rows == []
+    # _fetch_pivot_organic_urls returns a URLWindow (D2a); the local-pack
+    # fetch returns a plain list. Both must come back empty on a timeout,
+    # and empty must not read as "nothing ranked here" — the False says the
+    # fetch failed, which is what the caller gates on (P1).
+    empty = rows.urls if isinstance(rows, feasibility.URLWindow) else rows
+    assert seen == [33.0] and ok is False and empty == []
+    if isinstance(rows, feasibility.URLWindow):
+        assert rows.window == 0, rows

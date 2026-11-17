@@ -118,6 +118,13 @@ def _normalize_feasibility(status: Any) -> str:
 
     "High Feasibility" → high, "Moderate Feasibility" → moderate,
     "Low Feasibility" → low, anything unrecognised/absent → unknown.
+
+    "Not Measured" must fall through to ``unknown`` and so set
+    ``data_available["feasibility"]`` False: nothing was measured, and a play
+    chosen as though a low gap had been observed would be a verdict from no
+    data (D2a.11). It falls through on the prefix test, so any future rename
+    of that label must not begin with "high", "moderate" or "low" — a guard
+    in tests/test_d2_null_is_not_zero.py holds the labels to that.
     """
     if not status:
         return "unknown"

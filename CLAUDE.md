@@ -126,6 +126,14 @@ Editorial content currently lives in:
 - `domain_overrides.yml` — manual entity-type overrides
 - `classification_rules.json` — content type and entity type pattern lists (includes the `publisher` entity type + `publisher_domains` list added for the yoast_geo_upgrade Y.8 citation table; the Y.8 citation category is sourced from this file via the existing classifier, never a parallel list)
 - `clinical_dictionary.json` — Bowen vs medical vocabulary tiers (in `serp-compete`, not here)
+- `feasibility_messages.yml` — feasibility vocabulary: status labels + icons, the
+  per-keyword "why there is no verdict" sentences, the coverage phrases printed
+  beside every mean (long + table-cell forms) and how a Client DA cell states its
+  own provenance. The ONLY home for these words — four Python copies of the status
+  map are how one unmeasured state came to carry two labels ("No DA Data" and
+  "Not Measured") in different outputs. The minimum itself is a threshold, not
+  wording, so it lives in config as `technical.min_da_for_verdict` and
+  `feasibility.MIN_DA_FOR_VERDICT` reads it (added review chunk D2a)
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)

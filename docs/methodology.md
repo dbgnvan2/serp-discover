@@ -308,11 +308,38 @@ When `feasibility.pivot_serp_fetch` is on, a secondary SerpAPI Maps/organic fetc
 
 Both producers of `keyword_feasibility` — the in-pipeline pass in
 `serp_audit.py` and the standalone `run_feasibility.py` — take the DA average
-over the same set: `feasibility.select_competitor_das`, the true top 10 by
+over the same set: `feasibility.competitor_da_window`, the true top 10 by
 absolute rank with the client's own domain dropped. The in-pipeline pass
 computes a verdict for the primary query only, and every consumer indexes the
 rows with `feasibility.index_feasibility_by_keyword`. See
 `docs/feasibility.md`, "Which DAs the average is taken over" (finding D-C-19).
+
+**A value that was never measured is never written down as a zero.** A domain
+the DA provider holds no authority for is `None`, not `0`: counting absences
+as zeros dragged the competitor mean down, shrank the gap and flipped verdicts
+toward feasible. Each row publishes the coverage its mean rests on
+(`da_count` / `da_missing`, rendered as a `DA Coverage` column), and fewer than
+`feasibility.MIN_DA_FOR_VERDICT` measured domains withholds the status as "Not
+measured" rather than scoring four domains out of ten. The client's own DA is
+fetched in the same batch as the competitors and tagged with its provenance
+(`client_da_source`, `da_provider`), because DataForSEO's backlink rank and
+Moz's Domain Authority are both 0–100 and are not the same number. The status
+labels and the no-verdict sentences are editorial and live in
+`feasibility_messages.yml`; `technical.min_da_for_verdict` sets the minimum.
+The window is the top N rows of the SERP, sliced before the unusable ones are
+dropped, so a position link recovery could not resolve is a hole in the
+coverage rather than a slot backfilled from rank 11
+(`feasibility.url_window` / `usable_url`). Absences are cached — the row says
+the provider was asked, the NULL says there is no figure — but expire on
+`moz.negative_cache_ttl_days` rather than the 30-day measurement TTL, and
+both providers log how many of their answered records carry a figure
+(`feasibility.batch_coverage`), because the record count is not the
+measurement count. The coverage and the provenance are persisted with the row
+by `storage.save_feasibility_from_row`, so rank history carries them too. A
+withheld verdict suppresses the pivot recommendation, the directional DA
+sentence, the best-opportunity pick and the play routing — never the row
+itself. See `docs/feasibility.md` (findings D-C-03, D-C-04, D-M-02, D-M-05,
+D-M-08; review chunk D2).
 
 **Rank history.** Deltas (`metrics.py`) are measured against the previous run
 that wrote all of its outputs, over primary-query rows only; an aborted run

@@ -24,7 +24,9 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 
 **CTR** — Click-through rate — of everyone who sees your listing, the percentage who click it. "Estimated CTR loss" is a modelled guess at the clicks the AI Overview is absorbing, not a measurement of your actual traffic.
 
-**DA gap** — Your Domain Authority minus the average of the sites currently ranking. A negative gap means you are stronger than the page you would be competing with, so ranking is realistic. A positive gap means they are stronger.
+**DA coverage** — How much of the ranking page the average rests on, written as "7/10 (3 unscored)": seven of the ten ranking domains had a Domain Authority record and three did not. Read it before the gap. The same gap from three domains is a weaker claim than from ten, and nothing else on the row tells you which you are looking at. A dash means the coverage was not recorded for that run (an older report), which is not the same as nothing having been scored.
+
+**DA gap** — The average Domain Authority of the sites currently ranking, minus yours. A negative gap means you are stronger than the pages you would be competing with, so ranking is realistic. A positive gap means they are stronger.
 
 **Domain Authority** — A 0–100 third-party score estimating how much ranking strength a whole website has, based largely on who links to it. Moz's invention, not Google's, so treat it as a rough comparison between sites rather than a fact about your site.
 
@@ -45,6 +47,8 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 **local pack presence** — Whether the map-and-listings box appeared for this search. When it does, the ordinary results start lower down the page and get fewer clicks.
 
 **mixed intent** — Google is showing a blend of result types because it is unsure what searchers want. It usually means two different pages could both rank, which is an opening.
+
+**Not measured** — The tool tried and could not get enough data to answer, so it says so instead of guessing. For feasibility it means fewer than five ranking domains carried a Domain Authority record, or your own was never measured — not that the keyword is hard. The keyword is still listed, with a line under "Not measured — why" saying which case it is, and the tool withholds the things that would rest on a verdict: no pivot recommendation, no "you are stronger" comparison, and no place in the best-opportunity pick. Re-run once the data provider is reachable.
 
 **organic position** — Where your page sits in the ordinary, unpaid list of results. Position 1 is the top link. A dash means you were not found in the results checked.
 
@@ -87,9 +91,12 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 | `Credential_Hits / Author_Present / Review_Marker_Present` | Organic_Results | Trust signals found on the page — professional credentials named, a bylined author, visible reviews. These are the E-E-A-T markers Google associates with expertise. |
 | `Intro_Text_Length` | Organic_Results | Characters of prose before the page's first substantive heading. A large number means the answer is buried, which makes the page hard to quote. |
 | `client_da` | Keyword_Feasibility | Your site's Domain Authority — a 0-100 third-party estimate of ranking strength, based largely on who links to you. |
-| `avg_serp_da` | Keyword_Feasibility | The average Domain Authority of the sites currently ranking for this keyword. This is what you are being compared against. |
+| `avg_serp_da` | Keyword_Feasibility | The average Domain Authority of the sites currently ranking for this keyword. This is what you are being compared against. It averages only the ranking domains that had a Domain Authority record — read da_count beside it, since an average of three domains and an average of ten look identical here. |
+| `da_count / da_missing` | Keyword_Feasibility | How many of the ranking domains had a Domain Authority record (da_count) and how many did not (da_missing). Together they are the window avg_serp_da was taken over. A domain with no record is left out of the average, never counted as a Domain Authority of zero — counting absences as zeros pulled the average down and made hard keywords look winnable. |
+| `da_provider` | Keyword_Feasibility | Which service supplied the Domain Authority figures on this row — dataforseo or moz. Their scores are not interchangeable, so never compare a figure from one against a figure from the other, or track a trend across both. |
+| `client_da_source` | Keyword_Feasibility | Where your own Domain Authority on this row came from: the provider plus the date it was measured, "operator override" if you passed one on the command line, or "config fallback (unmeasured, ...)" when the provider had no record and the value in config.yml stood in. A config value is not a measurement and may be on a different vendor's scale, so a gap built on one is indicative. |
 | `gap` | Keyword_Feasibility | avg_serp_da minus client_da. Negative means you are the stronger site and ranking is realistic. Positive means they are stronger. Within about two points, treat it as level — the underlying score is an estimate. |
-| `feasibility_score / feasibility_status` | Keyword_Feasibility | The gap turned into a normalised score and a High / Moderate / Low verdict. "Not Measured" means Domain Authority could not be fetched, which is different from a low score. |
+| `feasibility_score / feasibility_status` | Keyword_Feasibility | The gap turned into a normalised score and a High / Moderate / Low verdict. "Not Measured" means there was not enough measured Domain Authority to give a verdict — fewer than five ranking domains had a record, or your own Domain Authority was never measured. That is different from a low score, and the row still shows whatever numbers were measured. |
 | `pivot_status / suggested_keyword / all_variants` | Keyword_Feasibility | Whether the tool suggests targeting a narrower neighbourhood-level keyword instead, which one, and every variant it considered. Only generated for service-type keywords. |
 | `Client_In_Local_Pack` | Keyword_Feasibility | Whether your business appeared in the map box. Blank means the check could not be run — not that you were absent. |
 | `Type / Phrase / Count` | SERP_Language_Patterns | Repeated two- and three-word phrases from the SERP text, with how often each appeared. Stop words are stripped before counting here, so phrases read oddly ("family origin"). The readable version is in the Markdown report, Section 3. |

@@ -13,6 +13,11 @@
 - `enrichment.*` — URL enrichment settings (`eeat_scan_chars` — how many leading body-text characters are scanned for author credentials and review markers, default 8000; see seo_geo_deferred G.3)
 - `app.*` — API mode flags (`balanced_mode`, `deep_research_mode`)
 - `moz.cache_ttl_days` — DA cache lifetime in days (default 30)
+- `moz.negative_cache_ttl_days` — how long a cached **absence** stays good
+  (default 7). A cache row whose DA is NULL records that the provider was
+  asked and holds no figure; that stops being true as soon as the provider
+  crawls the domain, so it is re-asked sooner than a measurement is
+  refreshed. Clamped to `cache_ttl_days`. Applies to both DA providers.
 - `moz.enabled` — master switch for the Moz Data API (`api.moz.com/jsonrpc`); default `true`. Per-method flags gate spend independently (see moz_api_upgrade_spec_v1.md T.0)
 - `moz.keyword_metrics.*` — Moz keyword metrics (volume / difficulty / organic CTR / priority), **on by default** (spec gate D-2). `enabled`; `engine` / `locale` / `device` — all three are required by the API and all three change the answer, so all three are part of the cache key (`en-CA` matches the client's market); `max_keywords` — per-run cap (default 50); `rows_per_call` — rows Moz bills per successful fetch (**4**, measured live 2026-08-28, not 1). There is no batch variant for this method, so it is one API call per keyword: 50 keywords is ~200 rows. Runs also stop before exceeding the live remaining quota and log which keywords were skipped
 - `moz.brand_authority.enabled` — Moz Brand Authority (0-100) per competitor domain. **Enabled** at the user's instruction (the spec's default was `false`). 1 row per domain. Rides on the competitor fetch, so `moz.competitor.enabled` must also be true. Also fetches the **client's own** score into the handoff's `moz.client` entry (uncached — 1 row per run — so the competitor scores have a reference point). The real method is `data.site.metrics.brand.authority.fetch`; the spec's `...metrics.brand_authority.fetch` does not exist on this API
@@ -132,7 +137,8 @@ One optional JSON file shared with Tool 2 (the competitor audit tool) so both to
   "technical": {
     "feasibility_threshold": 5,
     "moderate_feasibility_max_gap": 15,
-    "score_normaliser": 30.0
+    "score_normaliser": 30.0,
+    "min_da_for_verdict": 5
   },
   "filtering": {
     "omitted_domains_path": "omitted_domains.txt"
@@ -143,15 +149,55 @@ One optional JSON file shared with Tool 2 (the competitor audit tool) so both to
 | Key | Consumed by | Overrides |
 |-----|-------------|-----------|
 | `stop_words` | `serp_audit.py` n-gram corpus | `serp_vocab.yml stop_words` |
-| `client.da` | feasibility scoring | `config.yml feasibility.client_da` |
+| `client.da` | feasibility scoring — a **fallback**, not the default: the client's own DA is looked up through the active provider first (see below) | `config.yml feasibility.client_da` |
 | `client.domain` | client visibility detection | `config.yml analysis_report.client_domain` |
 | `client.location` | hyper-local pivot text | `config.yml feasibility.non_profit_location` |
 | `technical.feasibility_threshold` | `feasibility.py` High/Moderate cut | code default 5 |
 | `technical.moderate_feasibility_max_gap` | `feasibility.py` Moderate/Low cut | code default 15 |
 | `technical.score_normaliser` | `feasibility.py` score scaling | code default 30.0 |
+| `technical.min_da_for_verdict` | `feasibility.py` — how many of the top-10 positions must carry a DA figure before a gap is published as a verdict. Below it the row reads `Not Measured`; the mean and the gap are still reported, with their coverage | code default 5 |
 | `filtering.omitted_domains_path` | domain exclusion list (path relative to the shared config's directory) | code default `omitted_domains.txt` |
 
 **Precedence:** shared config > `config.yml` > `serp_vocab.yml` defaults (stop words) / code defaults (thresholds). Do not remove the file's authority — Tool 2 reads the same file (decision gate D-5).
+
+### The client's own DA is measured, not configured (review chunk D2, D-M-05)
+
+`feasibility.client_da` / `client.da` is the **last** resort, because the two
+DA providers' numbers are not interchangeable: DataForSEO's backlink rank and
+Moz's Domain Authority are both 0–100 and are different vendors' models (this
+client scores 19 on DataForSEO against the 35 in `config.yml`). The client's
+domain is fetched in the same batch as its competitors and resolved in this
+order:
+
+1. `--client-da` on `run_feasibility.py` — an explicit operator override.
+2. The active provider's live figure. The run logs the value, the provider and
+   the date, and says it is not using the config value.
+3. The config value, labelled on every row as
+   `client_da_source: "config fallback (unmeasured, <provider>)"` and rendered
+   as `35 (config, not measured by moz)`.
+
+With no provider reachable the client DA is `None`, every keyword reads "Not
+measured", and nothing is scored against the constant.
+
+### `feasibility_messages.yml` — the feasibility vocabulary (editorial)
+
+Status labels and icons, the per-keyword "why there is no verdict" sentences,
+and the coverage phrases printed beside every mean. Four Python copies of the
+status map are how one unmeasured state came to carry two labels in different
+outputs; there is now one label per status, and `"No DA Data"` is retired.
+Read by `feasibility.load_messages()`; a missing or malformed file degrades to
+the bare status string and never aborts a report.
+
+| Block | What it sets |
+|-------|--------------|
+| `statuses` | `icon` (bare glyph, console) + `label` (glyph + words, reports) per status. Keys must match the statuses `feasibility.py` returns — a test asserts they do, and a rename must not begin with "high", "moderate" or "low" or the play router will read it as a measured verdict |
+| `no_measurement` | `no_provider` / `nothing_in_window` / `below_minimum`, with `{provider}` `{measured}` `{window}` `{minimum}` placeholders |
+| `coverage` | the sentence form: "mean of 7 of 10 ranking domains (3 unscored)" |
+| `coverage_short` | the same fact for the reports' `DA Coverage` column: "7/10 (3 unscored)" |
+| `client_da` | how a `Client DA` cell states its own provenance |
+
+Not editorial, and so still in `feasibility.py`: `MIN_DA_FOR_VERDICT` (5), the
+number of measured ranking domains a verdict requires.
 
 ---
 

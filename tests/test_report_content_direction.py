@@ -234,16 +234,16 @@ class TestCD1ContentPlan:
         assert first.group(1).strip() == best_kw
 
     def test_cd1_3b_order_agrees_on_partial_feasibility(self):
-        """CD.1.3 — the §0/§1 pin holds when only SOME keywords have DA data.
+        """CD.1.3 — §0 and §1 agree when only SOME keywords have DA data.
 
-        This is the exact case the pin exists for, and it has to be built
-        deliberately: §0 ranks only keywords that appear in the feasibility
-        table, §1 lists every keyword. Give "zebra topic" a feasibility row of
-        "Not Measured" (which scores 0, like having none) and give "alpha topic"
-        no row at all, and the two rankings tie on every numeric component and
-        break the tie alphabetically over different sets — §0 picks zebra
-        because it is the only candidate, §1 picks alpha because it sorts first.
-        Without the pin, Option 1 contradicts the Executive Summary.
+        The original fixture built a §0/§1 divergence out of "Not Measured"
+        scoring the same as having no feasibility row at all, so the two
+        rankings tied on every component and broke the tie alphabetically
+        over different sets. Review chunk D2 finding F7 separated those two
+        states — unknown now outranks absent, and an unmeasured keyword is
+        not a §0 candidate at all — so that particular divergence can no
+        longer be constructed. What the pin exists to guarantee is tested
+        directly instead: whatever §0 names, §1 opens with.
         """
         data = _mock_data(["zebra topic", "alpha topic"], feasibility=False)
         data["keyword_feasibility"] = [{
@@ -253,17 +253,49 @@ class TestCD1ContentPlan:
             "client_da": None,
             "avg_serp_da": None,
             "gap": None,
+            "da_count": 1,
+            "da_missing": 9,
+        }]
+
+        best_kw, reason = gir._get_best_opportunity_keyword(
+            data["keyword_profiles"], data["keyword_feasibility"], ["informational"])
+        assert best_kw is None, (
+            "an unmeasured keyword must not be named the best opportunity")
+        assert "verdict" in reason.lower() or "coverage" in reason.lower(), reason
+
+        # Unknown is not the same as never attempted: the keyword that has a
+        # row ranks above the one that has none.
+        ranked = gir._rank_keywords(
+            data["keyword_profiles"], data["keyword_feasibility"], ["informational"])
+        assert ranked[0][0] == "zebra topic", ranked
+
+        report = generate_report(data)
+        first = re.search(r"^### Option 1 — (.+)$", report, re.MULTILINE)
+        assert first, "no Option 1 rendered"
+        assert first.group(1).strip() == ranked[0][0]
+
+    def test_cd1_3c_the_pin_holds_when_zero_ranks_only_some_keywords(self):
+        """CD.1.3 — the §0 pin survives a partially measured run.
+
+        §0 ranks only keywords with a verdict; §1 lists every keyword. Give
+        one keyword a verdict and the other no row, and Option 1 must still
+        be the keyword §0 named.
+        """
+        data = _mock_data(["zebra topic", "alpha topic"], feasibility=False)
+        data["keyword_feasibility"] = [{
+            "Keyword": "zebra topic",
+            "Query_Label": "A",
+            "feasibility_status": "High Feasibility",
+            "client_da": 35,
+            "avg_serp_da": 20.0,
+            "gap": -15.0,
+            "da_count": 9,
+            "da_missing": 0,
         }]
 
         best_kw, _ = gir._get_best_opportunity_keyword(
             data["keyword_profiles"], data["keyword_feasibility"], ["informational"])
-        assert best_kw == "zebra topic", (
-            "fixture no longer produces the divergence this test exists to cover")
-        unpinned = gir._rank_keywords(
-            data["keyword_profiles"], data["keyword_feasibility"], ["informational"])
-        assert unpinned[0][0] == "alpha topic", (
-            "fixture no longer diverges: the raw ranking already agrees with §0, "
-            "so this test would pass with the pin removed")
+        assert best_kw == "zebra topic"
 
         report = generate_report(data)
         first = re.search(r"^### Option 1 — (.+)$", report, re.MULTILINE)

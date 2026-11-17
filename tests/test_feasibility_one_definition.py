@@ -5,7 +5,7 @@ pass in `serp_audit` and the standalone `run_feasibility`. They used to build
 the input set differently — page order with the client's own URL included, vs
 rank order with the client excluded — so the report's §5c and the play router
 disagreed about the same keyword. Both now go through
-`feasibility.select_competitor_das`, and every consumer indexes the rows with
+`feasibility.competitor_da_window`, and every consumer indexes the rows with
 `feasibility.index_feasibility_by_keyword`.
 
 Spec: docs/review_2026-11-04/REVIEW_WORKPLAN_2026-11-04.md chunk D1
@@ -51,66 +51,72 @@ class TestOneInputSet(unittest.TestCase):
         self.by_domain = {feasibility.domain_of(r["Link"]): {"da": _da_for_rank(r["Rank"])}
                           for r in self.rows}
 
-    def _pipeline_das(self):
-        return feasibility.select_competitor_das(
+    def _pipeline_window(self):
+        return feasibility.competitor_da_window(
             self.urls[:10],
             lambda u: (self.by_url.get(u) or {}).get("da"),
             client_domain=CLIENT,
         )
 
-    def _standalone_das(self):
-        urls = run_feasibility._get_organic_urls_by_keyword(
+    def _standalone_window(self):
+        window = run_feasibility._get_organic_urls_by_keyword(
             {"organic_results": self.rows})["kw"]
-        return feasibility.select_competitor_das(
-            urls,
+        return feasibility.competitor_da_window(
+            window,
             lambda u: (self.by_domain.get(feasibility.domain_of(u)) or {}).get("da"),
             client_domain=CLIENT,
         )
 
     def test_both_producers_select_the_same_das(self):
-        self.assertEqual(self._pipeline_das(), self._standalone_das())
+        """The values and the coverage both, since D2a publishes both."""
+        self.assertEqual(self._pipeline_window(), self._standalone_window())
 
     def test_both_producers_report_the_same_row(self):
-        pipeline = feasibility.compute_feasibility(35, self._pipeline_das())
-        standalone = feasibility.compute_feasibility(35, self._standalone_das())
+        pipeline = feasibility.compute_feasibility(35, self._pipeline_window())
+        standalone = feasibility.compute_feasibility(35, self._standalone_window())
         for field in ("avg_serp_da", "gap", "feasibility_score",
-                      "feasibility_status"):
+                      "feasibility_status", "da_count", "da_missing"):
             self.assertEqual(pipeline[field], standalone[field], field)
 
     def test_window_is_the_true_top_ten(self):
         """Ranks 11 and 12 must not enter the average."""
-        das = self._pipeline_das()
+        das = self._pipeline_window().das
         self.assertNotIn(_da_for_rank(11), das)
         self.assertNotIn(_da_for_rank(12), das)
 
     def test_client_is_excluded_so_the_denominator_is_nine(self):
-        das = self._pipeline_das()
-        self.assertEqual(len(das), 9)
-        self.assertNotIn(_da_for_rank(4), das)
+        window = self._pipeline_window()
+        self.assertEqual(len(window.das), 9)
+        self.assertEqual((window.measured, window.missing, window.window),
+                         (9, 0, 9))
+        self.assertNotIn(_da_for_rank(4), window.das)
 
     def test_client_excluded_even_when_configured_with_www(self):
-        das = feasibility.select_competitor_das(
+        window = feasibility.competitor_da_window(
             self.urls[:10],
             lambda u: (self.by_url.get(u) or {}).get("da"),
             client_domain="www." + CLIENT,
         )
-        self.assertEqual(len(das), 9)
+        self.assertEqual(window.measured, 9)
 
     def test_urls_without_a_da_record_are_omitted_not_zeroed(self):
-        """None is not a DA of 0 (finding D-C-04)."""
-        das = feasibility.select_competitor_das(
+        """None is not a DA of 0 (finding D-C-04), and the hole is counted."""
+        window = feasibility.competitor_da_window(
             self.urls[:10],
             lambda u: None if u.startswith("https://comp1.") else 50,
             client_domain=CLIENT,
         )
-        self.assertNotIn(0, das)
-        self.assertEqual(das, [50] * 8)
+        self.assertNotIn(0, window.das)
+        self.assertEqual(window.das, [50] * 8)
+        self.assertEqual((window.measured, window.missing, window.window),
+                         (8, 1, 9))
 
     def test_standalone_url_set_is_rank_ordered(self):
         shuffled = list(reversed(self.rows))
-        urls = run_feasibility._get_organic_urls_by_keyword(
+        window = run_feasibility._get_organic_urls_by_keyword(
             {"organic_results": shuffled})["kw"]
-        self.assertEqual(urls, self.urls[:10])
+        self.assertEqual(window.urls, self.urls[:10])
+        self.assertEqual((window.unresolved, window.window), (0, 10))
 
 
 class TestRowIndexIsFirstWins(unittest.TestCase):
@@ -178,14 +184,14 @@ class TestEveryProducerUsesTheSharedHelper(unittest.TestCase):
 
     def test_serp_audit_has_no_inline_da_comprehension(self):
         src = self._src("serp_audit.py")
-        self.assertEqual(src.count("feasibility_module.select_competitor_das"),
+        self.assertEqual(src.count("feasibility_module.competitor_da_window"),
                          2,
                          "both feasibility passes must use the shared helper")
         self.assertNotIn('for v in pivot_moz.values() if v.get("da")', src)
 
     def test_run_feasibility_has_no_inline_da_comprehension(self):
         src = self._src("run_feasibility.py")
-        self.assertEqual(src.count("feasibility_module.select_competitor_das"),
+        self.assertEqual(src.count("feasibility_module.competitor_da_window"),
                          2,
                          "the primary and pivot passes must both use it")
         self.assertNotIn('[v["da"] for v in pivot_da_data.values()]', src)

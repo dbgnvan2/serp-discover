@@ -35,12 +35,17 @@ class TestPivotGating(unittest.TestCase):
         # it — the exact adversarial shape from the bug report).
         service_kw = "couples counselling North Vancouver"
         info_kw = "how does birth order affect personality West Vancouver"
+        # Five competitors per keyword: a verdict needs
+        # feasibility.MIN_DA_FOR_VERDICT measured domains (D2a.7), and these
+        # tests are about the pivot gate, not about thin coverage.
         data = {
             "organic_results": [
-                _organic_row(service_kw, "https://bigdirectory.com/a", 1),
-                _organic_row(service_kw, "https://hugesite.org/b", 2),
-                _organic_row(info_kw, "https://bigdirectory.com/c", 1),
-                _organic_row(info_kw, "https://hugesite.org/d", 2),
+                row
+                for kw in (service_kw, info_kw)
+                for row in (
+                    _organic_row(kw, f"https://comp{i}.example/{i}", i)
+                    for i in range(1, 6)
+                )
             ]
         }
         config = {
@@ -49,10 +54,8 @@ class TestPivotGating(unittest.TestCase):
             "analysis_report": {"client_domain": "livingsystems.ca"},
         }
         # High competitor DA → Low Feasibility for both keywords.
-        fake_metrics = {
-            "bigdirectory.com": {"da": 90, "pa": 80},
-            "hugesite.org": {"da": 85, "pa": 75},
-        }
+        fake_metrics = {f"comp{i}.example": {"da": 85 + i, "pa": 75}
+                        for i in range(1, 6)}
 
         class _FakeDA:
             def get_domain_metrics(self, urls):
@@ -83,8 +86,8 @@ class TestPivotGating(unittest.TestCase):
         self.assertIsNotNone(svc_row["suggested_keyword"])
 
     def test_b1c_no_da_branch_still_gates_informational_variants(self):
-        """Even with no DA data (No DA Data branch), an informational keyword
-        must carry NO neighbourhood variants; a service keyword still does."""
+        """Even with nothing measured, an informational keyword must carry NO
+        neighbourhood variants; a service keyword still does."""
         service_kw = "couples counselling North Vancouver"
         info_kw = "how does birth order affect personality West Vancouver"
         data = {
@@ -98,12 +101,12 @@ class TestPivotGating(unittest.TestCase):
                             "non_profit_location": "North Vancouver"},
             "analysis_report": {"client_domain": "livingsystems.ca"},
         }
-        # No DA credentials → da_data_available stays False → No DA Data branch.
+        # No DA credentials → no provider → the unmeasured branch (D2a.15).
         with mock.patch.object(rf, "DATAFORSEO_AVAILABLE", False), \
              mock.patch.object(rf, "MOZ_AVAILABLE", False):
             rows = rf.run_feasibility_analysis(data, config, do_pivot_serp=False)
         by_kw = {r["Keyword"]: r for r in rows if r.get("Query_Label") == "A"}
-        self.assertEqual(by_kw[service_kw]["feasibility_status"], "No DA Data")
+        self.assertEqual(by_kw[service_kw]["feasibility_status"], "Not Measured")
         self.assertEqual(by_kw[info_kw]["all_variants"], [])
         self.assertTrue(by_kw[service_kw]["all_variants"])
 
@@ -129,15 +132,26 @@ class TestFetchFailureHonesty(unittest.TestCase):
         }]
         return rf.generate_feasibility_report(primary + pivot, {}, "market_analysis_x.json")
 
+    def _pivot_cell(self, report):
+        """The pivot cell, which is where the local-pack signal renders.
+
+        B.2 is about this cell. The whole report is too wide a net for it
+        now: the D2a feasibility summary counts unmeasured keywords and
+        legitimately prints "Not measured" for that different fact.
+        """
+        line = next(l for l in report.splitlines()
+                    if "couples counselling Lonsdale" in l)
+        return line.lower()
+
     def test_b2_failed_fetch_renders_not_measured(self):
         report = self._report(client_in_local_pack=None)
-        self.assertIn("not measured", report.lower())
+        self.assertIn("not measured", self._pivot_cell(report))
         self.assertNotIn("✗ not in local pack", report)
 
     def test_b2_measured_absence_still_renders_x(self):
         report = self._report(client_in_local_pack=0)
         self.assertIn("✗ not in local pack", report)
-        self.assertNotIn("not measured", report.lower())
+        self.assertNotIn("not measured", self._pivot_cell(report))
 
     def test_b2_measured_presence_renders_check(self):
         report = self._report(client_in_local_pack=1)

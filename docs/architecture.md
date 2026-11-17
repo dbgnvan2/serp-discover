@@ -46,10 +46,10 @@ market_analysis_*.json
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |
 | `intent_verdict.py` | Spec v2 — computes per-keyword SERP intent verdict from intent_mapping.yml rules (primary_intent, is_mixed, confidence, distribution) |
 | `title_patterns.py` | Spec v2 — extracts shape patterns (how_to, what_is, listicle_numeric, vs_comparison, best_of, brand_only, question, other) from top-10 titles with dominance threshold |
-| `feasibility.py` | DA gap scoring (`compute_feasibility`) + pivot suggestions (`generate_hyper_local_pivot`) + the one definition of the feasibility input set (`select_competitor_das`) and of the row index (`index_feasibility_by_keyword`), shared by both producers (D-C-19) |
+| `feasibility.py` | DA gap scoring (`compute_feasibility`) + pivot suggestions (`generate_hyper_local_pivot`) + the one definition of the feasibility input set (`url_window` / `usable_url` / `competitor_da_window`), of the client's own DA (`with_client_url` / `resolve_client_da`), of a provider batch's coverage (`batch_coverage`, used by both DA clients) and of the row index (`index_feasibility_by_keyword`), shared by both producers (D-C-19, D-M-05). `NOT_MEASURED` is the status key every consumer branches on. Status labels, coverage phrases and the no-verdict sentences are read from `feasibility_messages.yml` (`load_messages`) |
 | `dataforseo_client.py` | DataForSEO bulk_ranks API client with 30-day SQLite cache |
 | `moz_client.py` | Moz Links API v2 client with 30-day SQLite cache (fallback) |
-| `storage.py` | SQLite persistence layer |
+| `storage.py` | SQLite persistence layer. `save_feasibility_from_row` persists a feasibility assessment from the dict `compute_feasibility` produced, so a field added to the row cannot be dropped on the way to the database (review chunk D2) |
 | `metrics.py` | Volatility & entity dominance calculations; baselines against the previous **completed** run, primary-query rows only (D-C-22) |
 | `url_enricher.py` | URL fetching & feature extraction |
 | `serp-me.py` | Tkinter GUI launcher |

@@ -10,9 +10,24 @@ from feasibility import (
     compute_feasibility,
     generate_hyper_local_pivot,
     HIGH_FEASIBILITY_MAX_GAP,
+    MIN_DA_FOR_VERDICT,
     MODERATE_FEASIBILITY_MAX_GAP,
     SCORE_NORMALISER,
 )
+
+
+def measured(*das):
+    """The given DAs, repeated until the window can carry a verdict.
+
+    These tests exercise the gap thresholds, not the coverage minimum added
+    by review chunk D2a (D2a.7: fewer than MIN_DA_FOR_VERDICT measured
+    competitors reads "Not Measured"). Repeating the values leaves the mean,
+    and so the gap and the status, exactly as written.
+    """
+    das = list(das)
+    repeats = -(-MIN_DA_FOR_VERDICT // len(das))
+    return das * repeats
+
 
 NEIGHBOURHOODS = ["Lonsdale", "Edgemont Village", "Lynn Valley", "Deep Cove", "Canyon Heights"]
 
@@ -22,36 +37,36 @@ class TestComputeFeasibility(unittest.TestCase):
     # --- Status labels ---
 
     def test_high_feasibility(self):
-        result = compute_feasibility(50, [53])
+        result = compute_feasibility(50, measured(53))
         self.assertEqual(result["feasibility_status"], "High Feasibility")
 
     def test_moderate_feasibility(self):
-        result = compute_feasibility(40, [50])
+        result = compute_feasibility(40, measured(50))
         self.assertEqual(result["feasibility_status"], "Moderate Feasibility")
 
     def test_low_feasibility(self):
-        result = compute_feasibility(30, [60])
+        result = compute_feasibility(30, measured(60))
         self.assertEqual(result["feasibility_status"], "Low Feasibility")
 
     # --- Boundary values (gap must be ≤ threshold for that tier) ---
 
     def test_boundary_gap_5_is_high(self):
-        result = compute_feasibility(45, [50])
+        result = compute_feasibility(45, measured(50))
         self.assertEqual(result["gap"], 5.0)
         self.assertEqual(result["feasibility_status"], "High Feasibility")
 
     def test_boundary_gap_6_is_moderate(self):
-        result = compute_feasibility(44, [50])
+        result = compute_feasibility(44, measured(50))
         self.assertEqual(result["gap"], 6.0)
         self.assertEqual(result["feasibility_status"], "Moderate Feasibility")
 
     def test_boundary_gap_15_is_moderate(self):
-        result = compute_feasibility(35, [50])
+        result = compute_feasibility(35, measured(50))
         self.assertEqual(result["gap"], 15.0)
         self.assertEqual(result["feasibility_status"], "Moderate Feasibility")
 
     def test_boundary_gap_16_is_low(self):
-        result = compute_feasibility(34, [50])
+        result = compute_feasibility(34, measured(50))
         self.assertEqual(result["gap"], 16.0)
         self.assertEqual(result["feasibility_status"], "Low Feasibility")
 
@@ -117,7 +132,7 @@ class TestComputeFeasibility(unittest.TestCase):
 
     def test_client_da_higher_than_competitors_gives_negative_gap(self):
         """Client already outranks competitors — should still be High Feasibility."""
-        result = compute_feasibility(70, [50])
+        result = compute_feasibility(70, measured(50))
         self.assertLess(result["gap"], 0)
         self.assertEqual(result["feasibility_status"], "High Feasibility")
 

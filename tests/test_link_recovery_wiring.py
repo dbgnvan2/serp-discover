@@ -111,7 +111,7 @@ class TestPageLevelFiguresAreNotTakenFromTheFrontPage:
         """P9/P31 — filtering first slides rank 11 into "the top 10"."""
         body = _function("feasibility.py", "url_window")
         assert body.index("rows[:TOP_N_FOR_FEASIBILITY]") < body.index(
-            'if r.get("Link") and r.get("Link") != "N/A"')
+            "if usable_url(r.get(\"Link\"))")
         src = _source("serp_audit.py")
         assert src.count("feasibility_module.url_window(") == 2, (
             "the primary and pivot call sites")
