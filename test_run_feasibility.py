@@ -7,6 +7,7 @@ Spec: seo_geo_review_20260704.md (chip B).
 
 All external calls are mocked; no API keys required.
 """
+import feasibility
 import logging
 import os
 import unittest
@@ -73,7 +74,12 @@ class TestPivotGating(unittest.TestCase):
         info_row = by_kw[info_kw]
         self.assertEqual(info_row["feasibility_status"], "Low Feasibility")
         self.assertNotEqual(info_row["pivot_status"], "Pivoting to Hyper-Local")
-        self.assertEqual(info_row["pivot_status"], "No pivot — informational")
+        # These keywords carry NO SERP intent verdict, so the refusal is a
+        # judgement from the keyword text and now says so. It used to be
+        # labelled "informational" whatever decided it (D4b cold review,
+        # finding 2).
+        self.assertTrue(feasibility.is_no_pivot(info_row["pivot_status"]))
+        self.assertIn("no SERP intent verdict", info_row["pivot_status"])
         self.assertEqual(info_row["all_variants"], [])
         self.assertIsNone(info_row["suggested_keyword"])
 

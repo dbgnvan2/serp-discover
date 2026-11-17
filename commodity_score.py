@@ -19,7 +19,9 @@ on the report path (reproducible given the snapshot + ``weights_json``):
   grouped by ``Root_Keyword``; degrades to ``top5_organic`` titles). Higher = the
   results all say the same thing = more commoditized. Deterministic (NOT
   embeddings) so the score reproduces — the D-D4a decision.
-- ``serp_homogeneity`` — SERP concentration: top entity-type share
+- ``serp_homogeneity`` — SERP concentration: the largest entity-type share of
+  the classified label-A results recorded for the keyword (NOT necessarily a
+  top-10 share: see ``entity_distribution_single_serp``)
   (``entity_distribution``) blended with title-pattern dominance
   (``title_patterns``). A uniform SERP is more absorbable.
 - ``aio_present`` — ``has_ai_overview`` (an AIO already IS the absorption).
@@ -144,24 +146,50 @@ def answer_similarity(texts: list) -> float | None:
     return round(sum(pairs) / len(pairs), 4) if pairs else None
 
 
+#: `title_patterns.pattern_counts` buckets that are not a shape. "other" is
+#: the catch-all for a title that matched nothing, so it can never be evidence
+#: that the SERP has ONE shape (D-M-13 / D4.8).
+_NON_SHAPE_PATTERNS = ("other",)
+
+
 def serp_homogeneity(entity_distribution: dict | None,
-                     title_patterns: dict | None) -> float:
-    """0–1 SERP concentration: top entity-type share blended with title-pattern
-    dominance. A uniform SERP (one entity type, one title shape) → high."""
+                     title_patterns: dict | None) -> float | None:
+    """0–1 SERP concentration: largest entity-type share blended with title-pattern
+    dominance. A uniform SERP (one entity type, one title shape) → high.
+
+    ``None`` when neither signal is measurable. The caller floors that to 0.0
+    and keeps it in the denominator, the same treatment ``answer_similarity``
+    gets — missing evidence must not inflate the score by renormalising its
+    weight away (P7).
+
+    D-M-13 / D4.8: this took ``max()`` over every bucket in
+    ``pattern_counts``, and ``build`` keeps the catch-all ``other`` there even
+    though it excludes it when choosing ``dominant_pattern``. So a SERP where
+    NO title matched any shape scored 1.0 — "perfectly uniform" — on the
+    strength of ten unclassifiable titles. The dominant-shape candidates now
+    exclude ``other`` while every title stays in the denominator, so six
+    listicles among ten titles is 0.6, not 1.0.
+    """
     # isinstance guards: a malformed (non-dict) profile field must not raise here —
     # generate_report composes this under serp_audit's swallowing try, so a raise
     # would silently drop the whole market_analysis_*.md (P2).
     ent = entity_distribution if isinstance(entity_distribution, dict) else {}
     ent_total = sum(ent.values()) if ent else 0
-    ent_conc = (max(ent.values()) / ent_total) if ent_total else 0.0
+    ent_conc = (max(ent.values()) / ent_total) if ent_total else None
+
     tp = title_patterns if isinstance(title_patterns, dict) else {}
     counts = tp.get("pattern_counts")
     counts = counts if isinstance(counts, dict) else {}
     tp_total = sum(counts.values()) if counts else 0
-    tp_conc = (max(counts.values()) / tp_total) if tp_total else 0.0
-    if ent_total and tp_total:
-        return round((ent_conc + tp_conc) / 2, 4)
-    return round(ent_conc or tp_conc, 4)   # only one signal present
+    shaped = {name: n for name, n in counts.items()
+              if name not in _NON_SHAPE_PATTERNS and n}
+    # No title carried a shape: the title signal is absent, not maximal.
+    tp_conc = (max(shaped.values()) / tp_total) if (tp_total and shaped) else None
+
+    present = [c for c in (ent_conc, tp_conc) if c is not None]
+    if not present:
+        return None
+    return round(sum(present) / len(present), 4)
 
 
 def _composite(subscores: dict, weights: dict) -> float:
@@ -225,14 +253,18 @@ def compute_commodity(keyword_profiles: dict, data: dict | None,
         hom = serp_homogeneity(profile.get("entity_distribution"),
                                profile.get("title_patterns"))
         aio = 1.0 if profile.get("has_ai_overview") else 0.0
-        low_conf = sim is None or len(texts) < 3
+        low_conf = sim is None or hom is None or len(texts) < 3
         opa = None   # one_paragraph_answerable LLM probe OFF on the report path
         # P7: an UNMEASURED similarity (too few/no snippets) floors to 0 and STAYS
         # in the denominator — missing data must not inflate the score by
         # renormalising its weight away. Only the deliberately-OFF LLM term
         # (opa=None) is excluded + renormalised.
         subscores = {"answer_similarity": 0.0 if sim is None else sim,
-                     "serp_homogeneity": hom, "aio_present": aio,
+                     # D4.8: an unmeasurable homogeneity gets the same P7
+                     # treatment as an unmeasurable similarity — floored and
+                     # kept in the denominator, never renormalised away.
+                     "serp_homogeneity": 0.0 if hom is None else hom,
+                     "aio_present": aio,
                      "one_paragraph_answerable": opa}
         score = _composite(subscores, weights)
         band = _band(score, med, high)
@@ -344,8 +376,9 @@ _CAVEAT = (
     "Answer similarity is **lexical** (shared wording), so results that *paraphrase* the "
     "same answer in different words read as less similar than they are — treat the score "
     "as a floor, not a ceiling. `low` confidence marks keywords with < 3 results or too "
-    "few texts to compare (an unmeasured similarity floors to 0, and these rows are "
-    "sorted last and never labelled high-risk)."
+    "few texts to compare, or a SERP whose titles matched no shape at all. An "
+    "unmeasured sub-score prints `—`, floors to 0 in the blend and stays in its "
+    "denominator, so these rows are sorted last and never labelled high-risk."
 )
 
 
@@ -377,11 +410,18 @@ def render_commodity_section(rows: list[dict], rollup: dict) -> list[str]:
                                           -float(r["commodity_score"]), r["keyword"]))
     for r in ordered:
         sim = "—" if r["answer_similarity"] is None else f"{r['answer_similarity']:.2f}"
+        # Both sub-scores are nullable (D4b), and the row keeps the raw None
+        # while only the composite floors it. An unguarded format here raised
+        # TypeError inside _safe_section, which drops the WHOLE table for every
+        # keyword because one keyword had nothing to measure (D4b cold review,
+        # finding 1).
+        hom = ("—" if r["serp_homogeneity"] is None
+               else f"{float(r['serp_homogeneity']):.2f}")
         band = r["risk_band"] + (" ⚠️" if r["low_confidence"] else "")
         play = _PLAY_LABEL.get(r.get("recommended_play"), "—")
         out.append(
             f"| {r['keyword']} | {float(r['commodity_score']):.1f} | {band} | {sim} "
-            f"| {float(r['serp_homogeneity']):.2f} | {'yes' if r['aio_present'] else 'no'} "
+            f"| {hom} | {'yes' if r['aio_present'] else 'no'} "
             f"| {play} |"
         )
     out.append("")

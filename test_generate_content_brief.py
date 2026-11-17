@@ -673,8 +673,16 @@ If you don't act now, you'll lose your rank #3 position entirely.
         self.assertIn("AIO", section7)
 
     def test_mixed_intent_strategy_compete_on_dominant(self):
-        """A mixed SERP whose dominant intent matches an intent the client
-        already ranks for → compete_on_dominant."""
+        """A mixed SERP whose dominant intent is one the client serves →
+        compete_on_dominant.
+
+        D-M-11 / D4.6: this test used to pass `preferred_intents=[]` and a
+        0.5/0.5 tie, relying on dict order to make `informational` dominant
+        and on `client_intent_presence` to accept it. Both were the fault:
+        a client that serves nothing cannot compete on anything, and the
+        tie-break was SERP row order. The distribution is now unambiguous and
+        the client's preferred intents are stated.
+        """
         keyword_profiles = {
             # Already-ranked client keyword (informational)
             "what is bowen theory": {
@@ -701,8 +709,8 @@ If you don't act now, you'll lose your rank #3 position entirely.
                     "is_mixed": True,
                     "confidence": "medium",
                     "intent_distribution": {
-                        "informational": 0.5,
-                        "transactional": 0.5,
+                        "informational": 0.6,
+                        "transactional": 0.4,
                     },
                 },
                 "total_results": 3000,
@@ -716,10 +724,15 @@ If you don't act now, you'll lose your rank #3 position entirely.
             client_position={"organic": [], "summary": {"keywords_with_any_visibility": ["what is bowen theory"]}},
             total_results_by_kw={},
             paa_analysis={},
-            preferred_intents=[],
+            preferred_intents=["informational"],
         )
         target = flags["opportunity_scale"]["bowen theory courses"]
         self.assertEqual(target["mixed_intent_strategy"], "compete_on_dominant")
+        profile = keyword_profiles["bowen theory courses"]
+        self.assertEqual(profile["mixed_intent_dominant"], ["informational"])
+        self.assertFalse(profile["mixed_intent_dominant_tied"])
+        # The client already ranks for informational, so that is the lead.
+        self.assertEqual(profile["mixed_intent_lead"], "informational")
         # Persisted onto the keyword profile too
         self.assertEqual(
             keyword_profiles["bowen theory courses"]["mixed_intent_strategy"],
@@ -728,7 +741,12 @@ If you don't act now, you'll lose your rank #3 position entirely.
 
     def test_mixed_intent_strategy_backdoor(self):
         """Dominant intent is uncompetable, but a non-dominant intent is in
-        preferred_intents → backdoor."""
+        preferred_intents → backdoor.
+
+        D4.6: the distribution was 0.5/0.5, so `informational` was not in fact
+        non-dominant — the old `max()` made `transactional` dominant by dict
+        order. It is now genuinely the smaller share.
+        """
         keyword_profiles = {
             "couples therapy": {
                 "client_visible": False,
@@ -739,8 +757,8 @@ If you don't act now, you'll lose your rank #3 position entirely.
                     "is_mixed": True,
                     "confidence": "medium",
                     "intent_distribution": {
-                        "transactional": 0.5,
-                        "informational": 0.5,
+                        "transactional": 0.7,
+                        "informational": 0.3,
                     },
                 },
                 "total_results": 10000,
@@ -758,6 +776,36 @@ If you don't act now, you'll lose your rank #3 position entirely.
         )
         target = flags["opportunity_scale"]["couples therapy"]
         self.assertEqual(target["mixed_intent_strategy"], "backdoor")
+
+    def test_mixed_intent_strategy_tie_is_order_independent(self):
+        """D4.6: two intents tied for dominance get one answer, not two.
+
+        `max()` over a dict resolved the tie by insertion order, i.e. by which
+        result Google returned first, so the same 5/5 SERP produced
+        `backdoor` one way round and `avoid` the other.
+        """
+        answers = []
+        for dist in ({"local": 5, "informational": 5},
+                     {"informational": 5, "local": 5}):
+            profiles = {"kw": {
+                "client_visible": False, "client_rank": None,
+                "client_rank_delta": None, "total_results": 1000,
+                "serp_intent": {"primary_intent": "mixed", "is_mixed": True,
+                                "confidence": "medium",
+                                "intent_distribution": dist}}}
+            gcb._compute_strategic_flags(
+                root_keywords=["kw"], keyword_profiles=profiles,
+                client_position={"organic": [], "summary": {
+                    "keywords_with_any_visibility": []}},
+                total_results_by_kw={}, paa_analysis={},
+                preferred_intents=["informational"])
+            answers.append((profiles["kw"]["mixed_intent_strategy"],
+                            tuple(profiles["kw"]["mixed_intent_dominant"]),
+                            profiles["kw"]["mixed_intent_dominant_tied"]))
+        self.assertEqual(answers[0], answers[1])
+        self.assertEqual(
+            answers[0],
+            ("compete_on_dominant", ("informational", "local"), True))
 
     def test_mixed_intent_strategy_avoid(self):
         """Dominant intent uncompetable AND no non-dominant intents in

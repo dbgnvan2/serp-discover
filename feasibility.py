@@ -645,6 +645,114 @@ def compute_feasibility(
     }
 
 
+#: Fallback only. The list is EDITORIAL — a client serving a different market
+#: widens or narrows it — so it lives in ``config.yml feasibility.pivotable_intents``
+#: and this is the documented default used when config supplies none
+#: (D-M-19 / D4.10; moved to config by that chunk's cold review, finding 2).
+DEFAULT_PIVOTABLE_INTENTS = ("local", "transactional")
+
+#: Back-compatible alias. Reads as a constant but is only the default; callers
+#: that need the configured list pass ``pivotable_intents``.
+PIVOTABLE_INTENTS = DEFAULT_PIVOTABLE_INTENTS
+
+
+def resolve_pivotable_intents(cfg: dict | None) -> tuple[str, ...]:
+    """Resolve ``feasibility.pivotable_intents``; default + warning when unusable."""
+    raw = ((cfg or {}).get("feasibility") or {}).get("pivotable_intents")
+    if raw is None:
+        return DEFAULT_PIVOTABLE_INTENTS
+    if not isinstance(raw, (list, tuple)) or not raw:
+        logging.warning(
+            "feasibility.pivotable_intents is not a non-empty list — using %s.",
+            list(DEFAULT_PIVOTABLE_INTENTS))
+        return DEFAULT_PIVOTABLE_INTENTS
+    return tuple(str(v).strip().lower() for v in raw if str(v).strip())
+
+
+def _pivot_gate(serp_intent: dict | None,
+                is_service_like: bool,
+                pivotable_intents: tuple[str, ...] | None = None) -> tuple[bool, str]:
+    """Is a neighbourhood pivot meaningful for this keyword, and on what basis?
+
+    Spec: review_2026-11-04 D4.10 (D-M-19)
+
+    The gate was ``is_service_like`` alone — a token-list guess made from the
+    keyword STRING by ``query_variants.is_service_like``. By the time this
+    runs, the SERP itself has been classified, so the measured verdict decides
+    and the guess is only the fallback for a keyword with no verdict. Returns
+    (pivotable, which basis decided), so the caller can record it.
+    """
+    pivotable = pivotable_intents or DEFAULT_PIVOTABLE_INTENTS
+    si = serp_intent if isinstance(serp_intent, dict) else {}
+    primary = si.get("primary_intent")
+    components = si.get("mixed_components") or []
+
+    if si.get("is_mixed") and components:
+        return (any(c in pivotable for c in components),
+                "serp_intent.mixed_components")
+    if primary and primary != "mixed":
+        return primary in pivotable, "serp_intent.primary_intent"
+    # No verdict: too little of the page was classified. Fall back to the
+    # keyword-string guess rather than refusing every pivot.
+    return bool(is_service_like), "is_service_like (no SERP intent verdict)"
+
+
+#: The prefix every "no pivot" status carries. The rest of the status names the
+#: intent that refused it, so consumers must test the PREFIX, not one phrasing
+#: (D4b cold review, finding 2).
+NO_PIVOT_PREFIX = "No pivot — "
+
+
+def is_no_pivot(pivot_status) -> bool:
+    """True when a pivot_status says no pivot applies, whatever the intent named."""
+    return str(pivot_status or "").startswith(NO_PIVOT_PREFIX)
+
+
+def _refused_intent_phrase(serp_intent: dict | None, gate_source: str) -> str:
+    """Name the intent that blocked the pivot, in words a reader can check.
+
+    Spec: review_2026-11-04 D4.10 (D-M-19), cold-review finding 2.
+    """
+    si = serp_intent if isinstance(serp_intent, dict) else {}
+    if gate_source == "serp_intent.mixed_components":
+        parts = [str(c).replace("_", " ") for c in (si.get("mixed_components") or [])]
+        return "mixed (" + ", ".join(parts) + ")" if parts else "mixed"
+    if gate_source == "serp_intent.primary_intent":
+        return str(si.get("primary_intent") or "unclassified").replace("_", " ")
+    return "non-service (no SERP intent verdict — judged from the keyword text)"
+
+
+def _market_composition_clause(entity_distribution: dict | None) -> str:
+    """What the SERP actually shows, as a clause for the pivot explanation.
+
+    Spec: review_2026-11-04 D4.10 (D-M-19)
+
+    The explanation asserted "is currently dominated by high-authority
+    directories" whatever the page held, so a SERP of ten low-authority
+    clinics with a Low Feasibility verdict was reported as directory-
+    dominated. The clause now describes the distribution, and says nothing
+    about composition when there is no distribution to describe.
+    """
+    dist = entity_distribution if isinstance(entity_distribution, dict) else {}
+    counts = {str(k): n for k, n in dist.items()
+              if isinstance(n, (int, float)) and n > 0}
+    total = sum(counts.values())
+    if not total:
+        return "is out of reach on domain authority alone"
+
+    top_share = max(counts.values())
+    leaders = sorted(k for k, n in counts.items() if n == top_share)
+    share = top_share / total
+    label = " and ".join(leaders) if len(leaders) <= 2 else "several entity types"
+
+    if share >= 0.5 and len(leaders) == 1:
+        return f"is dominated by {label} results ({top_share} of {total})"
+    if share >= 0.5:
+        return f"is led jointly by {label} ({top_share} of {total} each)"
+    return (f"has no dominant entity type — {label} leads with "
+            f"{top_share} of {total} results")
+
+
 def generate_hyper_local_pivot(
     primary_keyword: str,
     non_profit_location: str,
@@ -652,6 +760,9 @@ def generate_hyper_local_pivot(
     neighborhoods: list[str],
     strategy: Literal["first", "all", "random"] = "first",
     is_service_like: bool = True,
+    serp_intent: dict | None = None,
+    entity_distribution: dict | None = None,
+    pivotable_intents: tuple[str, ...] | None = None,
 ) -> dict:
     """Suggest a hyper-local neighbourhood variant for a Low Feasibility keyword.
 
@@ -690,6 +801,20 @@ def generate_hyper_local_pivot(
         ``service_like_tokens`` (serp_vocab.yml). Defaults to ``True`` so
         existing callers/tests keep their behaviour; the two pipeline callers
         pass it explicitly. When ``False`` no neighbourhood pivot is emitted.
+    serp_intent:
+        The keyword's measured ``serp_intent`` block. When it carries a
+        verdict, that verdict decides the gate and ``is_service_like`` is
+        only a fallback: the run has already classified this SERP from its
+        own results, and a token guess from the keyword string should not
+        overrule it (D-M-19 / D4.10). An intent in
+        ``PIVOTABLE_INTENTS`` — or a mixed SERP with one of them among its
+        components — is pivotable.
+    entity_distribution:
+        ``{entity_type: count}`` for the keyword's SERP, used to decide
+        whether the explanation may say the page is directory-dominated. The
+        sentence used to assert it unconditionally, so a page of ten
+        low-authority clinics with a Low Feasibility verdict was reported as
+        dominated by high-authority directories.
     strategy:
         How to pick the suggested neighbourhood:
 
@@ -708,7 +833,8 @@ def generate_hyper_local_pivot(
     dict with keys:
         original_keyword  : str
         pivot_status      : "Pivoting to Hyper-Local" | "Stay the course"
-                            | "No pivot — informational"
+                            | "No pivot — <the intent that refused it>"
+                            (test with ``is_no_pivot``, never by equality)
         suggested_keyword : str | None
         all_variants      : list[str]  – all neighbourhood combinations
                             (empty for informational keywords)
@@ -742,16 +868,25 @@ def generate_hyper_local_pivot(
     # SERVICE-intent keywords. Informational keywords ("how does birth order
     # affect personality") must NOT get a pivot or neighbourhood variants —
     # ranking is not the game for them (B.1.b). No variants are built here.
-    if not is_service_like:
+    pivotable, gate_source = _pivot_gate(serp_intent, is_service_like,
+                                         pivotable_intents)
+    if not pivotable:
+        # The refusal names what decided it. It said "informational"
+        # unconditionally, so a SERP measured `commercial_investigation` or
+        # `navigational` was reported as informational — the same fault class
+        # this gate was built to remove (D4b cold review, finding 2).
+        refused_intent = _refused_intent_phrase(serp_intent, gate_source)
         return {
             "original_keyword": primary_keyword,
-            "pivot_status": "No pivot — informational",
+            "pivot_status": NO_PIVOT_PREFIX + refused_intent,
+            "gate_source": gate_source,
             "suggested_keyword": None,
             "all_variants": [],
             "strategy": (
-                "Informational keyword — a neighbourhood pivot does not apply "
-                "(nobody searches an informational question with a neighbourhood). "
-                "Compete on content extractability, not geography."
+                f"{refused_intent.capitalize()} keyword — a neighbourhood pivot "
+                "does not apply (proximity substitutes for authority only when "
+                "the searcher wants a service in a place). Compete on content "
+                "extractability, not geography."
             ),
             "avg_competitor_da": avg_da,
             # SEAM (chip C): the extraction_play recommendation slots in here.
@@ -804,8 +939,9 @@ def generate_hyper_local_pivot(
 
     da_display = f"{avg_da:.0f}" if avg_da is not None else "unknown"
     explanation = (
-        f"The city-wide market for '{non_profit_location}' is currently dominated by "
-        f"high-authority directories (Avg DA: {da_display}). "
+        f"The city-wide market for '{non_profit_location}' "
+        f"{_market_composition_clause(entity_distribution)} "
+        f"(Avg DA: {da_display}). "
         f"We recommend pivoting to '{chosen}' where you can compete on geographic "
         f"relevance rather than domain strength. "
         f"Google's neighbourhood-intent signals favour a practitioner physically "
@@ -815,6 +951,7 @@ def generate_hyper_local_pivot(
     return {
         "original_keyword": primary_keyword,
         "pivot_status": "Pivoting to Hyper-Local",
+        "gate_source": gate_source,
         "suggested_keyword": suggested,
         "all_variants": all_variants,
         "strategy": explanation,

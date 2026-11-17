@@ -5,6 +5,7 @@ Tests for feasibility.py — compute_feasibility() and generate_hyper_local_pivo
 All tests are pure-Python with no I/O or external dependencies.
 """
 
+import feasibility
 import unittest
 from feasibility import (
     compute_feasibility,
@@ -279,7 +280,12 @@ class TestGenerateHyperLocalPivot(unittest.TestCase):
             is_service_like=False,
         )
         self.assertNotEqual(result["pivot_status"], "Pivoting to Hyper-Local")
-        self.assertEqual(result["pivot_status"], "No pivot — informational")
+        # These keywords carry NO SERP intent verdict, so the refusal is a
+        # judgement from the keyword text and now says so. It used to be
+        # labelled "informational" whatever decided it (D4b cold review,
+        # finding 2).
+        self.assertTrue(feasibility.is_no_pivot(result["pivot_status"]))
+        self.assertIn("no SERP intent verdict", result["pivot_status"])
         self.assertIsNone(result["suggested_keyword"])
         self.assertEqual(result["all_variants"], [])
 

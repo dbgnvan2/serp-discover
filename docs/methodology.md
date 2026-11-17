@@ -333,9 +333,44 @@ Patterns without a `Relevant_Intent_Class` field in `strategic_patterns.yml` sco
 
 *Spec: serp_tool1_improvements_spec.md#I.3. Implemented 2026-05-01.*
 
+### What `entity_distribution` counts
+
+`keyword_profiles[kw].entity_distribution` counts the **label-A** organic rows
+for the keyword — the same row set the SERP intent verdict uses. It counted
+every query label, so a "top entity-type share" could be computed over the
+primary SERP plus its alternative-query and probe rows while the intent verdict
+printed beside it came from the label-A top 10: two shares of one SERP that
+cannot both be shares of it (D-M-13 / D4.9).
+
+An identical result written twice (same rank, same link) is counted once and
+the drop recorded in `entity_distribution_duplicate_rows`. A rank held by two
+*different* results is a genuine second fetch; the snapshot carries no field
+saying which fetch a row came from, so the rows cannot be split, and
+`entity_distribution_single_serp` is set false instead — the share is reported
+with its real denominator and is not a top-10 share.
+
+Every share now states its denominator. `entity_distribution_rows` is that
+denominator and `entity_distribution_rank_repeats` counts rows whose rank was
+already seen — more than one fetch present for the keyword, so the rows are not
+one page's worth. A non-zero repeat count is logged at WARNING rather than left
+for the reader to infer (P2). The reference-run fixture has 21 label-A rows with
+19 repeated ranks for one keyword, which is how this was found.
+
 ### Feasibility scoring and hyper-local pivot gating
 
+The intents a pivot applies to are editorial and live in
+`config.yml feasibility.pivotable_intents` (default `local`, `transactional`).
+A refusal names the intent that decided it: the status read
+`"No pivot — informational"` whatever the verdict was, so a SERP measured
+`commercial_investigation` or `navigational` was reported as informational.
+Consumers test the prefix through `feasibility.is_no_pivot`, never by equality
+against one phrasing.
+
 `feasibility.py` scores each keyword by the Domain Authority gap (avg competitor DA − client DA) into High / Moderate / Low Feasibility (thresholds in `docs/feasibility.md`). For **Low Feasibility** keywords `generate_hyper_local_pivot` may suggest a neighbourhood variant — but only when the keyword is **service-intent**. Whether a keyword is service-like is decided by the shared `query_variants.is_service_like` predicate, which matches the editorial `service_like_tokens` list in `serp_vocab.yml` against the de-localised keyword. Informational keywords (e.g. "how does birth order affect personality") get **no** pivot and **no** neighbourhood variants: a geographic variant is meaningless for them, and their play is content extractability, not proximity (the report flags them for the extraction play instead).
+
+D-M-19 / D4.10 changed which signal decides that. `is_service_like` is a token guess from the keyword *string*; by the time the pivot runs the SERP itself has been classified, so `generate_hyper_local_pivot` takes `serp_intent` and gates on the measured verdict (`feasibility.PIVOTABLE_INTENTS` — `local` or `transactional`, or a mixed SERP with one of them among its components). The token guess is the fallback for a keyword with no verdict, and the returned `gate_source` says which basis decided. Both branches of `run_feasibility` use the same gate; the unmeasured branch used to build neighbourhood variants from the guess alone.
+
+The pivot explanation also used to assert that the city-wide market "is currently dominated by high-authority directories" whatever the page held, so ten low-authority clinics with a Low Feasibility verdict were reported as directory-dominated. `_market_composition_clause` now describes the keyword's own `entity_distribution` — naming the leader and its count, saying "led jointly by" for a tie, and making no composition claim at all when there is no distribution to describe.
 
 When `feasibility.pivot_serp_fetch` is on, a secondary SerpAPI Maps/organic fetch validates each pivot. That fetch is treated honestly: a **failed** validation fetch is recorded as *could not measure* (local pack `None`, pivot status **Not Measured**), never as a real "not in local pack" or a false "Low Feasibility". Any request URL written to a log is scrubbed of the SerpAPI key first.
 
@@ -468,12 +503,18 @@ sub-scores: **answer_similarity** (mean pairwise token-set Jaccard over the top-
 title+snippet texts, read from `data["organic_results"]` grouped by `Root_Keyword`,
 degrading to `top5_organic` titles — higher = the results all say the same thing),
 **serp_homogeneity** (top entity-type share from `entity_distribution` blended with
-title-pattern dominance), and **aio_present** (`has_ai_overview` — an AIO already *is*
+title-pattern dominance; D-M-13 / D4.8: the shape term excludes the `other`
+catch-all from the dominant-shape candidates while keeping every title in the
+denominator — it used to take `max()` over every bucket, so ten titles that
+matched *no* shape scored 1.0, "perfectly uniform". When neither signal is
+measurable the sub-score is `None`, floored to 0.0 and kept in the denominator
+like `answer_similarity`, never renormalised away, and the keyword is flagged
+`low_confidence`), and **aio_present** (`has_ai_overview` — an AIO already *is*
 the absorption). Weights come from `config.yml commodity.weights` (documented-default
 fallback + warning, mirroring `aivi.weights`); the optional `one_paragraph_answerable`
 LLM term is **OFF by default** and its weight renormalises out (the `aivi` None-axis
 mechanism). Bands low/medium/high; a keyword with < 3 results or < 2 comparable texts is
-flagged `low_confidence`. The recommended action is routed through the existing
+flagged `low_confidence`, as is one whose homogeneity could not be measured. The recommended action is routed through the existing
 `recommended_play` (extraction_play / deprioritize), never a parallel string. Persisted
 to `commodity_score` (idempotent per `run_ts`). The score is **indicative**, a heuristic
 proxy — labelled as such and paired with the play routing, not treated as a verdict.

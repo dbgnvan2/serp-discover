@@ -714,6 +714,29 @@ When Serp-Discover recommends which keywords to target first, it ranks them usin
 - **How it works:** Serp-Discover classifies each keyword's intent (informational, transactional, local, commercial, navigational) and checks it against `client.preferred_intents` in config.yml. If the intent matches, you should pursue the keyword. If it doesn't match, skip it no matter what the feasibility score is.
 - **Priority:** **Intent matching is mandatory.** If the intent doesn't fit, the keyword is off-limits.
 
+**When a SERP is mixed.** Some SERPs serve more than one intent at once. The
+`mixed_intent_strategy` field says what to do about it, and it is decided
+against `client.preferred_intents`:
+
+- `compete_on_dominant` — the intent the SERP mostly serves is one you serve.
+  Write for that intent. `mixed_intent_lead` names which one (if you already
+  rank for one of the tied leaders, that one).
+- `backdoor` — you only serve a *minority* intent on this SERP. There is a way
+  in, but you are writing against the grain of what Google is showing.
+- `avoid` — none of the intents on this SERP is one you serve.
+
+`mixed_intent_dominant` lists the leading intents and `mixed_intent_dominant_tied`
+is true when two or more lead by the same share, so a tie is reported as a tie
+rather than broken silently (D-M-11).
+
+**"Market too small"** is a judgement about *demand*, so it is read from the Moz
+monthly search volume against `moz.keyword_metrics.min_volume_for_investment`
+(default 20). It used to be read from Google's "about N results" page-count
+estimate, which counts indexed pages, not searchers, and is missing on many
+SERPs — a missing estimate was read as zero, so the keyword was called too
+small on no evidence at all (D-M-12). A keyword with no volume figure is no
+longer called too small; the absence is stated instead.
+
 **3. Confidence** — *How sure are we about the intent?*
 - **Why it matters:** Some keywords have clear intent (e.g., "book couples therapy" is obviously transactional). Others are ambiguous (e.g., "couples counselling" might be both local and informational). Low-confidence verdicts mean you need to validate the intent manually before investing in content.
 - **How it works:** Confidence is based on how many of the top-10 results clearly indicate intent. 8+ results = high confidence. 5–7 = medium. <5 = low (mixed intent).

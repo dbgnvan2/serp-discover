@@ -14,7 +14,7 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 
 **answer similarity** — How much the top results reuse the same wording. It compares words, not meaning, so pages that make the same point in different words score as less similar than they really are. Read it as a floor.
 
-**backdoor strategy** — Where a keyword has mixed intent, deliberately writing for the less-served side of the blend. You avoid the crowded fight and still appear on the same page.
+**backdoor strategy** — Where a keyword has mixed intent and the only intent you serve is NOT the one the SERP mostly serves. There is a way in, but you are writing against the grain of what Google is showing. When the dominant intent is one you do serve, the call is "compete on dominant", not backdoor.
 
 **cited-share** — The share of your keywords where the AI Overview quotes your site as one of its sources. Zero means the AI is answering your topic without crediting you.
 

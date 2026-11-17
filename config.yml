@@ -67,6 +67,13 @@ moz:
     device: desktop
     max_keywords: 50
     rows_per_call: 4
+    # Editorial (D-M-12 / D4.7): the monthly search volume below which a
+    # keyword is called too small to justify dedicated content. The old rule
+    # read Google's `total_results` estimate — how many PAGES exist, not how
+    # many people search — and a missing estimate counted as zero. A demand
+    # conclusion now comes only from a real demand figure, and only when Moz
+    # has a record for the keyword in `locale` above.
+    min_volume_for_investment: 20
   # Search intent (data.keyword.search.intent.fetch) — a CROSS-CHECK on the
   # repo's own intent_mapping.yml classifier, never a replacement. OFF by
   # default: it is a second opinion on a call the repo already makes, so it
@@ -348,6 +355,15 @@ client:
   - local
 feasibility:
   enabled: true
+  # EDITORIAL: the SERP intents for which a neighbourhood pivot is meaningful.
+  # Proximity can substitute for domain authority only when the searcher wants
+  # a service in a place, so an informational SERP gets no pivot and no
+  # neighbourhood variants. A client serving a different market widens this.
+  # Must use intent_mapping.yml's vocabulary. Empty/malformed = the documented
+  # default (local, transactional) plus a warning.
+  pivotable_intents:
+  - local
+  - transactional
   client_da: 35
   non_profit_location: North Vancouver
   pivot_serp_fetch: true

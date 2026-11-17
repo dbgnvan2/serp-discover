@@ -609,6 +609,10 @@ def list_recommendations(data, args):
         moz_keyword_metrics=moz_keyword_metrics,
         moz_intent_metrics=moz_intent_metrics,
         moz_intent_mapping=_moz_intent_mapping(config),
+        # D4.7: the demand floor that may conclude "market too small".
+        min_volume_for_investment=(
+            (config.get("moz", {}) if isinstance(config, dict) else {})
+            .get("keyword_metrics", {}).get("min_volume_for_investment")),
     )
     # Optional GSC feed-forward (Spec: seo_geo_deferred_spec_v1.md#G.4):
     # when config gsc.feed_strategic_flags is true and run_gsc_analysis.py

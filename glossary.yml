@@ -364,8 +364,10 @@ terms:
   - term: backdoor strategy
     aliases: ["backdoor", "backdoor strategy"]
     definition: >-
-      Where a keyword has mixed intent, deliberately writing for the less-served side
-      of the blend. You avoid the crowded fight and still appear on the same page.
+      Where a keyword has mixed intent and the only intent you serve is NOT the one
+      the SERP mostly serves. There is a way in, but you are writing against the
+      grain of what Google is showing. When the dominant intent is one you do serve,
+      the call is "compete on dominant", not backdoor.
 
   - term: rank play
     aliases: ["rank play", "rank_play", "Ranking play"]

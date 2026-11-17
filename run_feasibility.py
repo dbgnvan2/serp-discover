@@ -314,7 +314,12 @@ def run_feasibility_analysis(
     config_client_da = feasibility_cfg.get("client_da", 35)
     neighborhoods = feasibility_cfg.get("neighborhoods", ["Lonsdale"])
     location = feasibility_cfg.get("non_profit_location", "North Vancouver")
+    pivotable_intents = feasibility_module.resolve_pivotable_intents(config)
     client_domain = (config.get("analysis_report", {}).get("client_domain") or "").lower()
+    # D-M-19 / D4.10: the pivot gate reads the MEASURED SERP intent, and the
+    # pivot explanation reads the SERP's own entity distribution. serp_audit
+    # has written keyword_profiles by the time this pass runs.
+    kw_profiles_for_pivot = data.get("keyword_profiles") or {}
 
     cache_ttl = config.get("moz", {}).get("cache_ttl_days", 30)
     # An absence is re-asked sooner than a measurement is refreshed (F6).
@@ -431,6 +436,15 @@ def run_feasibility_analysis(
         # so BOTH the scored and unmeasured branches honour it.
         kw_service_like = _is_service_like(kw, SERVICE_LIKE_TOKENS, location) \
             if SERVICE_GATE_AVAILABLE else True
+        # D4.10: both branches ask the same question, and it is the measured
+        # verdict's to answer. The unmeasured branch below built neighbourhood
+        # variants from the keyword-string guess alone while the scored branch
+        # went through the gate, so one keyword could be "informational, no
+        # variants" with a verdict and carry variants without one.
+        _pivot_profile = kw_profiles_for_pivot.get(kw) or {}
+        kw_pivotable, kw_gate_source = feasibility_module._pivot_gate(
+            _pivot_profile.get("serp_intent"), kw_service_like,
+            pivotable_intents)
 
         # Availability is decided per keyword, not per run. `bool(da_metrics)`
         # made one measured keyword score every unmeasured one, and one
@@ -457,7 +471,11 @@ def run_feasibility_analysis(
                     feasibility_module.no_measurement_text(da_source, da_window),
                 "strategy": "",
                 "all_variants": [f"{kw} {nb}" for nb in neighborhoods]
-                                if kw_service_like else [],
+                                if kw_pivotable else [],
+                # The unmeasured branch builds its own dict, so it has to
+                # carry the provenance too — the key was present on some
+                # pivot dicts and absent on others (D4b cold review, finding 5).
+                "gate_source": kw_gate_source,
             }
         else:
             pivot_input = {
@@ -467,6 +485,9 @@ def run_feasibility_analysis(
             pivot = generate_hyper_local_pivot(
                 kw, location, pivot_input, neighborhoods,
                 is_service_like=kw_service_like,
+                serp_intent=_pivot_profile.get("serp_intent"),
+                entity_distribution=_pivot_profile.get("entity_distribution"),
+                pivotable_intents=pivotable_intents,
             )
 
         row: dict = {
@@ -487,6 +508,10 @@ def run_feasibility_analysis(
             # Empty for every measured keyword; the sentence for the rest.
             "no_measurement_reason": pivot.get("no_measurement_reason", ""),
             "all_variants": pivot["all_variants"],
+            # Which basis decided the pivot: the measured SERP verdict, its
+            # mixed components, or the keyword-string guess. Computed and then
+            # discarded (D4b cold review, finding 5).
+            "pivot_gate_source": pivot.get("gate_source", ""),
             "Client_In_Local_Pack": None,
         }
         results.append(row)
@@ -699,9 +724,10 @@ def generate_feasibility_report(
         play_cell = format_play_cell(play_obj)
 
         pivot_cell = "*(stay the course)*"
-        if row.get("pivot_status") == "No pivot — informational":
+        if feasibility_module.is_no_pivot(row.get("pivot_status")):
             # SEAM (chip C): the extraction-play recommendation renders here.
-            pivot_cell = "*(informational — extraction play)*"
+            refused = str(row["pivot_status"]).split("— ", 1)[-1]
+            pivot_cell = f"*({refused} — extraction play)*"
         elif row.get("pivot_status") == "Pivoting to Hyper-Local":
             suggested = row.get("suggested_keyword", "")
             pivot_result = pivot_map.get(kw)
@@ -736,7 +762,8 @@ def generate_feasibility_report(
     # A geographic pivot only applies to service-intent keywords. Informational
     # Low-Feasibility keywords are handled separately (B.1.c) — no geo pivot.
     pivoting = [r for r in low if r.get("pivot_status") == "Pivoting to Hyper-Local"]
-    informational = [r for r in low if r.get("pivot_status") == "No pivot — informational"]
+    informational = [r for r in low
+                     if feasibility_module.is_no_pivot(r.get("pivot_status"))]
 
     # Pivot strategy detail
     if pivoting:

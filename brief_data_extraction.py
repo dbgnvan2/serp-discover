@@ -277,6 +277,56 @@ def _count_terms_in_texts(terms, texts):
     return counts
 
 
+def _demand_assessment(profile: dict, min_volume) -> tuple[bool, str]:
+    """(too_small, why the question could or could not be answered).
+
+    Spec: review_2026-11-04 D4.7 (D-M-12), cold-review finding 4
+
+    The caller needs to distinguish "demand measured and adequate" from
+    "demand never assessed". On the audit path no Moz metrics are fetched at
+    all, so the rule was silently inert and nothing in the record said so;
+    `opportunity_scale` could then carry `enter` for a keyword the brief path
+    calls `skip`.
+    """
+    if not min_volume:
+        return False, "no volume floor configured"
+    moz = profile.get("moz")
+    if not isinstance(moz, dict) or not moz.get("data_available"):
+        return False, f"demand not measured ({(moz or {}).get('status') or 'no Moz record'})"
+    volume = moz.get("volume")
+    if volume is None:
+        return False, "Moz returned no volume for this keyword"
+    try:
+        return float(volume) < float(min_volume), "measured"
+    except (TypeError, ValueError):
+        return False, "Moz volume was not a number"
+
+
+def _demand_too_small(profile: dict, min_volume) -> bool:
+    """True only when a real demand figure says so.
+
+    Spec: review_2026-11-04 D4.7 (D-M-12)
+
+    Three states, and only the first is a conclusion: Moz has a volume and it
+    is below the editorial floor; Moz has a volume at or above it; Moz has no
+    record for this keyword (`data_available` false, or `volume` None — low
+    volume and local keywords often have none). The third is not a small
+    market, it is an unmeasured one, and it draws no conclusion.
+    """
+    if not min_volume:
+        return False
+    moz = profile.get("moz")
+    if not isinstance(moz, dict) or not moz.get("data_available"):
+        return False
+    volume = moz.get("volume")
+    if volume is None:
+        return False
+    try:
+        return float(volume) < float(min_volume)
+    except (TypeError, ValueError):
+        return False
+
+
 def _compute_strategic_flags(
     root_keywords,
     keyword_profiles,
@@ -284,6 +334,7 @@ def _compute_strategic_flags(
     total_results_by_kw,
     paa_analysis,
     preferred_intents=None,
+    min_volume_for_investment=None,
 ):
     """Compute strategic priority flags per keyword.
 
@@ -372,6 +423,8 @@ def _compute_strategic_flags(
         client_visible = profile.get("client_visible", False)
         entity_dominant = profile.get("entity_dominant_type")
         entity_label = profile.get("entity_label")
+        demand_too_small, demand_basis = _demand_assessment(
+            profile, min_volume_for_investment)
 
         if client_visible and client_delta is not None and client_delta < 0:
             action = "defend"
@@ -390,10 +443,21 @@ def _compute_strategic_flags(
                 f"Client ranks #{client_rank}. Position is {trend_text}. "
                 f"Expand content depth to improve rank."
             )
-        elif total_results < 200:
+        elif demand_too_small:
+            # D-M-12 / D4.7. This read `total_results < 200`: Google's estimate
+            # of how many PAGES exist for the query, not how many people search
+            # it, so "market too small" did not follow from it — and
+            # `_safe_int(…, 0)` made a MISSING estimate a measured zero, so a
+            # keyword whose count Google did not return was told its market was
+            # too small. A demand conclusion now comes only from a demand
+            # figure: Moz's monthly volume, and only when Moz has a record.
+            moz = profile.get("moz") or {}
             action = "skip"
             reason = (
-                f"Only {total_results} total results. Market too small to justify dedicated content investment."
+                f"Monthly search volume {moz.get('volume')} is below the "
+                f"{min_volume_for_investment} this client treats as worth "
+                f"dedicated content (`moz.keyword_metrics."
+                f"min_volume_for_investment`)."
             )
         elif entity_label in {"dominated_by_legal", "legal_plurality"}:
             action = "enter_cautiously"
@@ -403,8 +467,11 @@ def _compute_strategic_flags(
             )
         else:
             action = "enter"
+            scale = (f"{total_results:,} total results"
+                     if profile.get("total_results_measured")
+                     else "Google reported no result-count estimate")
             reason = (
-                f"{total_results:,} total results. Client has no current visibility. "
+                f"{scale}. Client has no current visibility. "
                 f"{_entity_label_reason_text(entity_label, entity_dominant)}"
             )
 
@@ -413,27 +480,67 @@ def _compute_strategic_flags(
         mixed_intent_strategy = None
         si = profile.get("serp_intent") or {}
         if si.get("is_mixed"):
-            # primary_intent is "mixed" when is_mixed=True; derive dominant from distribution
+            # D-M-11 / D4.6. Two faults were here:
+            #
+            # 1. The gate was `dominant in client_intent_presence` — the set of
+            #    intents the client ALREADY RANKS FOR. So a dominant intent the
+            #    client serves was called a "backdoor" (defined as "the
+            #    dominant intent is uncompetable"), and a client with no
+            #    rankings yet — the case this tool exists for — could never get
+            #    `compete_on_dominant`, because that set is empty.
+            # 2. `max()` over a dict resolves a tie by insertion order, i.e. by
+            #    SERP row order, so the same 5/5 page got two different
+            #    strategies depending on which result Google returned first.
+            #
+            # What the client CAN serve is `client.preferred_intents`; where
+            # they already rank only breaks a tie between equally dominant
+            # preferred intents.
             distribution = si.get("intent_distribution") or {}
-            dominant = max(distribution, key=distribution.get) if distribution else None
+            scored = {intent: share for intent, share in distribution.items()
+                      if share and share > 0}
+            top_share = max(scored.values()) if scored else 0
+            dominant_intents = sorted(
+                intent for intent, share in scored.items() if share == top_share)
             non_dominant_intents = {
-                intent for intent, share in distribution.items()
-                if share > 0 and intent != dominant
-            }
-            if dominant in client_intent_presence:
+                intent for intent in scored if intent not in dominant_intents}
+
+            preferred_dominant = [i for i in dominant_intents
+                                  if i in preferred_intents]
+            if preferred_dominant:
                 mixed_intent_strategy = "compete_on_dominant"
             elif preferred_intents & non_dominant_intents:
                 mixed_intent_strategy = "backdoor"
             else:
                 mixed_intent_strategy = "avoid"
+
+            # The tie is reported, not hidden: a reader told to "compete on the
+            # dominant intent" needs to know two intents tied for dominance.
+            # Presence picks which one to lead with, and only that.
+            lead = None
+            if preferred_dominant:
+                already_ranking = [i for i in preferred_dominant
+                                   if i in client_intent_presence]
+                lead = (already_ranking or preferred_dominant)[0]
+
             # Persist back onto the keyword profile so downstream consumers
             # (LLM payload, validators, advisory briefing) can reference it.
             profile["mixed_intent_strategy"] = mixed_intent_strategy
+            profile["mixed_intent_dominant"] = dominant_intents
+            profile["mixed_intent_dominant_tied"] = len(dominant_intents) > 1
+            profile["mixed_intent_lead"] = lead
         else:
             profile["mixed_intent_strategy"] = None
+            profile["mixed_intent_dominant"] = []
+            profile["mixed_intent_dominant_tied"] = False
+            profile["mixed_intent_lead"] = None
 
         opportunity_scale[kw] = {
             "total_results": total_results,
+            # Whether the demand question was answered at all, and on what.
+            # "enter" used to be indistinguishable from "demand never
+            # assessed" (D4b cold review, finding 4).
+            "demand_assessed": demand_basis == "measured",
+            "demand_basis": demand_basis,
             "client_rank": client_rank,
             "client_trend": (
                 "declining" if client_delta is not None and client_delta < 0
@@ -1282,6 +1389,7 @@ def extract_analysis_data_from_json(
     moz_keyword_metrics=None,
     moz_intent_metrics=None,
     moz_intent_mapping=None,
+    min_volume_for_investment=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
 
@@ -1361,6 +1469,7 @@ def extract_analysis_data_from_json(
     root_keywords = sorted({r.get("Source_Keyword") for r in overview if r.get("Source_Keyword")})
 
     total_results_by_kw = {}
+    total_results_measured = {}
     queries = []
     overview_by_kw = defaultdict(list)
     for r in overview:
@@ -1370,6 +1479,18 @@ def extract_analysis_data_from_json(
         overview_by_kw[source_kw].append(r)
         if r.get("Query_Label") == "A" or source_kw not in total_results_by_kw:
             total_results_by_kw[source_kw] = _safe_int(r.get("Total_Results"), 0)
+            # D4.7: the map stays an int (it feeds sums and sorts), but whether
+            # Google reported a figure at all is recorded separately. "0 total
+            # results" is a claim that no pages exist; "Google did not say" is
+            # a different fact, and the report must not print the first when it
+            # has the second.
+            # "Measured" means the figure PARSED, not merely that the key was
+            # present: `""`, `"N/A"` and `"unknown"` are all non-None and all
+            # become 0 in the map, so `is not None` let the report print
+            # "0 total results" as a fact (D4b cold review, finding 6).
+            _sentinel = object()
+            total_results_measured[source_kw] = (
+                _safe_int(r.get("Total_Results"), _sentinel) is not _sentinel)
         aio_text = str(r.get("AI_Overview") or "")
         client_mentioned = any(_contains_phrase(aio_text, phrase) for phrase in client_phrase_patterns)
         queries.append({
@@ -1401,6 +1522,14 @@ def extract_analysis_data_from_json(
 
     organic_rows_by_kw = defaultdict(list)
     entity_by_kw = defaultdict(Counter)
+    entity_ranks_seen = defaultdict(set)
+    entity_rank_repeats = Counter()
+    # A SERP written to the snapshot more than once: the same (rank, link) under
+    # the same keyword. Measured on this project's own runs — one keyword had
+    # 29 label-A rows, 3 per rank, all with one Run_ID — so label scoping alone
+    # left the denominator inflated (D4b cold review, finding 3).
+    entity_seen_results = defaultdict(set)
+    entity_duplicate_rows = Counter()
     entity_breakdown_with_na = defaultdict(Counter)
     content_counter = Counter()
     content_breakdown_by_kw = defaultdict(Counter)
@@ -1432,9 +1561,31 @@ def extract_analysis_data_from_json(
         if src:
             source_counter[src] += 1
         entity_breakdown_with_na[source_kw][entity] += 1
-        if entity != "N/A":
-            entity_by_kw[source_kw][entity] += 1
-        else:
+        # D-M-13 / D4.9: the entity distribution is scoped to the SAME rows the
+        # intent verdict uses — label A. It counted every label, so a
+        # "top entity-type share" for a keyword could be computed over the
+        # primary SERP plus its alternative-query and probe rows, while the
+        # intent verdict beside it was computed over the label-A top 10. Two
+        # shares of one SERP that cannot both be shares of it.
+        if label == "A":
+            result_key = (rank, link.strip().lower())
+            if result_key in entity_seen_results[source_kw]:
+                # The identical result, counted once. Dropped, not silent:
+                # the count travels on the profile and is logged (P2).
+                entity_duplicate_rows[source_kw] += 1
+            else:
+                entity_seen_results[source_kw].add(result_key)
+                if entity != "N/A":
+                    entity_by_kw[source_kw][entity] += 1
+                else:
+                    entity_na += 1
+                if rank in entity_ranks_seen[source_kw]:
+                    # A repeated rank that survived the de-duplication is a
+                    # DIFFERENT result at the same rank: a genuine second
+                    # fetch, so the denominator is not one SERP's.
+                    entity_rank_repeats[source_kw] += 1
+                entity_ranks_seen[source_kw].add(rank)
+        elif entity == "N/A":
             entity_na += 1
         if content_type.strip().lower() not in _UNMEASURED_CONTENT_TYPES:
             content_counter[content_type] += 1
@@ -1852,6 +2003,21 @@ def extract_analysis_data_from_json(
     for kw in root_keywords:
         kw_rows = sorted(organic_rows_by_kw.get(kw, []), key=lambda x: x["rank"])
         fetch_coverage = _build_fetch_coverage(kw_rows)
+        # P2 / D4.9: an entity share whose denominator is more than one page
+        # must not pass as a top-10 share in silence.
+        _kept = sum(entity_by_kw.get(kw, {}).values())
+        _dupes = entity_duplicate_rows.get(kw, 0)
+        if _dupes:
+            logging.warning(
+                "entity_distribution for %r: kept %d of %d label-A rows — %d "
+                "were the same result written more than once.",
+                kw, _kept, _kept + _dupes, _dupes)
+        if entity_rank_repeats.get(kw):
+            logging.warning(
+                "entity_distribution for %r covers %d rows with %d ranks held "
+                "by more than one result: more than one fetch is present, so "
+                "this share is not one SERP's.",
+                kw, _kept, entity_rank_repeats[kw])
         top_sources = []
         for source, info in sorted(
             top_sources_by_kw_counter.get(kw, {}).items(),
@@ -1918,11 +2084,25 @@ def extract_analysis_data_from_json(
                 serp_intent, (moz_intent_metrics or {}).get(kw), moz_intent_mapping
             ),
             "total_results": total_results_by_kw.get(kw, 0),
+            "total_results_measured": total_results_measured.get(kw, False),
             "serp_modules": modules_list,
             "has_ai_overview": aio_analysis.get(kw, {}).get("has_aio", False),
             "has_local_pack": kw_has_local_pack,
             "has_discussions_forums": any("discussions" in item["module"] or "forums" in item["module"] for item in modules_by_kw.get(kw, [])),
             "entity_distribution": dict(entity_by_kw.get(kw, {})),
+            # D4.9: every share states its own denominator, and says when the
+            # rows are more than one page's worth.
+            "entity_distribution_rows": sum(entity_by_kw.get(kw, {}).values()),
+            "entity_distribution_rank_repeats": entity_rank_repeats.get(kw, 0),
+            "entity_distribution_duplicate_rows": entity_duplicate_rows.get(kw, 0),
+            # False when a rank is held by more than one DISTINCT result, i.e.
+            # the rows are more than one SERP's and the share is not a top-10
+            # share. Measured on this project's own runs: the snapshot carries
+            # no field that says which fetch a row came from, so the rows
+            # cannot be split — the share is reported with its real
+            # denominator and marked (D4b cold review, finding 3).
+            "entity_distribution_single_serp":
+                not entity_rank_repeats.get(kw, 0),
             "entity_dominant_type": dominant_type,
             "entity_label": entity_label,
             "top5_organic": kw_rows[:5],
@@ -2029,6 +2209,7 @@ def extract_analysis_data_from_json(
         total_results_by_kw=total_results_by_kw,
         paa_analysis=paa_analysis,
         preferred_intents=preferred_intents,
+        min_volume_for_investment=min_volume_for_investment,
     )
 
     # Recommended-Play verdict per keyword. Computed AFTER strategic_flags so

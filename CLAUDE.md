@@ -199,6 +199,16 @@ Editorial content currently lives in:
   Editorial: Moz has no `local` label, and `null` means "not comparable"
   rather than "disagrees". Cross-check only — `intent_mapping.yml` stays the
   verdict (added moz_api_upgrade_spec_v1.md T.3)
+- `config.yml` `feasibility.pivotable_intents` — the SERP intents for which a
+  neighbourhood pivot is meaningful (default local + transactional). Editorial:
+  a client serving a different market widens it. It was a Python tuple beside
+  the function it gates while its sibling `client.preferred_intents` lived in
+  config (added review chunk D4b's cold review)
+- `config.yml` `moz.keyword_metrics.min_volume_for_investment` — the monthly
+  search volume below which a keyword is reported as too small to invest in.
+  Editorial: it is a judgement about this client's market, and it is a *demand*
+  threshold — it replaced a test on Google's `Total_Results` page-count estimate,
+  which is absent on many SERPs (added review chunk D4b)
 - `config.yml` `moz.keyword_metrics.locale` / `engine` / `device` — the Moz
   keyword-metrics query context. Editorial: `locale` decides which market's
   demand figures the brief quotes (`en-CA` for this client) and changes which

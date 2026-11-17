@@ -1618,6 +1618,22 @@ def generate_report(data, db_path=None, run_ts=None):
             f"Recommended approach: **{_strategy}**."
         )
         report.append("")
+        # D4b cold review, finding 7: the tie and the lead were computed and
+        # went no further than the JSON. A reader told to "compete on the
+        # dominant intent" cannot act on it without knowing which one, and
+        # must be told when two tied.
+        _lead = _p.get("mixed_intent_lead")
+        _dom = _p.get("mixed_intent_dominant") or []
+        if _p.get("mixed_intent_dominant_tied") and len(_dom) > 1:
+            report.append(
+                f"Two intents lead this SERP equally ({' and '.join(_dom)}), so "
+                f"the choice is not forced by the data"
+                + (f" — this run writes for **{_lead}**." if _lead else ".")
+            )
+            report.append("")
+        elif _lead:
+            report.append(f"The dominant intent to write for is **{_lead}**.")
+            report.append("")
         if _desc:
             report.append(_desc)
         # CD.7 — translate the generic strategy into this keyword's own data.
@@ -1823,9 +1839,10 @@ def generate_report(data, db_path=None, run_ts=None):
             play_cell = format_play_cell((feas_kw_profiles.get(kw) or {}).get("recommended_play"))
 
             pivot_cell = "*(stay the course)*"
-            if row.get("pivot_status") == "No pivot — informational":
+            if feasibility.is_no_pivot(row.get("pivot_status")):
                 # SEAM (chip C): the extraction-play recommendation renders here.
-                pivot_cell = "*(informational — extraction play)*"
+                refused = str(row["pivot_status"]).split("— ", 1)[-1]
+                pivot_cell = f"*({refused} — extraction play)*"
             elif row.get("pivot_status") == "Pivoting to Hyper-Local":
                 suggested = row.get("suggested_keyword", "")
                 # Check if we have a pivot result with local pack data

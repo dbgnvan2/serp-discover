@@ -155,6 +155,8 @@ FEASIBILITY_CLIENT_DA    = int(SHARED_CONFIG.get("client", {}).get("da", _feas_c
 FEASIBILITY_LOCATION     = SHARED_CONFIG.get("client", {}).get("location", _feas_cfg.get("non_profit_location", ""))
 FEASIBILITY_PIVOT_FETCH  = _feas_cfg.get("pivot_serp_fetch", True)
 FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
+#: Same editorial list the standalone pass reads, so both gates agree (P5).
+FEASIBILITY_PIVOTABLE_INTENTS = feasibility_module.resolve_pivotable_intents(CONFIG)
 CLIENT_DOMAIN            = SHARED_CONFIG.get("client", {}).get("domain", CONFIG.get("analysis_report", {}).get("client_domain", ""))
 MOZ_CACHE_TTL_DAYS       = int(CONFIG.get("moz", {}).get("cache_ttl_days", 30))
 #: The client's own domain as a URL, so its DA can be fetched in the same
@@ -1618,6 +1620,7 @@ def _run(run_id):
                                 },
                                 neighborhoods=FEASIBILITY_NEIGHBORHOODS,
                                 is_service_like=kw_service_like,
+                                pivotable_intents=FEASIBILITY_PIVOTABLE_INTENTS,
                             )
 
                             feas_row = {
@@ -1937,6 +1940,11 @@ def _run(run_id):
             client_name_patterns=_gcb_cfg.get("client_name_patterns", []),
             known_brands=CONFIG.get("known_brands", []),
             preferred_intents=CONFIG.get("client", {}).get("preferred_intents", []),
+            # D4.7: the demand floor is editorial, in config, not a constant
+            # in the strategy rule.
+            min_volume_for_investment=(
+                CONFIG.get("moz", {}).get("keyword_metrics", {})
+                .get("min_volume_for_investment")),
         )
         full_data["keyword_profiles"] = _gcb_extracted.get("keyword_profiles", {})
         print(f"Built keyword_profiles for {len(full_data['keyword_profiles'])} keywords.")

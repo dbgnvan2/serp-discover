@@ -45,16 +45,37 @@ def test_answer_similarity_identical_vs_diverse():
 
 
 def test_serp_homogeneity_concentration():
-    assert serp_homogeneity({"directory": 8}, {"how_to": 8}) == 1.0   # one type, one shape
-    mixed = serp_homogeneity({"a": 2, "b": 2, "c": 2, "d": 2}, {"how_to": 2, "what_is": 2})
+    # The title signal lives under `pattern_counts`; these fixtures used to
+    # pass the counts bare, so the shape term was never exercised and the
+    # assertions held on the entity term alone (D4.8).
+    assert serp_homogeneity({"directory": 8},
+                            {"pattern_counts": {"how_to": 8}}) == 1.0
+    mixed = serp_homogeneity({"a": 2, "b": 2, "c": 2, "d": 2},
+                             {"pattern_counts": {"how_to": 2, "what_is": 2}})
     assert mixed < 1.0
-    assert serp_homogeneity({}, {}) == 0.0                            # no signal → 0
+    # D4.8: no signal is None, not 0.0. `compute_commodity` floors it to 0.0
+    # and keeps it in the denominator, the treatment answer_similarity gets.
+    assert serp_homogeneity({}, {}) is None
+
+
+def test_serp_homogeneity_unclassified_titles_are_not_one_shape():
+    """D-M-13 / D4.8: `other` is the catch-all, never evidence of a shape.
+
+    `pattern_counts` keeps `other` even though `build` excludes it when
+    choosing `dominant_pattern`, and this took `max()` over every bucket — so
+    ten titles that matched nothing scored 1.0, "perfectly uniform".
+    """
+    assert serp_homogeneity(None, {"pattern_counts": {"other": 10}}) is None
+    # Six listicles among ten titles is 0.6: `other` leaves the numerator,
+    # not the denominator.
+    assert serp_homogeneity(
+        None, {"pattern_counts": {"listicle_numeric": 6, "other": 4}}) == 0.6
 
 
 def test_serp_homogeneity_tolerates_malformed_fields():
     """P2 — a non-dict profile field must not raise (it would drop the whole report
     under serp_audit's swallowing try)."""
-    assert serp_homogeneity(["not", "a", "dict"], "also not a dict") == 0.0
+    assert serp_homogeneity(["not", "a", "dict"], "also not a dict") is None
     assert serp_homogeneity({"directory": 3}, {"pattern_counts": "bad"}) == 1.0
 
 
