@@ -329,7 +329,37 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
    now; raise them as a separate question if the C4 before/after numbers show
    them driving the score.
 4. **Domain canonical form.** Tool 1 strips `www.` at write time (simplest), or Tool 2 normalises at ingest.
+
+   **ANSWERED 2026-11-16 in chunk D2c: both, with Tool 1 writing the canonical
+   form.** `domain_utils.normalize_domain` (lowercase, no port, no credentials,
+   no leading `www.`) is now the single definition in Tool 1, applied to
+   `targets[].domain`, the `moz.domains` keys, the client domain from
+   `config.yml` and every `omit_from_audit` entry. Tool 2 keeps normalising at
+   ingest (`src/brand_utils.py`, `src/handoff_moz.py`) — defence on both sides
+   costs nothing and means neither tool has to trust the other's spelling. The
+   client test is equality or a dot-suffix match, never a substring one.
+   Recorded in `docs/handoff_contract.md` ("The canonical host form"); the
+   contract test on Tool 1's side is
+   `tests/test_d2c_one_host_one_answer.py::TestTheHandoffAgreesOnWhichHostIsWhich`.
+   Tool 2 still needs its half of that contract test (chunk C1).
 5. **`visibility_cliff` and the velocity alerts.** Keep with a real data source and floor, or remove until one exists.
+
+   **RECOMMENDED by the agent 2026-11-16 (owner may overrule): remove the
+   signal until a data source exists, and keep the stored series.** The cliff
+   is computed from `competitor_metrics` snapshots whose denominator is "pages
+   we happened to scrape this run", which moves run to run for reasons that
+   have nothing to do with the competitor's visibility; a drop of three ranked
+   keywords out of five sampled pages is indistinguishable from a scrape that
+   got two fewer pages. An alert that cannot tell those apart is worse than no
+   alert, because the report states it as a competitor movement. So: stop
+   emitting the signal and its velocity alerts in the report, keep writing the
+   snapshots (the series is the only way a real floor will ever be
+   calibrated), and keep the config floor `risk_signals.cliff_min_sample` in
+   place with its reader, so re-enabling it is a config change plus a report
+   section rather than a rebuild. An errored scrape must write a `rank NULL`
+   snapshot rather than be omitted, otherwise the series being kept is itself
+   biased (P1/P2). Revisit when a snapshot routinely carries ten or more
+   ranked keywords per domain.
 6. **Client DA source (D-M-05).** Live provider lookup (recommended) vs the fixed 35 — and which provider is "the" scale for feasibility going forward.
 
    **DECIDED 2026-11-14 by the owner: the live provider lookup.** Look the client
@@ -408,6 +438,31 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
    what it used to; they are not a calibration, and C4 must not describe them as
    one.
 8. **Barbell / EEAT / cluster at N≤3 (C-M-10/12/13).** Raise `max_audit_pages_per_domain` (cost) or demote these sections to boolean evidence tables.
+
+   **RECOMMENDED by the agent 2026-11-16 (owner may overrule — this one
+   spends API money either way): demote the sections now, raise the cap only
+   for a named shortlist.** Three sampled pages cannot carry a barbell
+   authority split, an E-E-A-T composite to two decimal places, or a cluster
+   label; raising the cap to the ten or so pages those statistics would need
+   multiplies the per-domain scrape cost across every audited competitor,
+   most of which the owner will never act on. So: rewrite the three sections
+   as boolean evidence tables — "author byline present on 2 of 3 pages
+   sampled", "schema present: yes/no", "pages sampled: 3" — with the sample
+   size in every row and no composite scores, averages or confidence words
+   where n ≤ `risk_signals.min_sample_for_statistics` (new, editorial,
+   uncalibrated). Then, separately, allow a per-domain override so the owner
+   can raise `max_audit_pages_per_domain` for two or three named rivals they
+   actually compete with and get real statistics there, at a cost they chose.
+   This keeps every number honest at today's spend and puts the extra spend
+   where it is worth it. The demotion is chunk C4 work and does not need the
+   override to land first.
+
+   Not a decision, for the record: the three arguable Tier-1 words
+   (`treatment`, `clinical`, `healthcare`) already have their answer in
+   decision 3 — they stay until the C4 before/after numbers show them driving
+   the score. And `step_dag.py` lives in serp-compete
+   (`Serp-compete/src/step_dag.py`, imported only by its own test), so the
+   wire-it-or-delete-it call belongs to that repo's chunks, not here.
 
 ---
 
