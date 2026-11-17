@@ -333,7 +333,7 @@ Operational settings for the entire tool:
 |---------|-------------------|---------|
 | **serpapi.gl** | Client's geography | `ca` for Canada |
 | **serpapi.hl** | Client's language | `en` for English |
-| **serpapi.location** | Client's location | `Vancouver, British Columbia, Canada` |
+| **serpapi.location** | The market Google is asked about. Must name the same city as `feasibility.non_profit_location`, or the run measures one city and scores another (a validator warning says so). Use SerpAPI's `canonical_name` from `https://serpapi.com/locations.json?q=<city>` | `North Vancouver,British Columbia,Canada` |
 | **client.preferred_intents** | What content the client can produce | `[informational, transactional, local]` |
 | **feasibility.client_da** | Client's Domain Authority | `35` (estimated or from SEMrush/Moz) |
 | **feasibility.neighborhoods** | Local areas client serves | `[West Vancouver, North Vancouver, Lynn Valley]` |

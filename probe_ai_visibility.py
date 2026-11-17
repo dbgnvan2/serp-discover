@@ -84,6 +84,9 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+# Kept equal to run_feasibility.DEFAULT_LOCATION; a test asserts they agree.
+DEFAULT_LOCATION = "North Vancouver,British Columbia,Canada"
+
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
@@ -1398,7 +1401,7 @@ def main(argv: list[str] | None = None) -> int:
 
     vocab = load_serp_vocab()
     serpapi_location = (config.get("serpapi", {}) or {}).get(
-        "location", "Vancouver, British Columbia, Canada")
+        "location", DEFAULT_LOCATION)
     city = serpapi_location.split(",")[0].strip()
     max_questions = args.max_questions or int(av_config.get("max_questions", DEFAULT_MAX_QUESTIONS))
     # situational_templates is a persona-keyed map (Y.4). No client profile is

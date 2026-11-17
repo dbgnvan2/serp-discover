@@ -248,7 +248,7 @@ def test_raw_files_no_longer_overwrite_each_other(audit):
     def run(run_id):
         for q in ("alpha", "beta"):
             data = audit._fetch_serp_api({"engine": "google", "q": q, "api_key": KEY})
-            audit.save_raw_json(run_id, "google", data)
+            cp.save_raw_json(run_id, "google", data)
         return 0
 
     cp.tracked_run("run1", "keywords_x.csv", {}, run, environ={})

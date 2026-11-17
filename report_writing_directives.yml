@@ -106,6 +106,9 @@ unwritable_content_types:
   - uncategorised
   - uncategorized
   - n/a
+  # Set when Google's redirect wrapper left only the site, so the ranked
+  # page's own type was never read. Not a format anyone can be told to write.
+  - not measured
 
 examples:
   # {entity} dominant entity type, {pct} its share, {keyword} the top keyword.

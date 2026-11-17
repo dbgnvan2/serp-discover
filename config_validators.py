@@ -470,6 +470,35 @@ def validate_config_yml(data: Any) -> tuple[bool, list[str], list[str]]:
                                 f"got {val}"
                             )
 
+    # The two places a market is named must name the same one. The 2026-11-14
+    # run searched "Vancouver, British Columbia, Canada" while feasibility
+    # scored against North Vancouver, so the competitive set was a different
+    # city's and nothing said so. A warning, not an error: measuring a
+    # neighbouring market on purpose is a legitimate thing to do.
+    # Both settings are comma-separated place fields, but
+    # non_profit_location is often just a city, so only the fields both
+    # sides name can be compared. Comparing the first field alone passed
+    # "North Vancouver,Washington,United States" against "North Vancouver",
+    # and false-fired on "North Vancouver, BC" versus
+    # "North Vancouver,British Columbia,Canada".
+    searched = str((data.get("serpapi") or {}).get("location") or "").strip()
+    scored = str((data.get("feasibility") or {}).get("non_profit_location") or "").strip()
+    if searched and scored:
+        searched_fields = [f.strip().lower() for f in searched.split(",") if f.strip()]
+        scored_fields = [f.strip().lower() for f in scored.split(",") if f.strip()]
+        compared = min(len(searched_fields), len(scored_fields))
+        differing = [i for i in range(compared)
+                     if searched_fields[i] != scored_fields[i]]
+        if differing:
+            warnings.append(
+                f"serpapi.location searches '{searched}' but "
+                f"feasibility.non_profit_location scores '{scored}' — they "
+                f"disagree on "
+                f"{', '.join(repr(searched_fields[i]) for i in differing)}, so "
+                f"the results will describe a different market from the one "
+                f"the feasibility verdicts assume"
+            )
+
     return (len(errors) == 0, errors, warnings)
 
 

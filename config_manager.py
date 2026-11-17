@@ -186,6 +186,8 @@ HELP_BY_FIELD = {
     # Config.yml field help
     "config.yml.serpapi.engine": "Search engine to use. 'google' for web search, 'google_maps' for maps.",
     "config.yml.serpapi.gl": "Geographic location code (e.g., 'ca' for Canada, 'us' for USA).",
+    "config.yml.serpapi.location": "The market Google is asked about. Must name the same city as feasibility.non_profit_location, or the run measures one city and scores another. Use SerpAPI's own name for the place: https://serpapi.com/locations.json?q=<city>",
+    "config.yml.feasibility.non_profit_location": "The market the feasibility verdicts and neighbourhood pivots assume. Must name the same city as serpapi.location.",
     "config.yml.serpapi.hl": "Language code (e.g., 'en' for English, 'fr' for French).",
     "config.yml.serpapi.num": "Number of results per SERP page (max 100). Higher = slower but more comprehensive.",
     "config.yml.serpapi.google_max_pages": "How many pages of Google results to fetch (max 3 for free tier).",

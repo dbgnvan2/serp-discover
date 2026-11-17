@@ -32,6 +32,66 @@ how many rows it dropped as `pagination_duplicates_dropped` and logs it, so a
 shifted merge is not indistinguishable from a clean one; `page_index` and
 `page_position` keep the un-renumbered position recoverable on every row.
 
+**Link recovery (Google redirect wrappers).** Since late 2026 Google serves
+result links as `https://www.google.com/goto?url=CAES…`, where the `url`
+parameter is an opaque Google payload rather than the destination; the older
+`/url?…` form does the same. SerpAPI passes the wrapper through verbatim, so
+every stage that works from a URL would read `www.google.com` as the result's
+domain: entity and content classification, Domain Authority lookup,
+client-rank detection, handoff targets and AI-Overview citation attribution.
+All 81 organic links and all 65 AI-Overview citations of the 2026-11-14 run
+were wrappers.
+
+`link_recovery.recover_response` therefore rewrites every wrapped link in a
+SerpAPI response, immediately after the response is stored and before any
+consumer sees it, on the fresh-fetch and the resume path alike. The response
+exactly as SerpAPI sent it survives in the per-call files under
+`raw/<run_id>/calls/`, which the checkpoint writes before recovery runs; the
+merged `raw/<run_id>/*_response.json` archive is written *after* it, and
+carries a `_post_processing` key saying so, because a file named "raw" that
+holds processed links would be read as the pipeline's input.
+What Google still sends in the clear is the
+**host**, not the page: `displayed_link` on an organic result or ad, the `url`
+parameter of `source_icon` on an AI-Overview reference, `source` where it is a
+hostname, and — for a sitelink, which carries only a title — the host already
+recovered for the row it sits inside. A recovered link is therefore the site
+root, and every recovered row is marked `link_is_destination_page: false`
+(the `Is_Destination_Page` column).
+
+That mark decides which figures a run may publish for the row. Anything
+domain-level is still measured: the entity classification and the Domain
+Authority that feeds feasibility. Anything page-level is not, and reads
+`Not Measured` rather than the front page's value — `Content_Type`,
+`Word_Count`, the schema/FAQ/author signals, and `Page_Authority`; the HTML
+fetch is skipped rather than pointed at the homepage. A row whose host cannot
+be recovered from any field carries no URL at all instead of Google's, and the
+count is logged: as an error when it is an organic result, which is a lost
+measurement, and as a warning otherwise.
+
+A run written before this change stored the wrappers, and three readers go
+back over stored output. `run_feasibility.py` drops such URLs when it reads an
+older run's output, rather than scoring Google as the competitor.
+`generate_domain_override_candidates.normalize_domain` returns no domain for a
+wrapper, so google.com cannot enter the override review queue, and the
+candidate pass reports how many rows it had to exclude.
+`refresh_analysis_outputs` leaves a row's existing `Entity_Type` in place when
+it has no usable domain, rather than overwriting it with `N/A` — which would
+turn an unknown into a measured negative. Each of the three reports its count.
+
+A blanked link reaches one more verdict. A situational probe decides
+`Client_Cited` by looking for the client's domain among the AI-Overview
+citations, and a citation whose host could not be recovered cannot answer the
+question either way. Those are counted on the probe row as
+`Citations_Unresolved` and carried into the brief data as
+`citations_unresolved`, so `Client_Cited: false` beside a non-zero count reads
+as "not established" rather than "not cited"; the count is also logged.
+
+One consequence reaches the handoff. Two ranked pages on one site now arrive
+as the same site root, so they collapse into a single target for Tool 2, which
+will audit that site's front page rather than the page that ranked. The
+collapse is counted and logged; the handoff record itself does not yet carry
+the distinction, which needs a `schema_version` change agreed with Tool 2.
+
 Three Google pages reach about the top 30, not the top 300: Google serves
 roughly 10 organic rows per page regardless of `serpapi.num`, so with
 `google_max_pages: 3` the `serpapi.num: 100` and

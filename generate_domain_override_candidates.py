@@ -11,6 +11,7 @@ from urllib.parse import urlparse
 
 import yaml
 
+import link_recovery
 from classifiers import EntityClassifier
 
 
@@ -27,6 +28,16 @@ def load_overrides(path):
 
 
 def normalize_domain(url_or_domain):
+    """The bare domain for a stored link, or "" when there is none.
+
+    Runs written before link recovery stored Google's redirect wrapper in
+    ``Link``, whose netloc is ``www.google.com``. Classifying that would put
+    google.com into the override queue and onto the rows as a competitor
+    (P1 — unknown is not a terminal value), so a wrapper has no domain here.
+    One definition: refresh_analysis_outputs imports this function.
+    """
+    if link_recovery.is_google_redirect(url_or_domain):
+        return ""
     parsed = urlparse(str(url_or_domain or ""))
     domain = parsed.netloc if parsed.netloc else str(url_or_domain or "")
     return domain.lower().replace("www.", "").strip()
@@ -37,11 +48,21 @@ def collect_candidates(data, overrides, classifier, min_rows=3, min_keywords=2):
     grouped = defaultdict(list)
     override_domains = {normalize_domain(d) for d in overrides.keys()}
 
+    wrapped = 0
     for row in rows:
+        if link_recovery.is_google_redirect(row.get("Link")):
+            wrapped += 1
+            continue
         domain = normalize_domain(row.get("Link") or row.get("Source"))
         if not domain or domain in override_domains:
             continue
         grouped[domain].append(row)
+
+    if wrapped:
+        # P2 — say what was excluded rather than returning a shorter list.
+        print(f"  {wrapped} of {len(rows)} organic row(s) still hold a Google "
+              f"redirect wrapper in Link and have no domain to classify; "
+              f"re-run the audit to recover them.")
 
     candidates = []
     for domain, domain_rows in grouped.items():

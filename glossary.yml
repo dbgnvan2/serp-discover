@@ -102,6 +102,39 @@ columns:
     definition: >-
       How many positions this URL moved since the previous run of the same keyword.
       Positive is an improvement. Blank means no comparable earlier run.
+  - column: Is_Destination_Page
+    sheet: Organic_Results
+    definition: >-
+      Whether the Link is the page that actually ranked. Google now hides result
+      URLs behind a redirect, and the tool can usually recover only the site,
+      not the page. FALSE means anything page-level for that row — Word_Count,
+      Content_Type, Page Authority — reads "Not Measured" rather than being
+      taken from the wrong page. Read it with Link_Status, which says whether
+      the site was recovered or nothing was.
+  - column: Link_Status
+    sheet: Organic_Results
+    definition: >-
+      Where this row's Link came from. "destination" is the page that ranked,
+      as Google sent it. "site_root" means Google hid the URL and only the site
+      could be recovered: the competitor is known, the page is not.
+      "unrecovered" means not even the site could be recovered, so the row has
+      no URL and counts towards nothing — not a competitor with no authority,
+      a result that was never measured.
+  - column: Client_Cited
+    sheet: Situational_Probes
+    definition: >-
+      Whether your site was among the sources the AI Overview cited for this
+      probe question. FALSE on its own means you were not cited. FALSE beside a
+      non-zero Citations_Unresolved means the question was not settled: some of
+      the citations could not be traced to a site, and one of them may have been
+      yours.
+  - column: Citations_Unresolved
+    sheet: Situational_Probes
+    definition: >-
+      How many of this probe's AI Overview citations Google hid behind a redirect
+      that could not be traced back to a site. Those citations were counted but
+      not identified, so they can neither confirm nor rule out a mention of you.
+      Zero means every citation was identified and Client_Cited is a measurement.
   - column: Entity_Type
     sheet: Organic_Results
     definition: >-

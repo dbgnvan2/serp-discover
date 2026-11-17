@@ -104,6 +104,7 @@ def build_competitor_handoff(
     targets: list[dict] = []
     client_excluded = 0
     omit_excluded = 0
+    collapsed_rows = 0
     omit_domains_hit: set[str] = set()
 
     # Group by keyword, preserving rank order
@@ -146,6 +147,13 @@ def build_competitor_handoff(
 
             if url in seen_urls:
                 added += 1
+                # Google's redirect wrapper leaves only the site, not the
+                # ranked page (link_recovery), so two different ranked pages
+                # on one site now arrive as the same URL and collapse here.
+                # Count it: a target standing for three ranked pages must not
+                # look like one that stands for one (P2).
+                if not item.get("Is_Destination_Page", True):
+                    collapsed_rows += 1
                 continue
             seen_urls.add(url)
 
@@ -167,6 +175,13 @@ def build_competitor_handoff(
                 "primary_keyword_for_url": primary_kw,
             })
             added += 1
+
+    if collapsed_rows:
+        logging.warning(
+            "%d ranked page(s) could not be told apart as handoff targets: "
+            "Google's redirect wrapper left only the site, so same-site pages "
+            "collapsed into one target. Tool 2 will audit the site's front "
+            "page, not the page that ranked.", collapsed_rows)
 
     handoff = {
         "schema_version": (

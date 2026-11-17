@@ -25,6 +25,7 @@ import yaml
 
 import query_variants
 import serp_audit
+import serp_checkpoint
 from pattern_matching import load_serp_vocab
 from handoff_writer import build_competitor_handoff
 from brief_data_extraction import (
@@ -285,7 +286,7 @@ class TestProbeRun(unittest.TestCase):
              patch.object(serp_audit, "SITUATIONAL_KEYWORDS_MODE", "all"), \
              patch.object(serp_audit, "CLIENT_DOMAIN", "livingsystems.ca"), \
              patch.object(serp_audit, "REQUEST_DELAY_SECONDS", 0), \
-             patch.object(serp_audit, "save_raw_json"), \
+             patch.object(serp_checkpoint, "save_raw_json"), \
              patch.object(serp_audit, "_fetch_serp_api",
                           return_value=response) as mock_fetch:
             with redirect_stdout(io.StringIO()) as out:
@@ -377,7 +378,7 @@ class TestSurfaceExclusion(unittest.TestCase):
         with patch.object(serp_audit, "SITUATIONAL_PROBES_ENABLED", True), \
              patch.object(serp_audit, "SITUATIONAL_KEYWORDS_MODE", "all"), \
              patch.object(serp_audit, "REQUEST_DELAY_SECONDS", 0), \
-             patch.object(serp_audit, "save_raw_json"), \
+             patch.object(serp_checkpoint, "save_raw_json"), \
              patch.object(serp_audit, "SerpStorage", MagicMock()) as mock_storage, \
              patch.object(serp_audit, "_fetch_serp_api",
                           return_value={"ai_overview": {"references": []}}):

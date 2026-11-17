@@ -894,6 +894,10 @@ def _build_aio_trigger_analysis(overview_rows, probe_rows):
             "word_count": word_count,
             "has_aio": has_aio,
             "client_cited": bool(row.get("Client_Cited")),
+            # A probe whose citations could not be resolved to a host has not
+            # established "not cited"; the count travels with the flag so a
+            # reader is not handed a measurement that was never taken (P1).
+            "citations_unresolved": _safe_int(row.get("Citations_Unresolved"), 0),
         })
 
     buckets = {

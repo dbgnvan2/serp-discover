@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import serp_audit
+import serp_checkpoint
 import json
 import os
 from classifiers import EntityClassifier
@@ -306,7 +307,7 @@ class TestSerpAudit(unittest.TestCase):
         self.assertEqual(len(rich_features), 0)
         self.assertEqual(len(warnings), 0)
 
-    @patch('serp_audit.save_raw_json')
+    @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_orchestration(self, mock_fetch, mock_save):
         """Test that fetch_serp_data correctly triggers secondary calls."""
@@ -368,7 +369,7 @@ class TestSerpAudit(unittest.TestCase):
         self.assertIsNone(aio_log["error"])
 
     @patch('serp_audit.FORCE_LOCAL_INTENT', False)
-    @patch('serp_audit.save_raw_json')
+    @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_google_pagination_merge(self, mock_fetch, mock_save):
         """Test that Google pagination merges organic results across pages.
@@ -398,7 +399,7 @@ class TestSerpAudit(unittest.TestCase):
         )
 
     @patch('serp_audit.FORCE_LOCAL_INTENT', False)
-    @patch('serp_audit.save_raw_json')
+    @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_ai_fallback_without_location(self, mock_fetch, mock_save):
         """Test that AI fallback probe is used when main SERP lacks ai_overview."""
@@ -418,7 +419,7 @@ class TestSerpAudit(unittest.TestCase):
         self.assertEqual(aio_log["ai_overview_mode"], "fallback_without_location")
 
     @patch('serp_audit.FORCE_LOCAL_INTENT', False)
-    @patch('serp_audit.save_raw_json')
+    @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_related_questions_ai_followup(self, mock_fetch, mock_save):
         """Test that related-question tokens trigger google_related_questions follow-up calls."""
@@ -454,20 +455,28 @@ class TestSerpAudit(unittest.TestCase):
             {"suggestions": [], "search_information": {"autocomplete_results_state": "No results."}},
             {"suggestions": [{"value": "stress help vancouver"}], "search_information": {}}
         ]
-        result = serp_audit.fetch_autocomplete("help with stress in vancouver")
+        with patch.object(serp_audit, "_serp_city", return_value="north vancouver"):
+            result = serp_audit.fetch_autocomplete("help with stress in vancouver")
         self.assertEqual(len(result["suggestions"]), 1)
         calls = mock_fetch.call_args_list
         self.assertEqual(calls[0][0][0]["q"], "help with stress in vancouver")
         self.assertEqual(calls[1][0][0]["q"], "help with stress")
 
     def test_ai_query_alternatives_for_local_service(self):
-        """AI-likely alternatives should convert local 'best' query into informational variants."""
-        alternatives = serp_audit._ai_query_alternatives(
-            "Best counselling in north vancouver"
-        )
+        """AI-likely alternatives should convert local 'best' query into informational variants.
+
+        The city is patched rather than read from the live config.yml: pinned
+        to the shipped value, this test would fail the day the client's market
+        is changed in config, which is a setting, not a regression.
+        """
+        with patch.object(serp_audit, "_serp_city", return_value="north vancouver"):
+            alternatives = serp_audit._ai_query_alternatives(
+                "Best counselling in north vancouver"
+            )
         self.assertEqual(len(alternatives), 2)
         self.assertIn("how to choose the right counselling?", alternatives[0].lower())
-        self.assertIn("how much does counselling cost in vancouver?", alternatives[1].lower())
+        self.assertIn("how much does counselling cost in north vancouver?",
+                      alternatives[1].lower())
 
     def test_expand_keywords_for_ai_includes_labels(self):
         """Expanded queries should include A, A.1, A.2 labels when enabled."""
@@ -701,7 +710,7 @@ class TestSerpAudit(unittest.TestCase):
         engine = "google"
         data = {"key": "value"}
 
-        serp_audit.save_raw_json(run_id, engine, data)
+        serp_checkpoint.save_raw_json(run_id, engine, data)
 
         mock_makedirs.assert_called_with(f"raw/{run_id}", exist_ok=True)
         mock_file.assert_called_with(
@@ -715,7 +724,14 @@ class TestSerpAudit(unittest.TestCase):
         written_data = "".join(call[0][0]
                                for call in handle.write.call_args_list)
 
-        self.assertEqual(written_data, json.dumps(data, indent=2))
+        # The archive is written after link recovery, so it carries a note
+        # saying so; the response's own keys are untouched.
+        written = json.loads(written_data)
+        self.assertEqual({k: v for k, v in written.items()
+                          if k != "_post_processing"}, data)
+        self.assertIn("link_recovery", written["_post_processing"])
+        self.assertNotIn("_post_processing", data,
+                         "the live response the run reads must not gain a key")
 
     @patch('serp_audit._fetch_serp_api')
     @patch('builtins.print')

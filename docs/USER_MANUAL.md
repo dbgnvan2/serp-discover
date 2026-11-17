@@ -688,7 +688,7 @@ All behavior is controlled via YAML/JSON files (no code changes needed):
 
 ```yaml
 serpapi:
-  location: "Vancouver, British Columbia, Canada"
+  location: "North Vancouver,British Columbia,Canada"   # the market measured
   google_max_pages: 3           # pages to fetch per keyword (Balanced mode)
   maps_max_pages: 3
   language: "en"
@@ -712,6 +712,56 @@ analysis_report:
   client_domain: "livingsystems.ca"
   location: "North Vancouver, BC, Canada"
 ```
+
+#### The two settings that name a market must agree
+
+`serpapi.location` decides which market Google is asked about.
+`feasibility.non_profit_location` decides which market the feasibility
+verdicts and the neighbourhood pivots assume. If they disagree, the run
+measures one city and scores another, and every competitor, local pack and
+Domain Authority gap in the report belongs to the wrong place.
+
+That happened on 2026-11-14: the run searched Vancouver while feasibility
+scored North Vancouver, so the client's absence from all nine map packs meant
+nothing. Saving a config where they disagree now raises a warning naming both
+settings and the place fields they differ on. The check compares every field
+both of them name, so "North Vancouver, British Columbia" counts as agreeing
+with "North Vancouver,British Columbia,Canada", while a North Vancouver in
+Washington does not. It is a warning rather than an error because measuring a
+neighbouring market deliberately is a reasonable thing to want.
+
+Use the name SerpAPI itself uses — look it up at
+`https://serpapi.com/locations.json?q=<city>` and copy the `canonical_name`
+("North Vancouver,British Columbia,Canada"). A location SerpAPI does not
+support is an error it returns rather than a result, and the run now stops
+fetching that query immediately instead of retrying three times with backoff:
+a setting it has rejected once will be rejected again, and the retries spend
+the search allowance to be told so.
+
+#### Why some rows say "Not Measured" for page-level figures
+
+Google no longer puts the destination URL in a search result. Since late 2026
+it serves `https://www.google.com/goto?url=…` with the real address hidden
+inside, and the tool can recover only the **site**, not the page that ranked.
+Those rows are marked `Is_Destination_Page = FALSE`, and everything that is a
+property of the page reads **Not Measured** rather than a figure taken from
+the site's front page: `Word_Count`, `Content_Type`, the schema / FAQ / author
+signals, and `Page_Authority`.
+
+What still works is everything that is a property of the site: who the
+competitor is, what kind of organisation they are, and the Domain Authority
+that drives the feasibility gap. So feasibility, intent, the local pack and
+the competitor set are unaffected; only "how long is their page and what is
+on it" is lost. A result whose site cannot be recovered at all is reported
+with no URL and excluded, never filed under google.com.
+
+The same hiding reaches the AI-visibility probes, where the question is
+whether the AI Overview cited *you*. A citation whose site cannot be
+recovered cannot answer that either way, so the probe row carries
+`Citations_Unresolved` alongside `Client_Cited`. Read them together:
+`Client_Cited = FALSE` with `Citations_Unresolved = 0` means you were not
+cited, and the same FALSE with a count above zero means the question was not
+settled — one of the untraceable citations may have been yours.
 
 ### **shared_config.json** — Cross-Tool Shared Settings (optional, out-of-repo)
 

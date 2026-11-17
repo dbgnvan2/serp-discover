@@ -122,19 +122,54 @@ def ai_query_alternatives(base_keyword, city, service_tokens, templates_map):
     return out
 
 
+def place_phrases(city):
+    """The phrases that count as ``city`` already being named in a keyword.
+
+    A multi-word city is also named by its trailing words: a keyword that ends
+    "in vancouver" names the place when the configured city is "North
+    Vancouver". Longest first, so a trim takes the whole name when it is there.
+    Without this, changing the configured city from Vancouver to North
+    Vancouver stopped the tool recognising a location it had recognised before.
+    """
+    words = str(city or "").strip().lower().split()
+    return [" ".join(words[i:]) for i in range(len(words))]
+
+
+def names_place(text, city):
+    """True when ``text`` already names ``city`` or the place it sits in.
+
+    Matched on word boundaries. A bare substring test read the trailing word
+    of a two-word city as the place anywhere it appeared: with the city set to
+    "North Bay", "therapy for bayside families" contains "bay" and would be
+    sent to SerpAPI without a location, as though it already named one.
+    """
+    lowered = str(text or "").lower()
+    for phrase in place_phrases(city):
+        if not phrase:
+            continue
+        if re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", lowered):
+            return True
+    return False
+
+
 def autocomplete_query_variants(keyword, city):
     """Build fallback autocomplete queries for long/local phrases."""
     q = (keyword or "").strip()
     variants = [q]
 
-    city_lower = (city or "").strip().lower()
     lowered = q.lower()
-    if city_lower:
-        for suffix in (f" in {city_lower}", f" {city_lower}"):
-            if lowered.endswith(suffix):
-                trimmed = q[:len(q) - len(suffix)].strip()
-                if trimmed:
-                    variants.append(trimmed)
+    for phrase in place_phrases(city):
+        # First match wins: once " in vancouver" is trimmed, also trimming
+        # " vancouver" would leave the dangling "help with stress in", and
+        # every junk variant costs a paid autocomplete call on fallback.
+        trimmed = next(
+            (q[:len(q) - len(suffix)].strip()
+             for suffix in (f" in {phrase}", f" {phrase}")
+             if lowered.endswith(suffix) and q[:len(q) - len(suffix)].strip()),
+            None)
+        if trimmed:
+            variants.append(trimmed)
+            break
 
     for prefix in ("help with ", "help for ", "need help with "):
         if lowered.startswith(prefix):
@@ -341,6 +376,7 @@ def execute_situational_probes(jobs, run_id, fetch_probe, client_domain,
 
         has_aio = False
         client_cited = False
+        unresolved = 0
         if results:
             aio_data = results.get("ai_overview") or {}
             has_aio = bool(aio_data)
@@ -356,8 +392,21 @@ def execute_situational_probes(jobs, run_id, fetch_probe, client_domain,
                     "Link": link,
                     "Source": citation.get("source"),
                 })
-                if link and client_domain_lower and client_domain_lower in str(link).lower():
+                if not link:
+                    # Link recovery could not resolve this citation's host, so
+                    # whether it is the client is unknown. Counting it keeps
+                    # Client_Cited: False from reading as a measurement
+                    # (P1/P14 — unknown is not a terminal negative).
+                    unresolved += 1
+                    continue
+                if client_domain_lower and client_domain_lower in str(link).lower():
                     client_cited = True
+
+        if unresolved and not client_cited:
+            logging.warning(
+                "Probe '%s': %d AI-Overview citation(s) carried no resolvable "
+                "host, so 'client not cited' is not established for this "
+                "query; see Citations_Unresolved.", job["query"], unresolved)
 
         probe_rows.append({
             **common,
@@ -365,6 +414,7 @@ def execute_situational_probes(jobs, run_id, fetch_probe, client_domain,
             "Word_Count": len(job["query"].split()),
             "Has_AI_Overview": has_aio,
             "Client_Cited": client_cited,
+            "Citations_Unresolved": unresolved,
             "Fetch_Failed": results is None,
         })
         time.sleep(request_delay)

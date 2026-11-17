@@ -155,7 +155,7 @@ Key sections:
 
 ```yaml
 serpapi:
-  location: Vancouver, British Columbia, Canada
+  location: North Vancouver,British Columbia,Canada   # must name the same city as feasibility.non_profit_location
   google_max_pages: 3        # pages per keyword (Balanced mode)
   maps_max_pages: 3
 

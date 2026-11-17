@@ -34,6 +34,13 @@ def load_config_paths(config_path="config.yml"):
 
 
 def classify_domain_for_row(classifier, row):
+    """The entity type for one row, or its existing one when it has no domain.
+
+    ``normalize_domain`` returns "" for a Google redirect wrapper, which is
+    what runs written before link recovery stored in ``Link``. Keeping the
+    row's existing type is honest; classifying the wrapper would file it as
+    google.com.
+    """
     domain = normalize_domain(row.get("Link") or row.get("Source"))
     if not domain:
         return row.get("Entity_Type", "N/A")
@@ -47,13 +54,23 @@ def refresh_json(json_path, classifier):
 
     updated = 0
     changed = 0
-    for row in data.get("organic_results", []):
+    unclassifiable = 0
+    rows = data.get("organic_results", [])
+    for row in rows:
+        if not normalize_domain(row.get("Link") or row.get("Source")):
+            unclassifiable += 1
         new_type = classify_domain_for_row(classifier, row)
         old_type = row.get("Entity_Type", "N/A")
         row["Entity_Type"] = new_type
         updated += 1
         if old_type != new_type:
             changed += 1
+
+    if unclassifiable:
+        # P2 — a reclassification that silently skipped rows would look clean.
+        print(f"  {unclassifiable} of {len(rows)} organic row(s) carry no "
+              f"usable domain (a Google redirect wrapper or a blank link) and "
+              f"keep their existing Entity_Type.")
 
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -83,10 +100,13 @@ def refresh_xlsx(xlsx_path, classifier):
         link = ws.cell(row=row_idx, column=link_col).value
         source = ws.cell(row=row_idx, column=source_col).value
         old_type = ws.cell(row=row_idx, column=entity_col).value or "N/A"
-        new_type, _confidence, _evidence = classifier.classify(
-            normalize_domain(link or source),
-            None,
-        )
+        domain = normalize_domain(link or source)
+        if not domain:
+            # No domain to classify; overwriting with "N/A" would turn an
+            # unknown into a measured negative (P1).
+            updated += 1
+            continue
+        new_type, _confidence, _evidence = classifier.classify(domain, None)
         new_type = new_type or "N/A"
         ws.cell(row=row_idx, column=entity_col).value = new_type
         updated += 1

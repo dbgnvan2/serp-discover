@@ -569,6 +569,129 @@ is a real defect, not a false positive):
 - `step_dag.py` is built, correct and covered by 13 passing tests, and is
   reachable from nothing. Either wire it in or delete it with its test.
 
+### Follow-up to the 2026-11-14 reading: the market setting and the wrapped links
+
+Not a numbered chunk. The 2026-11-14 reading turned up two faults in the run
+itself, and the user authorised both fixes ("Yes, both").
+
+**The market.** `config.yml serpapi.location` said `Vancouver, British
+Columbia, Canada` while `feasibility.non_profit_location` said
+`North Vancouver`: the run measured one city and scored another, so the
+client's absence from all nine map packs described the wrong market.
+`serpapi.location` is now the SerpAPI `canonical_name`
+`North Vancouver,British Columbia,Canada`, confirmed against a live
+`locations.json` lookup before the change. `run_feasibility.DEFAULT_LOCATION`
+replaces two hardcoded fallbacks and `probe_ai_visibility` holds the same
+value with a test asserting they agree. `config_validators.validate_config_yml`
+warns when the two settings disagree — a warning, not an error, because
+measuring a neighbouring market on purpose is legitimate.
+
+**The wrapped links.** Every organic link and every AI-Overview citation of
+that run arrived as `https://www.google.com/goto?url=CAES...`, an opaque
+Google payload. SerpAPI passes it through, so every URL-derived stage read
+`www.google.com`: entity and content classification, Domain Authority lookup,
+client-rank detection, handoff targets, citation attribution. New module
+`link_recovery.py` recovers what Google still sends in the clear — the host,
+from `displayed_link`, a reference's `source_icon`, `source` where it is a
+hostname, or the host already recovered for the row a sitelink sits inside —
+and walks every dict in a response rather than a named list of containers
+(enumerating them missed four: ads, ad sitelinks, organic sitelinks, and
+AI-Overview `snippet_links`). A recovered link is the site root, not the
+ranked page, so the row is marked `Is_Destination_Page: false` and
+`Link_Status: site_root`, and every page-level figure reads `Not Measured`
+rather than the front page's value. A row whose host cannot be recovered
+carries no URL at all: unknown, not `google.com`, whose Domain Authority
+would otherwise be scored as a competitor's (P1/P14).
+
+Verified on the archived run, not only on synthetic rows: 203 wrapped links,
+160 recovered, 43 lost (all AI-Overview inline `snippet_links`), 0 lost
+organic rows, 0 wrappers surviving anywhere. `parse_data` over
+`raw/20261114_155451/calls/0001_*.json` yields ranks 1-4 as yellowpages.ca,
+thebestvancouver.com, reddit.com and allycouples.com, and the six AI-Overview
+citations resolve to psychologytoday.com, goodlifetherapy.ca, reddit.com and
+janeapp.com.
+
+Three helpers were extracted because the gates they carry have to hold in the
+primary pass and the pivot pass alike, and a source guard can only honestly
+assert "there is exactly one writer": `moz_client.write_metrics` (Domain
+Authority is a property of the domain and survives a site-root recovery; Page
+Authority is a property of the page and does not, and the row and the database
+are gated together — P43), `feasibility.url_window` (slices the top N *first*,
+then drops blanks, and reports the hole; filtering first slides rank 11 into a
+set everything calls "the top 10" — P9/P31) and `link_recovery.link_status`.
+Moving them also kept `serp_audit.py` under its 2200-line cap, which the
+first version of the change exceeded; the cap was not raised.
+
+**Effort tier: Full** (`standards/effort-budget.md`), because the change is on
+the data path and touches external calls. Tests for the change, a full sweep
+budget, one cold `learning-qa` pass.
+
+That pass returned 8 findings, all fixed in this chunk with one guard test
+each (`tests/test_link_recovery_followup.py`, 24 tests):
+
+- My own guard `test_page_authority_is_gated_but_domain_authority_is_not`
+  sliced the source at the *first* `item["Competitor_DA"] =` and stayed green
+  while the pivot pass wrote an ungated Page Authority 180 lines below. This
+  is why the three helpers above were extracted.
+- `_GOOGLE_HOST` matched `google.example.com` — someone else's subdomain —
+  contradicting its own comment. Tightened and verified against 8 hosts.
+- Three readers go back over stored output written before the fix.
+  `generate_domain_override_candidates.normalize_domain` now returns no domain
+  for a wrapper, so google.com cannot enter the override review queue;
+  `refresh_analysis_outputs` keeps a row's existing `Entity_Type` rather than
+  overwriting it with `N/A`, which would turn an unknown into a measured
+  negative; each reports its count (P2).
+- A probe citation whose host could not be recovered voted "client not cited".
+  `Citations_Unresolved` now travels with `Client_Cited` onto the probe row and
+  into the brief data, and is logged.
+- `raw/<run_id>/*_response.json` is written *after* recovery, so a file named
+  "raw" held processed links. It now carries a `_post_processing` key pointing
+  at `raw/<run_id>/calls/`, which is written before recovery runs. The writer
+  moved to `serp_checkpoint`, which owns the archive.
+- The market comparison read only the first comma field, so
+  `North Vancouver,Washington,United States` passed and
+  `North Vancouver, British Columbia` false-fired. It now compares every field
+  both settings name.
+- `place_phrases` was used through a bare `in` test, so with the city set to
+  "North Bay" the keyword "therapy for bayside families" read as already
+  naming the place and went out with no location. `query_variants.names_place`
+  matches on word boundaries.
+- "unsupported location" and the other parameter errors were retried three
+  times with backoff. They are now in `_fetch_serp_api`'s `non_retryable`
+  markers: a setting SerpAPI has rejected once will be rejected again.
+- Two tests were pinned to the live `config.yml`, so changing the client's
+  market in config would have failed the suite. They patch `_serp_city`.
+
+Honest limits of that pass: it ran before `handoff_writer.py`,
+`config_manager.py`, `report_writing_directives.yml` and the `"N/A"` change
+landed, and it covers one family of failure modes (the failure-hides family),
+not general correctness.
+
+**Adjacent issues found, not fixed:**
+
+- The handoff's targets assert a site root is the ranked page and carry no
+  destination-page flag. Fixing it needs a `schema_version` bump agreed with
+  Tool 2, so it is recorded in `docs/methodology.md` rather than changed here.
+- `play_routing.yml` rules 3 and 4 match `feasibility: [low, unknown]` and
+  their strategy text asserts a high DA gap, which an unmeasured keyword does
+  not have. This is already open finding **D-M-07**, covering both
+  `extraction_play` and `local_pivot_play` — tracked, not newly discovered.
+- City aliases ("North Van", "NVan") are editorial content with no home. There
+  is no hardcoded list to externalise, so nothing was moved; a
+  `location_aliases` key in `serp_vocab.yml` is the place for one if the need
+  is ever shown with real keywords.
+- The `Situational_Probes` sheet has no glossary coverage beyond the two
+  columns this change touched (`Client_Cited`, `Citations_Unresolved`).
+
+The discover suite is 1621 passed, 72 skipped, exit 0.
+
+**After:** the owner work the market fix creates. Every
+`market_analysis_*.json` on disk was produced against the wrong city with
+wrapped links, so `run_feasibility.py` and the briefs need re-running over any
+that are still relied on. No DA provider is currently reachable
+(`DATAFORSEO_LOGIN`/`PASSWORD` absent from `.env`, Moz returned nothing on
+2026-11-14), so feasibility stays unmeasured until one is.
+
 Chunk X's open half shipped with it at `6164008` (serp-compete): the handoff moved
 to `schema_version` 2.0/2.1 and those versions are now in compete's
 `handoff.supported_versions` and `absolute_rank_versions`, so the rank-column

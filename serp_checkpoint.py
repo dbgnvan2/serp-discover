@@ -245,6 +245,32 @@ def raw_file_prefix():
     return f"{label}_" if label else ""
 
 
+def save_raw_json(run_id, engine, data):
+    """Archive one SerpAPI response under ``raw/<run_id>/`` for inspection.
+
+    Lives here because this module owns the raw archive. The file is named
+    "raw" but is written after ``link_recovery`` rewrote every Google redirect
+    wrapper in place, so a reader checking the pipeline against its input
+    would read a processed copy as the input. SerpAPI's own bytes are the
+    per-call files under ``raw/<run_id>/calls/``, saved before recovery runs.
+
+    The annotation goes on a shallow copy: ``data`` is the live response the
+    rest of the run reads, and must not gain a key.
+    """
+    output_dir = f"raw/{run_id}"
+    os.makedirs(output_dir, exist_ok=True)
+    file_path = f"{output_dir}/{raw_file_prefix()}{engine}_response.json"
+    payload = data
+    if isinstance(data, dict):
+        payload = dict(data)
+        payload["_post_processing"] = (
+            "link_recovery resolved Google redirect wrappers in 'link' fields "
+            "to their destination host: a site root, not the ranked page, and "
+            "empty where unrecoverable. SerpAPI's own bytes: raw/<run_id>/calls/.")
+    with open(file_path, 'w') as f:
+        json.dump(payload, f, indent=2)
+
+
 def summary():
     return ACTIVE.summary() if ACTIVE else {"resumed_from": None, "reused_calls": 0}
 

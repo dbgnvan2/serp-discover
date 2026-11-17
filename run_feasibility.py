@@ -39,6 +39,7 @@ import yaml
 
 import brief_data_extraction
 import feasibility as feasibility_module
+import link_recovery
 import timeouts
 from play_rendering import format_play_cell
 
@@ -48,6 +49,11 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 logger = logging.getLogger(__name__)
+
+# Used only when config.yml names no serpapi.location. One definition, and the
+# client's own city: the old fallback said Vancouver, which is a different
+# market from North Vancouver and would be measured without a word of warning.
+DEFAULT_LOCATION = "North Vancouver,British Columbia,Canada"
 
 # ---------------------------------------------------------------------------
 # Optional dependencies — degrade gracefully if missing
@@ -173,7 +179,7 @@ def _fetch_pivot_local_pack(keyword: str, config: dict) -> tuple[list[dict], boo
         "q": keyword,
         "gl": serpapi_cfg.get("gl", "ca"),
         "hl": serpapi_cfg.get("hl", "en"),
-        "location": serpapi_cfg.get("location", "Vancouver, British Columbia, Canada"),
+        "location": serpapi_cfg.get("location", DEFAULT_LOCATION),
         "type": "search",
     }
     try:
@@ -209,7 +215,7 @@ def _fetch_pivot_organic_urls(
         "q": keyword,
         "gl": serpapi_cfg.get("gl", "ca"),
         "hl": serpapi_cfg.get("hl", "en"),
-        "location": serpapi_cfg.get("location", "Vancouver, British Columbia, Canada"),
+        "location": serpapi_cfg.get("location", DEFAULT_LOCATION),
         "num": 10,
     }
     try:
@@ -217,6 +223,10 @@ def _fetch_pivot_organic_urls(
                              timeout=timeouts.serpapi_timeout(config))
         resp.raise_for_status()
         data = resp.json()
+        # This fetch does not go through serp_audit's wrapper, so it has to
+        # unwrap Google's redirect links itself (P5: the same fix on every
+        # sibling call site).
+        link_recovery.recover_response(data)
         return [r.get("link", "") for r in data.get("organic_results", [])[:max_urls] if r.get("link")], True
     except Exception as exc:
         logger.warning("Pivot organic fetch failed for '%s': %s", keyword, _scrub_secrets(exc))
@@ -233,6 +243,7 @@ def _get_organic_urls_by_keyword(
 ) -> dict[str, list[str]]:
     """Return top organic URLs keyed by keyword (primary queries only)."""
     by_kw: dict[str, list[str]] = {}
+    wrapped = 0
     for row in data.get("organic_results", []):
         if row.get("Query_Label") != "A":
             continue
@@ -241,8 +252,19 @@ def _get_organic_urls_by_keyword(
         rank = int(row.get("Rank") or 999)
         if not kw or not url:
             continue
+        # A run written before link recovery stored Google's redirect wrapper.
+        # Its domain reads google.com, so it would be scored as a competitor
+        # with Google's authority; drop it and count it instead (P2).
+        if link_recovery.is_google_redirect(url):
+            wrapped += 1
+            continue
         by_kw.setdefault(kw, [])
         by_kw[kw].append((rank, url))
+    if wrapped:
+        logger.warning(
+            "%d organic row(s) in this run's output still hold a Google "
+            "redirect wrapper instead of a destination URL and were skipped; "
+            "re-run the audit to measure them.", wrapped)
     result = {}
     for kw, pairs in by_kw.items():
         pairs.sort(key=lambda x: x[0])

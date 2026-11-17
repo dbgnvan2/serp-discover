@@ -212,12 +212,18 @@ class SerpStorage:
     # Moz DA/PA
     # ------------------------------------------------------------------
 
-    def save_url_moz_metrics(self, url: str, da: int, pa: int) -> None:
+    def save_url_moz_metrics(self, url: str, da: int, pa: int | None) -> None:
         """Update the Moz Domain Authority and Page Authority for a URL.
 
         If the URL does not yet exist in ``url_features`` a minimal row is
         inserted so the FK relationship remains valid and the DA is queryable
         even for URLs that weren't fully enriched.
+
+        ``pa`` is ``None`` when the URL is a site root recovered from Google's
+        redirect wrapper rather than the page that ranked: Page Authority is a
+        property of the page, so the front page's figure must not be stored
+        under the ranked page's row. Domain Authority is a property of the
+        domain and is stored either way.
         """
         with sqlite3.connect(self.db_path) as conn:
             conn.execute(

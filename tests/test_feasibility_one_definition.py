@@ -194,11 +194,17 @@ class TestEveryProducerUsesTheSharedHelper(unittest.TestCase):
         """Raising TOP_N_FOR_FEASIBILITY must actually widen the window.
 
         Both producers sliced to a literal 10 before calling the helper, so
-        lowering the constant worked and raising it silently did nothing.
+        lowering the constant worked and raising it silently did nothing. The
+        window now lives in ``feasibility.url_window``; serp_audit must take
+        no slice of its own, and the one definition must use the constant.
         """
-        self.assertNotIn("][:10]", self._src("serp_audit.py"))
-        self.assertIn("[:feasibility_module.TOP_N_FOR_FEASIBILITY]",
-                      self._src("serp_audit.py"))
+        audit = self._src("serp_audit.py")
+        self.assertNotIn("][:10]", audit)
+        self.assertNotIn("[:feasibility_module.TOP_N_FOR_FEASIBILITY]", audit,
+                         "the window is feasibility.url_window's to take; a "
+                         "pass slicing again applies it twice")
+        self.assertIn("rows[:TOP_N_FOR_FEASIBILITY]",
+                      self._src("feasibility.py"))
         for sig in ("max_urls: int = feasibility_module.TOP_N_FOR_FEASIBILITY",
                     "max_per_keyword: int = feasibility_module.TOP_N_FOR_FEASIBILITY"):
             self.assertIn(sig, self._src("run_feasibility.py"))

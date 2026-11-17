@@ -21,8 +21,10 @@ import yaml
 import metrics
 import pipeline_status
 import serp_checkpoint
+import link_recovery
 import timeouts
-from run_feasibility import _scrub_secrets  # requests errors carry api_key in the URL
+from run_feasibility import (  # requests errors carry api_key in the URL
+    DEFAULT_LOCATION, _scrub_secrets)
 from urllib.parse import urlparse
 from classifiers import ContentClassifier, EntityClassifier
 from url_enricher import UrlEnricher
@@ -36,9 +38,11 @@ except ImportError:
     SERPAPI_AVAILABLE = False
 
 try:
+    import moz_client as moz_client_mod   # write_metrics: see the Moz/DA pass
     from moz_client import MozClient, credentials_present
     MOZ_AVAILABLE = credentials_present()
 except ImportError:
+    moz_client_mod = None
     MozClient = None
     MOZ_AVAILABLE = False
 
@@ -116,8 +120,7 @@ def _resolve_output_names(input_csv):
 
 OUTPUT_FILE, OUTPUT_JSON, OUTPUT_MD = _resolve_output_names(INPUT_FILE)
 
-LOCATION = CONFIG.get("serpapi", {}).get(
-    "location", "Vancouver, British Columbia, Canada")
+LOCATION = CONFIG.get("serpapi", {}).get("location", DEFAULT_LOCATION)
 GOOGLE_ENGINE = CONFIG.get("serpapi", {}).get("engine", "google")
 GOOGLE_GL = CONFIG.get("serpapi", {}).get("gl", "ca")
 GOOGLE_HL = CONFIG.get("serpapi", {}).get("hl", "en")
@@ -349,6 +352,10 @@ def _fetch_serp_api(params):
     logging.info(f"API Call Parameters: {json.dumps(log_params, indent=2)}")
     stored = serp_checkpoint.lookup(params)  # resume: a call already paid for
     if stored is not None:
+        # Recovered on the way out, not on the way in: the checkpoint keeps
+        # SerpAPI's response as it arrived, so a resumed run and a fresh one
+        # see the same recovered links.
+        link_recovery.recover_response(stored)
         return stored
     for attempt in range(1, RETRY_MAX_ATTEMPTS + 1):
         try:
@@ -362,9 +369,14 @@ def _fetch_serp_api(params):
                 error_text = str(results["error"]).lower()
                 # Quota/auth errors never succeed on retry — fail fast
                 # instead of burning paid attempts (seo_geo_review C.6).
+                # A bad parameter is settled, not transient: retrying it
+                # spends the clock and the search allowance to be told the
+                # same thing (P1 in reverse).
                 non_retryable = (
                     "invalid api key", "unauthorized", "account",
                     "run out of searches", "out of searches", "plan limit",
+                    "unsupported", "not supported", "invalid location",
+                    "missing query", "invalid parameter", "unrecognized",
                 )
                 if any(marker in error_text for marker in non_retryable):
                     logging.error(
@@ -375,7 +387,8 @@ def _fetch_serp_api(params):
                 if attempt == RETRY_MAX_ATTEMPTS:
                     return None
             else:
-                serp_checkpoint.save(params, results)
+                serp_checkpoint.save(params, results)  # raw, as SerpAPI sent it
+                link_recovery.recover_response(results)
                 return results
         except Exception as e:
             logging.error(
@@ -413,15 +426,6 @@ def _extract_text_blocks_text(item):
     return " ".join(parts)
 
 
-def save_raw_json(run_id, engine, data):
-    """Saves raw JSON output to a structured folder."""
-    output_dir = f"raw/{run_id}"
-    os.makedirs(output_dir, exist_ok=True)
-    file_path = f"{output_dir}/{serp_checkpoint.raw_file_prefix()}{engine}_response.json"
-    with open(file_path, 'w') as f:
-        json.dump(data, f, indent=2)
-
-
 def fetch_serp_data(keyword, run_id):
     """
     Orchestrates primary and secondary SerpApi calls for a given keyword.
@@ -443,7 +447,11 @@ def fetch_serp_data(keyword, run_id):
     }
 
     # --- 1. Primary SERP Request ---
-    if FORCE_LOCAL_INTENT and LOCATION.split(",")[0].lower() not in keyword.lower():
+    # A keyword that already names the place (or the wider place it sits in,
+    # e.g. "vancouver" when the city is North Vancouver) is not given the
+    # location again.
+    already_local = query_variants.names_place(keyword, _serp_city())
+    if FORCE_LOCAL_INTENT and not already_local:
         query_term = f"{keyword} {LOCATION}"
     else:
         query_term = keyword
@@ -528,7 +536,7 @@ def fetch_serp_data(keyword, run_id):
 
     all_results['google'] = primary_results
     all_results['google_pages'] = google_pages
-    save_raw_json(run_id, 'google', primary_results)
+    serp_checkpoint.save_raw_json(run_id, 'google', primary_results)
 
     # Update AIO log with audit fields
     aio_log["created_at"] = created_at
@@ -560,7 +568,7 @@ def fetch_serp_data(keyword, run_id):
                 all_results["google_ai_overview_probe"] = fallback_results.get("ai_overview", {})
                 aio_log["has_ai_overview"] = True
                 aio_log["ai_overview_mode"] = "fallback_without_location"
-                save_raw_json(run_id, 'google_ai_overview_probe', fallback_results)
+                serp_checkpoint.save_raw_json(run_id, 'google_ai_overview_probe', fallback_results)
             else:
                 logging.info("  - AI fallback probe also returned no ai_overview.")
     else:
@@ -593,7 +601,7 @@ def fetch_serp_data(keyword, run_id):
             if aio_results:
                 aio_log["ai_overview_mode"] = "token_followup_success"
                 all_results['google_ai_overview'] = aio_results
-                save_raw_json(run_id, 'google_ai_overview', aio_results)
+                serp_checkpoint.save_raw_json(run_id, 'google_ai_overview', aio_results)
             else:
                 aio_log["ai_overview_mode"] = "token_followup_failed"
                 aio_log["error"] = "API call returned None"
@@ -639,7 +647,7 @@ def fetch_serp_data(keyword, run_id):
         if related_pages:
             all_results["google_related_questions"] = related_pages
             aio_log["related_questions_ai_calls"] = len(related_pages)
-            save_raw_json(run_id, "google_related_questions", related_pages)
+            serp_checkpoint.save_raw_json(run_id, "google_related_questions", related_pages)
 
     # --- 3. Google Maps Request (Conditional) ---
     # Logic: Call if 'local_results' are present OR if local intent is forced.
@@ -698,7 +706,7 @@ def fetch_serp_data(keyword, run_id):
             query_metadata["maps_pages_fetched"] = len(maps_pages)
             all_results['google_maps'] = merged_maps
             all_results['google_maps_pages'] = maps_pages
-            save_raw_json(run_id, 'google_maps', merged_maps)
+            serp_checkpoint.save_raw_json(run_id, 'google_maps', merged_maps)
 
     return all_results, aio_log, query_metadata
 
@@ -857,12 +865,45 @@ def parse_data(keyword, results, query_metadata):
             metrics[f"Rank_{rank}_Position"] = "N/A"
 
     # --- ALL ORGANIC RESULTS ---
+    # P2 — the recovery counts have to reach a reader, not only the log.
+    # parsing_warnings is the project's channel for "what the parse could not
+    # read": it becomes the Parsing_Warnings sheet and the JSON key of the
+    # same name, both checked by validate_xlsx_vs_json.py.
+    wrapped_rows = sum(1 for item in organic if item.get("original_link"))
+    if wrapped_rows:
+        parsing_warnings.append({
+            **common_fields, "Module": "organic_results", "Field": "link",
+            "Message": (
+                f"{wrapped_rows} of {len(organic)} result links arrived as "
+                f"Google redirect wrappers; the site was recovered but not "
+                f"the ranked page, so page-level figures read Not Measured")})
+    for item in organic:
+        if item.get("original_link") and not item.get("link"):
+            parsing_warnings.append({
+                **common_fields, "Module": "organic_results", "Field": "link",
+                "Message": (
+                    f"Rank {item.get('position', '?')}: the Google redirect "
+                    f"wrapper carried no host in any field, so this result "
+                    f"has no URL and is excluded from domain, authority and "
+                    f"rank analysis")})
+
     organic_list = []
     for item in organic:
         organic_list.append({**common_fields,
                              "Rank": item.get("position", "N/A"),
                              "Title": item.get("title", "N/A"),
-                             "Link": item.get("link", "N/A"),
+                             # A link recovery could not resolve reads "N/A"
+                             # like every other missing field, not a blank cell.
+                             "Link": item.get("link") or "N/A",
+                             # Google wraps its result links; link_recovery
+                             # recovers the site root but not the ranked page,
+                             # so page-level enrichment has to know which it is.
+                             "Is_Destination_Page": item.get(
+                                 "link_is_destination_page", True),
+                             # Three states, not two: a site root and a result
+                             # with no URL at all are both "not the page", and
+                             # only the second means nothing was measured.
+                             "Link_Status": link_recovery.link_status(item),
                              "Snippet": item.get("snippet", "N/A"),
                              "Source": item.get("source", "N/A"),
                              "Content_Type": "N/A",
@@ -1165,7 +1206,7 @@ def fetch_situational_probe(query, run_id, probe_index):
     _apply_no_cache(params)
     results = _fetch_serp_api(params)
     if results:
-        save_raw_json(run_id, f"situational_probe_{probe_index}", results)
+        serp_checkpoint.save_raw_json(run_id, f"situational_probe_{probe_index}", results)
     return results
 
 
@@ -1444,6 +1485,15 @@ def _run(run_id):
                         item['Entity_Type'] = e_type
                         storage.save_domain_features(domain, e_type)
 
+                        # A recovered link is the site root, not the ranked
+                        # page: fetching it would file the homepage's word
+                        # count, schema and author signals as the ranked
+                        # page's. Domain classification above is still sound.
+                        if not item.get("Is_Destination_Page", True):
+                            item['Content_Type'] = "Not Measured"
+                            item['Word_Count'] = "Not Measured"
+                            continue
+
                         if rank_val <= MAX_URLS_TO_ENRICH:
                             fetch_res = enricher.fetch_url(url)
                             if fetch_res:
@@ -1501,26 +1551,13 @@ def _run(run_id):
 
                 # --- MOZ DA + FEASIBILITY ---
                 if FEASIBILITY_ENABLED and moz_client is not None:
-                    keyword_urls = [
-                        item.get("Link") for item in o
-                        if item.get("Link") and item.get("Link") != "N/A"
-                    ][:feasibility_module.TOP_N_FOR_FEASIBILITY]
+                    keyword_urls = feasibility_module.url_window(
+                        o, f"'{source_keyword}' feasibility", logging.warning)
 
                     if keyword_urls:
                         moz_results = moz_client.get_moz_metrics(keyword_urls)
-
-                        # Write DA back onto each organic row and into url_features
-                        for item in o:
-                            url = item.get("Link")
-                            if url and url in moz_results:
-                                item["Competitor_DA"] = moz_results[url].get("da")
-                                item["Page_Authority"] = moz_results[url].get("pa")
-                                if ENRICHMENT_ENABLED:
-                                    storage.save_url_moz_metrics(
-                                        url,
-                                        moz_results[url]["da"],
-                                        moz_results[url]["pa"],
-                                    )
+                        moz_client_mod.write_metrics(
+                            o, moz_results, storage, ENRICHMENT_ENABLED)
 
                         # One definition of the input set, shared with
                         # run_feasibility.py (finding D-C-19): the top 10 by
@@ -1672,10 +1709,9 @@ def _run(run_id):
         # Moz for pivot organic results
         pivot_das: list[int] = []
         if moz_client is not None:
-            pivot_urls = [
-                r.get("Link") for r in p_organic
-                if r.get("Link") and r.get("Link") != "N/A"
-            ][:feasibility_module.TOP_N_FOR_FEASIBILITY]
+            pivot_urls = feasibility_module.url_window(
+                p_organic, f"'{pivot_keyword}' pivot feasibility",
+                logging.warning)
             if pivot_urls:
                 pivot_moz = moz_client.get_moz_metrics(pivot_urls)
                 # The same definition as the primary pass (finding D-C-19):
@@ -1689,15 +1725,8 @@ def _run(run_id):
                     lambda u: (pivot_moz.get(u) or {}).get("da"),
                     client_domain=CLIENT_DOMAIN,
                 )
-                for item in p_organic:
-                    url = item.get("Link")
-                    if url and url in pivot_moz:
-                        item["Competitor_DA"] = pivot_moz[url].get("da")
-                        item["Page_Authority"] = pivot_moz[url].get("pa")
-                        if ENRICHMENT_ENABLED:
-                            storage.save_url_moz_metrics(
-                                url, pivot_moz[url]["da"], pivot_moz[url]["pa"]
-                            )
+                moz_client_mod.write_metrics(
+                    p_organic, pivot_moz, storage, ENRICHMENT_ENABLED)
 
         if pivot_das:
             pivot_feas = feasibility_module.compute_feasibility(FEASIBILITY_CLIENT_DA, pivot_das)

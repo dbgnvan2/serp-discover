@@ -50,7 +50,7 @@ These control how the tool runs.
 
 | # | File | What It Does | Example |
 |---|------|-------------|---------|
-| 7 | **config.yml** | API keys, file paths, client info, thresholds | "client_da: 35", "location: Vancouver, BC" |
+| 7 | **config.yml** | API keys, file paths, client info, thresholds | "client_da: 35", "location: North Vancouver, BC" |
 | 8 | **url_pattern_rules.yml** | Fallback classification rules for URLs | "/therapist/ → service page" |
 
 **When to edit:**
@@ -154,7 +154,7 @@ analysis_report:
   location: North Vancouver, BC, Canada
   
 serpapi:
-  location: Vancouver, British Columbia, Canada
+  location: North Vancouver,British Columbia,Canada   # same city as analysis_report.location above
   gl: ca
 ```
 

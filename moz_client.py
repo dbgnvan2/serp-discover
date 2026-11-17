@@ -471,3 +471,27 @@ def _decode_link_counts(raw) -> dict:
         logger.warning("Unreadable link_counts blob in %s — treating as empty", CACHE_TABLE)
         return {}
     return decoded if isinstance(decoded, dict) else {}
+
+
+def write_metrics(rows, moz_results, storage, enrichment_enabled):
+    """Write Moz DA and PA onto the rows and into ``url_features``.
+
+    One definition for the primary pass and the pivot pass, because the gate
+    below has to hold in both: Domain Authority is a property of the domain,
+    so a link recovered to the site root still measures it correctly, but Page
+    Authority is a property of the page, which such a link is not. The row and
+    the database are gated together — one value with two sinks and only one
+    gated is how the spreadsheet comes to say "Not Measured" while the
+    database says 64 (P43).
+    """
+    for item in rows:
+        url = item.get("Link")
+        if not url or url not in moz_results:
+            continue
+        is_page = item.get("Is_Destination_Page", True)
+        da = moz_results[url].get("da")
+        pa = moz_results[url].get("pa")
+        item["Competitor_DA"] = da
+        item["Page_Authority"] = pa if is_page else "Not Measured"
+        if enrichment_enabled:
+            storage.save_url_moz_metrics(url, da, pa if is_page else None)

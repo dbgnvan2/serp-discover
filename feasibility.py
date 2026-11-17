@@ -88,6 +88,27 @@ def domain_of(url: str) -> str:
         return ""
 
 
+def url_window(rows, what="", log=None):
+    """The top-N URLs by absolute rank, with the unmeasurable ones dropped.
+
+    One definition of the window, beside ``select_competitor_das`` which
+    consumes it. Filtering before slicing would slide ranks 11, 12 ... into a
+    set the report, the handoff and docs/feasibility.md all call "the top 10"
+    (P9/P31). The window is the top N rows; a row whose link recovery could
+    not resolve leaves a hole in it, and the hole is reported rather than
+    quietly backfilled from deeper, weaker results.
+    """
+    window_rows = rows[:TOP_N_FOR_FEASIBILITY]
+    urls = [r.get("Link") for r in window_rows
+            if r.get("Link") and r.get("Link") != "N/A"]
+    missing = len(window_rows) - len(urls)
+    if missing and log is not None:
+        log(f"{what}: {missing} of the top {len(window_rows)} result(s) have "
+            f"no URL, so the Domain Authority average is taken from "
+            f"{len(urls)} of them, not {len(window_rows)}.")
+    return urls
+
+
 def select_competitor_das(
     ranked_urls: list[str],
     da_for_url: Callable[[str], object],
