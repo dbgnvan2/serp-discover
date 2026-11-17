@@ -1498,6 +1498,44 @@ thing is not a zero. Read AIVI as a per-engine snapshot-trend, not a verdict:
 AI answers swing between runs, and a strong AIVI on one engine does not carry
 to the others.
 
+**"Not measured" is not a zero.** An engine the run could not reach — no API
+key, every call rate-limited or safety-blocked — now carries **no** AIVI at
+all. It is listed by name with the reason ("skipped — no API key", "0 of 20
+calls returned an answer"), it is left out of the all-engine average (which
+says how many engines it is over), and it is left out of the platform
+prioritisation. It used to score 0, and because a low AIVI means "high
+opportunity", the engine the tool could never reach came out **top of the
+list of where to spend next**. Its history is still shown, so a gap in the
+trend reads as a gap. Where the report quotes the all-engine average it
+now says how many engines that average covers ("over 1 of 4 enabled
+engines"), and an engine that answered nothing has its leaderboard and
+citation headings read "not measured — 0 of 20 calls returned an answer"
+instead of "no brands were named" — which would have told you the AI named
+nobody, when in truth it never answered.
+
+**"Enable another engine" versus "run it again".** The cross-engine transfer
+section compares which sources each engine cites, so it needs two engines. It
+now tells you which of the two situations you are in: with only one engine
+switched on it asks you to enable a second, and when several engines were
+switched on but only one answered it says so ("only 1 of 4 enabled engines
+returned an answer") and asks you to re-run. Before, both read as the first,
+so a run spoiled by rate limits looked like a configuration you had got
+wrong.
+
+Two more things changed with it. The per-engine table now reads **"answered N
+of M (K failed)"**: a call that errored, or that came back with no text and no
+sources, is recorded as a failure and carries no verdict, and both mention and
+citation rates are over the answers you actually got. Before, a blocked answer
+was filed as "the client was not mentioned" and an errored call vanished from
+the denominator, so a half-blocked engine read as a fully-measured one with a
+bad score. And where two engines each cited nothing, the citation-overlap
+figure used to read **1.00** — perfect agreement — because two empty sets are
+technically identical; it now reads "not measurable", which is what it is.
+
+What to do about it: re-run the engine before you act on its absence. An
+engine with no measurement is not an opportunity and not a weakness — it is
+a question you have not asked yet.
+
 **Competitor mention leaderboard — who the AI names instead of you.** *What:*
 a ranked list of the brands the AI *named in its answer text* (not merely the
 domains it linked), with the client's own rank called out ("#7 of 18 named

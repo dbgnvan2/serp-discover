@@ -48,6 +48,7 @@ from urllib.parse import urlparse
 import requests
 import yaml
 
+import ai_visibility_messages as av_messages
 import aivi as aivi_mod
 import answer_sentiment as sentiment_mod
 import brand_mentions as brand_mentions_mod
@@ -700,7 +701,8 @@ def top_competitor_domains(data: dict, client_domain: str, limit: int = 15) -> l
 #: A pre-existing DB is upgraded once; old rows read back as NULL (principle 3).
 #: ``raw_answer`` (D5/AV.5.1) is added here too so pre-D5 DBs migrate on first use.
 _PROBE_MIGRATION_COLUMNS = (("persona", "TEXT"), ("source", "TEXT"),
-                            ("raw_answer", "TEXT"))
+                            ("raw_answer", "TEXT"), ("status", "TEXT"),
+                            ("failure_reason", "TEXT"))
 
 #: D5/AV.5.1 — cap on the stored full answer text when store_raw_answer is on.
 #: The full LLM answer is unbounded and may carry PII, so retention is opt-in
@@ -737,7 +739,9 @@ def init_probe_table(db_path: str) -> None:
             answer_excerpt          TEXT,
             persona                 TEXT,
             source                  TEXT,
-            raw_answer              TEXT
+            raw_answer              TEXT,
+            status                  TEXT,
+            failure_reason          TEXT
         )''')
         # Migration for DBs created before Y.5: add persona/source columns.
         # ALTER TABLE … ADD COLUMN wrapped in try/except OperationalError so
@@ -761,6 +765,10 @@ def save_probe_rows(db_path: str, rows: list[dict], *,
     init_probe_table(db_path)
     cap = _coerce_raw_cap(raw_answer_max_chars)
 
+    def _verdict(row: dict, key: str):
+        value = row.get(key)
+        return None if value is None else int(bool(value))
+
     def _raw(row: dict):
         if not store_raw_answer:
             return None
@@ -775,15 +783,20 @@ def save_probe_rows(db_path: str, rows: list[dict], *,
             f"""INSERT INTO {PROBE_TABLE}
                 (run_ts, engine, model, question, mentioned, cited,
                  competitor_domains_json, answer_excerpt, persona, source,
-                 raw_answer)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                 raw_answer, status, failure_reason)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             [
                 (
                     row["run_ts"], row["engine"], row["model"], row["question"],
-                    int(bool(row["mentioned"])), int(bool(row["cited"])),
+                    # D-C-11: a failed call has no verdict. NULL, not 0 — a 0
+                    # here is what let a blocked engine read as "never
+                    # mentioned" for the whole run.
+                    _verdict(row, "mentioned"), _verdict(row, "cited"),
                     json.dumps(row.get("competitors_cited", [])),
                     (row.get("answer_excerpt") or "")[:400],
                     row.get("persona"), row.get("source"), _raw(row),
+                    row.get("status") or _PROBE_STATUS_DEFAULT,
+                    row.get("failure_reason"),
                 )
                 for row in rows
             ],
@@ -796,7 +809,11 @@ def get_engine_trend(db_path: str, engine: str, limit: int = DEFAULT_HISTORY_RUN
     init_probe_table(db_path)
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute(
-            f"""SELECT run_ts, MAX(model), COUNT(*), SUM(mentioned), SUM(cited)
+            f"""SELECT run_ts, MAX(model), COUNT(*),
+                       SUM(CASE WHEN status IS NULL OR status = '{STATUS_ANSWERED}'
+                                THEN 1 ELSE 0 END),
+                       SUM(CASE WHEN mentioned THEN 1 ELSE 0 END),
+                       SUM(CASE WHEN cited THEN 1 ELSE 0 END)
                 FROM {PROBE_TABLE}
                 WHERE engine = ?
                 GROUP BY run_ts
@@ -804,17 +821,22 @@ def get_engine_trend(db_path: str, engine: str, limit: int = DEFAULT_HISTORY_RUN
                 LIMIT ?""",
             (engine, limit),
         ).fetchall()
+    # D-C-11: the rates are over the answers, and `attempted` says how many
+    # questions it took to get them. A run where every call failed stays in
+    # the trend with answered 0 and no rate, rather than vanishing (P2).
     trend = [
         {
             "run_ts": run_ts,
             "model": model,
-            "questions": questions,
+            "attempted": attempted,
+            "questions": answered,
+            "failed": attempted - (answered or 0),
             "mentioned": mentioned or 0,
             "cited": cited or 0,
-            "mention_rate": round((mentioned or 0) / questions, 2) if questions else None,
-            "citation_rate": round((cited or 0) / questions, 2) if questions else None,
+            "mention_rate": round((mentioned or 0) / answered, 2) if answered else None,
+            "citation_rate": round((cited or 0) / answered, 2) if answered else None,
         }
-        for run_ts, model, questions, mentioned, cited in rows
+        for run_ts, model, attempted, answered, mentioned, cited in rows
     ]
     trend.reverse()
     return trend
@@ -824,23 +846,102 @@ def get_engine_trend(db_path: str, engine: str, limit: int = DEFAULT_HISTORY_RUN
 # Run + report (G.1.5)
 # ---------------------------------------------------------------------------
 
+#: A probe row's outcome. D-C-11: a call that raised, or came back with no
+#: text and no sources, produced no answer — it is not an answer in which the
+#: client was absent. Only ANSWERED rows carry a mention/cite verdict, and
+#: every rate is computed over them, never over the questions planned.
+STATUS_ANSWERED = "answered"
+STATUS_FAILED = "failed"
+
+#: Rows written before this chunk carry no `status`; they were only ever
+#: written on a successful call, so an absent status reads as answered.
+_PROBE_STATUS_DEFAULT = STATUS_ANSWERED
+
+
+def answered_rows(rows: list[dict]) -> list[dict]:
+    """The rows that carry a real answer, and therefore a real verdict."""
+    return [r for r in (rows or [])
+            if (r.get("status") or _PROBE_STATUS_DEFAULT) == STATUS_ANSWERED]
+
+
+def engine_call_counts(rows: list[dict], engines: list[str],
+                       questions_planned: int | None = None) -> dict[str, dict]:
+    """Per engine: how many questions were planned, answered and failed.
+
+    D-C-11: the report reads "answered N of M (K failed)" from this, so a
+    half-failed engine cannot look like a fully-measured one.
+
+    *questions_planned* is the per-engine question count. When it is not known
+    ``planned`` is ``None`` rather than a guess (cold-review F5, P9): the row
+    total across engines is not one engine's plan, and a denominator nobody
+    measured must not be presented as one.
+    """
+    counts: dict[str, dict] = {}
+    for engine in engines or []:
+        engine_rows = [r for r in (rows or []) if r.get("engine") == engine]
+        answered = len(answered_rows(engine_rows))
+        counts[engine] = {
+            "planned": (None if questions_planned is None
+                        else int(questions_planned)),
+            "attempted": len(engine_rows),
+            "answered": answered,
+            "failed": len(engine_rows) - answered,
+        }
+    return counts
+
+
 def run_engine_probes(probes: dict, questions: list[dict], geo_context: str,
                       client_name_patterns: list[str], client_domain: str,
                       competitor_domains: list[str], run_ts: str) -> list[dict]:
-    """Ask every question on every engine; returns flat result rows."""
+    """Ask every question on every engine; returns flat result rows.
+
+    A call that raises, or returns neither text nor sources, is recorded with
+    ``status: "failed"`` and no mention/cite verdict (D-C-11). It used to be
+    dropped (so the question left the denominator) or, for an empty answer,
+    recorded as `mentioned=False` — a failure stored as a measured absence.
+    """
     rows: list[dict] = []
     for engine, probe in probes.items():
         for index, item in enumerate(questions, start=1):
             question = item["query"]
             full_question = f"{geo_context} {question}".strip() if geo_context else question
             print(f"  [{engine} {index}/{len(questions)}] {question}")
+
+            def _failed(reason: str, model: str = "") -> dict:
+                return {
+                    "run_ts": run_ts,
+                    "engine": engine,
+                    "model": model,
+                    "question": question,
+                    "status": STATUS_FAILED,
+                    "failure_reason": reason,
+                    "mentioned": None,
+                    "cited": None,
+                    "competitors_cited": [],
+                    "answer_excerpt": "",
+                    "persona": item.get("persona"),
+                    "source": item.get("source"),
+                    "answer_text": "",
+                    "source_urls": [],
+                }
+
             try:
                 answer = probe.ask(full_question)
             except Exception as exc:
                 logger.warning("%s probe failed for %r: %s", engine, question, exc)
+                rows.append(_failed(str(exc)))
+                continue
+            answer_text = answer.get("answer_text") or ""
+            source_urls = answer.get("source_urls") or []
+            if not answer_text.strip() and not source_urls:
+                # The call returned, but with nothing in it: a blocked or
+                # truncated response, not an answer that omitted the client.
+                logger.warning("%s returned an empty answer for %r", engine, question)
+                rows.append(_failed("empty answer (no text, no sources)",
+                                    model=answer.get("model_id", "")))
                 continue
             detection = detect_visibility(
-                answer.get("answer_text", ""), answer.get("source_urls", []),
+                answer_text, source_urls,
                 client_name_patterns, client_domain, competitor_domains,
             )
             rows.append({
@@ -848,6 +949,8 @@ def run_engine_probes(probes: dict, questions: list[dict], geo_context: str,
                 "engine": engine,
                 "model": answer.get("model_id", ""),
                 "question": question,
+                "status": STATUS_ANSWERED,
+                "failure_reason": None,
                 "mentioned": detection["mentioned"],
                 "cited": detection["cited"],
                 "competitors_cited": detection["competitors_cited"],
@@ -895,7 +998,9 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
                           out_dir: str = ".",
                           brand_llm_runner=None,
                           sentiment_llm_runner=None,
-                          sentiment_call_budget: int | None = None) -> dict:
+                          sentiment_call_budget: int | None = None,
+                          skipped: list[dict] | None = None,
+                          questions_planned: int | None = None) -> dict:
     """Compute + persist the Y.6–Y.9 metrics from the fetched answers.
 
     Returns a dict the report renderer consumes::
@@ -914,6 +1019,37 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
     without new fields flow through without crashing or fabricating zeros
     (principle 3).
     """
+    # D-C-05 / D-M-03: an engine that answered nothing was not measured. It
+    # gets no metrics, no persisted row and no place in any average — a 0 here
+    # is what ranked the engine the tool could not reach as the best
+    # opportunity. `rows` may still hold its failed calls, so the split is on
+    # the answered rows, not on the engine list.
+    all_rows = list(rows or [])
+    rows = answered_rows(all_rows)
+    engine_counts = engine_call_counts(all_rows, engines, questions_planned)
+    measured_engines = [e for e in engines if engine_counts.get(e, {}).get("answered")]
+    skip_reasons = {s_["engine"]: s_.get("reason")
+                    for s_ in (skipped or []) if s_.get("engine")}
+    unmeasured = []
+    for engine in engines:
+        if engine in measured_engines:
+            continue
+        counts = engine_counts.get(engine, {})
+        if skip_reasons.get(engine):
+            reason = av_messages.line("reason_skipped", "skipped — {reason}",
+                                      reason=skip_reasons[engine])
+        elif counts.get("failed"):
+            reason = av_messages.line(
+                "reason_all_failed",
+                "0 of {attempted} calls returned an answer ({failed} failed)",
+                attempted=counts["attempted"], failed=counts["failed"])
+        else:
+            reason = av_messages.line("reason_no_questions",
+                                      "no questions were asked")
+        unmeasured.append({"engine": engine, "reason": reason, **counts})
+    all_engines = list(engines)
+    engines = measured_engines
+
     analysis_cfg = config.get("analysis_report", {}) or {}
     known_brands = list(config.get("known_brands", []) or [])
     client_domain = analysis_cfg.get("client_domain", "") or ""
@@ -1015,9 +1151,11 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
              "citations": citations_axis, "sentiment": sentiment_axis},
             aivi_weights)
         aivi_mod.save_aivi(db_path, run_ts, engine, per_engine[engine])
+    # The trend is history: an engine not measured THIS run keeps the runs it
+    # was measured on, so a gap reads as a gap and not as a disappearance.
     aivi_trends = {
         engine: aivi_mod.get_aivi_trend(db_path, engine)
-        for engine in engines
+        for engine in all_engines
     }
 
     # -----------------------------------------------------------------------
@@ -1060,6 +1198,11 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         engines, engine_profiles, per_engine_results)
     engine_prioritization = engine_recs_mod.prioritize_engines(
         engines, engine_profiles, per_engine_aivi_scores, priority_weights)
+    # D-C-05: the engines that could not be ranked are named, not dropped.
+    engine_not_measured = engine_recs_mod.unmeasured_engines(
+        all_engines, engine_profiles,
+        {**per_engine_aivi_scores,
+         **{e["engine"]: None for e in unmeasured}})
 
     # Y.11 cross-engine transfer (needs ≥2 engines; single engine → not measurable).
     mention_by_engine = {}
@@ -1072,7 +1215,9 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         engine: leaderboards.get(engine, {}).get("client_rank") for engine in engines
     }
     transfer_result = engine_transfer_mod.compute_transfer(
-        engines, mention_by_engine, cited_by_engine, citations, client_rank_by_engine)
+        engines, mention_by_engine, cited_by_engine, citations,
+        client_rank_by_engine, engines_enabled=all_engines,
+        engines_unmeasured=unmeasured)
     engine_transfer_mod.save_transfer(db_path, run_ts, transfer_result)
 
     return {
@@ -1085,8 +1230,15 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         "aivi": {
             "per_engine": per_engine,
             "all_engine_avg": aivi_mod.all_engine_average(per_engine),
+            # P2: the average states the engines it is over, so a mean of one
+            # measured engine cannot read as a mean of four.
+            "all_engine_avg_n": len([r for r in per_engine.values()
+                                     if r.get("aivi") is not None]),
+            "engines_measured": list(measured_engines),
+            "engines_unmeasured": unmeasured,
             "trends": aivi_trends,
         },
+        "engine_counts": engine_counts,
         "foundational": {
             "result": foundational_result,
             "trend": foundational_trend,
@@ -1094,6 +1246,7 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         "engine_strategy": {
             "recommendations": engine_recommendations,
             "prioritization": engine_prioritization,
+            "not_measured": engine_not_measured,
         },
         "transfer": transfer_result,
         "candidates_file": candidates_file,
@@ -1118,24 +1271,49 @@ def generate_report(source_json: str, run_ts: str, engines: list[str],
     lines.append(SNAPSHOT_CAVEAT)
     lines.append("")
 
+    # D-C-11: "Answered" states how many of the questions asked came back, so
+    # a half-blocked engine cannot read as a fully-measured one, and the two
+    # rates are over the answers rather than over the questions planned.
     lines.append("## This run — per engine")
-    lines.append("| Engine | Model | Questions | Mentioned | Cited |")
-    lines.append("|--------|-------|-----------|-----------|-------|")
+    lines.append("| Engine | Model | Answered | Mentioned | Cited |")
+    lines.append("|--------|-------|----------|-----------|-------|")
+    notes: list[str] = []
     for engine in engines:
         engine_rows = [r for r in rows if r["engine"] == engine]
-        if not engine_rows:
+        good = answered_rows(engine_rows)
+        failed = len(engine_rows) - len(good)
+        if not good:
             skip_reason = next((s["reason"] for s in skipped if s["engine"] == engine), None)
-            note = f"skipped — {skip_reason}" if skip_reason else "no answers"
-            lines.append(f"| {engine} | — | 0 | — | — |  ")
-            lines.append(f"*{engine}: {note}*")
+            if skip_reason:
+                reason = av_messages.line("reason_skipped", "skipped — {reason}",
+                                          reason=skip_reason)
+            elif failed:
+                reason = av_messages.line(
+                    "reason_all_failed",
+                    "0 of {attempted} calls returned an answer ({failed} failed)",
+                    attempted=len(engine_rows), failed=failed)
+            else:
+                reason = av_messages.line("reason_no_questions",
+                                          "no questions were asked")
+            note = (reason if reason.startswith("skipped")
+                    else av_messages.line("engine_not_measured",
+                                          "not measured — {reason}", reason=reason))
+            cell = av_messages.status_text("not_measured", "cell")
+            lines.append(f"| {engine} | — | 0 | {cell} | {cell} |")
+            notes.append(av_messages.line("engine_note", "*{engine}: {reason}*",
+                                          engine=engine, reason=note))
             continue
-        model = engine_rows[0]["model"]
-        total = len(engine_rows)
-        mentioned = sum(1 for r in engine_rows if r["mentioned"])
-        cited = sum(1 for r in engine_rows if r["cited"])
+        model = good[0]["model"]
+        total = len(good)
+        answered_cell = (f"{total} of {len(engine_rows)} ({failed} failed)"
+                         if failed else str(total))
+        mentioned = sum(1 for r in good if r["mentioned"])
+        cited = sum(1 for r in good if r["cited"])
         lines.append(
-            f"| {engine} | {model} | {total} | {_rate(mentioned, total)} | {_rate(cited, total)} |"
+            f"| {engine} | {model} | {answered_cell} "
+            f"| {_rate(mentioned, total)} | {_rate(cited, total)} |"
         )
+    lines.extend(notes)
     lines.append("")
 
     lines.append("## Trend — previous runs per engine")
@@ -1145,18 +1323,24 @@ def generate_report(source_json: str, run_ts: str, engines: list[str],
         if not trend:
             lines.append("*No history yet — this is the first recorded run for this engine.*")
             continue
-        lines.append("| Run | Model | Questions | Mention rate | Citation rate |")
-        lines.append("|-----|-------|-----------|--------------|---------------|")
+        lines.append("| Run | Model | Answered | Mention rate | Citation rate |")
+        lines.append("|-----|-------|----------|--------------|---------------|")
         for entry in trend:
-            mention = f"{entry['mention_rate']:.0%}" if entry["mention_rate"] is not None else "—"
-            citation = f"{entry['citation_rate']:.0%}" if entry["citation_rate"] is not None else "—"
+            cell = av_messages.status_text("not_measured", "cell")
+            mention = (f"{entry['mention_rate']:.0%}"
+                       if entry["mention_rate"] is not None else cell)
+            citation = (f"{entry['citation_rate']:.0%}"
+                        if entry["citation_rate"] is not None else cell)
+            failed = entry.get("failed") or 0
+            answered = (f"{entry['questions']} of {entry.get('attempted')} "
+                        f"({failed} failed)" if failed else str(entry["questions"]))
             lines.append(
-                f"| {entry['run_ts']} | {entry['model']} | {entry['questions']} "
+                f"| {entry['run_ts']} | {entry['model']} | {answered} "
                 f"| {mention} | {citation} |"
             )
     lines.append("")
 
-    hits = [r for r in rows if r["mentioned"] or r["cited"]]
+    hits = [r for r in answered_rows(rows) if r["mentioned"] or r["cited"]]
     lines.append("## Questions where the client appeared")
     if hits:
         for row in hits:
@@ -1190,6 +1374,27 @@ def generate_report(source_json: str, run_ts: str, engines: list[str],
     return "\n".join(lines)
 
 
+def _not_measured_block(engine: str, reason: str, kind: str,
+                        heading: str) -> list[str]:
+    """The per-engine heading for an engine that returned no answer at all.
+
+    Cold-review F2 (P1/P6): the leaderboard and citation renderers both fall
+    to their empty branch for an unmeasured engine and state "no brands were
+    named" / "no sources were returned" — a measured negative about an engine
+    that produced nothing to name a brand in. Wording:
+    ``ai_visibility_messages.yml``.
+    """
+    fallback = ("*Not measured — {reason}. No answers were returned this run, "
+                "so there is nothing to report here. This is not a finding "
+                "about the AI's answers.*")
+    return [
+        f"### {engine} — {heading}",
+        av_messages.line(f"{kind}_not_measured", fallback,
+                         reason=reason or av_messages.status_text("not_measured")),
+        "",
+    ]
+
+
 def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
     """Render the Y.6–Y.12 report sections.
 
@@ -1207,10 +1412,18 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
             foundational_block.get("trend", []) or []))
 
     aivi_block = enrichment.get("aivi", {}) or {}
+    # Cold-review F1 (P2): the coverage reaches the artifact, not just the
+    # returned dict — a mean over one of four engines must not read as a mean
+    # over four, and the engines it is NOT over are named.
+    unmeasured = list(aivi_block.get("engines_unmeasured") or [])
+    unmeasured_reason = {e.get("engine"): e.get("reason") for e in unmeasured}
     out.extend(aivi_mod.render_aivi_section(
         aivi_block.get("per_engine", {}) or {},
         aivi_block.get("all_engine_avg"),
-        aivi_block.get("trends", {}) or {}))
+        aivi_block.get("trends", {}) or {},
+        engines_measured=aivi_block.get("all_engine_avg_n"),
+        engines_enabled=len(engines),
+        engines_unmeasured=unmeasured))
 
     out.append("## Competitor mention leaderboard")
     out.append(
@@ -1221,6 +1434,11 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
     out.append("")
     leaderboards = enrichment.get("leaderboards", {}) or {}
     for engine in engines:
+        if engine in unmeasured_reason:
+            out.extend(_not_measured_block(
+                engine, unmeasured_reason[engine], "leaderboard",
+                "competitor mention leaderboard"))
+            continue
         out.extend(brand_mentions_mod.render_leaderboard_section(
             engine, leaderboards.get(engine, {}) or {}))
     candidates_file = enrichment.get("candidates_file")
@@ -1240,6 +1458,10 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
     out.append("")
     citations = enrichment.get("citations", {}) or {}
     for engine in engines:
+        if engine in unmeasured_reason:
+            out.extend(_not_measured_block(
+                engine, unmeasured_reason[engine], "citations", "citations"))
+            continue
         out.extend(citation_mod.render_citation_section(
             engine, citations.get(engine, []) or []))
 
@@ -1256,7 +1478,8 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
     strategy = enrichment.get("engine_strategy", {}) or {}
     out.extend(engine_recs_mod.render_engine_recommendations_section(
         strategy.get("recommendations", []) or [],
-        strategy.get("prioritization", []) or []))
+        strategy.get("prioritization", []) or [],
+        strategy.get("not_measured", []) or []))
 
     # Y.11 — cross-engine transfer.
     transfer = enrichment.get("transfer", {}) or {}
@@ -1293,10 +1516,13 @@ def _share_of_voice_section(engines: list[str], rows: list[dict]) -> list[str]:
     out.append("|--------|---------|---------------------|----------------------"
                "|------------------------------|")
     for engine in engines:
-        engine_rows = [r for r in rows if r["engine"] == engine]
+        # D-C-11: only answered rows carry a verdict, so the rates are over
+        # them and an engine with none reads "not measured", never 0%.
+        engine_rows = answered_rows([r for r in rows if r["engine"] == engine])
         total = len(engine_rows)
         if not total:
-            out.append(f"| {engine} | 0 | — | — | — |")
+            cell = av_messages.status_text("not_measured", "cell")
+            out.append(f"| {engine} | 0 | {cell} | {cell} | — |")
             continue
         mentioned = sum(1 for r in engine_rows if r["mentioned"])
         cited = sum(1 for r in engine_rows if r["cited"])
@@ -1319,7 +1545,7 @@ def _share_of_voice_section(engines: list[str], rows: list[dict]) -> list[str]:
     # rows carry a persona; if none do, state that plainly (principle 3).
     out.append("### Client mention rate by persona")
     persona_rows: dict[str, list[dict]] = {}
-    for r in rows:
+    for r in answered_rows(rows):
         persona = r.get("persona")
         if persona:
             persona_rows.setdefault(persona, []).append(r)
@@ -1507,7 +1733,8 @@ def main(argv: list[str] | None = None) -> int:
     enrichment = run_report_enrichment(
         rows, engines, config, data, run_ts, topic, args.db, json_path,
         out_dir=os.path.dirname(os.path.abspath(args.out)) if args.out else ".",
-        sentiment_call_budget=sentiment_budget)
+        sentiment_call_budget=sentiment_budget,
+        skipped=skipped, questions_planned=len(questions))
 
     report = generate_report(
         json_path, run_ts, engines, rows, trends, skipped, geo_context,

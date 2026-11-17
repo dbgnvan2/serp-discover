@@ -31,20 +31,25 @@ import logging
 import sqlite3
 from itertools import combinations
 
+import ai_visibility_messages as av_messages
+
 logger = logging.getLogger(__name__)
 
 TRANSFER_TABLE = "engine_transfer"
 
 
-def jaccard(set_a: set, set_b: set) -> float:
-    """Jaccard similarity of two sets: |A∩B| / |A∪B|.
+def jaccard(set_a: set, set_b: set) -> float | None:
+    """Jaccard similarity of two sets: |A∩B| / |A∪B|, or ``None``.
 
-    Two empty sets → 1.0 (identical, by convention: nothing differs). Identical
-    non-empty sets → 1.0; disjoint sets → 0.0 (Spec Y.11.1). Deterministic.
+    Two empty sets → ``None``: with no citations on either side there is
+    nothing to compare, and the old 1.0 ("identical, nothing differs") read in
+    the report as perfect citation overlap between two engines that cited
+    nothing at all (D-M-03). Identical non-empty sets → 1.0; disjoint sets →
+    0.0 (Spec Y.11.1). Deterministic.
     """
     union = set_a | set_b
     if not union:
-        return 1.0
+        return None
     return round(len(set_a & set_b) / len(union), 4)
 
 
@@ -56,11 +61,19 @@ def _cited_domains(table: list[dict]) -> set[str]:
 def compute_transfer(engines: list[str], mention_by_engine: dict,
                      cited_by_engine: dict,
                      citation_tables: dict,
-                     client_rank_by_engine: dict) -> dict:
+                     client_rank_by_engine: dict,
+                     engines_enabled: list[str] | None = None,
+                     engines_unmeasured: list[dict] | None = None) -> dict:
     """Compute the cross-engine transfer metrics for one run.
 
     Args:
-      engines: enabled engine names (order preserved for reporting).
+      engines: the engines that were MEASURED (order preserved for reporting).
+      engines_enabled: every engine the run had enabled, measured or not.
+        Needed to tell "only one engine is enabled" from "only one engine
+        answered" (cold-review F3, P1) — the first calls for a config change,
+        the second for a re-run.
+      engines_unmeasured: the ``{"engine", "reason"}`` entries for the
+        enabled engines that produced no answer.
       mention_by_engine: engine → bool (client mentioned in ≥1 answer).
       cited_by_engine: engine → bool (client cited in ≥1 answer).
       citation_tables: engine → Y.8 citation table (list of row dicts).
@@ -79,8 +92,9 @@ def compute_transfer(engines: list[str], mention_by_engine: dict,
              "engine_count": M,
           },
           "overlap": {
-             "pairwise_jaccard": {"a|b": float, ...},
-             "avg_jaccard": float,
+             "pairwise_jaccard": {"a|b": float | None, ...},
+             "avg_jaccard": float | None,   # None when no pair is comparable
+             "pairs_compared": int, "pairs_not_comparable": [...],
              "cited_by_all": int, "cited_by_exactly_one": int,
              "domains_all": [...], "domains_unique": [...],
           },
@@ -93,11 +107,28 @@ def compute_transfer(engines: list[str], mention_by_engine: dict,
     Deterministic given inputs.
     """
     engines = list(engines or [])
+    enabled = list(engines_enabled if engines_enabled is not None else engines)
+    unmeasured = list(engines_unmeasured or [])
     if len(engines) < 2:
+        # P1: a run in which 3 of 4 engines were rate-limited is a gap in the
+        # run, not a configuration state. Telling the user to enable more
+        # engines would be the opposite of the action required (re-run).
+        if len(enabled) < 2:
+            reason = av_messages.line(
+                "transfer_reason_single_enabled",
+                "transfer not measurable (single engine enabled)")
+        else:
+            reason = av_messages.line(
+                "transfer_reason_single_measured",
+                "transfer not measurable ({measured} of {enabled} enabled "
+                "engines returned an answer)",
+                measured=len(engines), enabled=len(enabled))
         return {
             "measurable": False,
-            "reason": "transfer not measurable (single engine)",
+            "reason": reason,
             "engines": engines,
+            "engines_enabled": enabled,
+            "engines_unmeasured": unmeasured,
         }
 
     mention_by_engine = mention_by_engine or {}
@@ -120,13 +151,20 @@ def compute_transfer(engines: list[str], mention_by_engine: dict,
 
     # --- Citation-source overlap (pairwise Jaccard of cited-domain sets) ---
     domain_sets = {e: _cited_domains(citation_tables.get(e, [])) for e in engines}
-    pairwise: dict[str, float] = {}
+    pairwise: dict[str, float | None] = {}
     jaccard_values: list[float] = []
+    pairs_not_comparable: list[str] = []
     for a, b in combinations(engines, 2):
         j = jaccard(domain_sets[a], domain_sets[b])
         pairwise[f"{a}|{b}"] = j
-        jaccard_values.append(j)
-    avg_jaccard = round(sum(jaccard_values) / len(jaccard_values), 4) if jaccard_values else 0.0
+        if j is None:
+            pairs_not_comparable.append(f"{a}|{b}")
+        else:
+            jaccard_values.append(j)
+    # P2: the average states the pairs it is over. `None` when no pair had a
+    # citation on either side — not 0.0, which reads as "they share nothing".
+    avg_jaccard = (round(sum(jaccard_values) / len(jaccard_values), 4)
+                   if jaccard_values else None)
 
     # Count domains cited by ALL vs EXACTLY ONE engine.
     domain_engine_count: dict[str, int] = {}
@@ -138,6 +176,8 @@ def compute_transfer(engines: list[str], mention_by_engine: dict,
     overlap = {
         "pairwise_jaccard": pairwise,
         "avg_jaccard": avg_jaccard,
+        "pairs_compared": len(jaccard_values),
+        "pairs_not_comparable": pairs_not_comparable,
         "cited_by_all": len(cited_by_all),
         "cited_by_exactly_one": len(cited_by_one),
         "domains_all": cited_by_all,
@@ -151,7 +191,13 @@ def compute_transfer(engines: list[str], mention_by_engine: dict,
     rank_divergence = {"ranks": ranks, "spread": spread}
 
     # --- Interpretation (high overlap ⇒ foundational suffices; low ⇒ per-engine) ---
-    if avg_jaccard >= 0.5:
+    if avg_jaccard is None:
+        interpretation = (
+            "Cross-engine citation overlap not measurable: no engine pair had "
+            "a cited source on either side this run, so there is nothing to "
+            "compare. This is not a finding of low overlap."
+        )
+    elif avg_jaccard >= 0.5:
         interpretation = (
             "High cross-engine citation overlap: the engines largely draw on the "
             "same sources for this client, so foundational, transferable work "
@@ -278,11 +324,26 @@ def render_transfer_section(result: dict) -> list[str]:
     out: list[str] = []
     out.append("## Cross-engine transfer — does a win on one AI carry to all?")
     if not result.get("measurable"):
-        out.append(
-            "*Transfer not measurable (single engine). Enable at least two "
-            "engines to measure how much this client's AI visibility overlaps "
-            "across them.*"
-        )
+        measured = list(result.get("engines") or [])
+        enabled = list(result.get("engines_enabled") or measured)
+        unmeasured = list(result.get("engines_unmeasured") or [])
+        if len(enabled) < 2:
+            out.append(av_messages.line(
+                "transfer_single_enabled",
+                "*Transfer not measurable — only one engine is enabled. "
+                "Enable at least two engines to measure how much this "
+                "client's AI visibility overlaps across them.*"))
+        else:
+            out.append(av_messages.line(
+                "transfer_single_measured",
+                "*Transfer not measurable this run — only {measured} of "
+                "{enabled} enabled engines returned an answer ({unmeasured}). "
+                "This is a gap in the run, not a finding about the client: "
+                "re-run before reading the overlap.*",
+                measured=len(measured), enabled=len(enabled),
+                unmeasured="; ".join(
+                    f"{e.get('engine')}: {e.get('reason')}" for e in unmeasured)
+                or av_messages.status_text("not_measured")))
         out.append("")
         return out
 
@@ -304,11 +365,22 @@ def render_transfer_section(result: dict) -> list[str]:
     out.append("")
 
     out.append("**Citation-source overlap:**")
-    out.append(f"- Average pairwise Jaccard of cited-domain sets: "
-               f"{ov.get('avg_jaccard', 0):.2f}")
+    avg = ov.get("avg_jaccard")
+    if avg is None:
+        out.append("- Average pairwise Jaccard of cited-domain sets: "
+                   + av_messages.line(
+                       "jaccard_avg_not_comparable",
+                       "not measurable (no engine pair had a cited source)"))
+    else:
+        out.append(f"- Average pairwise Jaccard of cited-domain sets: "
+                   f"{avg:.2f} over {ov.get('pairs_compared', 0)} "
+                   f"comparable engine pair(s)")
     pairwise = ov.get("pairwise_jaccard", {})
     for pair, value in pairwise.items():
-        out.append(f"  - {pair.replace('|', ' vs ')}: {value:.2f}")
+        shown = (av_messages.line("jaccard_pair_not_comparable",
+                                  "not measurable (neither engine cited a source)")
+                 if value is None else f"{value:.2f}")
+        out.append(f"  - {pair.replace('|', ' vs ')}: {shown}")
     out.append(f"- Domains cited by ALL engines: {ov.get('cited_by_all', 0)}")
     out.append(f"- Domains cited by exactly ONE engine: {ov.get('cited_by_exactly_one', 0)}")
     out.append("")

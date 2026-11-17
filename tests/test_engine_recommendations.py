@@ -112,14 +112,20 @@ class TestPrioritization(unittest.TestCase):
         self.assertAlmostEqual(ranked[0]["priority_score"], 0.85, places=3)
         self.assertAlmostEqual(ranked[1]["priority_score"], 0.40, places=3)
 
-    def test_missing_aivi_is_max_opportunity(self):
+    def test_missing_aivi_is_not_ranked(self):
+        # D-C-05 / D-M-03: an engine with no AIVI was not measured. It used to
+        # score maximum opportunity (1.0) and come out top of the list, which
+        # recommended spending first on the engine the tool could not reach.
         path = _write_profiles(_PROFILE_BODY)
         try:
             profiles = er.load_engine_profiles(path)
         finally:
             os.remove(path)
         ranked = er.prioritize_engines(["openai"], profiles, {})  # no AIVI
-        self.assertEqual(ranked[0]["opportunity"], 1.0)
+        self.assertEqual(ranked, [])
+        not_measured = er.unmeasured_engines(["openai"], profiles, {})
+        self.assertEqual([r["engine"] for r in not_measured], ["openai"])
+        self.assertIn("not measured", not_measured[0]["reason"])
 
     def test_deterministic(self):
         path = _write_profiles(_PROFILE_BODY)
@@ -151,7 +157,7 @@ class TestEnabledOnly(unittest.TestCase):
             os.remove(path)
         recs = er.engine_recommendations(["openai"], profiles, {})
         self.assertEqual([r["engine"] for r in recs], ["openai"])
-        ranked = er.prioritize_engines(["openai"], profiles, {})
+        ranked = er.prioritize_engines(["openai"], profiles, {"openai": 30.0})
         self.assertEqual([r["engine"] for r in ranked], ["openai"])
 
     def test_enabled_engine_without_profile_skipped(self):

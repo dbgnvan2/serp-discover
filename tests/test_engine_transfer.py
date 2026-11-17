@@ -30,8 +30,10 @@ class TestJaccard(unittest.TestCase):
         # Y.11.1
         self.assertEqual(et.jaccard({"a"}, {"b"}), 0.0)
 
-    def test_both_empty_is_one(self):
-        self.assertEqual(et.jaccard(set(), set()), 1.0)
+    def test_both_empty_is_not_measurable(self):
+        # D-M-03: two engines that cited nothing have nothing to compare. The
+        # old 1.0 ("identical, nothing differs") rendered as perfect overlap.
+        self.assertIsNone(et.jaccard(set(), set()))
 
     def test_partial(self):
         # {a,b} vs {b,c} → 1/3

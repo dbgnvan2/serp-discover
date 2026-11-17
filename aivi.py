@@ -34,6 +34,8 @@ import json
 import logging
 import sqlite3
 
+import ai_visibility_messages as messages
+
 logger = logging.getLogger(__name__)
 
 AIVI_TABLE = "ai_visibility_index"
@@ -196,13 +198,23 @@ def _axis_cell(value: float | None) -> str:
 
 
 def render_aivi_section(per_engine: dict, all_engine_avg: float | None,
-                        trends: dict | None = None) -> list[str]:
+                        trends: dict | None = None,
+                        engines_measured: int | None = None,
+                        engines_enabled: int | None = None,
+                        engines_unmeasured: list[dict] | None = None) -> list[str]:
     """Render the AIVI headline section.
 
     ``per_engine`` maps engine → the ``compute_aivi`` result. Shows the headline
     AIVI per engine, the four axis values (n/a where excluded), the prior-run
     delta (from ``trends``), and the snapshot caveat. A text/4-value
     radar-equivalent — no chart dependency (Spec Y.6.4).
+
+    The mean carries its own coverage (P2, cold-review F1): *engines_measured*
+    of *engines_enabled*, with *engines_unmeasured* (``{"engine", "reason"}``
+    entries) named underneath. A mean over one of four engines must not read
+    as a mean over four, and an engine that was never reached must not vanish
+    from the section it is missing from. Wording:
+    ``ai_visibility_messages.yml``.
     """
     out: list[str] = []
     out.append("## AI Visibility Index (AIVI)")
@@ -214,8 +226,27 @@ def render_aivi_section(per_engine: dict, all_engine_avg: float | None,
         "the weighted mean, never counted as zero."
     )
     out.append("")
+    measured = (len([r for r in per_engine.values() if r.get("aivi") is not None])
+                if engines_measured is None else int(engines_measured))
+    unmeasured = list(engines_unmeasured or [])
+    enabled = (measured + len(unmeasured) if engines_enabled is None
+               else int(engines_enabled))
     if all_engine_avg is not None:
-        out.append(f"**All-engine average AIVI: {all_engine_avg:.1f}/100**")
+        out.append(messages.line(
+            "aivi_average",
+            "**All-engine average AIVI: {average}/100** — over {measured} of "
+            "{enabled} enabled engine(s)",
+            average=f"{all_engine_avg:.1f}", measured=measured, enabled=enabled))
+        out.append("")
+    if unmeasured:
+        out.append(messages.line(
+            "aivi_not_measured",
+            "*Not measured this run, so carrying no AIVI and no place in the "
+            "average above: {engines}. An engine that was not asked, or whose "
+            "every call failed, is not a zero.*",
+            engines="; ".join(
+                f"{e.get('engine')} ({e.get('reason') or messages.status_text('not_measured')})"
+                for e in unmeasured)))
         out.append("")
     out.append("| Engine | AIVI | Δ prior | Mentions | Ranking | Citations | Sentiment |")
     out.append("|--------|------|---------|----------|---------|-----------|-----------|")

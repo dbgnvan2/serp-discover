@@ -27,6 +27,10 @@ ai_visibility_*
 # artifacts (the generated export is output/ai_visibility_export_<slug>_<ts>.json).
 !ai_visibility_export.py
 !ai_visibility_export_schema.json
+# Same for the "not measured" vocabulary and its loader (review chunk D3a):
+# editorial config + code, not a generated report.
+!ai_visibility_messages.py
+!ai_visibility_messages.yml
 gsc_analysis_*
 *.validation.md
 

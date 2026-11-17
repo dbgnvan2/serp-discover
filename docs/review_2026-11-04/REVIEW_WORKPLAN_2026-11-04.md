@@ -253,7 +253,7 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 - **PAA.** FEATURE_GUIDE §6.1 promises PAA context in reframes; the handoff has no PAA field. Either add `paa_questions` per target to the handoff (Tool 1 has them) or drop the promise.
 - **`client_brand_names`** is written by Tool 1 and dropped by Tool 2 (C-C-13).
 - **Moz.** One client shape for both tools (C-C-04). Tool 1's `moz.domains[*].anchor_texts.status == "error"` can be a 30-day-stale cached error (D-C-10) — Tool 2's `anchor_coverage` should not read repeated `errored` as a fresh outage.
-- **AI-visibility export.** The export itself is sound (checked both sides). Tool 2's SoV consumer should require `questions_total > 0` per engine because Tool 1 currently writes rows for engines with zero answers (D-C-05/11) until D3 lands.
+- **AI-visibility export.** The export itself is sound (checked both sides). As of review chunk D3a Tool 1 no longer writes brand_mentions / ai_citations / ai_visibility_index rows for an engine with zero answers, so the export carries only measured engines. Tool 2's SoV consumer should still require `questions_total > 0` per engine: it is cheap, and it also covers the exports written before D3a.
 - **GSC.** Both tools pull GSC with different windows and filters (discover: 90-day all-device; compete: 90-day, one 5000-row page, global). Agree one window and `country=can` and state it in both reports.
 
 ---
@@ -485,13 +485,13 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-C-02 | S1 | D2 | GSC transient failure cached as `found=0` for the TTL | fixed (D2b) |
 | D-C-03 | S1 | D2 | Zero DA-covered keyword → "Low Feasibility"; no N-of-M | fixed `9784690` (D2a) |
 | D-C-04 | S1 | D2 | DataForSEO `rank: null` → DA 0, averaged, cached 30 days | fixed `9784690` (D2a); null encoding unverified against a live response |
-| D-C-05 | S1 | D3 | Skipped/failed engines get AIVI 0 persisted and ranked #1 | open |
+| D-C-05 | S1 | D3 | Skipped/failed engines get AIVI 0 persisted and ranked #1 | fixed (D3a) |
 | D-C-06 | S2 | D4 | CLI re-run overwrites previous timestamped outputs | open |
 | D-C-07 | S2 | D4 | Play-parity HARD-fail can never fire | open |
 | D-C-08 | S2 | D2/D6 | `www.` hosts bypass `domain_overrides` (35/121 overrides) | fixed (D2c) |
 | D-C-09 | S2 | D4 | `refresh_analysis_outputs` leaves `keyword_profiles`/report stale | open |
 | D-C-10 | S2 | D2 | Moz competitor block with one failed sub-call cached 30 days as `ok` | fixed (D2b) |
-| D-C-11 | S2 | D3 | Probe failures drop from denominators; empty answers = "not mentioned" | open |
+| D-C-11 | S2 | D3 | Probe failures drop from denominators; empty answers = "not mentioned" | fixed (D3a) |
 | D-C-12 | S2 | D4 | GUI post-feasibility regenerate drops "# Content Briefs" | open |
 | D-C-13 | S2 | D4 | Keyword whose fetch failed vanishes without an N-of-M line | open |
 | D-C-14 | S2 | D4 | §4 evidence block reads keys the producer never writes | open |
@@ -505,7 +505,7 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-C-22 | S3 | D1 | Rank history polluted by aborted runs and alt-query rows | fixed `2285828` |
 | D-M-01 | High | D1 | = D-C-01 (methodology consequences) | fixed `2285828` |
 | D-M-02 | High | D2 | Unscorable domain enters the feasibility mean as 0 | fixed `9784690` (D2a) |
-| D-M-03 | High | D3 | = D-C-05 plus Jaccard(∅,∅)=1 and prioritisation | open |
+| D-M-03 | High | D3 | = D-C-05 plus Jaccard(∅,∅)=1 and prioritisation | fixed (D3a) |
 | D-M-04 | High | D3 | Foundational structure sub-score measures competitors' schema | open |
 | D-M-05 | High | D2 | `client_da` fixed 35 vs live provider on a different scale | fixed `9784690` (D2a); config value is now an override |
 | D-M-06 | High | D4 | Best opportunity ignores the mandatory intent gate | open |

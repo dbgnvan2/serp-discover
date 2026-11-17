@@ -213,6 +213,24 @@ malformed file degrades to the bare status key and never aborts a report.
 | `statuses` | per status (`measured` / `measured_absent` / `not_reached`): `label`, `cell` (the per-query table cell) and `coverage` (the phrase beside a count). Keys must match the `gsc_client.STATUS_*` constants — a test asserts every state has all three |
 | `lines` | the report and log sentences: `coverage_measured_absent`, `coverage_not_reached`, `fetch_complete`, `fetch_incomplete`, `partial_warning`, `band_short_of_rows`. `{...}` placeholders are filled by `run_gsc_analysis`; an unknown placeholder falls back to the built-in wording rather than raising |
 
+### `ai_visibility_messages.yml` — the "not measured" vocabulary (editorial)
+
+The words a reader sees when an AI answer engine produced no measurement. An
+engine that was never asked (no API key), an engine whose every call failed
+(rate-limited), and two engines that cited nothing are three different facts,
+and none of them is a zero or a finding about the client. Added by review
+chunk D3a (cold-review finding F4), because "we have no measurement" was being
+rendered four different ways across `probe_ai_visibility.py`,
+`engine_transfer.py` and `engine_recommendations.py` — the same drift
+`feasibility_messages.yml` and `gsc_messages.yml` already exist to stop. Read
+by `ai_visibility_messages.load_messages()`; a missing or malformed file
+degrades to the built-in wording and never aborts a report.
+
+| Block | What it sets |
+|-------|--------------|
+| `statuses` | per state (`answered` / `failed` / `not_measured` / `not_comparable`): `label`, `cell` (the table cell, e.g. the mention-rate cell for an engine with no answers) and `coverage` (the phrase beside a count). `answered` / `failed` must match the `probe_ai_visibility.STATUS_*` constants |
+| `lines` | the report sentences: the `reason_*` short forms stored on each `engines_unmeasured` entry (`reason_skipped`, `reason_all_failed`, `reason_no_questions`, `reason_no_aivi`, `reason_no_profile`), the per-engine table note (`engine_note`, `engine_not_measured`), the AIVI headline and its coverage (`aivi_average`, `aivi_not_measured`), the leaderboard and citation not-measured blocks, the prioritisation's not-ranked note, and the transfer section's two distinct cases (`transfer_single_enabled` — a config change is needed — versus `transfer_single_measured` — a re-run is needed) plus the two Jaccard not-comparable phrases |
+
 ---
 
 ## Configuration Manager GUI

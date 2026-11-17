@@ -146,6 +146,14 @@ Editorial content currently lives in:
   "GSC answered nothing" and "the fetch never reached this" shared one label
   because the wording was Python literals in three places (added review
   chunk D2b)
+- `ai_visibility_messages.yml` — the words for "this AI engine was not
+  measured": `label` / `cell` / `coverage` per state (`answered` / `failed` /
+  `not_measured` / `not_comparable`) plus the report `lines`. The ONLY home
+  for these words — an engine that was never asked, one whose every call
+  failed, and two engines that cited nothing are three facts, none of them a
+  zero, and the wording was four Python literals across
+  `probe_ai_visibility.py`, `engine_transfer.py` and
+  `engine_recommendations.py` (added review chunk D3a)
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)

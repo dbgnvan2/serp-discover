@@ -25,6 +25,8 @@ import os
 
 import yaml
 
+import ai_visibility_messages as av_messages
+
 logger = logging.getLogger(__name__)
 
 ENGINE_PROFILES_FILE = "engine_profiles.yml"
@@ -144,8 +146,11 @@ def prioritize_engines(enabled_engines: list[str], profiles: dict,
 
     Blend of three normalised 0–1 signals:
       * **opportunity** = (100 - AIVI) / 100 — a low current AIVI is a high
-        opportunity. Missing AIVI ⇒ treated as the maximum opportunity (1.0),
-        since an unmeasured engine is all upside.
+        opportunity. An engine with **no** AIVI was not measured and is NOT
+        ranked: it used to be scored maximum opportunity (1.0) and so came
+        out top of the list, which recommended spending first on the engine
+        the tool could not reach (D-C-05 / D-M-03). Call
+        ``unmeasured_engines`` for those, and report them as not measured.
       * **reach** = reach_tier mapped high/medium/low → 1.0/0.5/0.2.
       * **referral** = referral_click_tier mapped the same way.
 
@@ -161,7 +166,9 @@ def prioritize_engines(enabled_engines: list[str], profiles: dict,
         if not profile:
             continue
         aivi_val = per_engine_aivi.get(engine)
-        opportunity = 1.0 if aivi_val is None else max(0.0, min(1.0, (100.0 - float(aivi_val)) / 100.0))
+        if aivi_val is None:
+            continue  # not measured — no score, see unmeasured_engines()
+        opportunity = max(0.0, min(1.0, (100.0 - float(aivi_val)) / 100.0))
         reach = _tier_value(profile.get("reach_tier"))
         referral = _tier_value(profile.get("referral_click_tier"))
         priority = (
@@ -181,12 +188,40 @@ def prioritize_engines(enabled_engines: list[str], profiles: dict,
     return scored
 
 
+def unmeasured_engines(enabled_engines: list[str], profiles: dict,
+                       per_engine_aivi: dict | None) -> list[dict]:
+    """The enabled engines ``prioritize_engines`` could not rank.
+
+    An engine with no AIVI, or no profile block, carries no priority. P2: it
+    is reported as not measured rather than left out of the report entirely.
+    """
+    per_engine_aivi = per_engine_aivi or {}
+    out: list[dict] = []
+    for engine in enabled_engines or []:
+        profile = profiles.get(engine)
+        if profile is not None and per_engine_aivi.get(engine) is not None:
+            continue
+        reason = (av_messages.line("reason_no_profile",
+                                   "no engine profile in engine_profiles.yml")
+                  if profile is None
+                  else av_messages.line("reason_no_aivi",
+                                        "no AIVI — the engine was not measured"))
+        out.append({
+            "engine": engine,
+            "display_name": (profile or {}).get("display_name", engine),
+            "reason": reason,
+        })
+    return out
+
+
 # ---------------------------------------------------------------------------
 # Report section
 # ---------------------------------------------------------------------------
 
 def render_engine_recommendations_section(recommendations: list[dict],
-                                          prioritization: list[dict]) -> list[str]:
+                                          prioritization: list[dict],
+                                          not_measured: list[dict] | None = None
+                                          ) -> list[str]:
     """Render the per-engine "what to change here" + prioritisation list.
 
     Each carries the "backends shift; re-measure" caveat (Spec Y.10.4).
@@ -251,7 +286,23 @@ def render_engine_recommendations_section(recommendations: list[dict],
                 f"| {row['opportunity']:.2f} | {row['reach']:.2f} | {row['referral']:.2f} |"
             )
     else:
-        out.append("*No enabled engines to prioritise.*")
+        out.append("*No enabled engine could be prioritised.*")
+    if not_measured:
+        out.append("")
+        out.append(
+            av_messages.line("prioritization_not_measured_heading",
+                             "**Not ranked — not measured.**")
+            + " These engines were enabled but produced no measurement this "
+            "run, so they carry no opportunity score. "
+            + av_messages.line(
+                "prioritization_not_measured_note",
+                "An unmeasured engine is not a high-opportunity engine. "
+                "Re-run once it can be reached before reading anything into "
+                "its absence.")
+        )
+        for row in not_measured:
+            out.append(f"- {row.get('display_name', row['engine'])}: "
+                       f"{row.get('reason') or av_messages.status_text('not_measured')}")
     out.append("")
     out.append(_CAVEAT)
     out.append("")

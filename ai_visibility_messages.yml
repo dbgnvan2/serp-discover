@@ -1,0 +1,103 @@
+# ai_visibility_messages.yml — the words a reader sees when an AI engine was
+# not measured.
+#
+# Spec: D3a (docs/review_2026-11-04/PLAN_D3_ai_visibility_honesty.md),
+#       findings D-C-05 / D-C-11 / D-M-03; cold-review finding F4.
+#
+# Why this file exists: "we have no measurement for this engine" is one state,
+# and it was rendered four different ways across probe_ai_visibility.py,
+# engine_transfer.py and engine_recommendations.py at first write. The same
+# shape is already recorded twice in this repo — `feasibility_messages.yml`
+# exists because four Python copies of a status map let one unmeasured state
+# carry two labels, and `gsc_messages.yml` because "GSC answered nothing" and
+# "the fetch never got there" shared one word. Editorial content belongs in
+# config (CLAUDE.md), and one home stops these four wordings drifting apart.
+#
+# Status keys must match the constants in probe_ai_visibility.py:
+#   answered       — the call returned text or sources: the verdict is real.
+#   failed         — the call raised, or returned neither text nor sources.
+#                    NOT a finding that the client was absent.
+#   not_measured   — the engine produced no answer at all this run (skipped
+#                    for a missing key, or every call failed). Carries no
+#                    AIVI, no place in any average, no rank.
+#   not_comparable — two engines cited nothing, so their overlap is undefined.
+#                    NOT a finding of zero overlap.
+# A missing or malformed file degrades to the built-in wording; it never
+# aborts a report.
+
+statuses:
+  answered:
+    label: "answered"
+    cell: "—"
+    coverage: "the engine returned an answer"
+  failed:
+    label: "failed"
+    cell: "failed"
+    coverage: "the call returned no answer"
+  not_measured:
+    label: "not measured"
+    cell: "not measured"
+    coverage: "the engine returned no answer this run"
+  not_comparable:
+    label: "not measurable"
+    cell: "not measurable"
+    coverage: "neither side cited a source, so there is nothing to compare"
+
+# Lines the report prints. `{...}` placeholders are filled by the renderers;
+# an unknown placeholder falls back to the built-in wording rather than
+# raising.
+lines:
+  # Why one engine carries no measurement. `reason_*` are the short forms
+  # stored on each `engines_unmeasured` entry.
+  reason_skipped: "skipped — {reason}"
+  reason_all_failed: >-
+    0 of {attempted} calls returned an answer ({failed} failed)
+  reason_no_questions: "no questions were asked"
+  reason_no_aivi: "no AIVI — the engine was not measured"
+  reason_no_profile: "no engine profile in engine_profiles.yml"
+
+  # Per-engine summary table (one note line under the table).
+  engine_note: "*{engine}: {reason}*"
+  engine_not_measured: "not measured — {reason}"
+
+  # AIVI headline: the mean states the engines it is over (P2).
+  aivi_average: >-
+    **All-engine average AIVI: {average}/100** — over {measured} of {enabled}
+    enabled engine(s)
+  aivi_not_measured: >-
+    *Not measured this run, so carrying no AIVI and no place in the average
+    above: {engines}. An engine that was not asked, or whose every call
+    failed, is not a zero.*
+
+  # Leaderboard / citations: an engine that answered nothing cannot be a
+  # finding that no brand was named or no source cited (P1/P6).
+  leaderboard_not_measured: >-
+    *Not measured — {reason}. No answers were returned this run, so no brand
+    could be named in them. This is not a finding that the AI named nobody.*
+  citations_not_measured: >-
+    *Not measured — {reason}. No answers were returned this run, so no source
+    could be cited in them. This is not a finding that the AI cited nothing.*
+
+  # Platform prioritisation.
+  prioritization_not_measured_heading: "**Not ranked — not measured.**"
+  prioritization_not_measured_note: >-
+    An unmeasured engine is not a high-opportunity engine. Re-run once it can
+    be reached before reading anything into its absence.
+
+  # Cross-engine transfer. A transient failure is not a configuration state
+  # (P1): "only one engine is enabled" and "only one engine answered" call for
+  # different actions.
+  transfer_single_enabled: >-
+    *Transfer not measurable — only one engine is enabled. Enable at least two
+    engines to measure how much this client's AI visibility overlaps across
+    them.*
+  transfer_single_measured: >-
+    *Transfer not measurable this run — only {measured} of {enabled} enabled
+    engines returned an answer ({unmeasured}). This is a gap in the run, not a
+    finding about the client: re-run before reading the overlap.*
+  transfer_reason_single_enabled: "transfer not measurable (single engine enabled)"
+  transfer_reason_single_measured: >-
+    transfer not measurable ({measured} of {enabled} enabled engines returned
+    an answer)
+  jaccard_pair_not_comparable: "not measurable (neither engine cited a source)"
+  jaccard_avg_not_comparable: "not measurable (no engine pair had a cited source)"
