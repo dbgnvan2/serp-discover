@@ -81,6 +81,16 @@ def _table_exists(conn: sqlite3.Connection, name: str) -> bool:
     return row is not None
 
 
+def _has_column(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    """True when *table* carries *column*. A pre-D3b database has neither
+    ``status`` nor ``failure_reason`` on ``answer_sentiment``."""
+    try:
+        rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    except sqlite3.DatabaseError:
+        return False
+    return any(str(row[1]) == column for row in rows)
+
+
 def _latest_run_ts(conn: sqlite3.Connection) -> str | None:
     """Newest ``run_ts`` across whichever AI-visibility tables exist, else None."""
     candidates: list[str] = []
@@ -143,16 +153,33 @@ def _read_ai_citations(conn: sqlite3.Connection, run_ts: str) -> list[dict]:
 def _read_answer_sentiment(conn: sqlite3.Connection, run_ts: str) -> list[dict]:
     """Per-answer sentiment rows (engine, brand, polarity) — lets serp-compete compute
     per-competitor sentiment (SC-3.4) from that competitor's own rows only. Absent
-    table (sentiment disabled in the probe run) → []."""
+    table (sentiment disabled in the probe run) → [].
+
+    Only *classified* rows are exported (cold-review finding 3). Since D3.14 a
+    failed or budget-skipped classification is stored with ``polarity`` NULL,
+    which would reach serp-compete as ``{"polarity": null}`` and break both
+    ``ai_visibility_export_schema.json`` (``polarity`` is a required string)
+    and a consumer that has only ever seen one of three strings. This feed is
+    measured values, so an attempt without a verdict is not one of them. A
+    pre-D3b database has no ``status`` column; every row in it was written on
+    a parsed response, so all of them are classified.
+    """
     if not _table_exists(conn, _SENTIMENT_TABLE):
         return []
+    from answer_sentiment import STATUS_CLASSIFIED  # lazy: keeps import light
+    where = "run_ts = ?"
+    params: tuple = (run_ts,)
+    if _has_column(conn, _SENTIMENT_TABLE, "status"):
+        where += " AND (status IS NULL OR status = ?)"
+        params = (run_ts, STATUS_CLASSIFIED)
     rows = conn.execute(
         f"""SELECT engine, brand, polarity FROM {_SENTIMENT_TABLE}
-            WHERE run_ts = ? ORDER BY engine ASC, brand ASC""",
-        (run_ts,),
+            WHERE {where} ORDER BY engine ASC, brand ASC""",
+        params,
     ).fetchall()
     return [{"engine": engine, "brand": brand, "polarity": polarity}
-            for engine, brand, polarity in rows]
+            for engine, brand, polarity in rows
+            if polarity is not None]
 
 
 # ---------------------------------------------------------------------------

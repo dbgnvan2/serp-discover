@@ -51,6 +51,7 @@ import yaml
 import ai_visibility_messages as av_messages
 import aivi as aivi_mod
 import answer_sentiment as sentiment_mod
+import brand_match
 import brand_mentions as brand_mentions_mod
 import citation_table as citation_mod
 import engine_recommendations as engine_recs_mod
@@ -59,6 +60,7 @@ import foundational_score as foundational_mod
 from http_retry import post_with_transient_retry
 from pattern_matching import load_serp_vocab
 from profile_questions import generate as generate_profile_questions
+from profile_questions import interleave_by_persona
 from profile_questions import load_client_profiles
 from query_variants import (
     flatten_situational_templates,
@@ -597,7 +599,10 @@ def build_question_set(data: dict, templates: list[str], city: str,
 
     # Highest priority: profile-seeded persona questions (Y.1). Each carries
     # its persona label; source tag is the short "profile".
-    for item in profile_questions or []:
+    # D-M-18: interleaved across personas first, so the `max_questions` cap
+    # below takes one question from each persona before a second from any —
+    # a prefix of the generated order asked persona 1 only.
+    for item in interleave_by_persona(profile_questions or []):
         _add(str(item.get("question") or ""), "profile",
              persona=item.get("persona"))
     if not questions:
@@ -632,21 +637,27 @@ def _matches_domain(domain: str, target: str) -> bool:
 
 def detect_visibility(answer_text: str, source_urls: list[str],
                       client_name_patterns: list[str], client_domain: str,
-                      competitor_domains: list[str]) -> dict:
+                      competitor_domains: list[str],
+                      negative_terms: list[str] | None = None) -> dict:
     """Engine-agnostic detection applied to each answer (G.1.1).
 
-    - mentioned: any client name pattern appears in the answer text
-      (case-insensitive).
+    - mentioned: any client name pattern appears in the answer text on a
+      **word boundary** (case-insensitive), and no *negative_terms* phrase
+      appears. D-M-14: a bare substring test counted "living systems theory"
+      — the academic subject this client teaches about — as a mention of
+      Living Systems Counselling, and matched a brand token inside a longer
+      word. *negative_terms* is editorial (``config.yml
+      ai_visibility.negative_terms``) and the veto is applied per *match*,
+      not per answer, so one paragraph about the subject does not erase a
+      real mention in the next (``brand_match.matches_patterns`` — the one
+      matcher all three call sites now share). Spec: D3.12.
     - cited: the client domain appears in any returned source URL.
     - competitors_cited: competitor domains (known_brands + top competitor
       domains from the latest analysis JSON) found in the source URLs.
     Spec: seo_geo_deferred_spec_v1.md#G.1.
     """
-    text_lower = (answer_text or "").lower()
-    mentioned = any(
-        pattern and str(pattern).lower() in text_lower
-        for pattern in (client_name_patterns or [])
-    )
+    mentioned = brand_match.matches_patterns(
+        answer_text, client_name_patterns, negative_terms)
 
     client_lower = (client_domain or "").lower().removeprefix("www.")
     cited = False
@@ -892,7 +903,8 @@ def engine_call_counts(rows: list[dict], engines: list[str],
 
 def run_engine_probes(probes: dict, questions: list[dict], geo_context: str,
                       client_name_patterns: list[str], client_domain: str,
-                      competitor_domains: list[str], run_ts: str) -> list[dict]:
+                      competitor_domains: list[str], run_ts: str,
+                      negative_terms: list[str] | None = None) -> list[dict]:
     """Ask every question on every engine; returns flat result rows.
 
     A call that raises, or returns neither text nor sources, is recorded with
@@ -943,6 +955,7 @@ def run_engine_probes(probes: dict, questions: list[dict], geo_context: str,
             detection = detect_visibility(
                 answer_text, source_urls,
                 client_name_patterns, client_domain, competitor_domains,
+                negative_terms=negative_terms,
             )
             rows.append({
                 "run_ts": run_ts,
@@ -1008,7 +1021,8 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         {"leaderboards": {engine: leaderboard},
          "citations": {engine: table},
          "sentiment": {"enabled": bool, "rows": [...], "calls": int,
-                       "client_brand": str, "top_competitor": str|None},
+                       "client_brand": str, "top_competitor": str|None,
+                       "tied_top_competitors": [str, ...]},
          "aivi": {"per_engine": {engine: result}, "all_engine_avg": float|None,
                   "trends": {engine: [...]}},
          "candidates_file": str|None}
@@ -1063,8 +1077,11 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
     # Seed the gazetteer with the client's own name patterns so the client can
     # appear on the leaderboard and receive a rank (Y.7 — "client's own rank
     # computed"); without this the client is only ever "not mentioned".
+    av_cfg = config.get("ai_visibility", {}) or {}
+    negative_terms = av_cfg.get("negative_terms") or []
     gazetteer = brand_mentions_mod.build_gazetteer(
-        list(client_patterns) + list(known_brands), analysis_data)
+        list(client_patterns) + list(known_brands), analysis_data,
+        generic_source_stoplist=av_cfg.get("generic_source_stoplist") or [])
     brand_domains = _brand_domain_map(known_brands, client_domain, client_name)
 
     leaderboards: dict[str, dict] = {}
@@ -1082,7 +1099,7 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         # Y.7 leaderboard (gazetteer always; LLM only if enabled).
         leaderboard = brand_mentions_mod.build_leaderboard(
             answers, gazetteer, client_patterns, llm_extraction, bm_model,
-            llm_runner=brand_llm_runner)
+            llm_runner=brand_llm_runner, negative_terms=negative_terms)
         leaderboards[engine] = leaderboard
         if leaderboard.get("rows"):
             brand_mentions_mod.save_brand_mentions(db_path, run_ts, engine, leaderboard)
@@ -1116,8 +1133,23 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         for r in lb.get("rows", []):
             if not r["is_client"]:
                 combined[r["brand"]] = combined.get(r["brand"], 0) + r["mention_count"]
+    tied_top_competitors: list[str] = []
     if combined:
-        top_competitor = max(sorted(combined), key=lambda b: combined[b])
+        # D-M-14 again (cold-review finding 8): `max(sorted(...))` returns the
+        # LAST alphabetically-maximal key, so a tie for top competitor was
+        # decided by the name — and this pick decides which competitor gets
+        # paid sentiment classifications and is named in the report as *the*
+        # benchmark. The tie is now stated, not hidden.
+        best = max(combined.values())
+        tied_top_competitors = sorted(
+            b for b, count in combined.items() if count == best)
+        top_competitor = tied_top_competitors[0]
+        if len(tied_top_competitors) > 1:
+            logger.info(
+                "ai_visibility: %d brands tied on %d mentions for top "
+                "competitor (%s); %r benchmarked.",
+                len(tied_top_competitors), best,
+                ", ".join(tied_top_competitors), top_competitor)
     if sent_enabled:
         targets = {client_name: client_patterns}
         if top_competitor:
@@ -1128,7 +1160,7 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         ]
         sent_rows, sent_calls = sentiment_mod.collect_sentiment(
             answers_all, targets, sent_model, llm_runner=sentiment_llm_runner,
-            call_budget=sentiment_call_budget)
+            call_budget=sentiment_call_budget, negative_terms=negative_terms)
         if sent_rows:
             sentiment_mod.save_sentiment(db_path, run_ts, sent_rows)
 
@@ -1144,7 +1176,8 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         mentions_axis = (100.0 * sum(1 for r in engine_rows if r["mentioned"]) / total) if total else 0.0
         lb = leaderboards.get(engine, {})
         ranking_axis = brand_mentions_mod.client_ranking_axis(
-            lb.get("client_rank"), len(lb.get("rows", [])))
+            lb.get("client_rank"), len(lb.get("rows", [])),
+            lb.get("client_tied_with"))
         citations_axis = citation_mod.citations_axis(citations.get(engine, []))
         per_engine[engine] = aivi_mod.compute_aivi(
             {"mentions": mentions_axis, "ranking": ranking_axis,
@@ -1226,6 +1259,7 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
         "sentiment": {
             "enabled": sent_enabled, "rows": sent_rows, "calls": sent_calls,
             "client_brand": client_name, "top_competitor": top_competitor,
+            "tied_top_competitors": tied_top_competitors,
         },
         "aivi": {
             "per_engine": per_engine,
@@ -1468,7 +1502,8 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
     sent = enrichment.get("sentiment", {}) or {}
     out.extend(sentiment_mod.render_sentiment_section(
         sent.get("rows"), sent.get("enabled", False),
-        sent.get("client_brand", "Client"), sent.get("top_competitor")))
+        sent.get("client_brand", "Client"), sent.get("top_competitor"),
+        tied_top_competitors=sent.get("tied_top_competitors")))
     # D5/AV.5.2 — own-brand negative-sentiment alert (gated on sentiment.enabled).
     out.extend(sentiment_mod.render_negative_sentiment_alert(
         sent.get("rows"), sent.get("enabled", False),
@@ -1665,9 +1700,13 @@ def main(argv: list[str] | None = None) -> int:
     # ceiling is never breached, and the plan line states both figures.
     max_total_calls = int(av_config.get("max_total_calls", DEFAULT_MAX_TOTAL_CALLS))
     ceiling_applied = False
+    generated_total = len(profile_qs or []) or len(questions)
     if max_total_calls > 0 and len(questions) * len(engines) > max_total_calls:
         allowed = max_total_calls // max(len(engines), 1)
-        questions = questions[:allowed]
+        # D-M-18: round-robin before the slice, so the ceiling costs every
+        # persona a question rather than costing the last personas all of
+        # theirs. A prefix of the generated order is not a sample of it.
+        questions = interleave_by_persona(questions)[:allowed]
         ceiling_applied = True
 
     total_calls = len(questions) * len(engines)
@@ -1682,6 +1721,21 @@ def main(argv: list[str] | None = None) -> int:
             f" Question set truncated to {len(questions)} to stay within the "
             f"{max_total_calls}-call ceiling."
         )
+    # D3.9: what the run is asking, out of what was generated, and which
+    # personas the caps left with nothing — so a persona with no mention rate
+    # is not read as a finding about that persona.
+    if profile_qs:
+        asked_personas = {str(q.get("persona") or "").strip()
+                          for q in questions}
+        plan += (f" Asking {len(questions)} of {generated_total} generated "
+                 f"questions.")
+        silent = [label for label in dict.fromkeys(
+            str(q.get("persona") or "").strip() for q in profile_qs)
+            if label and label not in asked_personas]
+        if silent:
+            plan += (" No question was asked for: " + ", ".join(silent)
+                     + " — these personas have no measured mention rate this "
+                     "run, which is a cap, not a finding about them.")
     print(plan)
     if not (args.yes or av_config.get("assume_yes", False)):
         print(
@@ -1706,7 +1760,8 @@ def main(argv: list[str] | None = None) -> int:
     run_ts = datetime.now(_UTC).isoformat()
     rows = run_engine_probes(
         probes, questions, geo_context,
-        client_name_patterns, client_domain, competitor_domains, run_ts)
+        client_name_patterns, client_domain, competitor_domains, run_ts,
+        negative_terms=av_config.get("negative_terms") or [])
 
     if rows:
         save_probe_rows(

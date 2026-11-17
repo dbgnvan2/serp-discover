@@ -35,6 +35,14 @@ def _analysis_all_max():
                         "FAQPage": 3, "ProfessionalService": 2, "LocalBusiness": 1,
                         "Person": 1, "Article": 1, "Organization": 1,
                     },
+                    # D-M-04: the client's own markup is what the
+                    # structure sub-score measures.
+                    "client_page": {"schema_types": ["FAQPage", "ProfessionalService", "LocalBusiness", "Person", "Article", "Organization"]},
+                    # D-M-04: the structure sub-score reads the CLIENT's own
+                    # page, not this top-10 aggregate.
+                    "client_page": {"schema_types": [
+                        "FAQPage", "ProfessionalService", "LocalBusiness",
+                        "Person", "Article", "Organization"]},
                 },
             },
         },
@@ -55,7 +63,8 @@ def _analysis_all_zero():
                         "faq_present": False,
                     },
                 },
-                "schema_signals": {"data_available": True, "schema_type_counts": {}},
+                "schema_signals": {"data_available": True, "schema_type_counts": {},
+                                   "client_page": {"schema_types": []}},
             },
         },
         "strategic_flags": {"geo_alerts": [
@@ -124,6 +133,9 @@ class TestSubscores(unittest.TestCase):
                     "schema_signals": {
                         "data_available": True,
                         "schema_type_counts": {"FAQPage": 1, "Person": 1, "Article": 1},
+                        # D-M-04: the client's own markup is what the
+                        # structure sub-score measures.
+                        "client_page": {"schema_types": ["FAQPage", "Person", "Article"]},
                     },
                 },
             },
@@ -170,6 +182,9 @@ class TestNaRenormalization(unittest.TestCase):
                         "schema_type_counts": {
                             "FAQPage": 1, "ProfessionalService": 1, "LocalBusiness": 1,
                             "Person": 1, "Article": 1, "Organization": 1},
+                        # D-M-04: the client's own markup is what the
+                        # structure sub-score measures.
+                        "client_page": {"schema_types": ["FAQPage", "ProfessionalService", "LocalBusiness", "Person", "Article", "Organization"]},
                     },
                     # no extractability key → accessibility n/a
                 },
@@ -207,7 +222,9 @@ class TestGapsFromExistingSources(unittest.TestCase):
             "keyword_profiles": {
                 "kw1": {"schema_signals": {
                     "data_available": True,
-                    "schema_type_counts": {"FAQPage": 1}}},  # only FAQPage present
+                    # D-M-04: the client's own page carries only FAQPage.
+                    "schema_type_counts": {"FAQPage": 1},
+                    "client_page": {"schema_types": ["FAQPage"]}}},
             },
             "strategic_flags": {"geo_alerts": []},
         }
@@ -242,7 +259,11 @@ class TestWeightsAndPersistence(unittest.TestCase):
                         "data_available": True,
                         "schema_type_counts": {
                             "FAQPage": 1, "ProfessionalService": 1, "LocalBusiness": 1,
-                            "Person": 1, "Article": 1, "Organization": 1}},
+                            "Person": 1, "Article": 1, "Organization": 1},
+                        # D-M-04: measured on the client's own page.
+                        "client_page": {"schema_types": [
+                            "FAQPage", "ProfessionalService", "LocalBusiness",
+                            "Person", "Article", "Organization"]}},
                 },
             },
             "strategic_flags": {"geo_alerts": []},

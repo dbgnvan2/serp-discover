@@ -39,6 +39,8 @@ import sqlite3
 from datetime import datetime
 from urllib.parse import urlparse
 
+import brand_match
+
 try:
     from datetime import UTC as _UTC
 except ImportError:  # Python < 3.11
@@ -72,8 +74,39 @@ def _domain_stub(url_or_domain: str) -> str:
     return label
 
 
+#: Host labels that are never a brand name. Technical, not editorial: these
+#: are public-suffix and hosting labels, so "com" or "ca" matching its own
+#: host must not let a one-word harvested source through.
+_NON_BRAND_LABELS = {
+    "www", "www2", "com", "org", "net", "ca", "co", "uk", "us", "io", "info",
+    "biz", "gov", "edu", "int", "au", "nz", "eu", "blog", "news", "shop",
+    "app", "web", "site", "online", "store",
+}
+
+
+def _domain_labels(url_or_domain: str) -> set[str]:
+    """Every label of a host that could plausibly be the brand name.
+
+    ``_domain_stub`` takes ``host.split(".")[0]``, so any subdomained host
+    loses its brand: ``ca.indeed.com`` -> ``ca``, ``www2.pathways.ca`` ->
+    ``www2``. The single-token keep rule in ``build_gazetteer`` compared the
+    harvested name against that stub, so a legitimate one-word brand on a
+    ``ca.*`` / ``blog.*`` host was dropped from the gazetteer — and in a
+    ``.ca`` directory market that is the common case, not the edge. Dropping
+    a real rival shrinks the leaderboard and moves the client's rank and
+    authority sub-score in the client's favour, which is the wrong direction
+    to be wrong in.
+    """
+    raw = str(url_or_domain or "").strip()
+    parsed = urlparse(raw if "//" in raw else "//" + raw)
+    domain = (parsed.netloc or raw).lower()
+    return {label for label in domain.split(".")
+            if label and label not in _NON_BRAND_LABELS}
+
+
 def build_gazetteer(known_brands: list[str], analysis_data: dict | None,
-                    limit: int = 40) -> list[str]:
+                    limit: int = 40,
+                    generic_source_stoplist: list[str] | None = None) -> list[str]:
     """Build the deterministic brand gazetteer.
 
     Combines the editorial ``known_brands`` list with the most frequent
@@ -83,7 +116,24 @@ def build_gazetteer(known_brands: list[str], analysis_data: dict | None,
 
     An old analysis JSON without ``organic_results`` (principle 3) simply
     contributes nothing — no crash, no fabricated brands.
+
+    D-M-14: a *harvested* source is only a brand if it looks like one. A
+    single generic token ("Indeed", "Pathways") matched ordinary answer text
+    and took a leaderboard rank beside a real competitor, so a harvested
+    source is kept only when it has two or more tokens, or is a single token
+    that matches a *label of its own row's host* (``pathways.ca`` →
+    "Pathways" is a brand; a bare "Indeed" beside ``ca.indeed.com`` still is,
+    because "indeed" is a label of that host; a bare "Pathways" beside
+    ``vch.ca`` is not). Public-suffix and hosting labels ("ca", "com",
+    "www2") never count as the brand. *generic_source_stoplist* is the
+    editorial override (``config.yml ai_visibility.generic_source_stoplist``)
+    and drops a harvested name outright. ``known_brands`` is editorial and is
+    never filtered — if the user put it there, it is a brand. Spec: D3.10.
     """
+    stoplist = {_norm(w) for w in (generic_source_stoplist or []) if str(w).strip()}
+    harvested = 0
+    dropped_stoplist = 0
+    dropped_generic = 0
     ordered: list[str] = []
     seen: set[str] = set()
 
@@ -112,10 +162,26 @@ def build_gazetteer(known_brands: list[str], analysis_data: dict | None,
         if not source:
             continue
         key = _norm(source)
+        harvested += 1
+        if key in stoplist:
+            dropped_stoplist += 1
+            continue
+        if len(key.split()) < 2 \
+                and key not in _domain_labels(row.get("Link") or ""):
+            # One generic word that is not even a label of this row's host.
+            dropped_generic += 1
+            continue
         counts[key] = counts.get(key, 0) + 1
         display.setdefault(key, source)
     for key, _count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])):
         _add(display[key])
+
+    # P2: say what was excluded rather than silently shrinking the field.
+    if dropped_stoplist or dropped_generic:
+        logger.info(
+            "build_gazetteer: kept %d of %d harvested sources "
+            "(%d on the editorial stoplist, %d a single generic token).",
+            len(counts), harvested, dropped_stoplist, dropped_generic)
 
     return ordered[:limit]
 
@@ -124,20 +190,23 @@ def build_gazetteer(known_brands: list[str], analysis_data: dict | None,
 # Extraction passes
 # ---------------------------------------------------------------------------
 
-def gazetteer_pass(answer_text: str, gazetteer: list[str]) -> list[str]:
+def gazetteer_pass(answer_text: str, gazetteer: list[str],
+                   negative_terms: list[str] | None = None) -> list[str]:
     """Deterministic, case-insensitive gazetteer match against one answer.
 
     Returns the gazetteer brands (original casing) found as whole-word phrases
     in the answer text, in gazetteer order. Deterministic given inputs.
     Spec: Y.7.1.
+
+    P5 / D3.12: the gazetteer is seeded with the client's own name patterns,
+    so this matcher decides the client's mention count, its leaderboard rank,
+    the AIVI Ranking axis and the authority sub-score. It therefore honours
+    the same editorial *negative_terms* as ``detect_visibility`` — a match
+    inside "living systems theory" is the subject, not a brand — through the
+    one shared matcher (``brand_match.matches_patterns``).
     """
-    text = str(answer_text or "")
-    found: list[str] = []
-    for brand in gazetteer:
-        pattern = r"\b" + re.escape(str(brand)) + r"\b"
-        if re.search(pattern, text, flags=re.IGNORECASE):
-            found.append(brand)
-    return found
+    return [brand for brand in gazetteer
+            if brand_match.matches_patterns(answer_text, [brand], negative_terms)]
 
 
 def llm_extract_brands(answer_text: str, model: str,
@@ -198,7 +267,9 @@ def _parse_llm_names(raw: str) -> list[str]:
 
 def extract_answer_brands(answer_text: str, gazetteer: list[str],
                           llm_extraction: bool, model: str,
-                          llm_runner=None) -> tuple[list[dict], list[str]]:
+                          llm_runner=None,
+                          negative_terms: list[str] | None = None
+                          ) -> tuple[list[dict], list[str]]:
     """Extract brands from one answer, two-pass (Y-D7).
 
     Returns ``(brands, unknowns)`` where ``brands`` is a list of
@@ -213,7 +284,7 @@ def extract_answer_brands(answer_text: str, gazetteer: list[str],
     seen: set[str] = set()
     gaz_keys = {_norm(b) for b in gazetteer}
 
-    for brand in gazetteer_pass(answer_text, gazetteer):
+    for brand in gazetteer_pass(answer_text, gazetteer, negative_terms):
         key = _norm(brand)
         if key not in seen:
             seen.add(key)
@@ -234,7 +305,8 @@ def extract_answer_brands(answer_text: str, gazetteer: list[str],
 
 def build_leaderboard(answers: list[dict], gazetteer: list[str],
                       client_patterns: list[str], llm_extraction: bool,
-                      model: str, llm_runner=None) -> dict:
+                      model: str, llm_runner=None,
+                      negative_terms: list[str] | None = None) -> dict:
     """Aggregate a mention-count leaderboard across all probed answers.
 
     ``answers`` is a list of ``{engine, answer_text}`` dicts. Returns::
@@ -246,9 +318,19 @@ def build_leaderboard(answers: list[dict], gazetteer: list[str],
           "unknown_candidates": [str, ...] # LLM-surfaced, not in gazetteer
         }
 
-    ``rows`` are ranked by mention_count desc, ties broken alphabetically
-    (deterministic — Spec Y.7.3). PYTHON computes every count and rank; the LLM
-    (if enabled) only contributed labels.
+    ``rows`` are listed by mention_count desc, then alphabetically so the
+    ORDER is deterministic (Spec Y.7.3) — but the ``rank`` is competition
+    ranking: equal mention counts share a rank, and each row carries
+    ``tied_with`` (how many others hold that rank). Alphabetical order used
+    to decide which of two brands on the same count was "rank 1", and the
+    client's own rank was read off that position, so a tie read as a loss to
+    whoever sorted first (D-M-14). ``client_rank`` is now the shared rank, and
+    ``client_tied_with`` says how many brands hold it. PYTHON computes every
+    count and rank; the LLM (if enabled) only contributed labels. Spec: D3.11.
+
+    *negative_terms* (editorial, ``config.yml ai_visibility.negative_terms``)
+    reaches the gazetteer matcher so the client's own mention count carries
+    the same veto as its ``mentioned`` flag — P5, cold-review finding 2.
     """
     counts: dict[str, int] = {}
     display: dict[str, str] = {}
@@ -261,7 +343,7 @@ def build_leaderboard(answers: list[dict], gazetteer: list[str],
     for ans in answers or []:
         brands, unknowns = extract_answer_brands(
             ans.get("answer_text", ""), gazetteer, llm_extraction, model,
-            llm_runner=llm_runner)
+            llm_runner=llm_runner, negative_terms=negative_terms)
         for entry in brands:
             key = _norm(entry["brand"])
             counts[key] = counts.get(key, 0) + 1
@@ -289,33 +371,55 @@ def build_leaderboard(answers: list[dict], gazetteer: list[str],
     ]
     rows.sort(key=lambda r: (-r["mention_count"], _norm(r["brand"])))
 
-    client_rank = None
-    for index, row in enumerate(rows, start=1):
-        if row["is_client"]:
-            client_rank = index
-            break
+    # Competition ranking: 1, 2, 2, 4 — equal counts share a rank.
+    per_count: dict[int, int] = {}
+    for row in rows:
+        per_count[row["mention_count"]] = per_count.get(row["mention_count"], 0) + 1
+    rank_of: dict[int, int] = {}
+    position = 1
+    for count in sorted(per_count, reverse=True):
+        rank_of[count] = position
+        position += per_count[count]
+    for row in rows:
+        row["rank"] = rank_of[row["mention_count"]]
+        row["tied_with"] = per_count[row["mention_count"]] - 1
+
+    client_row = next((r for r in rows if r["is_client"]), None)
 
     return {
         "questions_total": len(answers or []),
         "rows": rows,
-        "client_rank": client_rank,
+        "client_rank": client_row["rank"] if client_row else None,
+        "client_tied_with": client_row["tied_with"] if client_row else None,
         "unknown_candidates": unknown_candidates,
     }
 
 
-def client_ranking_axis(client_rank: int | None, leaderboard_size: int) -> float:
+def client_ranking_axis(client_rank: int | None, leaderboard_size: int,
+                        client_tied_with: int | None = 0) -> float:
     """Normalise the client's leaderboard rank to a 0–100 Ranking axis (Y.6).
 
-    Rank 1 → 100; unranked (``None``) → 0. Lower ranks scale down linearly over
-    the leaderboard size so a longer competitor field is not unduly punishing.
-    Spec: yoast_geo_upgrade_spec_v1.md#Y.6 (Ranking axis).
+    Rank 1 outright → 100; unranked (``None``) → 0. Lower ranks scale down
+    linearly over the leaderboard size so a longer competitor field is not
+    unduly punishing. Spec: yoast_geo_upgrade_spec_v1.md#Y.6 (Ranking axis).
+
+    A *shared* rank does not score as an outright one (cold-review finding 7).
+    Competition ranking (D3.11) gives every brand on the same mention count
+    the same number, so a client tied at rank 1 with five others would have
+    scored a perfect 100 while the prose beside it said "tied with 5 other
+    brand(s) — not ahead of them". The tie is split: the effective rank is
+    ``rank + tied_with / 2``, the mid-point of the positions the tied brands
+    occupy, which is what a tie is worth.
     """
     if client_rank is None or leaderboard_size <= 0:
         return 0.0
+    tied = max(0, int(client_tied_with or 0))
+    effective = client_rank + tied / 2.0
     if leaderboard_size == 1:
         return 100.0
     # rank 1 -> 100, rank N -> a small positive floor rather than 0.
-    return round(100.0 * (leaderboard_size - client_rank) / (leaderboard_size - 1), 2)
+    axis = 100.0 * (leaderboard_size - effective) / (leaderboard_size - 1)
+    return round(max(0.0, min(100.0, axis)), 2)
 
 
 # ---------------------------------------------------------------------------
@@ -462,16 +566,29 @@ def render_leaderboard_section(engine: str, leaderboard: dict,
         return out
     out.append("| # | Brand | Mentions | Source |")
     out.append("|---|-------|----------|--------|")
-    for index, row in enumerate(rows[:top_n], start=1):
+    for position, row in enumerate(rows[:top_n], start=1):
         flag = " (client)" if row["is_client"] else ""
+        # D-M-14: the printed rank is the competition rank, so two brands on
+        # the same count show the same number instead of the alphabetical
+        # order deciding a winner.
+        rank = row.get("rank", position)
+        tied = row.get("tied_with") or 0
+        tie_note = f" (tied with {tied})" if tied else ""
         out.append(
-            f"| {index} | {row['brand']}{flag} | {row['mention_count']}/{total} "
+            f"| {rank}{tie_note} | {row['brand']}{flag} | {row['mention_count']}/{total} "
             f"| {row['source']} |"
         )
     client_rank = leaderboard.get("client_rank")
     if client_rank is not None:
         out.append("")
-        out.append(f"**Client rank:** #{client_rank} of {len(rows)} named brands.")
+        tied = leaderboard.get("client_tied_with") or 0
+        if tied:
+            out.append(
+                f"**Client rank:** #{client_rank} of {len(rows)} named brands, "
+                f"tied with {tied} other brand(s) on the same mention count — "
+                f"not ahead of them.")
+        else:
+            out.append(f"**Client rank:** #{client_rank} of {len(rows)} named brands.")
     else:
         out.append("")
         out.append(

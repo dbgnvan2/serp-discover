@@ -100,19 +100,30 @@ class TestLLMPass(unittest.TestCase):
 
 
 class TestRankingAndClientRank(unittest.TestCase):
-    def test_client_rank_and_ties(self):
-        # Y.7.3: ties broken alphabetically; client rank computed.
+    def test_a_tie_shares_a_rank_and_says_so(self):
+        """D-M-14 (D3.11): equal mention counts share a rank.
+
+        Was `test_client_rank_and_ties`, which asserted client_rank == 3 for a
+        client tied with Bravo on one mention each — the alphabetical ORDER
+        decided the rank, so a tie read as a loss to whoever sorted first.
+        The listing order is still alphabetical within a count (deterministic);
+        the rank is now competition ranking.
+        """
         answers = [
             {"engine": "g", "answer_text": "Alpha and Bravo."},
             {"engine": "g", "answer_text": "Alpha and Living Systems."},
         ]
         gaz = ["Bravo", "Alpha", "Living Systems"]
         lb = bm.build_leaderboard(answers, gaz, ["living systems"], False, "m")
-        # Alpha=2 first; Bravo=1, Living Systems=1 tie -> alpha order (Bravo<Living).
         order = [r["brand"] for r in lb["rows"]]
         self.assertEqual(order[0], "Alpha")
         self.assertEqual(order[1:], ["Bravo", "Living Systems"])
-        self.assertEqual(lb["client_rank"], 3)
+        self.assertEqual([r["rank"] for r in lb["rows"]], [1, 2, 2])
+        self.assertEqual([r["tied_with"] for r in lb["rows"]], [0, 1, 1])
+        self.assertEqual(lb["client_rank"], 2)
+        self.assertEqual(lb["client_tied_with"], 1)
+        rendered = "\n".join(bm.render_leaderboard_section("g", lb))
+        self.assertIn("tied with 1 other brand(s)", rendered)
 
     def test_not_mentioned(self):
         lb = bm.build_leaderboard(

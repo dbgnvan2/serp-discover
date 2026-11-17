@@ -21,8 +21,11 @@ external calls, principle 1 — Python computes, nothing is LLM-derived):
   * **accessibility** — from ``keyword_profiles[*].extractability`` (question
     headings, answer-at-top / intro length, FAQ presence) and any crawl /
     JS-gating flags already captured.
-  * **structure** — from ``keyword_profiles[*].schema_signals`` coverage vs the
+  * **structure** — from the schema @types on the CLIENT'S OWN page
+    (``keyword_profiles[*].schema_signals.client_page``) vs the
     ``schema_recommendations.yml`` contexts the client could be marking up.
+    ``None`` (n/a) with a stated reason when the client has no enriched page
+    in any top-10 — never a score read off its competitors' markup (D3.13).
   * **authority** — from the Y.7 brand-mention leaderboard: the client's
     off-site mention frequency across third-party answers (the signal reported
     to predict AI citation ~3× better than backlinks).
@@ -48,11 +51,21 @@ import json
 import logging
 import sqlite3
 
+import ai_visibility_messages as av_messages
+
 logger = logging.getLogger(__name__)
 
 FOUNDATIONAL_TABLE = "foundational_score"
 
 SUBSCORES = ("accessibility", "structure", "authority")
+
+#: Bumped whenever a sub-score changes what it measures, so a trend does not
+#: print a definition change as a readiness delta (cold-review finding 6).
+#: 1 = structure read ``schema_signals.schema_type_counts``, an aggregate over
+#: the whole enriched top-10 (so a client absent from every top-10 scored on
+#: its competitors' markup). 2 = structure reads the client's own page only
+#: (D3.13).
+DEFINITION_VERSION = 2
 
 #: Recommended default: equal thirds. Only the fallback when config supplies no
 #: (valid) weights — the score is always computed from the resolved weights.
@@ -160,19 +173,35 @@ def compute_accessibility(analysis_data: dict) -> tuple[float | None, list[str]]
 
 
 def compute_structure(analysis_data: dict, schema_recommendations: list[dict] | None
-                      ) -> tuple[float | None, list[str]]:
+                      ) -> tuple[float | None, list[str], str | None]:
     """Structure/schema sub-score (0–100) + its top gaps.
 
-    Compares the schema.org @types actually seen on the client's competitive
-    SERPs (``keyword_profiles[*].schema_signals``) against the schema contexts
-    the client *could* be marking up (``schema_recommendations.yml``). Score =
-    covered recommended types / total recommended types, across all keyword
-    profiles that carry schema data. When NO profile carries schema data the
-    sub-score is ``None`` (n/a), never 0.
+    Compares the schema.org @types on the CLIENT'S OWN pages
+    (``keyword_profiles[*].schema_signals.client_page``) against the schema
+    contexts the client could be marking up (``schema_recommendations.yml``).
+    Score = covered recommended types / total recommended types. When the
+    client has no enriched page in any keyword's top-10 the sub-score is
+    ``None`` (n/a), never 0 — nothing of the client's was measured.
+
+    D-M-04: this read ``schema_signals.schema_type_counts``, an aggregate over
+    the whole enriched top-10, so a client absent from every top-10 scored
+    66.67 on its COMPETITORS' markup and the "foundational readiness" section
+    reported it as the client's own. Spec: D3.13.
 
     Gaps are the EXISTING ``schema_recommendations.yml`` labels for the
     recommended types not yet observed (Spec Y.12.3 — sourced from schema recs,
-    not new strings).
+    not new strings). When the client is unmeasured the gaps are every
+    recommended type: they are recommendations, not measurements, and the
+    client least visible in the SERPs is exactly the one that needs them
+    (cold-review finding 6).
+
+    Returns ``(score, gaps, reason)``. *reason* is ``None`` when a score was
+    computed, and otherwise says WHICH unmeasured state this is — "no schema
+    contexts are configured" and "the client has no page in any top-10" are
+    two different facts and both used to print a bare ``n/a`` (cold-review
+    finding 6; the same defect `feasibility_messages.yml` and
+    `gsc_messages.yml` exist to prevent). The words are editorial and live in
+    ``ai_visibility_messages.yml``.
     """
     recs = schema_recommendations or []
     recommended_types: dict[str, str] = {}  # schema type -> rec label
@@ -181,37 +210,59 @@ def compute_structure(analysis_data: dict, schema_recommendations: list[dict] | 
         for stype in rec.get("schema_types") or []:
             recommended_types.setdefault(str(stype), label)
     if not recommended_types:
-        return None, []
+        return None, [], av_messages.line(
+            "foundational_structure_no_recs",
+            "no schema contexts are configured in schema_recommendations.yml")
 
     observed_types: set[str] = set()
-    any_schema_data = False
+    client_measured = False
     for profile in (analysis_data.get("keyword_profiles") or {}).values():
         signals = (profile or {}).get("schema_signals") or {}
         if not signals.get("data_available"):
             continue
-        any_schema_data = True
-        for stype in (signals.get("schema_type_counts") or {}):
+        client_page = signals.get("client_page")
+        if not client_page:
+            continue
+        client_measured = True
+        for stype in client_page.get("schema_types") or []:
             observed_types.add(str(stype))
 
-    if not any_schema_data:
-        return None, []
+    if not client_measured:
+        # The client is in no enriched top-10: its markup was never fetched.
+        # The recommendations still stand, so they are still reported as gaps
+        # — an unmeasured client is the one that needs them most.
+        return None, _recommendation_gaps(recommended_types, recommended_types), \
+            av_messages.line(
+                "foundational_structure_no_client_page",
+                "the client has no enriched page in any keyword's top-10 this "
+                "run, so its own markup was never fetched")
 
     covered = [t for t in recommended_types if t in observed_types]
     missing = [t for t in recommended_types if t not in observed_types]
     score = round(100.0 * len(covered) / len(recommended_types), 2)
 
     # Gaps: the existing rec labels for missing recommended schema types.
+    return score, _recommendation_gaps(recommended_types, missing), None
+
+
+def _recommendation_gaps(recommended_types: dict[str, str],
+                         wanted) -> list[str]:
+    """The EXISTING schema-recommendation labels, phrased as gaps (Y.12.3).
+
+    No new editorial strings: the label comes from
+    ``schema_recommendations.yml``.
+    """
     gaps: list[str] = []
-    seen_labels: set[str] = set()
-    for stype in missing:
-        label = recommended_types[stype]
+    seen: set[str] = set()
+    for stype in wanted:
+        label = recommended_types.get(stype) or ""
         gap = f"Add {stype} markup ({label})" if label else f"Add {stype} markup"
-        if gap not in seen_labels:
-            seen_labels.add(gap)
+        if gap not in seen:
+            seen.add(gap)
             gaps.append(gap)
         if len(gaps) >= MAX_GAPS:
             break
-    return score, gaps
+    return gaps
 
 
 def compute_authority(leaderboards: dict | None,
@@ -310,6 +361,8 @@ def compute_foundational_score(analysis_data: dict,
           "gaps": {sub: [str, ...]},      # top 2–3 concrete gaps per sub-score
           "weights_used": {sub: float},
           "excluded": [sub, ...],         # n/a sub-scores excluded from the mean
+          "reasons": {sub: str|None},     # WHY an n/a sub-score is n/a
+          "definition_version": int,      # what the sub-scores measured
         }
 
     n/a sub-scores are EXCLUDED and the weights of the present sub-scores are
@@ -319,7 +372,8 @@ def compute_foundational_score(analysis_data: dict,
     weights = weights or dict(DEFAULT_WEIGHTS)
 
     accessibility, acc_gaps = compute_accessibility(analysis_data)
-    structure, str_gaps = compute_structure(analysis_data, schema_recommendations)
+    structure, str_gaps, str_reason = compute_structure(
+        analysis_data, schema_recommendations)
     authority, auth_gaps = compute_authority(leaderboards, client_name_patterns)
 
     subscores: dict[str, float | None] = {
@@ -349,6 +403,8 @@ def compute_foundational_score(analysis_data: dict,
         "score": round(score, 1),
         "subscores": subscores,
         "gaps": gaps,
+        "reasons": {"structure": str_reason},
+        "definition_version": DEFINITION_VERSION,
         "weights_used": {sub: weights.get(sub, 0.0) for sub in SUBSCORES},
         "excluded": excluded,
     }
@@ -366,8 +422,17 @@ def init_foundational_table(db_path: str) -> None:
             accessibility REAL,
             structure     REAL,
             authority     REAL,
-            weights_json  TEXT
+            weights_json  TEXT,
+            definition_version INTEGER
         )''')
+        # Idempotent ADD COLUMN, as storage.py does: a pre-D3b row predates the
+        # column and reads as definition 1, which is what it was.
+        try:
+            conn.execute(
+                f"ALTER TABLE {FOUNDATIONAL_TABLE} "
+                f"ADD COLUMN definition_version INTEGER")
+        except sqlite3.OperationalError:
+            pass  # already present
         conn.commit()
 
 
@@ -379,11 +444,13 @@ def save_foundational_score(db_path: str, run_ts: str, result: dict) -> None:
                      (run_ts,))   # idempotent per run_ts — P8
         conn.execute(
             f"""INSERT INTO {FOUNDATIONAL_TABLE}
-                (run_ts, score, accessibility, structure, authority, weights_json)
-                VALUES (?, ?, ?, ?, ?, ?)""",
+                (run_ts, score, accessibility, structure, authority,
+                 weights_json, definition_version)
+                VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (run_ts, result.get("score"),
              subs.get("accessibility"), subs.get("structure"), subs.get("authority"),
-             json.dumps(result.get("weights_used", {}))),
+             json.dumps(result.get("weights_used", {})),
+             int(result.get("definition_version") or DEFINITION_VERSION)),
         )
         conn.commit()
 
@@ -393,15 +460,16 @@ def get_foundational_trend(db_path: str, limit: int = 5) -> list[dict]:
     init_foundational_table(db_path)
     with sqlite3.connect(db_path) as conn:
         rows = conn.execute(
-            f"""SELECT run_ts, score, accessibility, structure, authority
+            f"""SELECT run_ts, score, accessibility, structure, authority,
+                       definition_version
                 FROM {FOUNDATIONAL_TABLE}
                 ORDER BY run_ts DESC LIMIT ?""",
             (limit,),
         ).fetchall()
     trend = [
         {"run_ts": rt, "score": s, "accessibility": a, "structure": st,
-         "authority": au}
-        for rt, s, a, st, au in rows
+         "authority": au, "definition_version": (dv if dv is not None else 1)}
+        for rt, s, a, st, au, dv in rows
     ]
     trend.reverse()
     return trend
@@ -455,7 +523,18 @@ def render_foundational_section(result: dict, trend: list[dict] | None = None
     trend = trend or []
     if len(trend) >= 2 and trend[-1].get("score") is not None \
             and trend[-2].get("score") is not None:
-        delta = f"{trend[-1]['score'] - trend[-2]['score']:+.1f}"
+        # A definition change is not a readiness delta (cold-review finding 6):
+        # rows written before D3b hold a structure value read off the enriched
+        # top-10, so the two scores measure different things and their
+        # difference means nothing.
+        if trend[-1].get("definition_version", 1) \
+                != trend[-2].get("definition_version", 1):
+            delta = av_messages.line(
+                "foundational_delta_definition_changed",
+                "n/a — the structure sub-score changed definition since the "
+                "prior run, so the two scores are not comparable")
+        else:
+            delta = f"{trend[-1]['score'] - trend[-2]['score']:+.1f}"
 
     out.append(f"**Foundational readiness: {result.get('score', 0):.1f}/100** "
                f"(Δ prior {delta})")
@@ -465,6 +544,19 @@ def render_foundational_section(result: dict, trend: list[dict] | None = None
     for sub in SUBSCORES:
         out.append(f"| {_SUB_LABELS[sub]} | {_sub_cell(subs.get(sub))} |")
     out.append("")
+    # An n/a cell says nothing about WHICH unmeasured state it is, so the
+    # reason is printed beside the table (cold-review finding 6).
+    reasons = result.get("reasons", {}) or {}
+    stated = False
+    for sub in SUBSCORES:
+        reason = reasons.get(sub)
+        if subs.get(sub) is None and reason:
+            out.append(av_messages.line(
+                "foundational_subscore_reason", "*{label}: {reason}.*",
+                label=_SUB_LABELS[sub], reason=reason))
+            stated = True
+    if stated:
+        out.append("")
 
     gaps = result.get("gaps", {}) or {}
     out.append("### Top gaps to fix first")

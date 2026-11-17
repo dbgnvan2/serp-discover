@@ -176,6 +176,42 @@ ai_visibility:
   assume_yes: false
   history_runs: 5
   geo_context: I'm in North Vancouver, BC.
+  # D-M-14 (D3b) — editorial word lists. Both are vocabulary, not logic.
+  #
+  # generic_source_stoplist: harvested competitor "Source" labels that are
+  # ordinary words, not brands. The gazetteer harvests these from the market
+  # analysis JSON, and a single generic token matched plain answer text and
+  # took a leaderboard rank beside a real competitor ("Indeed" matched "indeed,
+  # family therapy helps"). A harvested name is otherwise kept only when it has
+  # two or more words, or is a single word matching ANY label of its own row's
+  # host — "Indeed" beside ca.indeed.com is a brand, "Pathways" beside vch.ca
+  # is not. Public-suffix and hosting labels ("ca", "com", "www2") never count.
+  # `known_brands` is never filtered — if you listed it, it is a brand.
+  generic_source_stoplist:
+  - indeed
+  - pathways
+  - resources
+  - directory
+  - home
+  - about
+  - services
+  - contact
+  - overview
+  - search
+  # negative_terms: phrases that contain a client name pattern but are NOT a
+  # mention of the client. "Living Systems" is also the name of an academic
+  # subject this client teaches about, so an answer explaining living systems
+  # theory counted as the AI naming the practice. The veto is applied PER MATCH,
+  # not per answer: an AI answer may explain the theory in one paragraph and
+  # name the practice in the next, so a client-pattern hit is rejected only when
+  # that occurrence lies inside one of these phrases. (gsc_demand.negative_terms
+  # vetoes the whole string, which is right for a Search Console query of a few
+  # words but wrong for a multi-paragraph answer.) One matcher — brand_match.
+  # matches_patterns — applies this to the mention flag, the competitor
+  # leaderboard and the sentiment gate alike.
+  negative_terms:
+  - living systems theory
+  - living systems approach
   # D5/AV.5.1 — retain the FULL AI answer text (not just the 400-char excerpt) in
   # the ai_visibility_probes.raw_answer column for an audit trail. OFF by default:
   # full answers are unbounded and may carry PII. When on, each is capped at

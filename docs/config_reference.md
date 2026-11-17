@@ -213,6 +213,17 @@ malformed file degrades to the bare status key and never aborts a report.
 | `statuses` | per status (`measured` / `measured_absent` / `not_reached`): `label`, `cell` (the per-query table cell) and `coverage` (the phrase beside a count). Keys must match the `gsc_client.STATUS_*` constants — a test asserts every state has all three |
 | `lines` | the report and log sentences: `coverage_measured_absent`, `coverage_not_reached`, `fetch_complete`, `fetch_incomplete`, `partial_warning`, `band_short_of_rows`. `{...}` placeholders are filled by `run_gsc_analysis`; an unknown placeholder falls back to the built-in wording rather than raising |
 
+### `ai_visibility.generic_source_stoplist` / `ai_visibility.negative_terms` (editorial)
+
+Two word lists in `config.yml`, added by review chunk D3b (finding D-M-14).
+
+| Key | What it does |
+|-----|--------------|
+| `ai_visibility.generic_source_stoplist` | harvested competitor `Source` labels that are ordinary words, not brands. The Y.7 gazetteer harvests brand names from the market-analysis JSON, and a bare generic token matched plain answer text — "Indeed" matched "Indeed, there are many options" and took a leaderboard rank beside a real practice. A harvested name is otherwise kept only when it has two or more tokens, or is a single token matching its own row's domain. `known_brands` is editorial and is never filtered |
+| `ai_visibility.negative_terms` | phrases that contain a `client_name_pattern` but are not a mention of the client. Broad substring match, applied before the word-boundary pattern test. "Living Systems" is also the name of an academic subject this client teaches about, so an answer explaining living systems theory counted as the AI naming the practice. Mirrors `gsc_demand.negative_terms`, which does the same for Search Console queries |
+
+---
+
 ### `ai_visibility_messages.yml` — the "not measured" vocabulary (editorial)
 
 The words a reader sees when an AI answer engine produced no measurement. An
@@ -230,6 +241,8 @@ degrades to the built-in wording and never aborts a report.
 |-------|--------------|
 | `statuses` | per state (`answered` / `failed` / `not_measured` / `not_comparable`): `label`, `cell` (the table cell, e.g. the mention-rate cell for an engine with no answers) and `coverage` (the phrase beside a count). `answered` / `failed` must match the `probe_ai_visibility.STATUS_*` constants |
 | `lines` | the report sentences: the `reason_*` short forms stored on each `engines_unmeasured` entry (`reason_skipped`, `reason_all_failed`, `reason_no_questions`, `reason_no_aivi`, `reason_no_profile`), the per-engine table note (`engine_note`, `engine_not_measured`), the AIVI headline and its coverage (`aivi_average`, `aivi_not_measured`), the leaderboard and citation not-measured blocks, the prioritisation's not-ranked note, and the transfer section's two distinct cases (`transfer_single_enabled` — a config change is needed — versus `transfer_single_measured` — a re-run is needed) plus the two Jaccard not-comparable phrases |
+| `lines` (sentiment) | the three sentiment states, added by the D3b cold review: `sentiment_budget_exhausted` (the call budget ran out before any answer naming this brand was classified — a re-run with a larger `max_total_calls`, not an absence of mentions), `sentiment_all_failed`, `sentiment_not_portrayed`, and `sentiment_skipped_note`, the clause appended to a coverage phrase when some answers were never classified |
+| `lines` (foundational) | `foundational_structure_no_client_page` and `foundational_structure_no_recs` — the two reasons the structure sub-score reads `n/a`, printed beneath the sub-score table via `foundational_subscore_reason`; and `foundational_delta_definition_changed`, printed instead of a Δ when the prior run's structure value was computed under an earlier `foundational_score.DEFINITION_VERSION` |
 
 ---
 

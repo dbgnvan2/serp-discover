@@ -1413,6 +1413,61 @@ trend across runs, never a single number. When no profile is wired in, the
 per-persona table states plainly that no persona-tagged questions ran (it is
 never faked as zeros).
 
+**Every persona gets asked something.** The question list is capped (by
+`ai_visibility.max_questions` and by the `max_total_calls` ceiling), and the
+cap now takes one question from each persona before a second from any. It used
+to take the list in order, and because the prospective-client persona
+generates far more questions than the others, a 27-question plan cut to 20
+asked **twenty prospective-client questions and none at all** for the
+clinician/trainee or the referrer — whose rows then read as no data, which
+looks like the AI ignoring those audiences rather than the tool never having
+asked. The plan line now prints how many of the generated questions the run is
+asking, and names any persona the cap still left with none.
+
+**A tie is not a loss, and a generic word is not a rival.** Two things about
+the competitor leaderboard were misleading. Brands on the *same* mention count
+used to be ranked by alphabetical order, so a client tied with one rival on
+two mentions each was reported as "#3" behind it; equal counts now share a
+rank and the report says "tied with 1 other brand(s) — not ahead of them".
+And the brand list is harvested from the competitor names Google shows, which
+included bare words like "Indeed" and "Pathways": "Indeed, there are several
+options" counted as a mention of a competitor called Indeed, which then took a
+leaderboard place beside a real practice. A harvested name now has to be two
+or more words, or a single word that also appears in its own website's
+address (ZipRecruiter; and "Indeed" beside `ca.indeed.com` counts, because
+"indeed" is part of that address — an earlier version of this rule looked
+only at the first part of the address and so threw away any one-word brand
+on a `ca.*` or `blog.*` host, which in a Canadian directory market is most
+of them). You can drop any others outright by adding them to
+`ai_visibility.generic_source_stoplist` in `config.yml`. Brands you list
+yourself in `known_brands` are never filtered, and the log says how many
+harvested names were dropped and why.
+
+A shared rank is also not a win in the **score**: the Ranking axis that feeds
+AIVI used to give a client tied at first place with five other brands a
+perfect 100, a few lines away from prose saying "not ahead of them". A tie now
+scores the mid-point of the places the tied brands occupy. And where several
+brands tie for *top competitor* — the one benchmarked in the Sentiment
+section — the report names the tie instead of letting alphabetical order
+present one of them as the leader.
+
+**What counts as naming you.** A mention now has to match your name on a word
+boundary, and you can list phrases that contain your name but do not mean you
+under `ai_visibility.negative_terms`. For Living Systems this matters
+directly: "living systems theory" is the academic subject the practice teaches
+about, and an answer explaining that theory was being counted as the AI
+recommending Living Systems Counselling — inflating the mention rate with
+answers that never named the practice at all.
+
+The exclusion applies to the *phrase*, not the whole answer. An AI answer
+runs to several paragraphs and often explains the theory in one and names the
+practice in the next; vetoing the entire answer would have thrown away the
+real mention along with the false one. The same word-boundary test and the
+same exclusion list now also govern the competitor leaderboard and which
+answers buy a sentiment classification — before, the fix applied only to the
+mention rate, so the inflated figure simply moved to your rank, your
+authority sub-score and your sentiment.
+
 **Why it matters — and why it's a trend, not a snapshot:** AI answers are a
 growing referral surface: people increasingly ask an assistant instead of
 searching, and whether the assistant names or links Living Systems decides
@@ -1497,6 +1552,38 @@ fill the gap); it is never silently counted as zero, because an unmeasured
 thing is not a zero. Read AIVI as a per-engine snapshot-trend, not a verdict:
 AI answers swing between runs, and a strong AIVI on one engine does not carry
 to the others.
+
+**An `n/a` says which `n/a` it is.** The structure / schema sub-score is
+`n/a` for two quite different reasons: you have no page in any keyword's
+top 10 this run, so none of your markup was ever fetched; or no schema
+contexts are configured for the tool to measure against. Both printed a bare
+`n/a`. The report now states the reason beneath the table, and in the first
+case it still lists the schema recommendations as gaps — they are advice, not
+a measurement, and a site with no page in any top 10 is the one that needs
+them most. Because the sub-score changed what it measures (your own page,
+not the whole top 10), the "Δ prior" figure is suppressed across that
+boundary rather than printing a change of definition as a change in
+readiness.
+
+**A sentiment classification that failed is not a neutral one.** When
+sentiment is enabled, each answer that names you (or the top competitor) is
+classified positive / neutral / negative by one LLM call. A call that errors or
+comes back unreadable is now recorded as **failed** with no verdict, left out
+of the "% positive" and out of AIVI's Sentiment axis, and the report states
+what the percentage is over ("1 classified of 3 attempted"). Before, every
+such failure was stored as **neutral**, so a run throttled by rate limits
+produced a wall of neutral verdicts and a Sentiment axis of 0 — a confident
+reading of how the AI portrays you, assembled entirely from calls that never
+answered. If every classification for a brand fails, the line says so and asks
+you to re-run.
+
+A classification that was never *attempted* is a third state. Sentiment calls
+count against the same `max_total_calls` ceiling as the probe questions, so on
+a long run the budget is often spent before the sentiment pass begins. Those
+answers are now recorded as **skipped (budget)**, and the line says the budget
+ran out — it used to print "no answer this run portrayed this brand" over
+answers that did portray it, which is the one reading that would make you stop
+looking.
 
 **"Not measured" is not a zero.** An engine the run could not reach — no API
 key, every call rate-limited or safety-blocked — now carries **no** AIVI at
@@ -1603,6 +1690,17 @@ says fix these foundations before chasing any single engine — they are the onl
 work that lifts all engines together. A sub-score with no captured data shows
 `n/a` and is dropped from the average (never counted as zero), and the score is
 stored each run so you can watch it climb.
+
+**What "the client's own pages" means for the structure sub-score.** It is
+measured strictly from the markup on *your* pages, and your page has to be in
+one of the fetched top-10s for the tool to have read it. When you rank nowhere
+for any keyword in the run, this sub-score is **n/a** — the tool has no
+measurement of your markup — and it is dropped from the average rather than
+counted. Until this was corrected it read the markup of the whole top-10, so a
+client who appeared in none of them was scored on its *competitors'* schema and
+could be told it was two-thirds of the way there on markup it had never been
+measured for. If you see `n/a` here, the fix is to get a page ranking (or add a
+keyword you do rank for) so there is something of yours to read.
 
 **Per-engine recommendations — because optimisation does not transfer.** *What:*
 a "what to change here" block per engine (ChatGPT, Perplexity, Gemini, Claude),

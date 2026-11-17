@@ -506,7 +506,7 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-01 | High | D1 | = D-C-01 (methodology consequences) | fixed `2285828` |
 | D-M-02 | High | D2 | Unscorable domain enters the feasibility mean as 0 | fixed `9784690` (D2a) |
 | D-M-03 | High | D3 | = D-C-05 plus Jaccard(∅,∅)=1 and prioritisation | fixed (D3a) |
-| D-M-04 | High | D3 | Foundational structure sub-score measures competitors' schema | open |
+| D-M-04 | High | D3 | Foundational structure sub-score measures competitors' schema | fixed (D3b) |
 | D-M-05 | High | D2 | `client_da` fixed 35 vs live provider on a different scale | fixed `9784690` (D2a); config value is now an override |
 | D-M-06 | High | D4 | Best opportunity ignores the mandatory intent gate | open |
 | D-M-07 | High | D4 | Extraction play asserts "high DA gap" when unmeasured | open |
@@ -516,18 +516,18 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-11 | Med | D4 | Mixed-intent strategy says "backdoor" when dominant is preferred; dict-order ties | open |
 | D-M-12 | Med | D4 | "Market too small" decided from `total_results` | open |
 | D-M-13 | Med | D4 | Commodity homogeneity counts `other` titles as homogeneous | open |
-| D-M-14 | Med | D3 | Gazetteer matches "Indeed"; ranking ties broken alphabetically | open |
+| D-M-14 | Med | D3 | Gazetteer matches "Indeed"; ranking ties broken alphabetically | fixed (D3b) |
 | D-M-15 | Med | D5 | Sponge is cross-sectional; reformat candidates = below-median half | open |
 | D-M-16 | Med | D5 | Branded share over tracked set vs property-level bands | open |
 | D-M-17 | Med | D5 | "Traffic at risk" can exceed actual clicks | open |
-| D-M-18 | Med | D3 | 20-question cap drops whole personas | open |
+| D-M-18 | Med | D3 | 20-question cap drops whole personas | fixed (D3b) |
 | D-M-19 | Med | D4 | Pivot text asserts directory dominance; gate ignores intent verdict | open |
 | D-M-20 | Med | D5 | AIO constants without source; trend across unlike keyword sets | open |
 | D-M-21 | Med | D6 | Core thresholds/weights without stated derivation | open |
 | D-M-22 | Low–Med | D6 | Root `methodology.md` stale and contradictory | open |
 | D-M-23 | Low | D6 | Glossary DA-gap formula reversed | open |
 | D-M-24 | Low | D6 | `feasibility_score` exceeds documented 0–1 | open |
-| D-M-25 | Low | D3 | Failed sentiment stored as "neutral" | open |
+| D-M-25 | Low | D3 | Failed sentiment stored as "neutral" | fixed (D3b) |
 | D-M-26 | Low–Med | D6 | Bowen triggers include ubiquitous words; no counts | open |
 | D-M-27 | Low–Med | D4 | Validator cannot check the claims most likely wrong upstream | open |
 | C-C-01 | S1 | C1 | `www.` domains derive brand "www" | fixed `f7b09bf` (C1) |

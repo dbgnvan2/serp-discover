@@ -210,3 +210,74 @@ Carried forward, not fixed here (the review's own cross-repo observation): the
 AI-visibility export carries no failed/attempted count, so `serp-compete`
 cannot tell a 5-question run from one where only 3 were answered. Logged for
 the compete-side chunk rather than widened into this diff.
+
+## As built — D3b (D3.8–D3.14)
+
+| # | Criterion | Where |
+|---|-----------|-------|
+| D3.8 | The caps take a persona-fair slice | `profile_questions.interleave_by_persona` (new); applied in `probe_ai_visibility.build_question_set`'s profile loop and again before the `max_total_calls` slice in `main` |
+| D3.9 | The plan line prints "Asking N of M generated questions" and names any persona left with none | `probe_ai_visibility.main` |
+| D3.10 | A harvested source needs two tokens or its own domain; the stop list is editorial | `brand_mentions.build_gazetteer(generic_source_stoplist=)`, `config.yml ai_visibility.generic_source_stoplist` |
+| D3.11 | Competition ranking; `tied_with` per row, `client_tied_with` beside `client_rank`; the report says "tied with N — not ahead of them" | `brand_mentions.build_leaderboard`, `render_leaderboard_section` |
+| D3.12 | Word-boundary client matching + editorial `negative_terms` | `probe_ai_visibility.detect_visibility(negative_terms=)`, threaded through `run_engine_probes`; `config.yml ai_visibility.negative_terms` |
+| D3.13 | The structure sub-score is the client's own markup, `None` when it has no enriched page | `brief_data_extraction._build_schema_signals(client_domain_lower)` carries `client_page`; `foundational_score.compute_structure` reads only it |
+| D3.14 | A failed classification carries no polarity, is excluded from every percentage and from the axis, and the report says "n classified of m attempted" | `answer_sentiment`: `STATUS_CLASSIFIED`/`STATUS_FAILED`, `_failed_classification`, `classified_rows`, `percent_positive`, `render_sentiment_section`, `render_negative_sentiment_alert`, `save_sentiment` + migration |
+
+On D3.8's "city variants de-duplicated before the cap applies": no new pass
+was needed and none was added. `generate` already de-duplicates by
+`(question, persona)` and `build_question_set._add` de-duplicates by
+lower-cased query across every source, so a template without a `{city}`
+placeholder expanded per city collapses to one question. Checked on the
+shipped `living_systems` profile: 27 generated, 27 distinct, 27 after
+`build_question_set`. City variants that differ by city name are different
+questions, not duplicates.
+
+Probes: `probe_13_structure_score_is_not_the_clients.py` and
+`probe_14_failed_sentiment_is_neutral.py` are new (the two findings that had
+none) and both now assert the fixed behaviour; `p05_gazetteer.py` and
+`p08_profile_questions.py` were print-only and now assert. All four exit 0.
+
+Tests: `tests/test_d3b_narrower_honesty.py` (24 tests, 6 classes).
+
+Two existing tests encoded the old behaviour and were corrected, not deleted:
+
+- `tests/test_brand_mentions.py::TestRankingAndClientRank::test_client_rank_and_ties`
+  → `test_a_tie_shares_a_rank_and_says_so`. It asserted `client_rank == 3` for a
+  client tied with one rival on one mention each — the alphabetical listing
+  order was the rank.
+- `tests/test_answer_sentiment.py::TestClassificationAndPercent::test_polarity_buckets`
+  asserted an unrecognised polarity label fell back to "neutral". That fallback
+  is finding D-M-25.
+
+Six `tests/test_foundational_score.py` fixtures carried `schema_type_counts`
+with no `client_page`, which is now "the client has no measured page" — each
+fixture gained the client's own page carrying the types the test intends.
+
+### Cold review of the D3b diff — 10 findings, 8 medium-or-higher, all fixed
+
+The review's verdict: the chunk hardened one matcher and one tie-break and left
+their siblings alone, so the leaderboard, authority and sentiment axes still
+carried the bugs the diff described as fixed. Fixes, in the review's numbering:
+
+| # | Sev | Fault | Fix |
+|---|-----|-------|-----|
+| 1 | HIGH | the single-token gazetteer rule compared the harvested name against `host.split(".")[0]`, so `ca.indeed.com` → `ca` and every one-word brand on a subdomained host was dropped — shrinking the competitor field in the client's favour, and contradicting its own docstring and config comment | `brand_mentions._domain_labels` tests every label of the host (public-suffix and hosting labels excluded); dropped counts logged (P2) |
+| 2 | HIGH | `detect_visibility` got the word boundary and the negative terms; `gazetteer_pass` and `answer_sentiment.answer_mentions_brand` — the same patterns against the same answers — got neither, so the false positive still reached the client's rank, the authority sub-score and a paid sentiment call (P5) | new `brand_match.matches_patterns`, the one matcher all three call; `negative_terms` threaded through `build_leaderboard` and `collect_sentiment` |
+| 3 | MED-HIGH | `ai_visibility_export._read_answer_sentiment` had no status filter, so a NULL polarity reached serp-compete against a schema requiring a string | the export selects classified rows only (a pre-D3b DB has no `status` column; every row in it was classified) |
+| 4 | MED | an exhausted sentiment budget returned early recording nothing, so the report printed "no answer this run portrayed this brand" over answers that did (P1 — a spent budget is retryable) | each unasked (answer, brand) pair is recorded with `STATUS_SKIPPED_BUDGET` and no polarity; the section says the budget ran out |
+| 5 | MED | the negative-terms veto was applied to the whole answer, so one paragraph about the subject erased a real mention in the next | the veto is per match span, not per document |
+| 6 | MED | `compute_structure` returned a bare `None` for two different unmeasured states and dropped its gaps, so the client least visible in the SERPs got no structure advice at all; and the sub-score's definition change printed as a readiness Δ | returns `(score, gaps, reason)` with the reason rendered; recommendation gaps kept when unmeasured; `DEFINITION_VERSION` stored per run and Δ suppressed across the boundary |
+| 7 | MED | `client_ranking_axis` still scored a shared rank 1 as 100, next to prose saying "not ahead of them" | takes `client_tied_with`; a tie scores the mid-point of the places the tied brands occupy |
+| 8 | MED | `max(sorted(combined), ...)` picked the top competitor — the benchmark that buys sentiment calls — by alphabetical order on a tie | the tie is resolved explicitly, logged, and named in the Sentiment section |
+
+Findings 9 and 10 were LOW (an unlogged malformed-profile skip; two mixed
+populations in the plan line's denominator) and were dropped per the effort
+budget. Finding 8 is the adjacent item this chunk had flagged for D6 — the
+review raised it as a finding, so it was fixed here rather than deferred.
+
+Adjacent, flagged not fixed (rule 10): `compute_foundational_score` sets
+`score = 0.0` when all three sub-scores are `None`, which is "nothing was
+measured" rendering as 0/100 — the exact pattern this chunk exists to remove,
+and `structure = None` is now more frequent, so the all-`None` path is more
+reachable. `render_foundational_section` would also raise `TypeError` if
+`score` were ever `None`. Outside D3's findings; flagged for D6.

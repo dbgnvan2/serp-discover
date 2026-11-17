@@ -585,7 +585,7 @@ def _with_fetch_coverage(signals, coverage):
     return signals
 
 
-def _build_schema_signals(kw_rows):
+def _build_schema_signals(kw_rows, client_domain_lower=""):
     """Summarise structured-data signals from enriched top-10 organic rows.
 
     Feeds the brief's FAQ / Answer-Extraction Plan and schema-gap lines.
@@ -602,6 +602,12 @@ def _build_schema_signals(kw_rows):
       heading heuristic).
     - ``pages_with_schema``: [{rank, source, schema_types, faq_present}]
       for rows carrying at least one schema type, rank order.
+    - ``client_page``: the client's OWN enriched row, or ``None`` when the
+      client is in no enriched top-10 (as ``_build_extractability`` already
+      carries it). D-M-04: ``foundational_score.compute_structure`` read
+      ``schema_type_counts`` — an aggregate over the whole top-10 — so a
+      client with no measured page scored 66.67 on its competitors' markup.
+      Spec: D3.13.
     """
     signals = {
         "data_available": False,
@@ -609,6 +615,7 @@ def _build_schema_signals(kw_rows):
         "schema_type_counts": {},
         "faq_page_count": 0,
         "pages_with_schema": [],
+        "client_page": None,
     }
     type_counts = Counter()
     for row in kw_rows[:10]:
@@ -621,13 +628,17 @@ def _build_schema_signals(kw_rows):
             type_counts[str(schema_type)] += 1
         if row.get("faq_present"):
             signals["faq_page_count"] += 1
+        page = {
+            "rank": row.get("rank"),
+            "source": row.get("source"),
+            "schema_types": sorted(str(t) for t in set(schema_types)),
+            "faq_present": bool(row.get("faq_present")),
+        }
         if schema_types:
-            signals["pages_with_schema"].append({
-                "rank": row.get("rank"),
-                "source": row.get("source"),
-                "schema_types": sorted(str(t) for t in set(schema_types)),
-                "faq_present": bool(row.get("faq_present")),
-            })
+            signals["pages_with_schema"].append(page)
+        if signals["client_page"] is None and _is_client_domain(
+                row.get("domain") or "", client_domain_lower):
+            signals["client_page"] = page
     signals["schema_type_counts"] = dict(type_counts.most_common())
     return signals
 
@@ -1445,6 +1456,10 @@ def extract_analysis_data_from_json(
                 "source": src,
                 "entity_type": entity,
                 "content_type": effective_ct,
+                # D-M-04: every row carries its host, not only the rows that
+                # happened to be extractability-enriched. The schema signals
+                # need it to tell the client's own page from a competitor's.
+                "domain": _domain_from_link(link),
             }
             # Schema/FAQ enrichment signals (Spec: seo_geo_review T.1/G.2).
             # Only enriched rows carry these; older analysis JSONs have
@@ -1460,14 +1475,12 @@ def extract_analysis_data_from_json(
                 row_profile["question_headings"] = row.get("Question_Headings") or []
                 row_profile["intro_text_length"] = _safe_int(
                     row.get("Intro_Text_Length"), 0)
-                row_profile["domain"] = _domain_from_link(link)
             # Content freshness signals (Spec: seo_geo_deferred_spec_v1.md
             # #G.6). Older analysis JSONs carry neither key, which
             # _build_freshness treats as "no freshness data captured".
             if "Published_Time" in row or "Modified_Time" in row:
                 row_profile["published_time"] = row.get("Published_Time")
                 row_profile["modified_time"] = row.get("Modified_Time")
-                row_profile.setdefault("domain", _domain_from_link(link))
             # E-E-A-T author signals (Spec: seo_geo_deferred_spec_v1.md
             # #G.3). Older analysis JSONs carry no Author_Present key,
             # which _build_eeat_signals treats as "no data captured".
@@ -1481,7 +1494,6 @@ def extract_analysis_data_from_json(
                 row_profile["credential_hits"] = row.get("Credential_Hits") or []
                 row_profile["review_marker_present"] = bool(
                     row.get("Review_Marker_Present"))
-                row_profile.setdefault("domain", _domain_from_link(link))
             organic_rows_by_kw[source_kw].append(row_profile)
             if src:
                 entry = top_sources_by_kw_counter[source_kw][src]
@@ -1928,7 +1940,8 @@ def extract_analysis_data_from_json(
             "serp_intent": serp_intent,
             "title_patterns": title_patterns,
             "schema_signals": _with_fetch_coverage(
-                _build_schema_signals(kw_rows), fetch_coverage),
+                _build_schema_signals(kw_rows, client_domain_lower),
+                fetch_coverage),
             "aio_divergence": _build_aio_divergence(
                 aio_citation_domains_by_kw.get(kw, {}),
                 organic_top10_domains_by_kw.get(kw, {}),

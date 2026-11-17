@@ -146,14 +146,20 @@ Editorial content currently lives in:
   "GSC answered nothing" and "the fetch never reached this" shared one label
   because the wording was Python literals in three places (added review
   chunk D2b)
-- `ai_visibility_messages.yml` — the words for "this AI engine was not
-  measured": `label` / `cell` / `coverage` per state (`answered` / `failed` /
-  `not_measured` / `not_comparable`) plus the report `lines`. The ONLY home
-  for these words — an engine that was never asked, one whose every call
-  failed, and two engines that cited nothing are three facts, none of them a
-  zero, and the wording was four Python literals across
-  `probe_ai_visibility.py`, `engine_transfer.py` and
-  `engine_recommendations.py` (added review chunk D3a)
+- `ai_visibility_messages.yml` — the words for every "not measured" state in
+  the AI-visibility family. Per engine: `label` / `cell` / `coverage` per
+  state (`answered` / `failed` / `not_measured` / `not_comparable`) plus the
+  report `lines`. Per sentiment brand: a classification that failed, a call
+  budget that ran out before the answer was classified, and a brand no answer
+  portrayed. Per foundational sub-score: the structure sub-score's two `n/a`
+  reasons (no client page in any enriched top-10 / no schema contexts
+  configured) and the marker printed instead of a Δ when the sub-score's
+  definition changed. The ONLY home for these words — an engine that was
+  never asked, one whose every call failed, and two engines that cited
+  nothing are three facts, none of them a zero, and the wording was four
+  Python literals across `probe_ai_visibility.py`, `engine_transfer.py` and
+  `engine_recommendations.py` (added review chunk D3a; the sentiment and
+  foundational states added by its cold review in D3b)
 - `brief_pattern_routing.yml` — brief PAA / keyword / intent-slot routing (added I.1)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
@@ -180,6 +186,14 @@ Editorial content currently lives in:
 - `play_routing.yml` — "Recommended Play" decision table: ordered, first-match-wins rules mapping pre-computed keyword signals to one of five plays (rank / extraction / reformat / local_pivot / deprioritize), plus each play's label + strategy_text (added seo_geo_review chip A)
 - `engine_profiles.yml` — per-engine (chatgpt/`openai`, perplexity, gemini, claude) source-bias profiles: `retrieval_backend`, `source_bias` phrases, indicative+dated `avg_citations`, `reach_tier`/`referral_click_tier`, and the editorial `recommended_content_moves` list joined by `engine_recommendations.py` to produce per-engine "what to change here" advice. This is the ONLY place engine advice lives — no engine advice is hardcoded in Python. Vendor/temporal confidence caveat is binding: directional findings are high confidence, the numbers are indicative and shift over time — re-measure (added yoast_geo_upgrade Y.10)
 - `client_profiles.yml` — per-client profile blocks (keyed by client slug) driving persona-segmented AI-visibility question generation: `brand_name`, `domain`, `location`, `primary_city`, `secondary_cities`, `service_description`, and `personas` (each with `label`, `needs`, verbatim `seed_questions`, and per-city-expanding `templates` under open, per-client funnel/intent tiers). Edited in the GUI "Client Profile & Queries" tab (added yoast_geo_upgrade Y.1 / Y.13)
+- `config.yml` `ai_visibility.generic_source_stoplist` /
+  `ai_visibility.negative_terms` — two word lists. The stoplist drops
+  harvested competitor `Source` labels that are ordinary words, not brands
+  ("Indeed" matched "Indeed, there are many options" and took a leaderboard
+  rank); `negative_terms` holds phrases that contain a client name pattern but
+  are not a mention of the client ("living systems theory" is the subject this
+  client teaches about). `known_brands` is never filtered (added review
+  chunk D3b)
 - `config.yml` `moz.search_intent.repo_to_moz_intent` — maps this repo's
   intent labels onto Moz's four so the two classifications can be compared.
   Editorial: Moz has no `local` label, and `null` means "not comparable"

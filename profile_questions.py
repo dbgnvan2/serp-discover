@@ -245,3 +245,33 @@ def generate(profile: dict) -> list[dict]:
                 "intent": intent,
             })
     return out
+
+
+def interleave_by_persona(items: list[dict], persona_key: str = "persona") -> list[dict]:
+    """Round-robin the questions across personas, first-appearance order.
+
+    D-M-18: ``generate`` emits every question of persona 1, then persona 2,
+    and the two downstream caps (``probe_ai_visibility.build_questions``'s
+    ``max_questions`` and the ``max_total_calls`` truncation) both take a
+    prefix. A 27-question plan over three personas therefore probed 20
+    questions that were *all* the first persona's, and the report's
+    per-persona mention rate showed the other two as having no data — a cap
+    reading as a finding about those personas.
+
+    Interleaving makes any prefix persona-fair: with three personas the first
+    three questions are one each. Deterministic (no sorting, no shuffling);
+    rows whose persona is missing or empty form one group, keeping their
+    relative order. Spec: D3.8.
+    """
+    groups: dict[str, list[dict]] = {}
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        label = str(item.get(persona_key) or "").strip()
+        groups.setdefault(label, []).append(item)
+    out: list[dict] = []
+    while any(groups.values()):
+        for queue in groups.values():
+            if queue:
+                out.append(queue.pop(0))
+    return out

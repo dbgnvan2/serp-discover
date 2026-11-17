@@ -73,9 +73,15 @@ class TestClassificationAndPercent(unittest.TestCase):
             r = sm._parse_classification(
                 f'{{"polarity":"{label}","positive_aspects":[],"negative_aspects":[]}}')
             self.assertEqual(r["polarity"], label)
-        # invalid polarity → neutral fallback
-        self.assertEqual(sm._parse_classification('{"polarity":"???"}')["polarity"],
-                         "neutral")
+        # D-M-25 (D3.14): an unrecognised label is an unread answer, not a
+        # neutral one. Was asserted as a "neutral fallback", which is how three
+        # rate-limited calls became a measured 0.0 Sentiment axis.
+        failed = sm._parse_classification('{"polarity":"???"}')
+        self.assertIsNone(failed["polarity"])
+        self.assertEqual(failed["status"], sm.STATUS_FAILED)
+        self.assertIsNone(sm.percent_positive(
+            [{"brand": "B", "polarity": None, "status": sm.STATUS_FAILED,
+              "positive_aspects": [], "negative_aspects": []}], "B"))
 
     def test_percent_none_when_unmeasured(self):
         self.assertIsNone(sm.percent_positive([], "Living Systems"))
@@ -115,7 +121,15 @@ class TestBudget(unittest.TestCase):
             answers, {"Living Systems": ["living systems"]}, "m",
             llm_runner=runner, call_budget=2)
         self.assertEqual(calls, 2)
-        self.assertEqual(len(rows), 2)
+        # Cold-review finding 4: the budget caps the CALLS, not the record. The
+        # three answers it never reached are recorded as skipped_budget with no
+        # polarity, so the report can say the budget ran out instead of
+        # claiming no answer portrayed the brand.
+        self.assertEqual(len(sm.classified_rows(rows)), 2)
+        skipped = [r for r in rows if r["status"] == sm.STATUS_SKIPPED_BUDGET]
+        self.assertEqual(len(skipped), 3)
+        self.assertTrue(all(r["polarity"] is None for r in skipped))
+        self.assertEqual(len(rows), 5)
 
 
 class TestPersistence(unittest.TestCase):

@@ -101,3 +101,41 @@ lines:
     an answer)
   jaccard_pair_not_comparable: "not measurable (neither engine cited a source)"
   jaccard_avg_not_comparable: "not measurable (no engine pair had a cited source)"
+
+  # ---------------------------------------------------------------------
+  # Sentiment (answer_sentiment.py). Cold-review finding 4: an exhausted
+  # call budget is neither a failure nor an absence of mentions — the
+  # answers did portray the brand and nothing was asked about them.
+  # ---------------------------------------------------------------------
+  sentiment_budget_exhausted: >-
+    not measured — the sentiment call budget ran out before any of the
+    {skipped} answer(s) naming this brand could be classified. Nothing is
+    known about how they portray it: re-run with a larger
+    `max_total_calls`.
+  sentiment_all_failed: >-
+    not measured — all {attempted} classification(s) failed, so this brand
+    has no sentiment this run. Not a neutral portrayal: re-run.
+  sentiment_not_portrayed: >-
+    not measured — no answer this run portrayed this brand.
+  sentiment_skipped_note: >-
+    ; {skipped} further answer(s) were never classified (call budget spent)
+
+  # ---------------------------------------------------------------------
+  # Foundational readiness (foundational_score.py). Cold-review finding 6:
+  # "no schema recommendations are configured" and "the client has no page
+  # in any enriched top-10" are two different facts and both printed a
+  # bare n/a, so the client least visible in the SERPs was the one whose
+  # report carried no structure advice at all.
+  # ---------------------------------------------------------------------
+  foundational_structure_no_client_page: >-
+    the client has no enriched page in any keyword's top-10 this run, so
+    its own markup was never fetched — the recommendations below still
+    stand, nothing was measured against them
+  foundational_structure_no_recs: >-
+    no schema contexts are configured in schema_recommendations.yml, so
+    there is nothing to measure the client's markup against
+  foundational_subscore_reason: "*{label}: {reason}.*"
+  foundational_delta_definition_changed: >-
+    n/a — the structure sub-score changed definition since the prior run
+    (it now reads the client's own page, not the enriched top-10), so the
+    two scores are not comparable
