@@ -169,7 +169,9 @@ class TestGscClientCache(unittest.TestCase):
         old = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
         with sqlite3.connect(self.tmp.name) as conn:
             conn.execute(
-                "INSERT INTO gsc_cache VALUES (?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO gsc_cache (query, start_date, end_date, clicks, "
+                "impressions, ctr, position, found, fetched_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?)",
                 ("family counselling", self.START, self.END, 1, 10, 0.1, 5.0, 1, old))
         mock_post.return_value = _gsc_response([_api_row("family counselling", clicks=7)])
         result = self.client.get_query_stats(
@@ -222,10 +224,12 @@ class TestSpongeComputation(unittest.TestCase):
     """G.4.2 — known medians on synthetic data; insufficient-data path."""
 
     @staticmethod
-    def _row(query, position, ctr, has_aio, found=True):
+    def _row(query, position, ctr, has_aio, found=True, impressions=500):
+        # D5.1: impressions default above gsc.min_impressions, so these rows
+        # are measurements. A row below the floor is excluded by design.
         return {"query": query, "query_label": "A", "source_keyword": query,
                 "position": position, "ctr": ctr, "has_ai_overview": has_aio,
-                "found": found, "clicks": 1, "impressions": 10}
+                "found": found, "clicks": 1, "impressions": impressions}
 
     def test_known_medians_both_buckets(self):
         rows = [
@@ -285,23 +289,38 @@ class TestReformatCandidates(unittest.TestCase):
         rows = [
             # Enough no-AIO queries in band 1-3 for the median (0.08).
             {"query": "n1", "query_label": "A", "source_keyword": "kw n1",
-             "position": 1.5, "ctr": 0.06, "has_ai_overview": False, "found": True},
+             "position": 1.5, "ctr": 0.06, "has_ai_overview": False,
+             "found": True, "impressions": 500},
             {"query": "n2", "query_label": "A", "source_keyword": "kw n2",
-             "position": 2.5, "ctr": 0.08, "has_ai_overview": False, "found": True},
+             "position": 2.5, "ctr": 0.08, "has_ai_overview": False,
+             "found": True, "impressions": 500},
             {"query": "n3", "query_label": "A", "source_keyword": "kw n3",
-             "position": 3.0, "ctr": 0.12, "has_ai_overview": False, "found": True},
-            # Candidate 1: good position, CTR below the no-AIO median,
-            # source keyword carries a GEO alert.
+             "position": 3.0, "ctr": 0.12, "has_ai_overview": False,
+             "found": True, "impressions": 500},
+            # Candidate 1: good position, an AI Overview present, CTR a clear
+            # margin below the no-AIO median, source keyword GEO-alerted.
             {"query": "family counselling north vancouver", "query_label": "A",
              "source_keyword": "family counselling north vancouver",
-             "position": 2.0, "ctr": 0.01, "has_ai_overview": True, "found": True},
-            # Candidate 2: below-median CTR but NOT geo-alerted.
+             "position": 2.0, "ctr": 0.01, "has_ai_overview": True,
+             "found": True, "impressions": 800},
+            # Candidate 2: same, but NOT geo-alerted.
             {"query": "grief counselling", "query_label": "A",
              "source_keyword": "grief counselling",
-             "position": 3.0, "ctr": 0.02, "has_ai_overview": True, "found": True},
+             "position": 3.0, "ctr": 0.02, "has_ai_overview": True,
+             "found": True, "impressions": 600},
             # Not a candidate: position too deep.
             {"query": "deep query", "query_label": "A", "source_keyword": "deep",
-             "position": 15.0, "ctr": 0.001, "has_ai_overview": True, "found": True},
+             "position": 15.0, "ctr": 0.001, "has_ai_overview": True,
+             "found": True, "impressions": 500},
+            # D5.2: not a candidate — no AI Overview on the SERP, so there is
+            # nothing to reformat for extraction, however low the CTR.
+            {"query": "no aio but starving", "query_label": "A",
+             "source_keyword": "no aio", "position": 2.0, "ctr": 0.001,
+             "has_ai_overview": False, "found": True, "impressions": 700},
+            # D5.1: not a candidate — the CTR rests on 3 impressions.
+            {"query": "three impressions", "query_label": "A",
+             "source_keyword": "three", "position": 2.0, "ctr": 0.0,
+             "has_ai_overview": True, "found": True, "impressions": 3},
         ]
         return rows
 
@@ -316,6 +335,9 @@ class TestReformatCandidates(unittest.TestCase):
         self.assertIn("grief counselling", queries)
         self.assertFalse(queries["grief counselling"]["geo_alert"])
         self.assertNotIn("deep query", queries)
+        # D5.2 / D5.1 — the two conditions added by the review.
+        self.assertNotIn("no aio but starving", queries)
+        self.assertNotIn("three impressions", queries)
         # Geo-alerted candidates sort first.
         self.assertEqual(candidates[0]["query"], "family counselling north vancouver")
 

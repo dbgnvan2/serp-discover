@@ -286,8 +286,17 @@ aio_exposure:
   # REFERENCE POINTS, not measured livingsystems.ca CTR — the report labels them
   # "estimated". Malformed/missing values fall back to these documented defaults
   # with a warning (mirrors aivi.weights). Documented in docs/methodology.md.
-  aio_ctr_multiplier: 0.6    # ~60% AIO CTR-interception reference (industry)
+  aio_ctr_multiplier: 0.6    # share of organic clicks an AIO intercepts
   citation_credit: 0.5       # a client citation inside the AIO recovers half the loss
+  # D5.6 — where each of the three modelled numbers comes from. "Industry
+  # reference point" named no study and no date, and third-party CTR figures
+  # move year to year, so the report states them as the owner's assumption
+  # until these name a source and a date. Editorial: write the citation here
+  # (e.g. "Acme CTR study, published 2026-02, retrieved 2026-03-01").
+  sources:
+    aio_ctr_multiplier: ""
+    citation_credit: ""
+    ctr_curve: ""
   history_runs: 5            # runs shown in the exposure trend
   ctr_curve:                 # reference organic CTR by 1-based SERP position
     1: 0.28
@@ -325,6 +334,24 @@ gsc:
   property: sc-domain:livingsystems.ca
   lookback_days: 90
   cache_ttl_days: 7
+  # D5.1/D5.2 — the sponge rollup and the reformat shortlist both ignore
+  # queries with too little traffic to read a CTR from: one click on three
+  # impressions is a 33% CTR and means nothing. Editorial: it is a judgement
+  # about how much traffic this client's pages get.
+  min_impressions: 50
+  # D5.2 — how far below the no-AIO median CTR a query must sit before it is
+  # called a reformat candidate. 0.25 = at least 25% below. Editorial: a
+  # tighter margin shortlists more pages. Below the median is not, by itself,
+  # a finding — half of every set is below its own median.
+  reformat_ctr_margin: 0.25
+  # D5.7 — which country and device the GSC pull is restricted to, so the
+  # clicks are measured over the same population as the SERP fetch. Default
+  # (when the key is absent) mirrors serpapi.gl / serpapi.device. Set either
+  # to 'all' to pull every country / every device on purpose; the report then
+  # says the two sides are not comparable. country takes a 2- or 3-letter
+  # ISO-3166-1 code, device one of desktop / mobile / tablet.
+  country: ca
+  device: desktop
   # When true, generate_content_brief attaches the latest gsc_analysis_*
   # sidecar as gsc_summary to the LLM payload (client-private data).
   feed_strategic_flags: false
@@ -337,6 +364,12 @@ gsc_demand:
   bands:
     below_avg: 0.024
     top: 0.1
+    # D5.4 — where these two figures come from. No published source was ever
+    # recorded for them, so the report states them as the owner's assumption
+    # until this names a study and a date. Editorial: write the citation here
+    # (e.g. "Acme 2026 benchmark report, retrieved 2026-03-01") and the report
+    # prints it instead.
+    source: ""
   # Optional generic words that contain the brand but are not name-seeking
   # (e.g. a common word) — excluded from branded classification.
   negative_terms: []

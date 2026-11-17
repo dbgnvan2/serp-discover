@@ -22,7 +22,7 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 
 **content type** — What kind of page is ranking — a guide, a news item, a service page. It tells you what format to write in. If guides dominate, a service page will struggle however good it is.
 
-**CTR** — Click-through rate — of everyone who sees your listing, the percentage who click it. "Estimated CTR loss" is a modelled guess at the clicks the AI Overview is absorbing, not a measurement of your actual traffic.
+**CTR** — Click-through rate — of everyone who sees your listing, the percentage who click it. "Estimated CTR loss" is a modelled guess at the clicks the AI Overview is absorbing, not a measurement of your actual traffic. The three numbers behind that guess — the CTR-by-position curve, the 60% interception rate and the half credit for being cited — have no published source on file, so the report states them as the owner's working assumption. Record a study and a date in config.yml aio_exposure.sources and the report prints that instead.
 
 **DA coverage** — How much of the ranking page the average rests on, written as "7/10 (3 unscored)": seven of the ten ranking domains had a Domain Authority record and three did not. Read it before the gap. The same gap from three domains is a weaker claim than from ten, and nothing else on the row tells you which you are looking at. A dash means the coverage was not recorded for that run (an older report), which is not the same as nothing having been scored.
 

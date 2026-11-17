@@ -577,13 +577,27 @@ AIO or the client is unranked (no organic CTR to lose). Every constant — the
 organic `ctr_curve`, the `aio_ctr_multiplier` (default `0.60`, the industry
 "~60% AIO CTR interception" reference), and the `citation_credit` (default `0.5`)
 — lives in `config.yml aio_exposure` and is resolved with a documented-default
-fallback + warning (mirroring `aivi.weights`). These are **industry reference
-points, not measured livingsystems.ca CTR**, and the report labels every value
-"estimated". The table defaults to the highest-loss, **not-cited** keywords first
-(the priority queue). A run-level rollup (`aio_coverage_pct`, `cited_share`) is
-persisted to the `ai_aio_exposure` SQLite table under the run's timestamp and
-trended over `aio_exposure.history_runs`; results drift run-to-run, so the report
-shows the trend delta, not a single number.
+fallback + warning (mirroring `aivi.weights`). None of the three is measured
+client CTR, and none of them was ever given a source: "industry reference point"
+named no study and no date, and third-party CTR figures move year to year. Each
+therefore carries its provenance into the report caveat and the glossary —
+`aio_exposure.sources.{aio_ctr_multiplier,citation_credit,ctr_curve}` when the
+owner records a study and a date, and otherwise the statement that the figure is
+the owner's working assumption (review chunk D5, finding D-M-20). The report
+labels every value "estimated". The table defaults to the highest-loss,
+**not-cited** keywords first (the priority queue).
+
+A run-level rollup (`aio_coverage_pct`, `cited_share`) is persisted to the
+`ai_aio_exposure` SQLite table under the run's timestamp and trended over
+`aio_exposure.history_runs`. Every figure in that rollup is a share of the run's
+own keyword set, so the trend compares **only runs covering the same keywords**:
+each point carries `keyword_count`, `comparable` (same keyword set as the newest
+run) and `keyword_diff`, the Δ is taken between the two newest comparable points
+and names the keyword count it rests on, and every run left out is named with
+what differed. Adding one local keyword that shows an AI Overview used to raise
+"AIO coverage" with nothing about the market having changed (review chunk D5,
+finding D-M-20). Results drift run-to-run, so the report shows the trend delta,
+not a single number.
 
 *Spec: discover-spec.md#D1 (AV.1). Implemented 2026-07-24.*
 
@@ -620,9 +634,27 @@ proxy — labelled as such and paired with the play routing, not treated as a ve
 `generate_insight_report.py` renders a **5f. Demand vs Clicks** snapshot
 (`demand_dashboard.py`) that operationalizes *clicks ≠ demand*: D1's
 `aio_coverage_pct` (how much AI-Overview interception the SERP shows) alongside the
-client's own Search Console clicks/impressions, and an **estimated traffic at risk** =
-GSC impressions × the modeled AIO CTR interception (`est_ctr_loss`) for AIO keywords
-where the client is not cited (indicative). GSC clicks are read read-only from the
+client's own Search Console clicks/impressions, and an **estimated traffic at risk**
+for AIO keywords where the client is not cited (indicative). The estimate is
+`measured clicks × interception_share`, where
+`aio_exposure.interception_share` is the position-free form of the model (the
+`aio_ctr_multiplier`, reduced by the `citation_credit` where the client is
+cited). An AI Overview can only take clicks the property actually receives, so
+the figure is bounded by the measured clicks by construction. The earlier form,
+`impressions × est_ctr_loss`, reported a page with 1 000 impressions and 5
+clicks as having 168 clicks at risk (review chunk D5, finding D-M-17); capping
+that product at the measured clicks was no better, because GSC's `ctr` is
+exactly `clicks / impressions`, so every keyword whose measured CTR sat below
+the modelled CTR-point loss reported its whole click count as at risk (that
+chunk's cold review). An AIO keyword with impressions and **no** clicks has
+nothing to intercept and so adds nothing to the figure; those keywords are
+counted and named (`zero_click_at_risk`) rather than dropped, because they are
+the most exposed case, not an absence. The window the GSC figures cover is
+printed with them (`gsc_window`; a cache holding two windows is reported as the
+span, never as one of them), as is the population they are about: the dashboard
+reads only the `gsc_cache` rows pulled under the configured country/device
+(`gsc_filters.cache_filter_key`), so an unfiltered row and a filtered one are
+never summed into one click total. GSC clicks are read read-only from the
 `gsc_cache` table (via `db_path`, joined by lower-cased keyword) — never by importing
 the standalone `gsc_client`; when the table is absent or GSC is off, the section
 degrades to an honest "connect GSC" note. **Scope (decision D-D3):** snapshot only. The
@@ -733,7 +765,13 @@ serp-compete's Competitive AI Share-of-Voice feature (Tool 2, `compete-spec.md#C
 
 `run_gsc_analysis.py` is a standalone script (run_feasibility.py pattern; the main pipeline never imports it or `gsc_client.py` — G.4.4) that joins the client's first-party Search Console data onto the run's queries. `gsc_client.GscClient` authenticates headlessly with a service account (gate D-3: JSON key path from the optional `GSC_CREDENTIALS_PATH` env var; the service-account email must be granted on the Search Console property), pulls query-dimension Search Analytics rows through the shared `http_retry` wrapper (paginated 25 000-row pulls), and caches results for `gsc.cache_ttl_days` (default 7) in the SQLite `gsc_cache` table — DA-client cache pattern including batched IN(...) lookups (500 bound variables per chunk, C.7). Queries GSC has no row for are cached as measured absence (`found = 0`) and omitted from results — never reported as fabricated zeros. A fetch that did **not** complete (network failure, non-OK status, non-JSON body, or a failure part-way through pagination) caches nothing for the queries it could not resolve, so the next run asks again: `get_query_stats` returns a `GscStats` carrying `complete`, `measured_absent` and `not_reached`, every report row carries a `gsc_status` of `measured` / `measured_absent` / `not_reached` (words in `gsc_messages.yml`), and the report, the sidecar (`fetch_complete`, `queries_not_reached`), the brief payload and the branded-demand trend all distinguish "GSC answered nothing" from "the fetch failed". A partial fetch writes no branded-share trend point, because the share would be computed over a truncated denominator (review chunk D2b, finding D-C-02).
 
-The query set is the run's root keywords plus their A.1/A.2 informational variants, the "S"-label situational probes, and the top PAA phrasings, each carrying `has_ai_overview` joined from the analysis JSON (PAA phrasings: unknown, never guessed). Two deterministic computations follow: the **sponge comparison** — median CTR at comparable position (bands 1–3 / 4–10 / 11–20) for AIO-present vs AIO-absent queries, reported per band only when both buckets hold ≥3 queries, otherwise stated as insufficient data — and **reformat_candidates** — queries ranking in the top 10 whose CTR sits below the no-AIO median for their band, cross-referenced against `strategic_flags.geo_alerts` so pages the AI Overview already ignores (T.4) sort first. Outputs: `gsc_analysis_<topic>_<ts>.md` plus a JSON sidecar (both gitignored). When `config.yml gsc.feed_strategic_flags` is true, `brief_data_extraction._build_gsc_summary` attaches the latest sidecar to the LLM payload as `gsc_summary` — with the HARD prompt rule that GSC numbers are the client's private data, quotable only in client-position contexts, never as market-level claims.
+The pull is restricted to one country and one device, so the clicks are measured over the same population as the SERP the rest of the analysis describes. `gsc.country` / `gsc.device` set them and default to `serpapi.gl` / `serpapi.device`; either may be set to `all` to pull everything on purpose, and the report then prints a "Mixed populations" warning stating that a CTR here and a rank there are not comparable. The filters travel into the Search Analytics request as `dimensionFilterGroups` and into the `gsc_cache` primary key (`filters` column, part of the key so the two variants coexist rather than evicting each other), so rows pulled for Canadian desktop are never served to an unfiltered pull (review chunk D5, finding D-M-20). A cache written before this is migrated in place, its rows recorded as unfiltered. Only country codes the build knows are sent: an unrecognised code is reported and the filter left off, because GSC accepts an unknown filter, returns no rows, and the empty answer would then be cached as measured absence for every query (the D-C-02 failure through the filter path). The resolution itself lives in `gsc_filters.py`, imported by both `gsc_client` and the read-side `demand_dashboard`, which must not import the client (pipeline isolation, G.4.4).
+
+Because the pull is restricted, **an absence is an absence for those searchers**: a query whose traffic is all mobile has no row in a desktop pull, and that is not a finding about the client. The per-query cell, the coverage count and the completion log line all name the population (`gsc_messages.yml` `measured_absent.population_suffix` and the `{population}` placeholder in `coverage_measured_absent` / `fetch_complete`). Every report prints the filters beside the window, and the sidecar records them as `query_filters`.
+
+The query set is the run's root keywords plus their A.1/A.2 informational variants, the "S"-label situational probes, and the top PAA phrasings, each carrying `has_ai_overview` joined from the analysis JSON (PAA phrasings: unknown, never guessed). Two deterministic computations follow: the **sponge comparison** — median CTR at comparable position (bands 1–3 / 4–10 / 11–20) for AIO-present vs AIO-absent queries, reported per band only when both buckets hold ≥3 queries, otherwise stated as insufficient data — and **reformat_candidates** — queries ranking in the top 10 where an AI Overview is present and whose CTR sits a stated margin below the no-AIO median for their band, cross-referenced against `strategic_flags.geo_alerts` so pages the AI Overview already ignores (T.4) sort first.
+
+Both computations ignore queries with too little traffic to read a CTR from: a query needs at least `gsc.min_impressions` impressions (default 50) to enter a median or a shortlist, and the sponge rollup reports `queries_below_impression_floor` so what was dropped is visible (P2). One click on three impressions is a 33% CTR and says nothing. The shortlist additionally requires that an AI Overview is actually present on the query's SERP (`has_ai_overview is True`; an unknown state is not a present one) and that the CTR is at least `gsc.reformat_ctr_margin` (default 0.25 = 25%) below the no-AIO median: below the median on its own shortlists half of any set, whatever is or is not happening on the SERP. The report prints both figures. The sponge comparison itself is reported as an **association between two groups of queries, not a measured effect** — the AIO-present and AIO-absent buckets differ in more than the overview, and nothing here is a before-and-after on the same query (review chunk D5, finding D-M-15). Outputs: `gsc_analysis_<topic>_<ts>.md` plus a JSON sidecar (both gitignored). When `config.yml gsc.feed_strategic_flags` is true, `brief_data_extraction._build_gsc_summary` attaches the latest sidecar to the LLM payload as `gsc_summary` — with the HARD prompt rule that GSC numbers are the client's private data, quotable only in client-position contexts, never as market-level claims.
 
 *Spec: seo_geo_deferred_spec_v1.md#G.4. Implemented 2026-07-04.*
 
@@ -747,9 +785,32 @@ fall to AI answers. Classification reuses `analysis_report.client_name_patterns`
 optional `gsc_demand.negative_terms` override), recomputed every run so a pattern
 edit reclassifies (never gated by the 7-day GSC cache). `branded_click_share =
 branded_clicks / total_clicks` over the run's **tracked** queries (labelled as
-such, not the full property), banded against `config.yml gsc_demand.bands`
-(industry reference points below-avg < 2.4% / top ≥ 10%, labelled reference, not a
-target). Because the current GSC client fetches per-query only (no `date`
+such), banded against `config.yml gsc_demand.bands`.
+
+The headline share and the band are computed over the **whole property** when the
+run pulled it: `GscStats.property_rows` carries every query row the Search
+Analytics pull returned, and it is only populated when a pull happened and
+covered the property (a cache-only answer or a truncated pull leaves it `None`).
+The share over the run's tracked queries is reported beside it, labelled, and
+`band_basis` records which of the two the band came from — persisted on the score
+row and read by the trend, so a Δ is never taken between a property share and a
+tracked share. A tracked-query share is a share of whatever keywords the run
+happened to look at: adding one branded keyword to the CSV raises it with nothing
+about the client's demand having changed (review chunk D5, finding D-M-16). Where
+no property-wide figure is available the report says so rather than letting the
+tracked figure stand in for it. The two figures are gated separately
+(`property_available` / `data_available`, either making the section
+`reportable`): a keyword file that matches no clicking query is the case the
+property figure exists for, and gating it on the tracked set discarded a
+complete real measurement. "Whole property" means every query the property
+received clicks on **for the pulled country and device**, and the report says
+so, together with the fact that Search Console withholds rare queries to
+protect searchers' privacy — those are mostly long-tail and generic, so the
+share leans branded by an amount nobody can measure. `property_query_count`
+counts the clicking queries, which is what the share is over. The bands themselves carry their origin:
+`gsc_demand.bands.source` names a study and a date when the owner has one, and
+until then the report states that the two figures are the owner's working
+assumption — no published source was ever recorded for them. Because the current GSC client fetches per-query only (no `date`
 dimension), the series is keyed by **run** (`run_ts`, parsed from the source
 filename) and trends across successive runs (decision D-D2a; true per-day grain +
 provisional-day flagging are deferred to a future dated fetch). Persisted to

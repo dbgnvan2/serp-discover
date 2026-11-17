@@ -56,8 +56,11 @@ def test_connected_traffic_at_risk(tmp_path):
     dash = compute_dashboard(_profiles(), CFG, db_path=db)
     assert dash["gsc_connected"] is True
     assert dash["total_clicks"] == 150 and dash["total_impressions"] == 1500
-    # anxiety therapy: AIO, not cited, est_ctr_loss 0.168 → 1000 × 0.168 = 168 at risk
-    assert dash["est_traffic_at_risk"] == 168.0
+    # anxiety therapy: AIO, not cited. The estimate is the modelled
+    # interception share (0.60) applied to the 100 clicks GSC measured, not a
+    # CTR-point loss applied to impressions (which gave 168 on a query with
+    # 100 clicks) — D5.3 / finding D-M-17.
+    assert dash["est_traffic_at_risk"] == 60.0
     assert dash["keywords_at_risk"][0]["keyword"] == "anxiety therapy"
     body = "\n".join(render_dashboard_section(dash))
     assert "traffic at risk" in body.lower()

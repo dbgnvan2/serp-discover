@@ -639,15 +639,25 @@ inside the Overview; on keyword B it is not. B shows the **higher** estimated lo
 and sorts to the top of the queue — that is the one bleeding clicks with nothing to
 show for it.
 
-**It is an estimate, not a measurement.** `Est. CTR loss` combines a reference
-organic-CTR-by-position curve with an industry AI-Overview interception rate
-(~60%), reduced by `citation_credit` when you are cited. Those reference numbers
-live in `config.yml → aio_exposure` (`aio_ctr_multiplier`, `citation_credit`,
-`ctr_curve`) and are yours to tune — they are **industry reference points, not
-measured livingsystems.ca data**, which is why the report labels every figure
-"estimated". For *first-party* click loss, see the GSC sponge-effect analysis.
+**It is an estimate, not a measurement.** `Est. CTR loss` combines an
+organic-CTR-by-position curve with an AI-Overview interception rate (~60%),
+reduced by `citation_credit` when you are cited. Those numbers live in
+`config.yml → aio_exposure` (`aio_ctr_multiplier`, `citation_credit`,
+`ctr_curve`) and are yours to tune. **None of the three has a source on file.**
+They were described as "industry reference points", but no study and no date was
+ever recorded for them, and third-party CTR figures move year to year — so the
+report now says, in the caveat under the table, that they are your working
+assumption. When you find a figure you trust, write the citation into
+`config.yml → aio_exposure.sources` (for example "Acme CTR study, published
+2026-02, retrieved 2026-03-01") and the report prints that instead. For
+*first-party* click loss, see the GSC sponge-effect analysis.
+
 Because AIOs change constantly, the section trends coverage and cited-share across
-runs — read the movement, not one number.
+runs — read the movement, not one number. The trend compares **only runs that
+covered the same keywords.** Coverage and cited-share are shares of the keywords a
+run looked at, so adding one local keyword that happens to show an AI Overview
+would raise "AIO coverage" with nothing about the market having changed. Runs with
+a different keyword set are named and left out of the comparison instead.
 
 ### Query Commodity / AI-Absorption Risk
 
@@ -679,14 +689,30 @@ tracks the branded share of clicks over time.
 **Why it matters.** Clicks can fall while *demand* holds. Non-branded clicks are the
 first to be absorbed by AI answers; branded demand — people who already know and want
 you — is stickier and predicts survival. A rising branded share as generic clicks fall
-is a sign the brand is compounding, not eroding. The report bands the share against an
-industry reference (below-average < 2.4%, top ≥ 10%) — a reference point, not a target
-for this client.
+is a sign the brand is compounding, not eroding. The report bands the share against two
+reference figures (below-average < 2.4%, top ≥ 10%) — reference points, not targets
+for this client. **Neither figure has a source on file**, so the report says they are
+your working assumption; write a citation into `config.yml → gsc_demand.bands.source`
+and it prints that instead.
 
-**Reading it honestly.** The share is over the queries the tool tracked (not the whole
-site), the bands are industry reference not goals, and GSC's 2–3 day reporting lag means
-the most recent run is provisional. Because Search Console returns per-query totals (not
-per-day), the trend builds up run over run.
+**Which share is the headline.** Two shares are reported, because they answer
+different questions:
+
+- **Over the whole property** — every query your site got clicks on in the window.
+  This is the figure about your demand, and it is the one the band is taken from.
+- **Over this run's tracked queries only** — the keywords in the CSV this run used.
+  This one moves with the keyword file: add a branded keyword and it rises with
+  nothing about your demand having changed. It is shown for context, labelled, and
+  never compared against the property figure.
+
+The property figure needs a live pull: when the run was served from the 7-day cache,
+or the pull did not finish, the report says there is no property-wide figure this run
+rather than letting the tracked figure stand in for it.
+
+**Reading it honestly.** GSC's 2–3 day reporting lag means the most recent run is
+provisional. Because Search Console returns per-query totals (not per-day), the trend
+builds up run over run, and a run measuring one share is never differenced against a
+run measuring the other.
 
 ### Demand vs Clicks
 
@@ -698,6 +724,21 @@ clicks, and estimates how much of your traffic those AI answers are likely inter
 for your own site: you see the share of your keywords with an AI Overview, whether you're
 cited in it, and a rough estimate of the clicks at risk on the keywords where you're not.
 That turns an abstract worry into a shortlist.
+
+**The "at risk" figure cannot exceed the clicks you have.** An AI Overview can only
+take clicks your site actually receives, so the estimate is a *share* of your measured
+clicks for that keyword — the modelled interception rate (60% by default, halved where
+you are cited) applied to the clicks Search Console counted. It cannot come out above
+them. The earlier version multiplied the rate by your *impressions* instead, and
+reported a page with 1 000 impressions and 5 clicks as having 168 clicks at risk;
+capping that at the measured clicks was no better, because it then reported all 5 of
+them. A keyword with an AI Overview and no clicks at all has nothing left to intercept,
+so it adds nothing to the total — but those keywords are listed by name under the
+figure, because having no clicks under an AI answer is the worst case, not a blank.
+The window the Search Console figures cover is printed with them, and so is the
+country and device the figures are for: the dashboard reads only the Search Console
+rows pulled for the population you configured, so a Canadian-desktop pull and an
+unfiltered one are never added together.
 
 **What it does and doesn't show.** It's a **snapshot** — the point-in-time position, not
 a trend. The full "demand holding while clicks fall" trend line is deliberately not built:
@@ -1781,6 +1822,13 @@ impressions, click-through rate (CTR), average position, and whether
 Google showed an AI Overview for it in this run. It writes a markdown
 report plus a JSON sidecar the content brief can optionally consume.
 
+**One country, one device.** The pull is restricted to the same country and
+device the SERP fetch used (`config.yml → gsc.country` / `gsc.device`,
+defaulting to `serpapi.gl` / `serpapi.device`), so a CTR here and a rank there
+describe the same searchers. The filters are printed beside the window at the top
+of the report. Set either to `all` to pull everything, and the report warns that
+the two sides are no longer comparable.
+
 **Why it matters — the "sponge" effect:** the SERP tool sees rank but
 never clicks. A page can hold position #3 and still starve, because an AI
 Overview above it answers the question and soaks up the click. That loss
@@ -1789,14 +1837,25 @@ is invisible in ranking reports; it only shows in the client's own CTR.
 **How to read the sponge table:** the table compares the *median CTR at
 comparable position* — e.g. among queries where the client ranks 1–3,
 what's the typical CTR when an AI Overview is present vs when it isn't?
-- A **lower AIO median at the same position band** is the sponge effect
-  measured on the client's own traffic: rankings intact, clicks absorbed.
+- A **lower AIO median at the same position band** is an **association,
+  not a measured effect**: the two buckets are different queries, differing
+  in more than whether an AI Overview appeared, and nothing here is a
+  before-and-after on the same query. Read it as a signal worth following,
+  not as proof the overview took the clicks. The report says so above the
+  table.
 - Each band is only compared when **both** buckets hold at least 3
   queries; otherwise the row says "insufficient data" — the tool never
   extrapolates from one or two queries.
+- A query needs at least **50 impressions** in the window to count at all
+  (`config.yml → gsc.min_impressions`). One click on three impressions is a
+  33% CTR and means nothing. The report says how many queries fell below
+  the floor, so you can see what was left out.
 - The **reformat candidates** list below it names the queries that rank
-  well (top 10) but earn a CTR below the no-AIO median for their band —
-  the pages losing clicks despite good positions. Rows flagged ⚑ also
+  well (top 10), **have an AI Overview on the SERP**, and earn a CTR at
+  least **25% below** the no-AIO median for their band
+  (`config.yml → gsc.reformat_ctr_margin`). Both conditions matter: half of
+  any set is below its own median, and a page with no AI Overview above it
+  is losing clicks to something else. Rows flagged ⚑ also
   carry a GEO alert (the client ranks but the AI Overview cites other
   sources): reformat those pages for answer extraction FIRST, because
   fixing them can win back both the citation and the click.

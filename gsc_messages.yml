@@ -25,8 +25,14 @@ statuses:
     coverage: "GSC returned data"
   measured_absent:
     label: "no impressions"
+    # D5.7 (cold review 1): the pull is restricted to one country and one
+    # device, so "no impressions" is no impressions FOR THOSE SEARCHERS. A
+    # query whose traffic is all mobile is absent from a desktop pull and that
+    # is not a statement about the client's traffic. `population_suffix` is
+    # appended wherever the restriction is in force.
     cell: "no impressions in window"
     coverage: "GSC holds no row in the window"
+    population_suffix: " for {population}"
   not_reached:
     label: "not reached"
     cell: "not reached"
@@ -38,13 +44,15 @@ statuses:
 lines:
   coverage_measured_absent: >-
     Queries GSC holds no data for: {count} (no impressions recorded in the
-    window — reported as absent, not as zero)
+    window for {population} — reported as absent, not as zero; a query whose
+    traffic is on another device or in another country is absent from this
+    pull, which is not a finding about the client)
   coverage_not_reached: >-
     Queries the fetch could not reach: {count} (the GSC request failed or was
     truncated — these are NOT recorded as having no impressions; re-run)
   fetch_complete: >-
     GSC answered for all {asked} query/queries: {measured} with data,
-    {measured_absent} with no impressions in the window.
+    {measured_absent} with no impressions in the window for {population}.
   fetch_incomplete: >-
     GSC fetch INCOMPLETE — {measured} of {asked} query/queries returned data,
     {not_reached} were never reached. The unreached queries are not recorded

@@ -221,6 +221,21 @@ Editorial content currently lives in:
   keyword-metrics query context. Editorial: `locale` decides which market's
   demand figures the brief quotes (`en-CA` for this client) and changes which
   keywords have any record at all (added moz_api_upgrade_spec_v1.md T.2)
+- `config.yml` `gsc.min_impressions` / `gsc.reformat_ctr_margin` — how much
+  traffic a query needs before its CTR counts, and how far below the no-AIO
+  median a query must sit to be shortlisted for reformatting. Editorial: both
+  are judgements about this client's traffic, and "below the median" on its own
+  shortlists half of any set (added review chunk D5)
+- `config.yml` `gsc.country` / `gsc.device` — the country and device the GSC
+  pull is restricted to, so the clicks are measured over the same population as
+  the SERP fetch. Absent → mirrors `serpapi.gl` / `serpapi.device`; `all` turns
+  the filter off and the report says the two sides are not comparable (added
+  review chunk D5)
+- `config.yml` `gsc_demand.bands.source` and `aio_exposure.sources.*` — where
+  the branded-share bands and the three modelled AI-Overview constants come
+  from. Editorial: a study and a date. Empty means the report states them as the
+  owner's working assumption, which is what they are until someone records one
+  (added review chunk D5)
 - `config.yml` `moz.site_metrics.link_count_fields` — which of Moz's link-count
   fields are kept on each site-metrics result and cached (added
   moz_api_upgrade_spec_v1.md T.1). `moz.site_metrics.scope` sets the query

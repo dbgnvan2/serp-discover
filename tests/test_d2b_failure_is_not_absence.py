@@ -260,7 +260,9 @@ class TestReportNamesTheFailure(unittest.TestCase):
                    "found": status == gsc_client.STATUS_MEASURED,
                    "gsc_status": status}
             if row["found"]:
-                row.update(clicks=1, impressions=10, ctr=0.1, position=3.0)
+                # Impressions above gsc.min_impressions (D5.1): below the floor
+                # a row is excluded from the sponge rollup, not "usable".
+                row.update(clicks=1, impressions=500, ctr=0.1, position=3.0)
             out.append(row)
         return out
 

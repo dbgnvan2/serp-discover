@@ -227,7 +227,13 @@ def test_av1_9_dirty_state_trend(tmp_path):
 
     trend = get_aio_exposure_trend(db, limit=5)
     assert [t["run_ts"] for t in trend] == ["20260101_0000", "20260102_0000"]  # oldest→newest
-    assert "Δ prior run" in "\n".join(lines)              # delta rendered with ≥2 runs
+    # The two runs cover different keywords ("old" vs "new"), and these figures
+    # are shares of each run's own keyword set, so no Δ is rendered and the run
+    # left out is named (D5.5 / finding D-M-20).
+    body = "\n".join(lines)
+    assert "No Δ this run" in body
+    assert "20260101_0000 is excluded from the comparison" in body
+    assert trend[0]["comparable"] is False and trend[1]["comparable"] is True
 
 
 # --- AV.1.10 — reproducibility ------------------------------------------------

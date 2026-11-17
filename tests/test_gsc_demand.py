@@ -78,7 +78,9 @@ def test_no_clicks_is_not_a_verdict():
 def test_av2_render_insufficient_when_no_clicks():
     _, score = compute_demand([_row("living systems", clicks=0, impressions=40)], PATTERNS_CFG)
     body = "\n".join(render_demand_section(score))
-    assert "Insufficient GSC data" in body
+    # Reworded in review chunk D5: the tracked set having no clicks is not the
+    # same sentence as the property having none, so the line says which.
+    assert "No branded share this run" in body
     assert "below average" not in body.lower()     # no confident negative on no data
 
 

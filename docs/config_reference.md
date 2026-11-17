@@ -260,6 +260,16 @@ degrades to the built-in wording and never aborts a report.
 | `lines` (sentiment) | the three sentiment states, added by the D3b cold review: `sentiment_budget_exhausted` (the call budget ran out before any answer naming this brand was classified — a re-run with a larger `max_total_calls`, not an absence of mentions), `sentiment_all_failed`, `sentiment_not_portrayed`, and `sentiment_skipped_note`, the clause appended to a coverage phrase when some answers were never classified |
 | `lines` (foundational) | `foundational_structure_no_client_page` and `foundational_structure_no_recs` — the two reasons the structure sub-score reads `n/a`, printed beneath the sub-score table via `foundational_subscore_reason`; and `foundational_delta_definition_changed`, printed instead of a Δ when the prior run's structure value was computed under an earlier `foundational_score.DEFINITION_VERSION` |
 
+### `gsc` / `gsc_demand` / `aio_exposure` — the demand and exposure figures (review chunk D5)
+
+| Key | What it sets |
+|-----|--------------|
+| `gsc.min_impressions` | the impressions a query needs before its CTR enters the sponge medians or the reformat shortlist (default 50). One click on three impressions is a 33% CTR and says nothing; the sponge rollup reports `queries_below_impression_floor` so the drop is visible. Editorial: a judgement about how much traffic this client's pages get (D-M-15) |
+| `gsc.reformat_ctr_margin` | how far below the no-AIO median CTR a query must sit to be shortlisted (default 0.25 = 25% below). Below the median on its own shortlists half of any set. Editorial: a tighter margin shortlists more pages (D-M-15) |
+| `gsc.country` / `gsc.device` | which country and device the GSC pull is restricted to, so the clicks are measured over the same population as the SERP fetch. Absent → mirrors `serpapi.gl` / `serpapi.device`; `all` turns the filter off on purpose and the report prints a "Mixed populations" warning. `country` takes a 2- or 3-letter ISO-3166-1 code (`ca` → `can`), `device` one of desktop / mobile / tablet. An unmappable value is reported and the filter is left off, never guessed. Part of the `gsc_cache` key, so rows pulled under one filter are never served under another (D-M-20) |
+| `gsc_demand.bands.source` | where the branded-share bands come from: a study and a date. Empty → the report states the two figures are the owner's working assumption, because no published source was ever recorded for them. Editorial (D-M-16) |
+| `aio_exposure.sources.aio_ctr_multiplier` / `.citation_credit` / `.ctr_curve` | the same for the three modelled AI-Overview constants. "Industry reference point" named no study and no date, and third-party CTR figures move year to year, so each empty value prints as the owner's working assumption in the report caveat and the glossary. Editorial (D-M-20) |
+
 ---
 
 ## Configuration Manager GUI

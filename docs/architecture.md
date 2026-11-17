@@ -41,6 +41,7 @@ market_analysis_*.json
 | `run_feasibility.py` | Standalone DA feasibility analysis and pivot report |
 | `probe_ai_visibility.py` | Standalone AI-engine mention probing (Claude + Gemini, gate D-2) — per-engine mention/citation trend in SQLite, cost-guarded; never imported by the pipeline (seo_geo_deferred G.1) |
 | `run_gsc_analysis.py` | Standalone Google Search Console sponge-effect analysis — joins first-party CTR data onto the run's queries; writes `gsc_analysis_*.{md,json}` (seo_geo_deferred G.4) |
+| `gsc_filters.py` | Resolves the Search Console query filters (country, device) from `config.yml` and builds the `gsc_cache` filter key. Config reading only — no network, no heavy imports — so both `gsc_client` and the read-side `demand_dashboard` can import it without the read side pulling in the client (pipeline isolation, G.4.4) |
 | `gsc_client.py` | GSC Search Analytics client — service-account auth (gate D-3), http_retry semantics, 7-day SQLite `gsc_cache`; returns a `GscStats` carrying what the fetch did and did not reach, and caches an absence only when the fetch completed (D2b); status wording in `gsc_messages.yml`; only imported by `run_gsc_analysis.py`, never by the pipeline |
 | `classifiers.py` | Rule-based content & entity type classifiers |
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |

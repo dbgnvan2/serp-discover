@@ -303,7 +303,11 @@ terms:
     definition: >-
       Click-through rate — of everyone who sees your listing, the percentage who click
       it. "Estimated CTR loss" is a modelled guess at the clicks the AI Overview is
-      absorbing, not a measurement of your actual traffic.
+      absorbing, not a measurement of your actual traffic. The three numbers behind
+      that guess — the CTR-by-position curve, the 60% interception rate and the half
+      credit for being cited — have no published source on file, so the report states
+      them as the owner's working assumption. Record a study and a date in
+      config.yml aio_exposure.sources and the report prints that instead.
 
   - term: Domain Authority
     aliases: ["Domain Authority", "DA"]

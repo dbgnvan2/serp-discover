@@ -57,6 +57,65 @@ DEFAULT_CTR_CURVE = {
     6: 0.040, 7: 0.030, 8: 0.025, 9: 0.020, 10: 0.015,
 }
 
+#: Where each modelled constant comes from. "Industry reference point" named no
+#: study and no date, so the figures read in the report as established fact when
+#: nothing in the repo establishes them: no source was recorded for any of the
+#: three, and third-party CTR figures move year to year. Until config names a
+#: source and a date under ``aio_exposure.sources``, the report says they are
+#: the owner's assumption (D5.6 / finding D-M-20).
+DEFAULT_PROVENANCE = {
+    "aio_ctr_multiplier": "the owner's working assumption — no published source "
+                          "or date is recorded for this figure",
+    "citation_credit": "the owner's working assumption — no published source or "
+                       "date is recorded for this figure",
+    "ctr_curve": "the owner's working assumption — no published source or date "
+                 "is recorded for this curve",
+}
+PROVENANCE_LABELS = {
+    "aio_ctr_multiplier": "AI-Overview interception multiplier",
+    "citation_credit": "citation credit",
+    "ctr_curve": "organic CTR curve",
+}
+
+
+def resolve_provenance(cfg: dict | None) -> dict:
+    """The provenance sentence for each modelled constant.
+
+    ``aio_exposure.sources.<name>`` when set (the owner naming a study and a
+    date); otherwise the statement that the figure is an assumption. A number
+    with no stated origin is not a reference point (D5.6).
+    """
+    raw = (cfg or {}).get("aio_exposure")
+    raw = raw.get("sources") if isinstance(raw, dict) else None
+    if raw is not None and not isinstance(raw, dict):
+        logger.warning("aio_exposure.sources is not a mapping — the constants are "
+                       "reported as the owner's assumption.")
+        raw = None
+    raw = raw or {}
+    out = {}
+    for name, default in DEFAULT_PROVENANCE.items():
+        stated = str(raw.get(name) or "").strip()
+        out[name] = stated or default
+    return out
+
+
+def estimate_caveat(cfg: dict | None = None) -> str:
+    """The "*Estimates only.*" paragraph, with each constant's provenance."""
+    sources = resolve_provenance(cfg)
+    lines = "; ".join(f"{PROVENANCE_LABELS[name]} — {sources[name]}"
+                      for name in ("ctr_curve", "aio_ctr_multiplier",
+                                   "citation_credit"))
+    return (
+        "*Estimates only.* `Est. CTR loss` is a modeled figure = a configurable "
+        "organic CTR curve (`aio_exposure.ctr_curve`) × an AI-Overview "
+        "interception multiplier (`aio_exposure.aio_ctr_multiplier`, default "
+        "0.60). It is **not** measured client CTR. A client citation inside the "
+        "AIO reduces the estimate by `aio_exposure.citation_credit` (default "
+        "0.5). Where these numbers come from: " + lines + ". Set "
+        "`aio_exposure.sources` in `config.yml` to record a study and a date. "
+        "Results drift run-to-run — read the trend, not one number."
+    )
+
 _RUN_TS_RE = re.compile(r"(\d{8}_\d{4})")
 
 
@@ -191,6 +250,26 @@ def est_ctr_loss(position, aio_present: bool, client_cited: bool, cfg: dict) -> 
     return round(loss, 4)
 
 
+def interception_share(aio_present: bool, client_cited: bool, cfg: dict) -> float:
+    """The modelled fraction of the clicks a query **does** receive that the AIO
+    takes: the interception multiplier, reduced by the citation credit when the
+    client is cited. ``0.0`` with no AIO.
+
+    This is the position-free form of :func:`est_ctr_loss` (which is a loss in
+    CTR points against the curve's baseline for a position). Applied to measured
+    clicks it is bounded by them by construction, which is what the
+    demand-vs-clicks snapshot needs: comparing a CTR-point loss against a
+    measured CTR made every low-CTR keyword report its whole click count as at
+    risk (review chunk D5 cold review, finding 3).
+    """
+    if not aio_present:
+        return 0.0
+    share = float(cfg["aio_ctr_multiplier"])
+    if client_cited:
+        share *= (1.0 - float(cfg["citation_credit"]))
+    return round(min(max(share, 0.0), 1.0), 4)
+
+
 def compute_aio_exposure(keyword_profiles: dict, cfg: dict | None = None):
     """Per-keyword AIO exposure rows + a run-level rollup.
 
@@ -312,33 +391,63 @@ def get_aio_exposure_for_run(db_path: str, run_ts: str) -> list[dict]:
 
 
 def get_aio_exposure_trend(db_path: str, limit: int = DEFAULT_HISTORY_RUNS) -> list[dict]:
-    """Per-run rollup (coverage %, cited share, mean loss), oldest→newest."""
+    """Per-run rollup (coverage %, cited share, mean loss), oldest→newest.
+
+    Every figure here is a share of the run's own keyword set, so two runs
+    covering different keywords are not comparable: adding one local keyword
+    that shows an AI Overview raises "AIO coverage" with nothing about the
+    market having changed. Each point therefore carries ``keyword_count``,
+    ``comparable`` (same keyword set as the newest run) and ``keyword_diff``
+    naming what differs, and the renderer takes its Δ only between comparable
+    runs and says which it left out (D5.5 / finding D-M-20).
+    """
     init_aio_exposure_table(db_path)
     with sqlite3.connect(db_path) as conn:
-        rows = conn.execute(
-            f"""SELECT run_ts,
-                       COUNT(*)          AS total,
-                       SUM(aio_present)  AS aio_present,
-                       SUM(client_cited) AS client_cited,
-                       AVG(est_ctr_loss) AS mean_loss
+        run_ids = [r[0] for r in conn.execute(
+            f"""SELECT run_ts FROM {AIO_EXPOSURE_TABLE}
+                GROUP BY run_ts ORDER BY run_ts DESC LIMIT ?""", (limit,))]
+        if not run_ids:
+            return []
+        placeholders = ",".join("?" for _ in run_ids)
+        raw = conn.execute(
+            f"""SELECT run_ts, keyword, aio_present, client_cited, est_ctr_loss
                 FROM {AIO_EXPOSURE_TABLE}
-                GROUP BY run_ts
-                ORDER BY run_ts DESC LIMIT ?""",
-            (limit,),
-        ).fetchall()
+                WHERE run_ts IN ({placeholders})""", run_ids).fetchall()
+
+    per_run: dict[str, dict] = {}
+    for run_ts, keyword, aio_present, client_cited, loss in raw:
+        bucket = per_run.setdefault(
+            run_ts, {"keywords": set(), "aio_present": 0, "client_cited": 0,
+                     "loss_sum": 0.0, "loss_n": 0})
+        bucket["keywords"].add((keyword or "").strip().lower())
+        bucket["aio_present"] += int(aio_present or 0)
+        bucket["client_cited"] += int(client_cited or 0)
+        if loss is not None:
+            bucket["loss_sum"] += float(loss)
+            bucket["loss_n"] += 1
+
+    ordered = sorted(per_run)                     # oldest → newest by run stamp
+    reference = per_run[ordered[-1]]["keywords"]
     trend = []
-    for run_ts, total, aio_present, client_cited, mean_loss in rows:
-        total = total or 0
-        aio_present = aio_present or 0
-        client_cited = client_cited or 0
+    for run_ts in ordered:
+        bucket = per_run[run_ts]
+        total = len(bucket["keywords"])
+        aio_present = bucket["aio_present"]
+        keywords = bucket["keywords"]
         trend.append({
             "run_ts": run_ts,
             "aio_coverage_pct": round(100.0 * aio_present / total, 1) if total else 0.0,
-            "cited_share": (round(100.0 * client_cited / aio_present, 1)
+            "cited_share": (round(100.0 * bucket["client_cited"] / aio_present, 1)
                             if aio_present else 0.0),
-            "mean_est_ctr_loss": round(mean_loss or 0.0, 4),
+            "mean_est_ctr_loss": (round(bucket["loss_sum"] / bucket["loss_n"], 4)
+                                  if bucket["loss_n"] else 0.0),
+            "keyword_count": total,
+            "comparable": keywords == reference,
+            "keyword_diff": {
+                "only_in_this_run": sorted(keywords - reference),
+                "only_in_latest_run": sorted(reference - keywords),
+            },
         })
-    trend.reverse()
     return trend
 
 
@@ -361,18 +470,58 @@ def run_ts_from_filename(path: str | None) -> str | None:
 # Report section
 # ---------------------------------------------------------------------------
 
-_ESTIMATE_CAVEAT = (
-    "*Estimates only.* `Est. CTR loss` is a modeled figure = a configurable "
-    "organic CTR curve × an industry AI-Overview interception multiplier "
-    "(`aio_exposure.aio_ctr_multiplier`, default 0.60 — an industry reference "
-    "point, **not** measured livingsystems.ca CTR). A client citation inside the "
-    "AIO reduces the estimate by `aio_exposure.citation_credit`. Results drift "
-    "run-to-run — read the trend, not one number."
-)
+
+
+#: How many of a differing run's keywords the exclusion line names before it
+#: counts the rest. A run two keyword files apart differs by dozens, and the
+#: line is there to identify the run, not to reprint the CSV.
+EXCLUSION_NAMES_SHOWN = 5
+
+
+def _name_some(keywords: list[str]) -> str:
+    """Name the first few keywords and count the rest."""
+    shown = list(keywords)[:EXCLUSION_NAMES_SHOWN]
+    rest = len(keywords) - len(shown)
+    text = ", ".join(shown)
+    return f"{text} and {rest} more" if rest > 0 else text
+
+
+def _trend_lines(trend: list[dict]) -> list[str]:
+    """The Δ line, taken only across runs covering the same keyword set, plus a
+    line naming the runs that were left out and why (D5.5)."""
+    out: list[str] = []
+    comparable = [p for p in trend if p.get("comparable", True)]
+    excluded = [p for p in trend if not p.get("comparable", True)]
+    if len(comparable) >= 2:
+        prev, curr = comparable[-2], comparable[-1]
+        d_cov = curr["aio_coverage_pct"] - prev["aio_coverage_pct"]
+        d_cited = curr["cited_share"] - prev["cited_share"]
+        out.append(
+            f"*Δ vs run {prev['run_ts']} (same {prev.get('keyword_count', 0)} "
+            f"keywords): coverage {d_cov:+.1f} pts, cited-share "
+            f"{d_cited:+.1f} pts.*")
+    else:
+        out.append(
+            "*No Δ this run: every earlier run in the history covered a "
+            "different keyword set, and these figures are shares of their own "
+            "keyword set, so a difference between them would not be a change "
+            "in the market.*")
+    for point in excluded:
+        diff = point.get("keyword_diff") or {}
+        parts = []
+        if diff.get("only_in_this_run"):
+            parts.append("had " + _name_some(diff["only_in_this_run"]))
+        if diff.get("only_in_latest_run"):
+            parts.append("did not have " + _name_some(diff["only_in_latest_run"]))
+        out.append(
+            f"*Run {point['run_ts']} is excluded from the comparison: it "
+            f"{' and '.join(parts) or 'covered a different keyword set'}.*")
+    return out
 
 
 def render_aio_exposure_section(rows: list[dict], rollup: dict,
-                                trend: list[dict] | None = None) -> list[str]:
+                                trend: list[dict] | None = None,
+                                cfg: dict | None = None) -> list[str]:
     """Render ``## 5d. AI Overview Exposure`` — sorted with the highest-loss,
     not-cited keywords first (the priority queue)."""
     out: list[str] = []
@@ -397,12 +546,7 @@ def render_aio_exposure_section(rows: list[dict], rollup: dict,
         "keywords cite the client."
     )
     if trend and len(trend) >= 2:
-        prev, curr = trend[-2], trend[-1]
-        d_cov = curr["aio_coverage_pct"] - prev["aio_coverage_pct"]
-        d_cited = curr["cited_share"] - prev["cited_share"]
-        out.append(
-            f"*Δ prior run: coverage {d_cov:+.1f} pts, cited-share {d_cited:+.1f} pts.*"
-        )
+        out.extend(_trend_lines(trend))
     out.append("")
     out.append("| Keyword | Organic position | AIO present | Client cited? | Est. CTR loss |")
     out.append("|---------|------------------|-------------|---------------|---------------|")
@@ -423,7 +567,7 @@ def render_aio_exposure_section(rows: list[dict], rollup: dict,
             f"| {r['keyword']} | {pos_str} | {aio} | {cited_flag} | {loss_str} |"
         )
     out.append("")
-    out.append(_ESTIMATE_CAVEAT)
+    out.append(estimate_caveat(cfg))
     out.append("")
     return out
 
@@ -448,4 +592,4 @@ def build_aio_exposure_report(keyword_profiles: dict, cfg: dict | None,
         except Exception as exc:  # persistence must never break the report
             logger.warning("aio_exposure persistence/trend failed: %s", exc)
             trend = None
-    return render_aio_exposure_section(rows, rollup, trend)
+    return render_aio_exposure_section(rows, rollup, trend, cfg=cfg)

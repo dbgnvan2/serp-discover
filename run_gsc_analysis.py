@@ -65,6 +65,45 @@ MAX_PAA_QUERIES = 20
 #: Ranking is "good" (reformat candidate territory) up to this position.
 REFORMAT_MAX_POSITION = 10.0
 
+#: Minimum impressions before a query's CTR is treated as a measurement.
+#: A query with two impressions and no click has a CTR of 0.0, which is not a
+#: CTR — it is an absence of data. Editorial: config `gsc.min_impressions`.
+DEFAULT_MIN_IMPRESSIONS = 50
+
+#: How far below the band's no-AIO median a CTR must sit before the query is a
+#: reformat candidate. Without a margin "below the median" is half the rows by
+#: construction (D-M-15). Editorial: config `gsc.reformat_ctr_margin`.
+DEFAULT_REFORMAT_CTR_MARGIN = 0.25
+
+
+def resolve_sponge_thresholds(cfg: dict | None) -> dict:
+    """``{min_impressions, reformat_ctr_margin}`` from config `gsc`.
+
+    Spec: review_2026-11-04 D5.1 / D5.2 (D-M-15)
+
+    Both are judgements about this property's traffic, so they are editorial.
+    A missing or non-numeric value warns and falls back to the documented
+    default rather than aborting.
+    """
+    gsc_cfg = (cfg or {}).get("gsc", {}) or {}
+    out = {"min_impressions": DEFAULT_MIN_IMPRESSIONS,
+           "reformat_ctr_margin": DEFAULT_REFORMAT_CTR_MARGIN}
+    for key, cast in (("min_impressions", int), ("reformat_ctr_margin", float)):
+        if key not in gsc_cfg:
+            continue
+        try:
+            value = cast(gsc_cfg[key])
+        except (TypeError, ValueError):
+            logger.warning("gsc.%s is not a number (%r) — using %s.",
+                           key, gsc_cfg[key], out[key])
+            continue
+        if value < 0:
+            logger.warning("gsc.%s is negative (%r) — using %s.",
+                           key, value, out[key])
+            continue
+        out[key] = value
+    return out
+
 
 # ---------------------------------------------------------------------------
 # Config / input helpers (run_feasibility.py pattern)
@@ -167,22 +206,39 @@ def collect_queries(data: dict, max_paa: int = MAX_PAA_QUERIES) -> list[dict]:
 def compute_sponge_effect(rows: list[dict],
                           bands: list[tuple[float, float]] = None,
                           min_bucket_size: int = MIN_BUCKET_SIZE,
-                          not_reached: int = 0) -> dict:
+                          not_reached: int = 0,
+                          min_impressions: int = DEFAULT_MIN_IMPRESSIONS) -> dict:
     """Median CTR at comparable position: AIO-present vs AIO-absent queries.
 
-    Only queries with GSC data AND a known AIO state participate. Per
-    position band, the comparison is reported only when BOTH buckets hold
-    at least *min_bucket_size* queries — otherwise the band states
-    insufficient data (G.4.2); the no-AIO median alone is still computed
-    when its own bucket is large enough (it anchors reformat_candidates).
-    Spec: seo_geo_deferred_spec_v1.md#G.4.
+    Only queries with GSC data, a known AIO state, a position AND at least
+    *min_impressions* impressions participate. Per position band, the
+    comparison is reported only when BOTH buckets hold at least
+    *min_bucket_size* queries — otherwise the band states insufficient data
+    (G.4.2); the no-AIO median alone is still computed when its own bucket is
+    large enough (it anchors reformat_candidates).
+
+    The impression floor was added for D5.1 (D-M-15): a query with two
+    impressions and no click contributes a CTR of 0.0 to the median, which is
+    not a low CTR but an absence of one. The floor and how many queries it
+    excluded travel with the figures (P2).
+
+    What this measures is an ASSOCIATION at comparable position, not an
+    effect. Queries that trigger an AI Overview differ from those that do not
+    in exactly the way that also drives CTR — they are more often
+    informational — so intent confounds the comparison. The report says so.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.4; review_2026-11-04 D5.1 (D-M-15).
     """
     bands = bands or DEFAULT_POSITION_BANDS
-    usable = [
+    with_state = [
         r for r in rows
         if r.get("found") and r.get("has_ai_overview") is not None
         and r.get("position") is not None
     ]
+    floor = int(min_impressions or 0)
+    usable = [r for r in with_state
+              if _to_number(r.get("impressions")) >= floor]
+    below_floor = len(with_state) - len(usable)
     out_bands: list[dict] = []
     for low, high in bands:
         in_band = [r for r in usable if low <= r["position"] <= high]
@@ -209,9 +265,20 @@ def compute_sponge_effect(rows: list[dict],
         # D2b.8 — the denominator travels with the figures (P2).
         "queries_considered": len(rows),
         "queries_usable": len(usable),
+        # D5.1 — and what the impression floor cost (P2/P9).
+        "min_impressions": floor,
+        "queries_below_impression_floor": below_floor,
         "not_reached": int(not_reached or 0),
         "bands": out_bands,
     }
+
+
+def _to_number(value) -> float:
+    """``value`` as a float, or 0.0 when it is not a number."""
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 # ---------------------------------------------------------------------------
@@ -241,18 +308,37 @@ def geo_alert_keywords(data: dict) -> set[str]:
 
 def find_reformat_candidates(rows: list[dict], sponge: dict,
                              geo_alert_kws: set[str],
-                             max_position: float = REFORMAT_MAX_POSITION) -> list[dict]:
-    """Queries with a stable/good position but CTR below the no-AIO median.
+                             max_position: float = REFORMAT_MAX_POSITION,
+                             min_impressions: int = DEFAULT_MIN_IMPRESSIONS,
+                             ctr_margin: float = DEFAULT_REFORMAT_CTR_MARGIN) -> list[dict]:
+    """Queries ranking well whose CTR sits a stated margin below the no-AIO
+    median for their band, where an AI Overview is actually present.
 
     Cross-referenced against strategic_flags.geo_alerts: a candidate whose
     source keyword also carries a GEO alert (client ranks top-10 but the
     AI Overview cites other sources) is the highest-priority
     reformat-for-extraction page (G.4.3).
-    Spec: seo_geo_deferred_spec_v1.md#G.4.
+
+    Three conditions were added for D5.2 (D-M-15). "CTR below the median" is
+    half the rows by construction, so a *margin* is required. A reformat for
+    extraction is advice about an AI Overview, so one must be PRESENT — the
+    rule used to name queries Google answers with no AI Overview at all. And
+    the CTR must rest on at least *min_impressions* impressions, or it is not
+    a CTR.
+
+    Spec: seo_geo_deferred_spec_v1.md#G.4; review_2026-11-04 D5.2 (D-M-15).
     """
     candidates: list[dict] = []
+    floor = int(min_impressions or 0)
+    margin = float(ctr_margin or 0.0)
     for row in rows:
         if not row.get("found") or row.get("position") is None:
+            continue
+        # An AI Overview must be present: this is advice about extraction from
+        # one. `None` is an unknown AIO state, not a present one.
+        if row.get("has_ai_overview") is not True:
+            continue
+        if _to_number(row.get("impressions")) < floor:
             continue
         position = row["position"]
         if position > max_position:
@@ -264,14 +350,18 @@ def find_reformat_candidates(rows: list[dict], sponge: dict,
         )
         if not band or band.get("no_aio_median_ctr") is None:
             continue
-        if row["ctr"] < band["no_aio_median_ctr"]:
+        threshold = band["no_aio_median_ctr"] * (1.0 - margin)
+        if _to_number(row.get("ctr")) < threshold:
             candidates.append({
                 "query": row["query"],
                 "query_label": row.get("query_label"),
                 "source_keyword": row.get("source_keyword"),
                 "position": position,
                 "ctr": row["ctr"],
+                "impressions": row.get("impressions"),
                 "no_aio_median_ctr": band["no_aio_median_ctr"],
+                "ctr_threshold": round(threshold, 4),
+                "ctr_margin": margin,
                 "has_ai_overview": row.get("has_ai_overview"),
                 "geo_alert": (row.get("source_keyword") or "") in geo_alert_kws,
             })
@@ -291,15 +381,28 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
                     config: dict, source_json: str, date_range: tuple[str, str],
                     demand_score: dict | None = None,
                     demand_trend: list | None = None,
-                    fetch_complete: bool = True) -> str:
+                    fetch_complete: bool = True,
+                    filters: dict | None = None,
+                    thresholds: dict | None = None) -> str:
     lines: list[str] = []
     client_name = (config.get("analysis_report", {}) or {}).get("client_name", "Client")
     gsc_cfg = config.get("gsc", {}) or {}
     lines.append("# Google Search Console Analysis — Zero-Click / Sponge Effect")
     lines.append(
         f"**Client:** {client_name} | **Property:** `{gsc_cfg.get('property', '—')}` "
-        f"| **Window:** {date_range[0]} → {date_range[1]}")
+        f"| **Window:** {date_range[0]} → {date_range[1]} "
+        f"| **Pulled for:** {gsc_client.filters_text(filters or {})}")
     lines.append(f"**Source analysis:** `{os.path.basename(source_json)}`\n")
+    if not (filters or {}).get("country") or not (filters or {}).get("device"):
+        lines.append(
+            "> **Mixed populations.** The SERP side of this analysis is fetched "
+            f"for one country and one device (`serpapi.gl` = "
+            f"`{(config.get('serpapi') or {}).get('gl', '—')}`, "
+            f"`serpapi.device` = "
+            f"`{(config.get('serpapi') or {}).get('device', '—')}`). This GSC "
+            "pull is not restricted the same way, so a CTR here and a rank "
+            "there are measured over different populations. Set `gsc.country` "
+            "and `gsc.device` to match.\n")
     lines.append(
         "> **Private data.** These are first-party numbers for the client's own "
         "property. They describe the client's position only — never quote them "
@@ -327,7 +430,8 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
         lines.append("- " + gsc_client.line(
             "coverage_measured_absent",
             "Queries GSC holds no data for: {count} (no impressions recorded "
-            "in the window — reported as absent, not as zero)",
+            "in the window for {population} — reported as absent, not as zero)",
+            population=gsc_client.filters_text(filters or {}),
             count=len(absent)))
     if unreached:
         lines.append("- " + gsc_client.line(
@@ -345,8 +449,27 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
     lines.append(
         "Median CTR at comparable position for queries where Google shows an AI "
         "Overview vs queries where it doesn't. A lower AIO-median at the same "
-        "position band is the sponge effect: the ranking is intact but the "
-        "answer above it absorbs the click.\n")
+        "position band is consistent with the answer above the result absorbing "
+        "the click while the ranking stays intact.\n")
+    # D5.1 (D-M-15): this is an association, and the thing that decides which
+    # queries get an AI Overview — their intent — also decides CTR.
+    lines.append(
+        "**Read this as an association, not an effect.** The two buckets are "
+        "not alike apart from the AI Overview: Google shows one mostly on "
+        "informational queries, and informational queries have lower CTR at "
+        "every position anyway. The table cannot separate the AI Overview from "
+        "the intent. A same-query comparison before and after an AI Overview "
+        "appeared would; this is not that.\n")
+    _floor = sponge.get("min_impressions")
+    if _floor:
+        _dropped = sponge.get("queries_below_impression_floor") or 0
+        lines.append(
+            f"Queries need at least **{_floor} impressions** in the window to "
+            f"contribute a median: a CTR computed from a handful of impressions "
+            f"is not a measurement. "
+            + (f"{_dropped} of {sponge.get('queries_usable', 0) + _dropped} "
+               f"otherwise-usable queries fell below that floor.\n"
+               if _dropped else "No query fell below that floor.\n"))
     lines.append("| Position band | AIO queries | No-AIO queries | Median CTR (AIO) | Median CTR (no AIO) | Delta |")
     lines.append("|---------------|-------------|----------------|------------------|---------------------|-------|")
     for band in sponge["bands"]:
@@ -387,11 +510,27 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
     lines.append("")
 
     lines.append("## Reformat candidates — good position, starving CTR")
+    # The margin the run actually used, not one re-derived from the output
+    # rows: with no candidates there is no row to read it off, and printing
+    # the default while config says otherwise is a false claim (cold review 7).
+    _margin = (thresholds or {}).get("reformat_ctr_margin")
+    if _margin is None:
+        _margin = next((c.get("ctr_margin") for c in candidates
+                        if c.get("ctr_margin") is not None),
+                       resolve_sponge_thresholds(config)["reformat_ctr_margin"])
     lines.append(
-        "Queries ranking in the top 10 whose CTR sits below the no-AIO median "
-        "for their position band. ⚑ marks queries whose keyword also carries a "
-        "GEO alert (client ranks but the AI Overview cites other sources) — "
-        "reformat those pages for answer extraction first.\n")
+        f"Queries ranking in the top 10, **with an AI Overview on the SERP**, "
+        f"whose CTR sits at least {_margin:.0%} below the no-AIO median for "
+        f"their position band. ⚑ marks queries whose keyword also carries a "
+        f"GEO alert (client ranks but the AI Overview cites other sources) — "
+        f"reformat those pages for answer extraction first.\n")
+    # D5.2 (D-M-15): say what the three conditions are, because "below the
+    # median" on its own names half the queries whatever the data says.
+    lines.append(
+        f"*A margin, not just \"below the median\": half of any set sits below "
+        f"its own median. The query must also carry at least "
+        f"{sponge.get('min_impressions', DEFAULT_MIN_IMPRESSIONS)} impressions, "
+        f"so the CTR is a measurement.*\n")
     # D2b.8 — "no candidates" over 4 of 40 queries is not the same
     # statement as "no candidates" over 40 of 40.
     lines.append(
@@ -405,14 +544,14 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
             "simply be one of them.*")
     lines.append("")
     if candidates:
-        lines.append("| Query | Label | Position | CTR | No-AIO median | AIO on SERP | GEO alert |")
-        lines.append("|-------|-------|----------|-----|---------------|-------------|-----------|")
+        lines.append("| Query | Label | Position | Impressions | CTR | No-AIO median | Threshold | GEO alert |")
+        lines.append("|-------|-------|----------|-------------|-----|---------------|-----------|-----------|")
         for c in candidates:
-            aio = ("yes" if c["has_ai_overview"]
-                   else "no" if c["has_ai_overview"] is not None else "unknown")
             lines.append(
                 f"| {c['query']} | {c['query_label']} | {c['position']:.1f} "
-                f"| {_pct(c['ctr'])} | {_pct(c['no_aio_median_ctr'])} | {aio} "
+                f"| {c.get('impressions', '—')} "
+                f"| {_pct(c['ctr'])} | {_pct(c['no_aio_median_ctr'])} "
+                f"| {_pct(c.get('ctr_threshold'))} "
                 f"| {'⚑ yes' if c['geo_alert'] else 'no'} |")
     else:
         lines.append("*No reformat candidates identified on this run.*")
@@ -431,8 +570,17 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
                 f"| {row['position']:.1f} | {aio} |")
         else:
             # D2b.5 — the cell says which of the two it was.
-            cell = gsc_client.status_text(
-                row.get("gsc_status") or gsc_client.STATUS_MEASURED_ABSENT, "cell")
+            status = row.get("gsc_status") or gsc_client.STATUS_MEASURED_ABSENT
+            cell = gsc_client.status_text(status, "cell")
+            if status == gsc_client.STATUS_MEASURED_ABSENT:
+                # The absence is an absence for the pulled population only
+                # (D5.7, cold review 1). status_text falls back to the status
+                # word when the key is missing, so the suffix is only appended
+                # when the configured value is really a suffix.
+                suffix = gsc_client.status_text(status, "population_suffix")
+                if "{population}" in suffix:
+                    cell += suffix.format(
+                        population=gsc_client.filters_text(filters or {}))
             lines.append(
                 f"| {row['query']} | {row['query_label']} | — | — | — | — | {cell} |")
     lines.append("")
@@ -442,7 +590,8 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
 def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
                   config: dict, source_json: str, date_range: tuple[str, str],
                   demand_score: dict | None = None,
-                  fetch_complete: bool = True) -> dict:
+                  fetch_complete: bool = True,
+                  filters: dict | None = None) -> dict:
     gsc_cfg = config.get("gsc", {}) or {}
     unreached = [r["query"] for r in rows
                  if r.get("gsc_status") == gsc_client.STATUS_NOT_REACHED]
@@ -452,6 +601,10 @@ def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
         "property": gsc_cfg.get("property"),
         "lookback_days": gsc_cfg.get("lookback_days"),
         "date_range": {"start": date_range[0], "end": date_range[1]},
+        # D5.7 — which country/device the clicks were pulled for. A consumer
+        # comparing them with a SERP figure needs to know they match.
+        "query_filters": {"country": (filters or {}).get("country"),
+                          "device": (filters or {}).get("device")},
         "queries_checked": len(rows),
         "queries_with_data": sum(1 for r in rows if r.get("found")),
         # D2b.6 — a consumer, the brief's LLM payload included, must tell
@@ -528,8 +681,11 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
         logger.info("%s", gsc_client.line(
             "fetch_complete",
             "GSC answered for all {asked} query/queries: {measured} with data, "
-            "{measured_absent} with no impressions in the window.",
-            asked=len(rows), measured=measured, measured_absent=absent))
+            "{measured_absent} with no impressions in the window for "
+            "{population}.",
+            asked=len(rows), measured=measured, measured_absent=absent,
+            population=gsc_client.filters_text(
+                getattr(client, "filters", None) or {})))
     else:
         logger.warning("%s", gsc_client.line(
             "fetch_incomplete",
@@ -537,15 +693,24 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
             "returned data, {not_reached} were never reached.",
             asked=len(rows), measured=measured, not_reached=unreached))
 
-    sponge = compute_sponge_effect(rows, not_reached=unreached)
-    candidates = find_reformat_candidates(rows, sponge, geo_alert_keywords(data))
+    _thresholds = resolve_sponge_thresholds(config)
+    sponge = compute_sponge_effect(
+        rows, not_reached=unreached,
+        min_impressions=_thresholds["min_impressions"])
+    candidates = find_reformat_candidates(
+        rows, sponge, geo_alert_keywords(data),
+        min_impressions=_thresholds["min_impressions"],
+        ctr_margin=_thresholds["reformat_ctr_margin"])
 
     # D2/AV.2 — branded vs non-branded demand. Classify the rows just pulled and
     # persist per-run (grain = run_ts, parsed from the source filename) so the
     # branded share trends across runs (D-D2a). Classification is recomputed every
     # run so a client_name_patterns edit reclassifies (never gated by the cache).
+    _filters = getattr(client, "filters", None) or {}
     rows, demand_score = gsc_demand.compute_demand(
-        rows, config, fetch_complete=stats.complete and not unreached)
+        rows, config, fetch_complete=stats.complete and not unreached,
+        property_rows=getattr(stats, "property_rows", None),
+        filters={**_filters, "text": gsc_client.filters_text(_filters)})
     demand_trend = None
     run_ts = gsc_demand.run_ts_from_filename(source_json)
     property_ = (config.get("gsc", {}) or {}).get("property")
@@ -562,13 +727,16 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
         logger.warning("gsc.property is not set — skipping gsc_demand persistence "
                        "(the demand section still renders).")
 
+    filters = _filters
     report = generate_report(rows, sponge, candidates, config, source_json,
                              date_range, demand_score=demand_score,
                              demand_trend=demand_trend,
-                             fetch_complete=stats.complete and not unreached)
+                             fetch_complete=stats.complete and not unreached,
+                             filters=filters, thresholds=_thresholds)
     sidecar = build_sidecar(rows, sponge, candidates, config, source_json,
                             date_range, demand_score=demand_score,
-                            fetch_complete=stats.complete and not unreached)
+                            fetch_complete=stats.complete and not unreached,
+                            filters=filters)
     return report, sidecar
 
 
@@ -602,11 +770,17 @@ def main(argv: list[str] | None = None) -> int:
     gsc_cfg = config.get("gsc", {}) or {}
     GscClient = gsc_client.GscClient
     try:
+        query_filters = gsc_client.resolve_query_filters(config)
+        for warning in query_filters["warnings"]:
+            logger.warning("%s", warning)
         client = GscClient(
             property_url=gsc_cfg.get("property", ""),
             db_path=args.db,
             cache_ttl_days=int(gsc_cfg.get("cache_ttl_days", 7)),
+            filters=query_filters,
         )
+        logger.info("GSC pull restricted to: %s",
+                    gsc_client.filters_text(query_filters))
     except RuntimeError as exc:
         print(f"{exc} — 0 API calls made.")
         return 1

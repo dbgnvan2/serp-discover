@@ -49,6 +49,17 @@ from http_retry import post_with_transient_retry as _post_with_transient_retry
 
 logger = logging.getLogger(__name__)
 
+# D5.7 — the country/device restriction lives in gsc_filters so the read-side
+# dashboard can resolve it without importing this module (pipeline isolation,
+# G.4.4). Re-exported here because callers and tests reference them by this name.
+from gsc_filters import (  # noqa: E402
+    COUNTRY_ALPHA2_TO_ALPHA3,
+    GSC_DEVICES,
+    cache_filter_key,
+    filters_text,
+    resolve_query_filters,
+)
+
 try:
     from datetime import UTC as _UTC
 except ImportError:  # Python < 3.11
@@ -156,6 +167,12 @@ class GscStats(NamedTuple):
     asked: list
     measured_absent: list
     not_reached: list
+    #: Every query row for the property, keyed by lowercased query, when this
+    #: call pulled them and the pull covered the whole property. ``None``
+    #: whenever that is not true — a cache-only answer, or an incomplete
+    #: fetch — so a caller cannot mistake a partial view for the property
+    #: total (D5.4 / finding D-M-16).
+    property_rows: dict | None = None
 
     def status_for(self, query: str) -> str:
         """``STATUS_MEASURED`` | ``STATUS_MEASURED_ABSENT`` | ``STATUS_NOT_REACHED``.
@@ -201,7 +218,7 @@ class GscClient:
 
     def __init__(self, property_url: str, db_path: str = "serp_data.db",
                  cache_ttl_days: int = 7, credentials_path: str | None = None,
-                 token_provider=None) -> None:
+                 token_provider=None, filters: dict | None = None) -> None:
         if not property_url:
             raise RuntimeError("GSC property is not configured (config.yml gsc.property).")
         self._property = property_url
@@ -218,7 +235,30 @@ class GscClient:
         self._token_provider = token_provider
         self._db_path = db_path
         self._cache_ttl = timedelta(days=cache_ttl_days)
+        # What the pull is restricted to. Part of the cache key: rows pulled
+        # for one country/device must never be served for another (D5.7).
+        self._filters = {"country": (filters or {}).get("country"),
+                         "device": (filters or {}).get("device")}
         self._init_cache_table()
+
+    @property
+    def filters(self) -> dict:
+        """The country/device this client's pull is restricted to."""
+        return dict(self._filters)
+
+    def _filter_key(self) -> str:
+        """The cache-key form of the filters (``""`` = unfiltered, pre-D5.7)."""
+        return cache_filter_key(self._filters)
+
+    def _dimension_filter_groups(self) -> list[dict]:
+        groups = []
+        if self._filters.get("country"):
+            groups.append({"dimension": "country", "operator": "equals",
+                           "expression": self._filters["country"]})
+        if self._filters.get("device"):
+            groups.append({"dimension": "device", "operator": "equals",
+                           "expression": self._filters["device"]})
+        return [{"filters": groups}] if groups else []
 
     # ------------------------------------------------------------------
     # Auth (gate D-3: headless service account)
@@ -278,9 +318,13 @@ class GscClient:
             normalized, start_date, end_date)
         complete = True
         not_reached: list[str] = []
+        property_rows: dict | None = None
 
         if to_fetch:
             all_rows, complete = self._fetch_all_rows(start_date, end_date)
+            # The property-wide view is only real when the pull finished: a
+            # truncated page set is a sample, not the property (D5.4).
+            property_rows = dict(all_rows) if complete else None
             found = {q: all_rows[q] for q in to_fetch if q in all_rows}
             missing = [q for q in to_fetch if q not in all_rows]
             if complete:
@@ -309,6 +353,7 @@ class GscClient:
             asked=normalized,
             measured_absent=[q for q in cached_absent if q not in cached],
             not_reached=not_reached,
+            property_rows=property_rows,
         )
 
     # ------------------------------------------------------------------
@@ -344,6 +389,9 @@ class GscClient:
                 "rowLimit": ROW_LIMIT,
                 "startRow": start_row,
             }
+            groups = self._dimension_filter_groups()
+            if groups:
+                payload["dimensionFilterGroups"] = groups
             headers = {
                 "Authorization": f"Bearer {self._token_provider()}",
                 "Content-Type": "application/json",
@@ -402,22 +450,63 @@ class GscClient:
     # Internal: cache (DA-client pattern)
     # ------------------------------------------------------------------
 
+    #: The cache's current column set. ``filters`` (D5.7) is part of the
+    #: primary key: without it one configuration's ``INSERT OR REPLACE``
+    #: evicted the other's row, so flipping `gsc.country` between 'all' and a
+    #: country refetched the whole property every run (cold review 8).
+    _CACHE_DDL = f"""
+        CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
+            query        TEXT,
+            start_date   TEXT,
+            end_date     TEXT,
+            clicks       INTEGER,
+            impressions  INTEGER,
+            ctr          REAL,
+            position     REAL,
+            found        INTEGER,
+            fetched_at   TEXT,
+            filters      TEXT DEFAULT '',
+            PRIMARY KEY (query, start_date, end_date, filters)
+        )
+    """
+
+    _CACHE_COLUMNS = ("query", "start_date", "end_date", "clicks",
+                      "impressions", "ctr", "position", "found", "fetched_at",
+                      "filters")
+
     def _init_cache_table(self) -> None:
+        """Create the cache, migrating a pre-D5.7 table in place.
+
+        A table created before D5.7 has no ``filters`` column and a primary key
+        of ``(query, start_date, end_date)``. SQLite cannot alter a primary
+        key, so the old table is copied into the new shape (its rows carrying
+        ``filters = ''``, which is what they are: unfiltered) and swapped. The
+        copy happens once; afterwards the ``CREATE TABLE IF NOT EXISTS`` is a
+        no-op.
+        """
         with sqlite3.connect(self._db_path) as conn:
-            conn.execute(f"""
-                CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
-                    query        TEXT,
-                    start_date   TEXT,
-                    end_date     TEXT,
-                    clicks       INTEGER,
-                    impressions  INTEGER,
-                    ctr          REAL,
-                    position     REAL,
-                    found        INTEGER,
-                    fetched_at   TEXT,
-                    PRIMARY KEY (query, start_date, end_date)
-                )
-            """)
+            conn.execute(self._CACHE_DDL)
+            columns = {row[1] for row in conn.execute(
+                f"PRAGMA table_info({CACHE_TABLE})")}
+            pk = [row[1] for row in conn.execute(
+                f"PRAGMA table_info({CACHE_TABLE})") if row[5]]
+            if "filters" not in columns or "filters" not in pk:
+                logger.info(
+                    "Migrating %s to the D5.7 shape (filters in the primary "
+                    "key); existing rows are recorded as unfiltered.",
+                    CACHE_TABLE)
+                conn.execute(f"ALTER TABLE {CACHE_TABLE} RENAME TO _gsc_cache_old")
+                conn.execute(self._CACHE_DDL)
+                old_columns = {row[1] for row in conn.execute(
+                    "PRAGMA table_info(_gsc_cache_old)")}
+                carried = [c for c in self._CACHE_COLUMNS if c in old_columns]
+                conn.execute(
+                    f"INSERT OR REPLACE INTO {CACHE_TABLE} "
+                    f"({', '.join(carried)}) "
+                    f"SELECT {', '.join(carried)} FROM _gsc_cache_old")
+                conn.execute(
+                    f"UPDATE {CACHE_TABLE} SET filters = '' WHERE filters IS NULL")
+                conn.execute("DROP TABLE _gsc_cache_old")
             conn.commit()
 
     def _cache_lookup(self, queries: list[str], start_date: str,
@@ -444,8 +533,9 @@ class GscClient:
                 rows.extend(conn.execute(
                     f"SELECT query, clicks, impressions, ctr, position, found, fetched_at "
                     f"FROM {CACHE_TABLE} "
-                    f"WHERE start_date = ? AND end_date = ? AND query IN ({placeholders})",
-                    [start_date, end_date, *chunk],
+                    f"WHERE start_date = ? AND end_date = ? "
+                    f"AND COALESCE(filters, '') = ? AND query IN ({placeholders})",
+                    [start_date, end_date, self._filter_key(), *chunk],
                 ).fetchall())
 
         cached: dict[str, dict] = {}
@@ -470,18 +560,20 @@ class GscClient:
         fetched_at = datetime.now(_UTC).isoformat()
         rows = []
         for query, stats in fetched.items():
+            key = self._filter_key()
             if stats:
                 rows.append((query, start_date, end_date, stats["clicks"],
                              stats["impressions"], stats["ctr"],
-                             stats["position"], 1, fetched_at))
+                             stats["position"], 1, fetched_at, key))
             else:
                 rows.append((query, start_date, end_date,
-                             None, None, None, None, 0, fetched_at))
+                             None, None, None, None, 0, fetched_at, key))
         with sqlite3.connect(self._db_path) as conn:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {CACHE_TABLE} "
                 f"(query, start_date, end_date, clicks, impressions, ctr, "
-                f"position, found, fetched_at) VALUES (?,?,?,?,?,?,?,?,?)",
+                f"position, found, fetched_at, filters) "
+                f"VALUES (?,?,?,?,?,?,?,?,?,?)",
                 rows,
             )
             conn.commit()

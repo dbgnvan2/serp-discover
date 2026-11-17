@@ -517,12 +517,12 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-12 | Med | D4 | "Market too small" decided from `total_results` | fixed (D4b) |
 | D-M-13 | Med | D4 | Commodity homogeneity counts `other` titles as homogeneous | fixed (D4b) |
 | D-M-14 | Med | D3 | Gazetteer matches "Indeed"; ranking ties broken alphabetically | fixed (D3b) |
-| D-M-15 | Med | D5 | Sponge is cross-sectional; reformat candidates = below-median half | open |
-| D-M-16 | Med | D5 | Branded share over tracked set vs property-level bands | open |
-| D-M-17 | Med | D5 | "Traffic at risk" can exceed actual clicks | open |
+| D-M-15 | Med | D5 | Sponge is cross-sectional; reformat candidates = below-median half | fixed (D5) |
+| D-M-16 | Med | D5 | Branded share over tracked set vs property-level bands | fixed (D5) |
+| D-M-17 | Med | D5 | "Traffic at risk" can exceed actual clicks | fixed (D5) |
 | D-M-18 | Med | D3 | 20-question cap drops whole personas | fixed (D3b) |
 | D-M-19 | Med | D4 | Pivot text asserts directory dominance; gate ignores intent verdict | fixed (D4b) |
-| D-M-20 | Med | D5 | AIO constants without source; trend across unlike keyword sets | open |
+| D-M-20 | Med | D5 | AIO constants without source; trend across unlike keyword sets | fixed (D5) |
 | D-M-21 | Med | D6 | Core thresholds/weights without stated derivation | open |
 | D-M-22 | Low–Med | D6 | Root `methodology.md` stale and contradictory | open |
 | D-M-23 | Low | D6 | Glossary DA-gap formula reversed | open |

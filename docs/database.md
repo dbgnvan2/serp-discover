@@ -13,7 +13,7 @@ SQLite at `serp_data.db`. Key tables:
 | `da_cache` | DataForSEO domain rank cache (30-day TTL; 7 days for a row with no rank) |
 | `moz_cache` | Moz DA/PA cache (30-day TTL; 7 days for a row with no DA) |
 | `moz_competitor_cache` | Per-competitor Moz signals, cached **per signal** (30-day TTL) |
-| `gsc_cache` | Search Console query stats (7-day TTL; `found = 0` records a measured absence) |
+| `gsc_cache` | Search Console query stats (7-day TTL; `found = 0` records a measured absence; keyed by query + window + `filters`, so one country/device pull never overwrites another) |
 
 All schema changes use `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE … ADD COLUMN` wrapped in `try/except OperationalError` — migrations run automatically on first use.
 
@@ -97,6 +97,23 @@ the TTL made no request at all (finding D-C-02).
 The three states a query can be in are `measured`, `measured_absent` and
 `not_reached` (`gsc_client.STATUS_*`); the words a reader sees for each live
 in `gsc_messages.yml`.
+
+An absence is an absence **for one population**. Since D5.7 the pull is
+restricted to the country and device the SERP fetch used, and the `filters`
+column (`""` for unfiltered, else `"{country}|{device}"`, built by
+`gsc_filters.cache_filter_key`) is part of the PRIMARY KEY, so rows for two
+configurations coexist instead of overwriting each other and a filtered row is
+never served to an unfiltered read. A cache written before this is migrated in
+place by `_init_cache_table`, its rows recorded as unfiltered. The per-query
+wording names the population, because a query whose traffic is all mobile is
+absent from a desktop pull and that is not a finding about the client.
+
+`gsc_demand_score` carries `property_branded_click_share`,
+`property_query_count` and `band_basis` (D5.4): the branded share over the
+whole property, the number of its *clicking* queries, and which of the two
+figures — `property` or `tracked` — the benchmark band was read from. Rows
+written before D5.4 have no basis recorded and `get_demand_trend` reports them
+as `tracked`, which is what they were.
 
 ### `moz_competitor_cache` — one row, four independently cached signals
 
