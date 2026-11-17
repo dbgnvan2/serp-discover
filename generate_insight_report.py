@@ -49,6 +49,7 @@ import feasibility
 from feasibility import index_feasibility_by_keyword
 import commodity_score
 import demand_dashboard
+from domain_utils import normalize_domain
 
 _REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
 _PATTERN_INTENT_CLASS_CACHE: dict | None = None
@@ -964,6 +965,84 @@ def _rank_keywords(keyword_profiles: dict, keyword_feasibility: list, preferred_
     return ranked
 
 
+_NO_LINK_SENTINELS = {"", "n/a", "na", "none", "null", "-"}
+
+
+def _evidence_domain(org_result: dict) -> str:
+    """
+    Purpose: Name the host behind an organic row for the Section-4 evidence.
+    Spec:    review_2026-11-04 D4.4 cold review, finding 1
+
+    `serp_audit.py` writes `"Link": item.get("link") or "N/A"` — the key is
+    never empty, so `normalize_domain` was handed the literal "N/A" and
+    returned "n" (urlparse reads `//N/A` as netloc `N`). The `Source`
+    fallback was dead code for exactly the rows it was written for. The
+    producer's sentinel is part of its contract and is treated as absent.
+    """
+    link = str(org_result.get("Link") or "").strip()
+    if link.lower() in _NO_LINK_SENTINELS:
+        link = ""
+    return normalize_domain(link) or str(org_result.get("Source") or "unknown")
+
+
+def _collect_pattern_evidence(organic_results: list, keyword: str,
+                              triggers: list, cap: int = 3):
+    """
+    Purpose: Quote up to `cap` SERP results whose text carries a trigger.
+    Spec:    review_2026-11-04 D4.4 cold review, findings 1 and 2
+
+    Returns (evidence, selected_on_text_we_cannot_quote).
+
+    `_get_most_relevant_keyword` scores triggers over Title + Snippet, so a
+    pattern could be selected purely on snippet text and then render no
+    evidence at all — the original symptom, surviving silently. This searches
+    the same two fields the selector did and says which one carried the hit.
+    """
+    evidence = []
+    saw_any_trigger = False
+    for row in organic_results:
+        if row.get("Root_Keyword") != keyword:
+            continue
+        title = str(row.get("Title") or "")
+        snippet = str(row.get("Snippet") or "")
+        in_title = any(t in title.lower() for t in triggers)
+        in_snippet = any(t in snippet.lower() for t in triggers)
+        if not (in_title or in_snippet):
+            continue
+        saw_any_trigger = True
+        if len(evidence) >= cap:
+            continue
+        if in_title:
+            evidence.append((title, _evidence_domain(row), "title"))
+        else:
+            evidence.append((snippet, _evidence_domain(row), "snippet"))
+    return evidence, (saw_any_trigger and not evidence)
+
+
+def _render_volatility_keyword_sets(vol: dict) -> str:
+    """
+    Purpose: Render the two keyword sets a non-comparable volatility run used.
+    Spec:    review_2026-11-04 D4.5 (D-C-18)
+
+    Section 6 printed "This run: unknown" for two keys
+    `metrics.get_volatility_metrics` never returned. The metric now returns
+    both sorted lists; this renders them as a readable line, and says
+    "not recorded" only when the key really is absent (a result from an
+    older metrics build), never when the set is merely empty.
+    """
+    def _line(value):
+        if isinstance(value, (list, tuple, set)):
+            return ", ".join(str(v) for v in value) or "none"
+        if value in (None, ""):
+            return "not recorded"
+        return str(value)
+
+    return (
+        f"- **This run:** {_line(vol.get('keywords_current'))}\n"
+        f"- **Previous run:** {_line(vol.get('keywords_previous'))}\n"
+    )
+
+
 def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: list, preferred_intents: list):
     """
     Purpose: Determine the single best keyword to pursue.
@@ -971,6 +1050,12 @@ def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: l
     Tests:   tests/test_report_clarity.py::test_rc1_best_opportunity_statement_present
 
     Returns tuple: (keyword_name, reason) or (None, reason_why_not).
+
+    Two gates, both mandatory and both the ones the Section-0 action column
+    applies: the keyword needs a feasibility VERDICT (not "Not Measured"),
+    and its SERP intent must be one the client serves. A keyword failing
+    either is not the best opportunity, however well it scores on the other
+    (D-M-06 / D4.1).
     """
     if not keyword_profiles:
         return None, "No keywords to analyze."
@@ -1003,7 +1088,37 @@ def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: l
     if not ranked:
         return None, "could not be determined."
 
-    best_kw, _, feas_status, intent, _, _ = ranked[0]
+    # D-M-06: intent is a MANDATORY gate, not a tie-break. `_rank_keywords`
+    # sorts feasibility first, so a high-feasibility keyword whose SERP intent
+    # the client does not serve outranked every preferred-intent keyword and
+    # was named the single best opportunity — while the action column two
+    # lines below printed "⛔ Mismatched intent" for that same keyword. The
+    # report told the reader to start with the one keyword it also told them
+    # not to pursue. The best opportunity now passes BOTH gates, the same two
+    # `_get_keyword_action` applies. Spec: D4.1.
+    eligible = [row for row in ranked if row[5] and row[3]]
+    if not eligible:
+        # P2: say which gate stopped them, and how many. "No intent verdict"
+        # and "an intent this client does not serve" are different facts and
+        # need different actions — re-run with more enrichment versus widen
+        # `preferred_intents`.
+        mismatched = sorted(row[0] for row in ranked if row[3] and not row[5])
+        unclassified = sorted(row[0] for row in ranked if not row[3])
+        parts = []
+        if mismatched:
+            parts.append(
+                f"{len(mismatched)} keyword(s) have a SERP intent this client "
+                "does not serve (`client.preferred_intents`)")
+        if unclassified:
+            parts.append(
+                f"{len(unclassified)} keyword(s) have no SERP intent verdict "
+                "at all (too few classified results)")
+        return None, (
+            "could not be determined: no keyword passes both the intent gate "
+            "and the feasibility gate — "
+            + "; ".join(parts) + ". Section 1 lists each keyword's intent.")
+
+    best_kw, _, feas_status, intent, _, _ = eligible[0]
     reason = f"{intent} intent, {feas_status.lower()}"
     return best_kw, reason
 
@@ -1014,7 +1129,14 @@ def _get_keyword_action(keyword: str, profile: dict, feas_record: dict, preferre
     Spec:    report_clarity_spec.md#RC.1.3
     Tests:   tests/test_report_clarity.py::test_rc1_action_*
 
-    Returns one of: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked, 🔴 Pivot or skip, ⛔ Mismatched intent
+    Returns one of: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked,
+    🔴 Pivot or skip, ⛔ Mismatched intent, ❓ Intent unknown.
+
+    `❓ Intent unknown` was added by the D4.1 cold review (finding 3). The
+    intent gate read `if intent and not intent_matches`, so a keyword with no
+    intent verdict skipped the gate and printed ✅ Pursue — directly below a
+    Section 0 that had just said no keyword passes the intent gate. No verdict
+    is not a pass, and it is not 📊 Unranked either, which means no DA.
     """
     serp_intent = profile.get("serp_intent", {})
     intent = serp_intent.get("primary_intent", "")
@@ -1030,7 +1152,12 @@ def _get_keyword_action(keyword: str, profile: dict, feas_record: dict, preferre
     else:
         intent_matches = intent in preferred_intents
 
-    if intent and not intent_matches:
+    has_verdict = bool(intent) and (
+        not is_mixed or bool(serp_intent.get("mixed_components")))
+    if not has_verdict:
+        return "❓ Intent unknown"
+
+    if not intent_matches:
         return "⛔ Mismatched intent"
 
     # If no feasibility data
@@ -1106,13 +1233,15 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
         feas_status = feas_record.get("feasibility_status", "—")
         action = _get_keyword_action(kw, profile, feas_record, preferred_intents)
 
-        # Sort priority: Pursue > Pursue with effort > Unranked > Pivot or skip > Mismatched intent
+        # Sort priority: Pursue > Pursue with effort > Unranked >
+        # Pivot or skip > Intent unknown > Mismatched intent
         action_priority = (
             0 if action.startswith("✅") else
             1 if action.startswith("⚠️") else
             2 if action.startswith("📊") else
             3 if action.startswith("🔴") else
-            4
+            4 if action.startswith("❓") else
+            5
         )
         rows.append((action_priority, kw, intent, confidence, feas_status, action))
 
@@ -1532,24 +1661,33 @@ def generate_report(data, db_path=None, run_ts=None):
 
                 if triggers and most_rel_kw:
                     # Find organic results for this keyword that contain trigger words
-                    evidence_titles = []
-                    for org_result in _organic_results:
-                        if org_result.get("Root_Keyword") != most_rel_kw:
-                            continue
-                        title = org_result.get("title", "").lower()
-                        domain = org_result.get("domain", "")
-                        if any(trigger in title for trigger in triggers):
-                            evidence_titles.append((org_result.get("title", ""), domain))
-                            if len(evidence_titles) >= 3:
-                                break
+                    # D-C-14 / D4.4: this read "title" and "domain";
+                    # serp_audit writes "Title", "Link" and "Source", so the
+                    # block never rendered on real data and every pattern in
+                    # every report since has been stated with no evidence
+                    # beside it. The keys are the producer's own.
+                    evidence_titles, snippet_only = _collect_pattern_evidence(
+                        _organic_results, most_rel_kw, triggers)
 
                     # RC.4.1 — Render evidence block if titles found
                     if evidence_titles:
                         report.append("\n> **Why this pattern fired:**")
                         report.append(f"> Trigger word(s) `{triggers_str}` appeared in SERP results for")
                         report.append(f"> **`{most_rel_kw}`**:")
-                        for title, domain in evidence_titles:
-                            report.append(f"> - *\"{title}\"* — `{domain}`")
+                        for quote, domain, where in evidence_titles:
+                            label = "" if where == "title" else " (snippet)"
+                            report.append(
+                                f"> - *\"{quote}\"*{label} — `{domain}`")
+                        report.append("")
+                    elif snippet_only:
+                        # P2: the pattern was selected on text this block does
+                        # not quote. Say so rather than printing the pattern
+                        # with no evidence and no explanation (finding 2).
+                        report.append(
+                            f"\n> **Why this pattern fired:** trigger word(s) "
+                            f"`{triggers_str}` appeared in the SERP text for "
+                            f"**`{most_rel_kw}`**, but in no result whose "
+                            f"title or snippet could be quoted.")
                         report.append("")
     else:
         report.append("_No strategic recommendations generated._")
@@ -1790,8 +1928,11 @@ def generate_report(data, db_path=None, run_ts=None):
                         "Volatility requires two runs with the same keyword set. "
                         "This run used a different keyword set than the previous run:\n"
                     )
-                    report.append(f"- **This run:** {vol.get('keywords_current', 'unknown')}")
-                    report.append(f"- **Previous run:** {vol.get('keywords_previous', 'unknown')}\n")
+                    # D4.5: the metric returns sorted lists; render them as
+                    # a readable line rather than a Python list repr, and say
+                    # "not recorded" only when the key really is absent (a
+                    # result from an older metrics build).
+                    report.append(_render_volatility_keyword_sets(vol))
                     report.append(
                         "Run again with the same keywords to establish a baseline for rank change tracking."
                     )

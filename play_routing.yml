@@ -16,7 +16,13 @@
 #
 # ─── Schema ──────────────────────────────────────────────────────────────────
 #
-# plays: map of play-id → {label, strategy_text, success_metric}. strategy_text
+# plays: map of play-id → {label, strategy_text, success_metric,
+#   strategy_text_unknown_feasibility?}. The last is used in place of
+#   strategy_text when no feasibility was measured for the keyword
+#   (data_available.feasibility false): the normal text of a play reachable on
+#   feasibility `unknown` would otherwise assert a DA gap nothing measured
+#   (D-M-07 / D4.2). A play without the key keeps its normal text, so a
+#   missing variant never aborts a report. strategy_text
 #   is a single line the report/LLM may quote verbatim. success_metric (added by
 #   chip C) is the metric the brief's Section 7 uses for that play — a rank_play
 #   is measured by ranking, an extraction/reformat play by AIO citation. Every
@@ -90,6 +96,17 @@ plays:
       Ranking is unlikely (high DA gap) but AI-Overview citation is winnable —
       restructure the page answer-first, add PAA question headings and FAQPage
       markup. Success metric is AIO citation, not organic rank.
+    # D-M-07 / D4.2: used instead of strategy_text when no feasibility was
+    # measured. The rule that routes here accepts feasibility `unknown`, so
+    # the sentence above was asserting a high DA gap on a keyword whose own
+    # note said the DA data was unavailable.
+    strategy_text_unknown_feasibility: >-
+      No Domain Authority data was obtained for this keyword, so whether it
+      can be ranked is unknown — but an AI Overview is present, which is a
+      citation opportunity regardless. Restructure the page answer-first, add
+      PAA question headings and FAQPage markup. Success metric is AIO
+      citation, not organic rank. Re-run with DA credentials to find out
+      whether ranking is also worth pursuing.
   reformat_play:
     label: "Reformat play (GEO)"
     success_metric: "AI Overview (AIO) citation gain"
@@ -104,6 +121,12 @@ plays:
       A service-intent keyword with a high DA gap — pivot to a hyper-local
       neighbourhood variant where proximity substitutes for authority instead
       of competing head-on for the broad term.
+    # D-M-07 / D4.2: rules 3 and 4 both accept feasibility `unknown`.
+    strategy_text_unknown_feasibility: >-
+      A service-intent keyword with no Domain Authority data, so the gap is
+      unknown. A hyper-local neighbourhood variant is the lower-risk entry
+      either way — proximity substitutes for authority — but re-run with DA
+      credentials before deciding against the broad term.
   deprioritize:
     label: "Deprioritise"
     success_metric: "n/a — deprioritised"
@@ -111,6 +134,35 @@ plays:
       Signals do not support a rank, extraction, reformat, or local-pivot play
       (e.g. navigational intent or no AI-Overview opportunity). Deprioritise
       dedicated content investment for this keyword.
+    # Reachable on feasibility `unknown` (it is the catch-all), so it needs the
+    # variant too: a keyword must not be told to be deprioritised when the only
+    # signal missing is the Domain Authority nobody fetched (D4a cold review,
+    # finding 4).
+    strategy_text_unknown_feasibility: >-
+      The intent and AI-Overview signals do not support a rank, extraction,
+      reformat, or local-pivot play, and no Domain Authority was obtained for
+      this keyword, so the one remaining signal is unread. Hold rather than
+      deprioritise: re-run with DA credentials before deciding.
+
+# ---------------------------------------------------------------------------
+# validation: phrases the brief must NOT use about a keyword whose feasibility
+# was never measured (D-M-07 / D4.3). Editorial — these are the ways a writer
+# states a Domain-Authority direction, and a new phrasing belongs here, not in
+# brief_validation.py. Each entry is a regular expression, matched
+# case-insensitively (re.IGNORECASE) and compiled at load, so a malformed
+# pattern is reported when the file loads rather than silently never firing
+# against the keyword's own brief section.
+# ---------------------------------------------------------------------------
+validation:
+  da_gap_claim_phrases:
+  - "high da gap"
+  - "large da gap"
+  - "high domain[- ]authority gap"
+  - "ranking is unlikely"
+  - "cannot be ranked"
+  - "out[- ]?rank(?:ing)? (?:is|will be) (?:not |un)likely"
+  - "da gap (?:is|of) (?:high|large|wide)"
+  - "authority gap (?:is|of) (?:high|large|wide)"
 
 rules:
   # 1. Reformat wins over everything: client ranks top-10 but is not AIO-cited.

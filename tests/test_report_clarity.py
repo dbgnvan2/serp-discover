@@ -345,46 +345,68 @@ class TestRC4PatternEvidence:
         # Evidence blocks should appear if triggers are found
         assert "Triggers found" in section4 or "evidence" in section4.lower() or ">" in section4
 
-    def test_rc4_evidence_shows_keyword(self, leila_report):
-        """RC.4.1: Evidence shows the most_relevant_keyword."""
-        report = leila_report
-        section4_start = report.find("## 4.")
-        if section4_start != -1:
-            section4 = report[section4_start:]
-            # Should reference keywords in evidence
-            assert "**" in section4  # Bold formatting for keywords
+    @staticmethod
+    def _evidence_data(titles):
+        """A SERP whose titles are under the test's control.
 
-    def test_rc4_evidence_shows_competitor_titles(self, leila_report):
-        """RC.4.1: Evidence includes ≥1 competitor title with trigger."""
-        report = leila_report
-        section4_start = report.find("## 4.")
-        if section4_start != -1:
-            section4 = report[section4_start:]
-            # Evidence should include title quotes (blockquotes or similar)
-            # Just verify section 4 exists (indirect test)
-            assert "## 4." in report
+        D-C-14: the four tests this replaces asserted `"## 4." in report`
+        and `"**" in section4`, so the evidence block could read keys no
+        producer writes and the suite stayed green. These plant trigger
+        words in a row's `Title` — the key `serp_audit` writes — and assert
+        the block itself.
+        """
+        return {
+            "overview": [],
+            "organic_results": [
+                {"Root_Keyword": "family therapy", "Query_Label": "A",
+                 "Rank": i + 1, "Title": title,
+                 "Link": f"https://www.site{i}.com/p", "Source": f"Site {i}"}
+                for i, title in enumerate(titles)
+            ],
+            "keyword_profiles": {"family therapy": {
+                "serp_intent": {"primary_intent": "informational",
+                                "confidence": "high", "is_mixed": False}}},
+            "strategic_recommendations": [{
+                "Pattern_Name": "The Medical Model Trap",
+                "Status_Quo_Message": "sq", "Bowen_Bridge_Reframe": "br",
+                "Content_Angle": "ca",
+                "Detected_Triggers": "clinical, registered",
+            }],
+            "paa_questions": [],
+            "keyword_feasibility": [],
+        }
 
-    def test_rc4_evidence_title_cap(self, leila_report):
-        """RC.4.1: Maximum 3 competitor title examples."""
-        report = leila_report
-        # Count blockquotes in section 4 (evidence format)
-        section4_start = report.find("## 4.")
-        if section4_start != -1:
-            section4 = report[section4_start:]
-            section5_start = section4.find("## 5.")
-            if section5_start != -1:
-                section4 = section4[:section5_start]
-            # Should not have excessively many blockquotes
-            blockquote_count = section4.count(">")
-            # This is a soft test; just verify section exists
-            assert "## 4." in report
+    def _section4(self, titles):
+        report = generate_report(self._evidence_data(titles))
+        start = report.find("## 4.")
+        assert start != -1, "Section 4 not found"
+        section = report[start:]
+        nxt = section.find("## 5.")
+        return section[:nxt] if nxt != -1 else section
 
-    def test_rc4_empty_evidence_omitted(self, leila_report):
-        """RC.4.1: No evidence block if no titles contain trigger."""
-        report = leila_report
-        # If no triggers match titles, no empty evidence block should appear
-        # This is implicitly handled by the rendering logic
-        assert "## 4." in report
+    def test_rc4_evidence_shows_keyword(self):
+        """RC.4.1: the evidence block names the most_relevant_keyword."""
+        section4 = self._section4(["Registered clinical counsellor"])
+        assert "**Why this pattern fired:**" in section4
+        assert "**`family therapy`**" in section4
+
+    def test_rc4_evidence_shows_competitor_titles(self):
+        """RC.4.1: a title containing a trigger is quoted with its domain."""
+        section4 = self._section4(["Registered clinical counsellor",
+                                   "A page with no trigger word"])
+        assert '*"Registered clinical counsellor"*' in section4
+        assert "`site0.com`" in section4
+        assert "A page with no trigger word" not in section4
+
+    def test_rc4_evidence_title_cap(self):
+        """RC.4.1: at most 3 competitor title examples."""
+        section4 = self._section4([f"Clinical title {i}" for i in range(6)])
+        assert section4.count("— `site") == 3
+
+    def test_rc4_empty_evidence_omitted(self):
+        """RC.4.1: no evidence block when no title contains a trigger."""
+        section4 = self._section4(["nothing to see", "also nothing"])
+        assert "Why this pattern fired" not in section4
 
     def test_rc4_template_labels_present(self, leila_report):
         """RC.4.2: Template labels added to Status Quo, Reframe, Content Angle."""

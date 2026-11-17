@@ -166,6 +166,12 @@ def get_volatility_metrics(current_run_id):
             "stable_urls_count": len(merged[merged['rank_delta'] == 0]),
             "total_compared": len(merged),
             "comparability_warning": comparability_warning,
+            # D-C-18 / D4.5: report section 6 prints these two when the
+            # keyword sets differ. They were never returned, so the section
+            # read "This run: unknown / Previous run: unknown" on exactly the
+            # runs where the sentence promises the two lists.
+            "keywords_current": sorted(current_keywords),
+            "keywords_previous": sorted(previous_keywords),
             "winners": winners[['keyword_text', 'url', 'rank_curr', 'rank_delta']].to_dict('records'),
             "losers": losers[['keyword_text', 'url', 'rank_curr', 'rank_delta']].to_dict('records')
         }

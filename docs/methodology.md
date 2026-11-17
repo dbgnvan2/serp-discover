@@ -149,6 +149,17 @@ an explicit disagreement notice: the play was routed without the DA data Section
 
 *Spec: report_content_direction_spec.md#CD.1. Implemented 2026-08-28.*
 
+A play whose `data_available.feasibility` is false renders
+`strategy_text_unknown_feasibility` from `play_routing.yml` instead of the
+play's normal text. `extraction_play` and `local_pivot_play` are both reachable
+on `feasibility: unknown` while their normal text asserts a "high DA gap" — a
+direction stated beside a note saying the DA data was never obtained.
+`brief_validation.py` HARD-fails a brief that restates the claim in the LLM's
+own words, against the editorial `validation.da_gap_claim_phrases` list.
+
+*Spec: review_2026-11-04 D4.2 / D4.3 (D-M-07). Implemented 2026-11-17.*
+
+
 ### Section 1b — SERP feature counts
 
 Features are counted per keyword (`Local Map Pack — 1 of 2 keywords`) rather than
@@ -244,6 +255,28 @@ classifier's catch-all buckets. This is load-bearing: in the 2026-08-26 run
 type, so a naive maximum would have told the reader to "write more 'other'".
 
 *Spec: report_content_direction_spec.md#CD.7. Implemented 2026-08-28.*
+
+### The single best opportunity passes both gates
+
+`_get_best_opportunity_keyword` sorted on feasibility and treated intent as a
+tie-break, so Section 0 could name the keyword its own action column marked
+"⛔ Mismatched intent" two lines below. It now applies both gates
+`_get_keyword_action` applies, and when nothing passes it separates "intent
+this client does not serve" (widen `client.preferred_intents`) from "no intent
+verdict at all" (re-run with more enrichment).
+
+Section 6 renders the keyword sets of a non-comparable volatility run from
+`keywords_current` / `keywords_previous`; it printed "unknown" for two keys
+`metrics.get_volatility_metrics` never returned.
+
+The Section-4 "Why this pattern fired" block quotes up to three competitor
+titles containing a pattern trigger. It read `title` / `domain`; `serp_audit.py`
+writes `Title` / `Link` / `Source`, so it never rendered on real data. It is
+still omitted when no title matches — a trigger found in a snippet or PAA
+question has no title to quote.
+
+*Spec: review_2026-11-04 D4.1 / D4.4 / D4.5 (D-M-06, D-C-14, D-C-18).
+Implemented 2026-11-17.*
 
 ### Recommended-play ordering (why feasibility must be re-applied)
 

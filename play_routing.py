@@ -81,9 +81,18 @@ def load_play_routing(path: str | None = None) -> dict:
     for play_id, play in plays.items():
         if not isinstance(play, dict):
             raise ValueError(f"play {play_id!r} must be a mapping")
-        for key in ("label", "strategy_text"):
+        for key in ("label", "strategy_text"):  # required keys
             if not isinstance(play.get(key), str) or not play.get(key).strip():
                 raise ValueError(f"play {play_id!r} missing non-empty {key!r}")
+        # Optional, but when present it replaces strategy_text, so a YAML slip
+        # (a nested mapping, a list) would reach the report and the brief as a
+        # Python repr (D4a cold review, finding 7).
+        if "strategy_text_unknown_feasibility" in play:
+            variant = play["strategy_text_unknown_feasibility"]
+            if not isinstance(variant, str) or not variant.strip():
+                raise ValueError(
+                    f"play {play_id!r} has a non-empty-string "
+                    f"'strategy_text_unknown_feasibility' requirement")
 
     rules = data.get("rules")
     if not isinstance(rules, list) or not rules:
@@ -255,10 +264,19 @@ def compute_recommended_play(
         data_available["feasibility"] and data_available["serp_intent"]
     ) else "low"
 
+    # D-M-07 / D4.2: a play reachable on feasibility `unknown` must not say
+    # "high DA gap" — nothing measured one. The alternative wording is
+    # editorial and lives in play_routing.yml; a play without it keeps its
+    # normal text rather than losing its strategy line.
+    strategy_text = play_def.get("strategy_text", "")
+    if not data_available["feasibility"]:
+        strategy_text = (play_def.get("strategy_text_unknown_feasibility")
+                         or strategy_text)
+
     return {
         "play": play_id,
         "label": play_def.get("label", play_id),
-        "strategy_text": play_def.get("strategy_text", ""),
+        "strategy_text": strategy_text,
         "evidence": {
             "matched_rule": matched_rule,
             "inputs_used": signals,

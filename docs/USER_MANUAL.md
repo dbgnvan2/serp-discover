@@ -739,6 +739,14 @@ When Serp-Discover recommends which keywords to target first, it ranks them usin
 
 → **Pursue B only.** A is off-limits because the intent doesn't match, regardless of feasibility.
 
+Section 0's single "best opportunity" applies that rule too. It previously ranked
+on feasibility and used intent only to break ties, so it could name the one
+keyword the action column marked ⛔ Mismatched intent two lines below. It now
+picks only from keywords that pass both gates, and when none does it says how
+many were blocked by intent mismatch versus how many have no intent verdict at
+all — the first means widening `client.preferred_intents`, the second means
+re-running with more enrichment.
+
 #### What If Feasibility Data Is Missing?
 
 Domain Authority data comes from external APIs (DataForSEO or Moz). Moz needs only `MOZ_TOKEN` in your `.env` — the audit previously looked for `MOZ_ACCESS_ID` and `MOZ_SECRET_KEY`, which this project never used, so Moz enrichment stayed off during audit runs no matter what was configured. It now runs whenever `MOZ_TOKEN` is set and `feasibility.enabled` is true, and the run log reports how many API rows each fetch billed (cache hits bill nothing). If those APIs fail or credentials aren't set up, feasibility data may be unavailable. In that case:

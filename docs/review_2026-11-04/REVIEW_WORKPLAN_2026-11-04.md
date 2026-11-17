@@ -494,11 +494,11 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-C-11 | S2 | D3 | Probe failures drop from denominators; empty answers = "not mentioned" | fixed (D3a) |
 | D-C-12 | S2 | D4 | GUI post-feasibility regenerate drops "# Content Briefs" | open |
 | D-C-13 | S2 | D4 | Keyword whose fetch failed vanishes without an N-of-M line | open |
-| D-C-14 | S2 | D4 | §4 evidence block reads keys the producer never writes | open |
+| D-C-14 | S2 | D4 | §4 evidence block reads keys the producer never writes | fixed (D4a) |
 | D-C-15 | S2 | D4 | `stop_reason == max_tokens` never checked | open |
 | D-C-16 | S3 | D6 | Failing Moz test is a hard-coded-date bomb | already fixed `abcc2aa` — close, do not re-fix |
 | D-C-17 | S3 | D6 | `serp_intent.thresholds.confidence_*` have no reader | open |
-| D-C-18 | S3 | D4 | §6 prints "unknown" for keys metrics never returns | open |
+| D-C-18 | S3 | D4 | §6 prints "unknown" for keys metrics never returns | fixed (D4a) |
 | D-C-19 | S3 | D1 | Two feasibility producers with different definitions | fixed `2285828` |
 | D-C-20 | S3 | D2 | 403/429/5xx bodies are classified as content | fixed (D2c) |
 | D-C-21 | S3 | D2 | `Has_Main_AI_Overview` set from the no-location fallback | fixed (D2c) |
@@ -508,8 +508,8 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 | D-M-03 | High | D3 | = D-C-05 plus Jaccard(∅,∅)=1 and prioritisation | fixed (D3a) |
 | D-M-04 | High | D3 | Foundational structure sub-score measures competitors' schema | fixed (D3b) |
 | D-M-05 | High | D2 | `client_da` fixed 35 vs live provider on a different scale | fixed `9784690` (D2a); config value is now an override |
-| D-M-06 | High | D4 | Best opportunity ignores the mandatory intent gate | open |
-| D-M-07 | High | D4 | Extraction play asserts "high DA gap" when unmeasured | open |
+| D-M-06 | High | D4 | Best opportunity ignores the mandatory intent gate | fixed (D4a) |
+| D-M-07 | High | D4 | Extraction play asserts "high DA gap" when unmeasured | fixed (D4a) |
 | D-M-08 | High | D2 | = D-C-03 (fake verdict + paid pivot fetch) | fixed `9784690` (D2a) |
 | D-M-09 | Med | D6 | Mean DA is the wrong statistic; no n / min / entity split | open |
 | D-M-10 | Med | D6 | "Confidence" is a classification count capped by enrichment budget | open |

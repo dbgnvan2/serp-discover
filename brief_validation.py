@@ -2,12 +2,15 @@
 
 Spec: serp_tool1_improvements_spec.md#I.5
 """
+import logging
 import re
 
 from brief_data_extraction import _normalize_text
 # recommended_play vocabulary is shared with the report renderers (single source
 # of truth in play_routing.yml). Spec: seo_geo_review_20260704.md (T.4).
 from play_rendering import load_play_vocab as _load_play_vocab
+
+logger = logging.getLogger(__name__)
 
 
 def _play_assignment_phrase(label):
@@ -375,6 +378,37 @@ def validate_llm_report(report_text, extracted_data):
                     )
                     break
 
+        # ── DA-gap claim with no feasibility measured (HARD-FAIL) ────────────
+        # D-M-07 / D4.3: the extraction and local-pivot plays are reachable on
+        # feasibility `unknown`, and their strategy text used to assert a
+        # "high DA gap" regardless. The text is fixed (play_routing.yml's
+        # strategy_text_unknown_feasibility), but the LLM narrates the play in
+        # its own words, so the claim can come back from the model. A DA
+        # direction for a keyword whose DA was never fetched is a
+        # mechanically checkable contradiction of the profile.
+        if pre_play and (rp.get("data_available") or {}).get("feasibility") is False:
+            patterns = _load_play_vocab().get("da_gap_claim_phrases") or []
+            if not patterns:
+                # P6: the rule is only as live as its editorial list. An empty
+                # list means play_routing.yml did not load, or its validation
+                # block was emptied — either way this check is off, and that
+                # must be visible (D4a cold review, finding 5).
+                logger.warning(
+                    "No da_gap_claim_phrases loaded from play_routing.yml: "
+                    "the DA-gap-without-DA check is inactive for '%s'.",
+                    keyword)
+            for pattern in patterns:
+                hit = pattern.search(section_l)
+                if hit:
+                    issues.append(
+                        f"Report states a Domain Authority direction for "
+                        f"'{keyword}' ({hit.group(0)!r}), but "
+                        f"keyword_profiles.recommended_play.data_available."
+                        f"feasibility is false — no DA was measured for this "
+                        f"keyword."
+                    )
+                    break
+
         # ── confidence upgrade contradiction (SOFT-FAIL) ─────────────────────
         # LLM may downplay confidence but not upgrade it.
         HIGH_CONFIDENCE_PHRASES = [
@@ -515,6 +549,10 @@ def has_hard_validation_failures(validation_issues):
         if "contradicts keyword_profiles.title_patterns" in normalized:
             return True
         if "but verified data shows" in normalized:
+            return True
+        # D4.3: a DA direction stated for a keyword whose DA was never
+        # measured. Mechanically checkable against the profile, so HARD.
+        if "data_available.feasibility is false" in normalized:
             return True
         if any(pattern in normalized for pattern in hard_patterns):
             return True

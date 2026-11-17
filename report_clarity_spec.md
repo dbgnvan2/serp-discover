@@ -146,9 +146,15 @@ The `Action` column values are drawn from a fixed vocabulary:
 - `📊 Unranked` — Feasibility data absent
 - `⛔ Mismatched intent` — intent does not appear in `preferred_intents`
   regardless of feasibility
+- `❓ Intent unknown` — no SERP intent verdict (too few results classified).
+  Not a pass, and not `📊 Unranked`, which means no DA. Added by the D4a cold
+  review: the gate read `if intent and not intent_matches`, so these keywords
+  printed `✅ Pursue` below a Section 0 saying no keyword passes the intent
+  gate.
 
 The table appears in the order: Pursue → Pursue with effort → Unranked →
-Pivot or skip → Mismatched intent. Within each group, alphabetical.
+Pivot or skip → Intent unknown → Mismatched intent. Within each group,
+alphabetical.
 
 **Acceptance criteria:**
 
