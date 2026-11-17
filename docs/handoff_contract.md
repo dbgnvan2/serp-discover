@@ -203,7 +203,9 @@ be guessed at:
 - `disabled` means the signal is switched off in this run's config;
   `not_fetched` means it was not asked for (a per-run cap or the row quota).
 - `complete` is false, and `signals_missing` names them, when an **enabled**
-  signal was not obtained. A block can carry real ranking keywords beside a
+  signal was not *obtained* — where obtained means a real reading or a
+  measured absence (`ok` / `no_record`). A failed call, a cap or quota skip,
+  and a signal not asked for are all gaps. A block can carry real ranking keywords beside a
   failed anchor-text call, so `data_available: true` at the top level means
   "something was measured", not "everything was". Read `complete` before
   treating a signal's `items: []` as a finding about the domain. A missing

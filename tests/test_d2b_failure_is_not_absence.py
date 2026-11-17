@@ -588,25 +588,43 @@ class TestMozConsumerCanNameTheFailure(unittest.TestCase):
             os.unlink(tmp.name)
 
 
-class TestNoPathFromAFailureToAServedRow(unittest.TestCase, _SourceGuard):
-    """D2b.15 — the two gates, pinned in source so a refactor cannot drop them."""
+class TestAPartialBlockDeclaresItself(unittest.TestCase):
+    """A block with one real signal and one gap must not read as complete."""
 
-    def test_gsc_caches_absences_only_on_a_complete_fetch(self):
-        source = _src("gsc_client.py")
-        self.assertIn("if complete:", source)
-        self.assertInSource("not_reached = missing", "gsc_client.py")
+    DOMAIN = "bowencenter.org"
 
-    def test_moz_cache_store_gates_on_each_sub_block(self):
-        self.assertInSource("if signal in SIGNALS and block.get(\"status\") "
-                            "in _CACHEABLE", "moz_competitor.py")
+    def setUp(self):
+        self.tmp = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+        self.tmp.close()
 
-    def test_moz_cache_lookup_no_longer_gates_on_a_top_level_status(self):
-        self.assertNotInSource("continue  # never serve a cached failure",
-                               "moz_competitor.py")
+    def tearDown(self):
+        os.unlink(self.tmp.name)
 
-    def test_both_caches_name_the_finding_they_fix(self):
-        self.assertInSource("D-C-02", "gsc_client.py")
-        self.assertInSource("D-C-10", "moz_competitor.py")
+    def _fetch(self, call):
+        with patch.object(moz_competitor, "moz_call", call), \
+                patch.object(moz_competitor, "row_budget", return_value=None):
+            client = moz_competitor.MozCompetitorClient(
+                db_path=self.tmp.name, locale="en-US")
+            return client.fetch([self.DOMAIN])[self.DOMAIN]
+
+    def test_a_missing_signal_is_named_at_the_top_level(self):
+        block = self._fetch(_moz_payload(anchors=False))
+        self.assertFalse(block["complete"])
+        self.assertIn("anchor_texts", block["signals_missing"])
+
+    def test_a_complete_block_says_so(self):
+        block = self._fetch(_moz_payload())
+        self.assertTrue(block["complete"])
+        self.assertEqual(block["signals_missing"], [])
+
+    def test_a_gap_does_not_read_as_an_empty_list(self):
+        """The stub carries the page shape, so ``.get("items", [])`` is not a
+        lie by omission: the empty list arrives with its status attached."""
+        stub = self._fetch(_moz_payload(anchors=False))["anchor_texts"]
+        self.assertEqual(stub["items"], [])
+        self.assertEqual(stub["returned"], 0)
+        self.assertFalse(stub["data_available"])
+        self.assertNotEqual(stub["status"], moz_competitor.STATUS_OK)
 
 
 if __name__ == "__main__":

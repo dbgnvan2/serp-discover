@@ -320,12 +320,10 @@ class MozCompetitorClient:
         just because `data_available` is true of one of its parts (P2).
         """
         out: dict[str, dict] = {}
-        absent_signals: list[str] = []
         for signal in self.enabled_signals():
             if signal in blocks:
                 out[signal] = blocks[signal]
                 continue
-            absent_signals.append(signal)
             stub = {
                 "status": missing_status or STATUS_NOT_FETCHED,
                 "data_available": False,
@@ -363,11 +361,17 @@ class MozCompetitorClient:
         else:
             block = {"data_available": True, "status": STATUS_OK}
         block.update(out)
-        block["complete"] = not absent_signals
-        block["signals_missing"] = absent_signals
-        if absent_signals and block.get("status") == STATUS_OK:
+        # "Obtained" is the same test the cache uses: a real reading or a
+        # measured absence. Anything else — a failed call, a skip, a signal
+        # not asked for — is a gap, and a gap is named rather than left for
+        # the consumer to infer from an empty list.
+        missing_signals = [signal for signal in self.enabled_signals()
+                           if out[signal].get("status") not in _CACHEABLE]
+        block["complete"] = not missing_signals
+        block["signals_missing"] = missing_signals
+        if missing_signals and block.get("status") == STATUS_OK:
             block["reason"] = (
-                "partial: " + ", ".join(absent_signals) + " not obtained")
+                "partial: " + ", ".join(missing_signals) + " not obtained")
         if stamps:
             block["fetched_at"] = stamps[0]
             block["signals_fetched_at"] = {
