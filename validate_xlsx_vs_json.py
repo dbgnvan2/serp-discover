@@ -163,9 +163,40 @@ def norm_text(x: Any) -> Any:
     return s
 
 
+#: How a sheet is read back. `keep_default_na=False` with an empty `na_values`
+#: is not a preference: pandas' DEFAULT missing-value list contains the string
+#: `"N/A"`, and `"N/A"` is this tool's own written-out marker for a value it
+#: did not get — a SERP result with no link carries `Link: "N/A"`. Read with
+#: the defaults, that cell comes back as `NaN`, the key tuple becomes
+#: `(run_id, 9, nan)` on the workbook side and `(run_id, 9, "N/A")` on the
+#: JSON side, and the validator reports the same row as missing from both
+#: files. The pipeline then hard-fails at step 1.2 on any run where one result
+#: has no link, which is most real runs. Found by the first live run after the
+#: 2026-11-04 review (2026-11-18); no mocked test could have found it, because
+#: the collision is between a real workbook and pandas' own defaults.
+READ_OPTIONS = {"keep_default_na": False, "na_values": []}
+
+
 def df_to_records(df: pd.DataFrame) -> List[Dict[str, Any]]:
-    # Preserve column names exactly, replace NaN with None
-    return df.where(pd.notnull(df), None).to_dict(orient="records")
+    """The sheet's rows, with an empty cell as `None`.
+
+    Read with `READ_OPTIONS`, a genuinely empty cell arrives as `""` rather
+    than `NaN`, so it is mapped here instead: the JSON side writes `null` for
+    the same absence, and a key of `""` would not match one of `None`. A
+    stated marker such as `"N/A"` is left exactly as it is written — it is a
+    value, not a blank.
+    """
+    out = df.where(pd.notnull(df), None).to_dict(orient="records")
+    for row in out:
+        for column, value in row.items():
+            if isinstance(value, str) and value == "":
+                row[column] = None
+            elif isinstance(value, float) and pd.isna(value):
+                # `DataFrame.where` leaves NaN in place on an object column in
+                # some pandas versions, which is how a float nan reached a key
+                # tuple in the first place.
+                row[column] = None
+    return out
 
 
 def index_records(records: List[Dict[str, Any]], key_cols: Tuple[str, ...], text_cols: Tuple[str, ...]) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
@@ -232,7 +263,7 @@ def main() -> int:
                 continue
 
             # 2. Load Data
-            sdf = xl.parse(spec.sheet_name)
+            sdf = xl.parse(spec.sheet_name, **READ_OPTIONS)
             xlsx_recs = df_to_records(sdf)
             json_recs = json_data.get(spec.json_key, [])
 
