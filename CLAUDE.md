@@ -139,9 +139,15 @@ Editorial content currently lives in:
   `unreachable`, `not_attempted`, `not_destination_page`) plus
   `blocked_warning`, the "N of M pages blocked" line. Also `db_cleanup` — the
   words for the "N database cleanup step(s) failed" row, rendered by
-  `db_connect.cleanup_failure_warning()` (added review chunk Y13); Tool 2 has
-  no vocabulary file, so its copy of the same sentence is a constant in its
-  own `db_connect` and the two have to be changed together. `fetch_retryable` and
+  `db_connect.cleanup_failure_warning()` (added review chunk Y13). Tool 2
+  renders the same sentence from its own `briefing_messages.json` `db_cleanup`
+  section (added review chunk Y17; before that it had no editorial text file
+  at all and the words were a Python constant). The two files still have to be
+  changed together — the sentence is the same fact in both tools. On Tool 2's
+  side this one sentence is also the one that degrades: it is said from inside
+  an `except` and from an `atexit` hook, where the messages file may itself be
+  what is broken, so `db_connect.FALLBACK_CLEANUP_WARNING` carries a built-in
+  wording and the warning says it was used. `fetch_retryable` and
   `unreachable` are two facts: every attempt failed at the network layer after
   the retries, versus no request could be made at all (added review chunk Y2). The ONLY home for these words; `enrichment.status_text` reads them
   (added review chunk D2c / D-C-20)

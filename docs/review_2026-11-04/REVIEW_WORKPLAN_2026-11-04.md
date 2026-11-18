@@ -1081,6 +1081,82 @@ in-process would pass either way
 (`docs/review_2026-11-04/PLAN_Y16_one_reader_for_the_shared_config.md`, in
 serp-compete).
 
+**Chunk Y17 — the briefing's prose gets a file.** Carried as an adjacent issue
+by the cold reviews of Y13 and Y15, and named in Tool 1's `CLAUDE.md` for over a
+month. Tool 1 has ten editorial text files; Tool 2 had none, so every sentence
+the strategic briefing renders — the caveats, the comparability warnings, the
+"why there is no number here" lines, the headings — was a Python literal, which
+the rule both repos are built on says it should not be. Three consequences were
+already in the code, and they are what made it a defect rather than a
+preference: the EEAT heuristic caveat existed in **four** wordings, one of them
+`shared_config.eeat_client_messaging.caveat` which no module read and one a
+dataclass default stored on every score row; the handoff's page-relative rank
+convention was warned about in **four** separately worded places, each citing
+the same finding, so rewording the fact meant finding all four and no
+de-duplication tool finds them because they are not duplicates; and
+`UNKNOWN_CELL = "—"` had a bare duplicate of itself in the cluster table.
+`briefing_messages.json` at the repo root now holds every one of them, about
+240 values sectioned by the report section that renders it, read by
+`src/briefing_messages.py` once per render and held outside every per-section
+handler. JSON rather than YAML because PyYAML is not in this repo's
+`requirements.txt` and is not importable in its venv, and a text file is not a
+reason to pin a new runtime dependency on the render path. Its own loader
+rather than `shared_config.json`'s, because Y16 deliberately made that one
+*raise* on a key it cannot read, and a messages file needs the opposite rule
+for a missing key: a missing or malformed FILE raises — a briefing without its
+caveats states every figure in it as fact — while a missing KEY prints
+`[message missing: <key>]` where the sentence would be and the report ends with
+how many it could not find (P2). Workbook sheet names and column headers stayed
+in Python: they are a format contract other tools and tests read by name. Scope
+was every sentence the briefing renders, not the three modules first guessed,
+because leaving `risk_radar`'s and `db_connect`'s wording in Python while
+`reporting.py`'s moved is the half-migrated state the rule itself forbids.
+The build corrected the plan on eight points, all recorded in it: the EEAT
+caveat's fourth wording; three dead `framework_caption` keys in
+`shared_config.json` rather than one dead block; the feasibility sentence
+interpolating the *existing* `technical.feasibility_threshold` rather than a
+new key for the same number; four keys the migration had itself duplicated,
+found by the two-way key-coverage guard before any commit; and the ~25 test
+files that pin rendered wording, left alone on the judgement that a test
+asserting what the report *says* is the contract with the reader, while one
+asserting `Messages().get(...)` on both sides asserts only that the renderer
+rendered the file. The chunk's own mutation gate found two of its guards
+vacuous — a `report.extend(...)` moved inside a comment still satisfied
+`source.index(...)`, and the action-queue truncation note was a closure over
+the render's cap, so hardcoding its number was invisible — and a third that
+passed while the call site held the literal beside the reader; all three became
+consequence tests on extracted methods (P19/P27/P30). It also found a real
+defect in the loader: `get` short-circuited on `if not fields`, so a caller
+that passed no arguments at all printed a literal `{domain}` into the briefing
+and nothing counted it. The cold `learning-qa` pass then found nine
+medium-or-higher findings, all fixed with guards: a missing prompt block would
+have been sent to the model as a marker, paid for and its answer written in as
+a reframe, so prompts now have a reader of their own that returns `None` and
+the caller does not call (P14); the shortfall count covered only the report's
+own keys while six other modules build a throwaway `Messages`, so the ledger is
+process-level and reset by the entry point; the action-queue row cap was a
+number in a file of sentences and moved to `shared_config.json`, degrading with
+a logged warning rather than printing an empty queue; a stray brace in a
+hand-editable file aborted the render; `db_connect` asked the messages file
+from inside an `except` and an `atexit` hook, where it may be the broken thing,
+and degrades to two named fallbacks instead; the file was parsed ten-plus times
+per run and the parse is cached on `(path, mtime, size)`; an
+`icons.unknown_cell` of `""` would have satisfied every assertion while the
+cells rendered blank; and the migration had stopped at the briefing while three
+standalone markdown reports kept every sentence in Python, two of them near-
+identical rewordings of keys that *had* moved, so the defect had come to span
+two files. The last also indicted the prose guard, which named six modules by
+hand (P29). Two claims are still worded more than once on purpose — the EEAT
+caveat's long and stored-row forms, and three `framework_caption` keys that
+restate their own `intro` — recorded as editorial decisions for the owner and
+guarded against gaining a further home, because that is how the original defect
+was built. Mutation gate re-run at **49 mutations, 49 caught, none vacuous**
+(three were vacuous on the first run: the prompt policy, the brace catch and
+the fallback degradation each had a fix and no consequence test); compete core
+967 passed, compete root 162 passed, Tool 1 unchanged at 2325
+(`docs/review_2026-11-04/PLAN_Y17_the_briefing_prose_gets_a_file.md`, in
+serp-compete).
+
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.
