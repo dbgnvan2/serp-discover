@@ -174,6 +174,20 @@ class _KeywordSignalClient:
     #: Human-readable name of what this signal holds, used in absent-data
     #: reasons so an intent block never reports "no metrics".
     SIGNAL_NAME: str = "data"
+    #: These two reach the cache SQL through f-strings, because a table name
+    #: and a column name cannot be bound parameters. That is safe only while
+    #: they stay class attributes: `from_config` never sources either from
+    #: `config.yml`, and promoting them there — which this repo's editorial
+    #: rule would otherwise invite — would be direct SQL injection with no
+    #: parameterisation available (the cold review of chunk Y14, finding 6).
+    #: This signal's cache table, and the payload columns beside the shared
+    #: key (`keyword, engine, locale, device`), `status` and `fetched_at`.
+    #: The DDL, the lookup and the store are built from these two, so the
+    #: three rules that must hold for every signal — a row past its TTL is
+    #: ignored, a cached failure is never served, a measured absence is —
+    #: exist once instead of once per signal (P5/P32, review chunk Y14).
+    CACHE_TABLE_NAME: str = ""
+    CACHE_PAYLOAD_COLUMNS: tuple[tuple[str, str], ...] = ()
 
     def __init__(
         self,
@@ -219,6 +233,160 @@ class _KeywordSignalClient:
             max_keywords=int(kw_cfg.get("max_keywords") or DEFAULT_MAX_KEYWORDS),
             rows_per_call=int(kw_cfg.get("rows_per_call") or cls.ROWS_PER_CALL),
         )
+
+    # ------------------------------------------------------------------
+    # Internal: cache (shared by every signal — review chunk Y14)
+    # ------------------------------------------------------------------
+
+    def _block_from_cache(self, payload: dict) -> dict | None:
+        """A cached payload as a result block, or None if it is unusable.
+
+        *payload* is keyed by this signal's `CACHE_PAYLOAD_COLUMNS` names.
+        It is a mapping rather than a tuple deliberately: a positional
+        exchange makes the order of `CACHE_PAYLOAD_COLUMNS` a second,
+        unwritten contract, and reordering the tuple — alphabetising it, say —
+        would hand every keyword its neighbour's figure with no value out of
+        range to notice (the cold review of chunk Y14, finding 3).
+        """
+        raise NotImplementedError
+
+    def _payload_for_cache(self, block: dict) -> dict:
+        """A result block as this signal's payload columns, keyed by name."""
+        raise NotImplementedError
+
+    def _payload_names(self) -> tuple[str, ...]:
+        return tuple(name for name, _type in self.CACHE_PAYLOAD_COLUMNS)
+
+    def _init_cache_table(self) -> None:
+        # An incomplete subclass spec used to surface as `near "(": syntax
+        # error` — or, for an empty column tuple, as a real table that failed
+        # on the first lookup. Neither names the class or the attribute, and
+        # `brief_rendering` catches the exception and reports the signal as
+        # unavailable (the cold review of chunk Y14, finding 5).
+        for attribute in ("CACHE_TABLE_NAME", "CACHE_PAYLOAD_COLUMNS"):
+            if not getattr(self, attribute):
+                raise NotImplementedError(
+                    f"{type(self).__name__} declares no {attribute}: a "
+                    f"keyword signal must name its cache table and its "
+                    f"payload columns")
+        columns = ",\n                    ".join(
+            f"{name} {sql_type}" for name, sql_type in
+            (("keyword", "TEXT NOT NULL"), ("engine", "TEXT NOT NULL"),
+             ("locale", "TEXT NOT NULL"), ("device", "TEXT NOT NULL"),
+             ("status", "TEXT"), *self.CACHE_PAYLOAD_COLUMNS,
+             ("fetched_at", "TEXT")))
+        with db_connect.connection(self._db_path) as conn:
+            conn.execute(
+                f"CREATE TABLE IF NOT EXISTS {self.CACHE_TABLE_NAME} (\n"
+                f"                    {columns},\n"
+                f"                    PRIMARY KEY (keyword, engine, locale, "
+                f"device)\n                )")
+            self._add_missing_columns(conn)
+
+    def _add_missing_columns(self, conn) -> None:
+        """Add any declared payload column the live table does not have.
+
+        `CREATE TABLE IF NOT EXISTS` does not alter a table that already
+        exists, and adding a payload column is now a one-line edit to
+        `CACHE_PAYLOAD_COLUMNS`. Without this, a developer with a fresh
+        database sees nothing wrong while every existing installation fails
+        on the first write with `table ... has no column named ...` — and
+        `brief_rendering` catches that and reports the signal as unavailable
+        for every keyword, every run (the cold review of chunk Y14, finding
+        2). Adding the column keeps the rows: a cached row that predates the
+        column reads it as NULL, which every consumer already treats as
+        "not held". An extra column the spec has dropped is left alone,
+        because every query here names its columns.
+        """
+        live = {row[1] for row in
+                conn.execute(f"PRAGMA table_info({self.CACHE_TABLE_NAME})")}
+        for name, sql_type in self.CACHE_PAYLOAD_COLUMNS:
+            if name in live:
+                continue
+            logger.info("Adding column %s to %s (cache schema changed)",
+                        name, self.CACHE_TABLE_NAME)
+            conn.execute(f"ALTER TABLE {self.CACHE_TABLE_NAME} "
+                         f"ADD COLUMN {name} {sql_type}")
+
+    def _cache_lookup(
+            self, keywords: list[str]) -> tuple[dict[str, dict], list[str]]:
+        """Fresh cached blocks, and the keywords still to fetch."""
+        cached: dict[str, dict] = {}
+        cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
+        payload = self._payload_names()
+
+        rows = []
+        with db_connect.connection(self._db_path) as conn:
+            for start in range(0, len(keywords),
+                               db_connect.CACHE_LOOKUP_CHUNK):
+                chunk = keywords[start:start + db_connect.CACHE_LOOKUP_CHUNK]
+                placeholders = ",".join("?" * len(chunk))
+                rows.extend(conn.execute(
+                    f"SELECT keyword, status, {', '.join(payload)}, fetched_at "
+                    f"FROM {self.CACHE_TABLE_NAME} "
+                    f"WHERE engine=? AND locale=? AND device=? "
+                    f"AND keyword IN ({placeholders})",
+                    [self._engine, self._locale, self._device, *chunk],
+                ).fetchall())
+
+        unusable = 0
+        for keyword, status, *rest in rows:
+            values, fetched_at = tuple(rest[:-1]), rest[-1]
+            if not fetched_at or fetched_at < cutoff:
+                continue
+            if status == STATUS_NO_RECORD:
+                # A measured absence is a fact, so it is served from cache
+                # rather than bought again every run.
+                cached[keyword] = absent(
+                    STATUS_NO_RECORD,
+                    f"Moz holds no {self.SIGNAL_NAME} for this keyword",
+                )
+                continue
+            if status != STATUS_OK:
+                continue  # never serve a cached failure
+            block = self._block_from_cache(dict(zip(payload, values)))
+            if block is None:
+                # P2 — a cached row this signal cannot read is re-fetched,
+                # which costs billed Moz rows every run, so say how many
+                # rather than discarding them in silence.
+                unusable += 1
+                continue
+            cached[keyword] = block
+
+        if unusable:
+            logger.warning(
+                "%d of %d cached rows in %s were unusable and will be "
+                "re-fetched", unusable, len(rows), self.CACHE_TABLE_NAME)
+
+        to_fetch = [kw for kw in keywords if kw not in cached]
+        return cached, to_fetch
+
+    def _cache_store(self, results: dict[str, dict]) -> None:
+        """Write every cacheable block; a failure is never cached."""
+        fetched_at = datetime.now(_UTC).isoformat()
+        payload = self._payload_names()
+        rows = []
+        for keyword, block in results.items():
+            if block.get("status") not in _CACHEABLE:
+                continue
+            values = self._payload_for_cache(block)
+            # The declared column order is the only order, here and in the
+            # lookup; a subclass states what each column holds, by name.
+            rows.append((keyword, self._engine, self._locale, self._device,
+                         block.get("status"),
+                         *(values.get(name) for name in payload),
+                         fetched_at))
+        if not rows:
+            return
+        placeholders = ",".join("?" * (5 + len(payload) + 1))
+        with db_connect.connection(self._db_path) as conn:
+            conn.executemany(
+                f"INSERT OR REPLACE INTO {self.CACHE_TABLE_NAME} "
+                f"(keyword, engine, locale, device, status, "
+                f"{', '.join(payload)}, fetched_at) "
+                f"VALUES ({placeholders})",
+                rows,
+            )
 
     # ------------------------------------------------------------------
     # Public API
@@ -341,6 +509,10 @@ class MozKeywordClient(_KeywordSignalClient):
     METHOD = KEYWORD_METRICS_METHOD
     ROWS_PER_CALL = DEFAULT_ROWS_PER_CALL
     CONFIG_KEY = "keyword_metrics"
+    CACHE_TABLE_NAME = CACHE_TABLE
+    CACHE_PAYLOAD_COLUMNS = (("volume", "INTEGER"), ("difficulty", "INTEGER"),
+                             ("organic_ctr", "INTEGER"),
+                             ("priority", "INTEGER"))
     SIGNAL_NAME = "keyword metrics"
 
     def _parse(self, result: dict, keyword: str) -> dict:
@@ -363,87 +535,20 @@ class MozKeywordClient(_KeywordSignalClient):
         return block
 
     # ------------------------------------------------------------------
-    # Internal: cache
+    # Internal: cache — the two signal-specific halves (review chunk Y14)
     # ------------------------------------------------------------------
 
-    def _init_cache_table(self) -> None:
-        with db_connect.connection(self._db_path) as conn:
-            conn.execute(f"""
-                CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
-                    keyword      TEXT NOT NULL,
-                    engine       TEXT NOT NULL,
-                    locale       TEXT NOT NULL,
-                    device       TEXT NOT NULL,
-                    status       TEXT,
-                    volume       INTEGER,
-                    difficulty   INTEGER,
-                    organic_ctr  INTEGER,
-                    priority     INTEGER,
-                    fetched_at   TEXT,
-                    PRIMARY KEY (keyword, engine, locale, device)
-                )
-            """)
-            conn.commit()
+    def _block_from_cache(self, payload: dict) -> dict | None:
+        block = {"data_available": True, "status": STATUS_OK}
+        for field in METRIC_FIELDS:
+            value = payload.get(field)
+            # Omit rather than zero: an absent metric is unknown, not zero.
+            if value is not None:
+                block[field] = value
+        return block
 
-    def _cache_lookup(self, keywords: list[str]) -> tuple[dict[str, dict], list[str]]:
-        cached: dict[str, dict] = {}
-        cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
-
-        rows = []
-        with db_connect.connection(self._db_path) as conn:
-            for start in range(0, len(keywords), 500):
-                chunk = keywords[start:start + 500]
-                placeholders = ",".join("?" * len(chunk))
-                rows.extend(conn.execute(
-                    f"SELECT keyword, status, volume, difficulty, organic_ctr, "
-                    f"priority, fetched_at FROM {CACHE_TABLE} "
-                    f"WHERE engine=? AND locale=? AND device=? "
-                    f"AND keyword IN ({placeholders})",
-                    [self._engine, self._locale, self._device, *chunk],
-                ).fetchall())
-
-        for keyword, status, *metrics, fetched_at in rows:
-            if not fetched_at or fetched_at < cutoff:
-                continue
-            if status == STATUS_NO_RECORD:
-                cached[keyword] = absent(
-                    STATUS_NO_RECORD,
-                    f"Moz holds no {self.SIGNAL_NAME} for this keyword",
-                )
-                continue
-            if status != STATUS_OK:
-                continue  # never serve a cached failure
-            block = {"data_available": True, "status": STATUS_OK}
-            for field, value in zip(METRIC_FIELDS, metrics):
-                if value is not None:
-                    block[field] = value
-            cached[keyword] = block
-
-        to_fetch = [kw for kw in keywords if kw not in cached]
-        return cached, to_fetch
-
-    def _cache_store(self, results: dict[str, dict]) -> None:
-        fetched_at = datetime.now(_UTC).isoformat()
-        rows = [
-            (
-                keyword, self._engine, self._locale, self._device,
-                block.get("status"),
-                *[block.get(field) for field in METRIC_FIELDS],
-                fetched_at,
-            )
-            for keyword, block in results.items()
-            if block.get("status") in _CACHEABLE
-        ]
-        if not rows:
-            return
-        with db_connect.connection(self._db_path) as conn:
-            conn.executemany(
-                f"INSERT OR REPLACE INTO {CACHE_TABLE} "
-                f"(keyword, engine, locale, device, status, volume, difficulty, "
-                f"organic_ctr, priority, fetched_at) VALUES (?,?,?,?,?,?,?,?,?,?)",
-                rows,
-            )
-            conn.commit()
+    def _payload_for_cache(self, block: dict) -> dict:
+        return {field: block.get(field) for field in METRIC_FIELDS}
 
 
 # ---------------------------------------------------------------------------
@@ -495,6 +600,8 @@ class MozIntentClient(_KeywordSignalClient):
     METHOD = SEARCH_INTENT_METHOD
     ROWS_PER_CALL = INTENT_ROWS_PER_CALL
     CONFIG_KEY = "search_intent"
+    CACHE_TABLE_NAME = INTENT_CACHE_TABLE
+    CACHE_PAYLOAD_COLUMNS = (("primary_intents", "TEXT"), ("scores", "TEXT"))
     SIGNAL_NAME = "intent scores"
 
     def _parse(self, result: dict, keyword: str) -> dict:
@@ -528,87 +635,23 @@ class MozIntentClient(_KeywordSignalClient):
         }
 
     # ------------------------------------------------------------------
-    # Internal: cache
+    # Internal: cache — the two signal-specific halves (review chunk Y14)
     # ------------------------------------------------------------------
 
-    def _init_cache_table(self) -> None:
-        with db_connect.connection(self._db_path) as conn:
-            conn.execute(f"""
-                CREATE TABLE IF NOT EXISTS {INTENT_CACHE_TABLE} (
-                    keyword         TEXT NOT NULL,
-                    engine          TEXT NOT NULL,
-                    locale          TEXT NOT NULL,
-                    device          TEXT NOT NULL,
-                    status          TEXT,
-                    primary_intents TEXT,
-                    scores          TEXT,
-                    fetched_at      TEXT,
-                    PRIMARY KEY (keyword, engine, locale, device)
-                )
-            """)
-            conn.commit()
+    def _block_from_cache(self, payload: dict) -> dict | None:
+        return {
+            "data_available": True,
+            "status": STATUS_OK,
+            "primary_intents": _decode_json(
+                payload.get("primary_intents"), list),
+            "scores": _decode_json(payload.get("scores"), dict),
+        }
 
-    def _cache_lookup(self, keywords: list[str]) -> tuple[dict[str, dict], list[str]]:
-        cached: dict[str, dict] = {}
-        cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
-
-        rows = []
-        with db_connect.connection(self._db_path) as conn:
-            for start in range(0, len(keywords), 500):
-                chunk = keywords[start:start + 500]
-                placeholders = ",".join("?" * len(chunk))
-                rows.extend(conn.execute(
-                    f"SELECT keyword, status, primary_intents, scores, fetched_at "
-                    f"FROM {INTENT_CACHE_TABLE} "
-                    f"WHERE engine=? AND locale=? AND device=? "
-                    f"AND keyword IN ({placeholders})",
-                    [self._engine, self._locale, self._device, *chunk],
-                ).fetchall())
-
-        for keyword, status, primaries, scores, fetched_at in rows:
-            if not fetched_at or fetched_at < cutoff:
-                continue
-            if status == STATUS_NO_RECORD:
-                cached[keyword] = absent(
-                    STATUS_NO_RECORD,
-                    f"Moz holds no {self.SIGNAL_NAME} for this keyword",
-                )
-                continue
-            if status != STATUS_OK:
-                continue  # never serve a cached failure
-            cached[keyword] = {
-                "data_available": True,
-                "status": STATUS_OK,
-                "primary_intents": _decode_json(primaries, list),
-                "scores": _decode_json(scores, dict),
-            }
-
-        to_fetch = [kw for kw in keywords if kw not in cached]
-        return cached, to_fetch
-
-    def _cache_store(self, results: dict[str, dict]) -> None:
-        fetched_at = datetime.now(_UTC).isoformat()
-        rows = [
-            (
-                keyword, self._engine, self._locale, self._device,
-                block.get("status"),
-                json.dumps(block.get("primary_intents") or []),
-                json.dumps(block.get("scores") or {}),
-                fetched_at,
-            )
-            for keyword, block in results.items()
-            if block.get("status") in _CACHEABLE
-        ]
-        if not rows:
-            return
-        with db_connect.connection(self._db_path) as conn:
-            conn.executemany(
-                f"INSERT OR REPLACE INTO {INTENT_CACHE_TABLE} "
-                f"(keyword, engine, locale, device, status, primary_intents, "
-                f"scores, fetched_at) VALUES (?,?,?,?,?,?,?,?)",
-                rows,
-            )
-            conn.commit()
+    def _payload_for_cache(self, block: dict) -> dict:
+        return {
+            "primary_intents": json.dumps(block.get("primary_intents") or []),
+            "scores": json.dumps(block.get("scores") or {}),
+        }
 
 
 def _decode_json(raw, expected_type):
@@ -620,7 +663,15 @@ def _decode_json(raw, expected_type):
     except (ValueError, TypeError):
         logger.warning("Unreadable blob in %s — treating as empty", INTENT_CACHE_TABLE)
         return expected_type()
-    return decoded if isinstance(decoded, expected_type) else expected_type()
+    if isinstance(decoded, expected_type):
+        return decoded
+    # P2 — a blob that parsed but holds the wrong shape was silently emptied,
+    # which reads as "Moz has no opinion" rather than as a bug (the cold
+    # review of chunk Y14, finding 3).
+    logger.warning("Blob in %s decoded as %s, expected %s — treating as empty",
+                   INTENT_CACHE_TABLE, type(decoded).__name__,
+                   expected_type.__name__)
+    return expected_type()
 
 
 def crosscheck_intent(repo_intent, moz_block, mapping=None) -> dict:

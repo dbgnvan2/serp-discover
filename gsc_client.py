@@ -87,10 +87,6 @@ REQUEST_TIMEOUT: int = 30
 
 CACHE_TABLE = "gsc_cache"
 
-#: Bound variables per cache IN(...) chunk (SQLite caps at 999 in older
-#: builds — same batching as dataforseo_client, seo_geo_review C.7).
-CACHE_LOOKUP_CHUNK: int = 500
-
 #: What is known about one query: GSC answered with figures, GSC answered and
 #: holds no row, or the fetch never reached it. Keys, not wording — the words
 #: come from `gsc_messages.yml`. The last two were one state before D-C-02.
@@ -534,8 +530,12 @@ class GscClient:
         with db_connect.connection(self._db_path) as conn:
             # Batch the IN(...) query — SQLite caps bound variables
             # (999 in older builds; seo_geo_review C.7 pattern).
-            for start in range(0, len(queries), CACHE_LOOKUP_CHUNK):
-                chunk = queries[start:start + CACHE_LOOKUP_CHUNK]
+            # The chunk size lives in `db_connect`: SQLite caps bound
+            # variables (999 in older builds) and the Moz caches batch for
+            # the same reason (review chunk Y14).
+            for start in range(0, len(queries), db_connect.CACHE_LOOKUP_CHUNK):
+                chunk = queries[
+                    start:start + db_connect.CACHE_LOOKUP_CHUNK]
                 placeholders = ",".join("?" * len(chunk))
                 rows.extend(conn.execute(
                     f"SELECT query, clicks, impressions, ctr, position, found, fetched_at "

@@ -946,6 +946,35 @@ editorial, in Tool 1's `serp_vocab.yml` under `db_cleanup`; Tool 2 has no
 vocabulary file at all, which is recorded as an adjacent issue
 (`docs/review_2026-11-04/PLAN_Y13_a_cleanup_failure_is_a_number.md`).
 
+**Chunk Y14 — one cache for both keyword signals.** Carried as an adjacent
+issue by Y11's cold review. `_KeywordSignalClient` exists so the fetch, quota
+and "404 is not an error" rules cannot drift between the two per-keyword Moz
+signals; the cache was left outside it, and `MozKeywordClient` and
+`MozIntentClient` each carried their own `_init_cache_table`, `_cache_lookup`
+and `_cache_store`. Three rules were therefore written twice: a row past its
+TTL (or carrying no timestamp) is ignored, a cached failure is never served,
+and a measured absence is served. What actually differs between the signals is
+the table name, the payload columns, and the two conversions between a row and
+a block — so the base class now owns the cache, built from
+`CACHE_TABLE_NAME` + `CACHE_PAYLOAD_COLUMNS`, and each subclass supplies only
+`_block_from_cache` and `_payload_for_cache`. The duplication had already
+drifted in one visible way: both Moz caches chunked their `IN (...)` at a bare
+literal `500` while `gsc_client` named the same SQLite fact
+`CACHE_LOOKUP_CHUNK` and explained it; the name now lives in `db_connect` and
+all three read it. No behaviour change — the existing Moz suites are the
+regression evidence, and the new guards assert each rule against **both**
+clients through one test. Its cold review found the chunk's own rule had
+stopped at two of five caches — `moz_client`, `dataforseo_client` and
+`moz_competitor` still carried the literal — so all five now read the named
+constant and the guard walks every production module instead of two files by
+name. Four more findings were fixed with guards: an existing table now gains a
+declared payload column rather than failing every write, the two cache hooks
+exchange a mapping keyed by column name so the column order carries no
+meaning, a cached row the signal cannot read is counted, and an incomplete
+subclass spec names the class and the attribute instead of raising an SQL
+syntax error
+(`docs/review_2026-11-04/PLAN_Y14_one_cache_for_both_signals.md`).
+
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.

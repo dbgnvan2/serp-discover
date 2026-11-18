@@ -189,6 +189,13 @@ _CLEANUP_FAILURES: dict = {}
 _CLEANUP_LOCK = threading.Lock()
 _CLEANUP_REPORTED = False
 
+#: Bound variables per cache `IN (...)` chunk. A fact about SQLite — older
+#: builds cap them at 999 — not about Moz or about Search Console, so it lives
+#: beside the connection rather than once per cache: `gsc_client` named and
+#: explained it while the two Moz caches each carried the bare literal 500
+#: (P4/P32, review chunk Y14).
+CACHE_LOOKUP_CHUNK: int = 500
+
 #: The step names `_safely` records, so the consequence can be chosen by what
 #: actually failed rather than by a literal repeated in three modules (P32).
 ROLL_BACK = "roll back"

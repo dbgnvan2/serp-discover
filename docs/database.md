@@ -22,6 +22,8 @@ Key tables:
 | `da_cache` | DataForSEO domain rank cache (30-day TTL; 7 days for a row with no rank) |
 | `moz_cache` | Moz DA/PA cache (30-day TTL; 7 days for a row with no DA) |
 | `moz_competitor_cache` | Per-competitor Moz signals, cached **per signal** (30-day TTL) |
+| `moz_keyword_cache` | Moz keyword metrics per keyword (30-day TTL; `status = no_record` records a measured absence; keyed by keyword + engine + locale + device) |
+| `moz_intent_cache` | Moz search-intent scores per keyword, same key and same rules — one implementation serves both (review chunk Y14) |
 | `gsc_cache` | Search Console query stats (7-day TTL; `found = 0` records a measured absence; keyed by query + window + `filters`, so one country/device pull never overwrites another) |
 
 All schema changes use `CREATE TABLE IF NOT EXISTS` or `ALTER TABLE … ADD COLUMN` wrapped in `try/except OperationalError` — migrations run automatically on first use.
@@ -246,6 +248,37 @@ whole property, the number of its *clicking* queries, and which of the two
 figures — `property` or `tracked` — the benchmark band was read from. Rows
 written before D5.4 have no basis recorded and `get_demand_trend` reports them
 as `tracked`, which is what they were.
+
+### The two keyword caches share one implementation
+
+`moz_keyword_cache` and `moz_intent_cache` hold different payloads — four
+integer metrics against two JSON columns — but answer the same question under
+the same key (`keyword, engine, locale, device`), and three rules have to hold
+for both:
+
+1. A row older than `moz.cache_ttl_days` is ignored, and so is a row carrying
+   no `fetched_at` at all: a missing timestamp is not evidence of freshness.
+2. A cached failure is never served. Only `ok` and `no_record` are written, so
+   a keyword whose last fetch errored is re-fetched rather than reported as
+   absent for a month.
+3. A measured absence **is** served. `no_record` means Moz holds nothing for
+   that keyword, which is a fact worth keeping rather than a fetch to repeat
+   every run, and the reason names the signal, so an intent block never reports
+   "no metrics".
+
+Until review chunk Y14 each client carried its own `_init_cache_table`,
+`_cache_lookup` and `_cache_store` and all three rules were written twice. They
+now live once on `_KeywordSignalClient`, built from the subclass's
+`CACHE_TABLE_NAME` and `CACHE_PAYLOAD_COLUMNS`; a subclass supplies only
+`_block_from_cache` and `_payload_for_cache`, which exchange a mapping
+keyed by column name so that the order of the column spec carries no
+meaning. A column added to the spec is added to a table already on disk
+(`_add_missing_columns`), keeping its rows — `CREATE TABLE IF NOT EXISTS`
+does not alter an existing table, so without that every installation but a
+fresh one would fail on the first write and report the signal as
+unavailable for every keyword, every run. The guards in
+`tests/test_y14_one_cache_for_both_signals.py` assert every rule against both
+clients through the same test, so neither can drift from the other unnoticed.
 
 ### `moz_competitor_cache` — one row, four independently cached signals
 

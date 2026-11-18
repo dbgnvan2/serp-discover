@@ -463,10 +463,12 @@ class MozClient:
 
         # Batch the IN(...) query — SQLite caps bound variables (999 in
         # older builds), and large runs can exceed it (seo_geo_review C.7).
+        # The cap is one fact about SQLite, so every cache of this shape
+        # reads it from `db_connect` (review chunk Y14).
         rows = []
         with db_connect.connection(self._db_path) as conn:
-            for start in range(0, len(keys), 500):
-                chunk = keys[start:start + 500]
+            for start in range(0, len(keys), db_connect.CACHE_LOOKUP_CHUNK):
+                chunk = keys[start:start + db_connect.CACHE_LOOKUP_CHUNK]
                 placeholders = ",".join("?" * len(chunk))
                 rows.extend(conn.execute(
                     f"SELECT url, domain_authority, page_authority, fetched_at, "

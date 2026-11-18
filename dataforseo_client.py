@@ -319,10 +319,12 @@ class DataForSEOClient:
         negative_cutoff = (now - self._negative_cache_ttl).isoformat()
         # Batch the IN(...) query — SQLite caps bound variables (999 in
         # older builds), and large runs can exceed it (seo_geo_review C.7).
+        # The cap is one fact about SQLite, so every cache of this shape
+        # reads it from `db_connect` (review chunk Y14).
         rows = []
         with db_connect.connection(self._db_path) as conn:
-            for start in range(0, len(domains), 500):
-                chunk = domains[start:start + 500]
+            for start in range(0, len(domains), db_connect.CACHE_LOOKUP_CHUNK):
+                chunk = domains[start:start + db_connect.CACHE_LOOKUP_CHUNK]
                 placeholders = ",".join("?" * len(chunk))
                 rows.extend(conn.execute(
                     f"SELECT domain, domain_authority, page_authority, fetched_at "

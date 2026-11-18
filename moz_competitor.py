@@ -699,8 +699,10 @@ class MozCompetitorClient:
 
         rows = []
         with db_connect.connection(self._db_path) as conn:
-            for start in range(0, len(domains), 500):
-                chunk = domains[start:start + 500]
+            # SQLite caps bound variables; the cap is one fact, named in
+            # `db_connect` for every cache of this shape (review Y14).
+            for start in range(0, len(domains), db_connect.CACHE_LOOKUP_CHUNK):
+                chunk = domains[start:start + db_connect.CACHE_LOOKUP_CHUNK]
                 placeholders = ",".join("?" * len(chunk))
                 rows.extend(conn.execute(
                     f"SELECT {select} FROM {CACHE_TABLE} "
