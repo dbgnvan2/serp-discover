@@ -1398,8 +1398,11 @@ def _run(run_id):
     # Initialize Enrichment Modules
     storage = None
     if ENRICHMENT_ENABLED:
+        # No `timeout=`: `http_retry.apply_retry_policy(CONFIG)` above already
+        # resolved `enrichment.timeout_seconds`, and the enricher asks it per
+        # request. Passing it here too was the second of two mappings for one
+        # setting, and the one the tests did not take (P25, review chunk Y5).
         enricher = UrlEnricher(user_agent=CONFIG.get("enrichment", {}).get("user_agent", "MarketIntelligenceBot/1.0"),
-                               timeout=CONFIG.get("enrichment", {}).get("timeout_seconds", 10),
                                eeat_scan_chars=int(CONFIG.get("enrichment", {}).get("eeat_scan_chars", 8000)))
         content_classifier = ContentClassifier()
         entity_classifier = EntityClassifier(override_file=CONFIG.get(

@@ -3,6 +3,8 @@ metrics.py
 Calculates SEO metrics (Volatility, Dominance) from the SQLite history.
 """
 import sqlite3
+from contextlib import closing
+
 import pandas as pd
 import os
 import logging
@@ -66,6 +68,50 @@ def _incomplete_history_msg(skipped):
     return "No prior run found."
 
 
+def _rank_frames(conn, runs_df, current_run_id):
+    """``{"current": df, "previous": df}``, or a status dict saying why not.
+
+    Every read of the history lives here, so `get_volatility_metrics` holds
+    the connection for exactly as long as the reads take (review chunk Y5).
+    """
+    if len(runs_df) < 2:
+        return {"status": "insufficient_history",
+                "msg": "Need at least 2 runs to calculate volatility."}
+
+    current_run_date_row = runs_df[runs_df['run_id'] == current_run_id]
+    if current_run_date_row.empty:
+        # Every exit carries a status and a msg: the caller renders the
+        # reason, and a bare None made report section 6 vanish with no note
+        # at all (P2, review chunk Y3).
+        return {"status": "run_not_found",
+                "msg": (f"run {current_run_id} is not in the run history, "
+                        f"so there is nothing to compare it against.")}
+
+    current_date = current_run_date_row.iloc[0]['run_date']
+
+    # Find the previous *completed* run (D-C-22)
+    prev_run_id, skipped = _previous_completed_run(runs_df, current_date)
+    if prev_run_id is None:
+        if skipped:
+            logging.warning(
+                "Volatility: %d earlier run(s) skipped with no completion "
+                "record.", skipped)
+        return {"status": "insufficient_history",
+                "msg": _incomplete_history_msg(skipped)}
+    if skipped:
+        logging.info(
+            "Volatility: baseline is run %s; %d more recent run(s) skipped "
+            "with no completion record.", prev_run_id, skipped)
+
+    # Ranks for current and previous — primary query only (D-C-22)
+    return {
+        "current": pd.read_sql(_ORGANIC_SQL, conn,
+                               params=(current_run_id, PRIMARY_QUERY_LABEL)),
+        "previous": pd.read_sql(_ORGANIC_SQL, conn,
+                                params=(prev_run_id, PRIMARY_QUERY_LABEL)),
+    }
+
+
 def get_volatility_metrics(current_run_id):
     """
     Compares the current run against the immediate previous run to calculate
@@ -83,54 +129,17 @@ def get_volatility_metrics(current_run_id):
         return {"status": "no_database",
                 "msg": f"no history database at {DB_PATH} yet."}
 
-    conn = None
     try:
-        conn = sqlite3.connect(DB_PATH)
-
-        # 1. Get Run History
-        runs_df = pd.read_sql(_RUNS_SQL, conn)
-        if len(runs_df) < 2:
-            conn.close()
-            return {"status": "insufficient_history", "msg": "Need at least 2 runs to calculate volatility."}
-
-        # Current is index 0 (if passed run_id matches), Previous is index 1
-        # Verify current_run_id is actually the latest or find it
-
-        # Simple approach: Get data for current_run_id and the one immediately preceding it in time
-        current_run_date_row = runs_df[runs_df['run_id'] == current_run_id]
-        if current_run_date_row.empty:
-            conn.close()
-            # Every exit carries a status and a msg: the caller renders the
-            # reason, and a bare None made report section 6 vanish with no
-            # note at all (P2, review chunk Y3).
-            return {"status": "run_not_found",
-                    "msg": (f"run {current_run_id} is not in the run history, "
-                            f"so there is nothing to compare it against.")}
-
-        current_date = current_run_date_row.iloc[0]['run_date']
-
-        # Find the previous *completed* run (D-C-22)
-        prev_run_id, skipped = _previous_completed_run(runs_df, current_date)
-        if prev_run_id is None:
-            conn.close()
-            if skipped:
-                logging.warning(
-                    "Volatility: %d earlier run(s) skipped with no completion record.",
-                    skipped)
-            return {"status": "insufficient_history",
-                    "msg": _incomplete_history_msg(skipped)}
-        if skipped:
-            logging.info(
-                "Volatility: baseline is run %s; %d more recent run(s) skipped "
-                "with no completion record.", prev_run_id, skipped)
-
-        # 2. Get Ranks for Current and Previous — primary query only (D-C-22)
-        curr_df = pd.read_sql(_ORGANIC_SQL, conn,
-                              params=(current_run_id, PRIMARY_QUERY_LABEL))
-        prev_df = pd.read_sql(_ORGANIC_SQL, conn,
-                              params=(prev_run_id, PRIMARY_QUERY_LABEL))
-
-        conn.close()
+        # One `closing` around every read, not a `close()` on each of this
+        # function's seven exits: a leaked sqlite handle is how a later write
+        # meets "database is locked", and the next exit added is the one that
+        # forgets (review chunk Y5).
+        with closing(sqlite3.connect(DB_PATH)) as conn:
+            runs_df = pd.read_sql(_RUNS_SQL, conn)
+            frames = _rank_frames(conn, runs_df, current_run_id)
+        if "status" in frames:
+            return frames
+        curr_df, prev_df = frames["current"], frames["previous"]
 
         if curr_df.empty or prev_df.empty:
             return {"status": "empty_data",
@@ -206,14 +215,8 @@ def get_volatility_metrics(current_run_id):
 
     except Exception as e:
         logging.error(f"Error calculating volatility: {e}")
-        # Every other exit closes the connection; this one leaked it, and a
-        # leaked sqlite handle is how a later write meets "database is locked"
-        # (cold review of chunk Y3).
-        try:
-            if conn is not None:
-                conn.close()
-        except Exception:
-            pass
+        # `closing` has already released the handle, whichever line raised
+        # (review chunk Y5 — this used to be a hand-written close).
         return {"status": "query_failed",
                 "msg": (f"the volatility query failed ({e}); the figures could "
                         f"not be computed for this run.")}
@@ -242,9 +245,10 @@ def get_entity_dominance(run_id):
                 "msg": f"no history database at {DB_PATH} yet."}
 
     try:
-        conn = sqlite3.connect(DB_PATH)
-
-        # Join serp_results with domain_features and url_features
+        # `closing`, like `get_volatility_metrics`: the `except` path below
+        # returned without closing, so a failing dominance query left a reader
+        # open (P5 — the sibling of the same call is fixed in the same change,
+        # review chunk Y5).
         query = """
         SELECT 
             s.rank,
@@ -258,8 +262,9 @@ def get_entity_dominance(run_id):
         """
         # `rank <= 10` is the real top 10 since ranks became absolute
         # (D-C-01), and the label keeps alternative-query rows out (D-C-22).
-        df = pd.read_sql(query, conn, params=(run_id, PRIMARY_QUERY_LABEL))
-        conn.close()
+        with closing(sqlite3.connect(DB_PATH)) as conn:
+            df = pd.read_sql(query, conn,
+                             params=(run_id, PRIMARY_QUERY_LABEL))
 
         if df.empty:
             return {"status": "empty_data", "msg": _NO_PRIMARY_ROWS_MSG}

@@ -219,6 +219,23 @@ Editorial content currently lives in:
   since the start, so one of the two policies could be tuned and the other
   could not. every entry point that loads the config applies it
   once at startup — one setting, every call site (added review chunk Y4)
+- `config.yml` `http_retry.timeout_seconds` / `enrichment.timeout_seconds` /
+  `ai_visibility.timeout_seconds` — the three timeout classes: one API call,
+  one ranked competitor page, one engine answer. Editorial: they are three
+  different waits and a single number has to be wrong for one of them, and
+  each lives in the section that owns the work rather than a fourth home.
+  `http_retry.resolve_retry_policy` reads all three through
+  `timeouts.seconds_from_config` and the call sites ask for them by function
+  (`request_timeout()` / `page_fetch_timeout()` / `llm_timeout()`), never as a
+  default argument, which binds at import. They were per-module Python
+  constants in four clients (added review chunk Y5)
+- `config.yml` `ai_visibility.brand_relevant_categories` — the classifier
+  categories in which a cited domain carrying no `known_brands` entry is a
+  rival the gazetteer is missing. Editorial: which categories hold this
+  client's rivals. A directory or a publisher has no brand by design, so the
+  whole-table "not in known_brands" count is high on every run and says
+  nothing; this names the subset worth acting on (added the cold review of
+  review chunk Y5)
 - `config.yml` `thresholds_provenance` — one line per threshold family saying
   where that family's numbers came from (a study and a date, a decision record,
   a calibration). Printed in the report's §A appendix. A family left blank

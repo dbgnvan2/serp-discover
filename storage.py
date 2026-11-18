@@ -20,6 +20,7 @@ so the database migrates automatically on first use with no manual steps.
 import sqlite3
 import json
 import logging
+from contextlib import closing
 from datetime import datetime
 
 # For MINIMA_FIELDS only — the names of the fields a feasibility
@@ -30,13 +31,48 @@ from domain_utils import normalize_domain
 logger = logging.getLogger(__name__)
 
 
+def _add_missing_columns(cursor, table, columns):
+    """Add each absent column to *table*; never swallow a real error.
+
+    `ALTER TABLE ... ADD COLUMN` inside `except sqlite3.OperationalError: pass`
+    treated "database is locked", "no such table" and a read-only file as
+    "column already exists", so a migration that never ran left the column
+    missing and the run carried on: the provenance columns then read "not
+    recorded", the wording that means a row written before the migration. An
+    error is not an absence (P1/P6, review chunk Y5).
+
+    Returns the columns it added.
+    """
+    existing = {row[1] for row in
+                cursor.execute(f"PRAGMA table_info({table})").fetchall()}
+    if not existing:
+        raise sqlite3.OperationalError(
+            f"table {table} does not exist, so its columns cannot be added; "
+            f"the schema was not created")
+    added = []
+    for col, col_type in columns:
+        if col in existing:
+            continue
+        cursor.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
+        added.append(col)
+    return added
+
+
 class SerpStorage:
     def __init__(self, db_path="serp_data.db"):
         self.db_path = db_path
         self._init_db()
 
     def _init_db(self):
-        conn = sqlite3.connect(self.db_path)
+        # `closing`, because a migration now raises on a locked or missing
+        # table: the hand-written `close()` at the end of this method was not
+        # reached on that path, which is the leak the same chunk removed from
+        # `metrics.py` (cold review of chunk Y5).
+        with closing(sqlite3.connect(self.db_path)) as conn:
+            self._create_and_migrate(conn)
+
+    def _create_and_migrate(self, conn):
+        """Create every table and run every column migration on *conn*."""
         c = conn.cursor()
 
         # 1. Runs
@@ -136,23 +172,16 @@ class SerpStorage:
         )''')
 
         # --- Migration: feasibility minima columns (review chunk D6) ---
-        for col, col_type in [("min_competitor_da", "REAL"),
-                              ("max_competitor_da", "REAL"),
-                              ("min_non_directory_da", "REAL"),
-                              ("non_directory_count", "INTEGER"),
-                              ("entities_known", "INTEGER")]:
-            try:
-                c.execute(
-                    f"ALTER TABLE keyword_feasibility ADD COLUMN {col} {col_type}")
-            except sqlite3.OperationalError:
-                pass  # Column already exists — safe to ignore
+        _add_missing_columns(c, "keyword_feasibility", [
+            ("min_competitor_da", "REAL"),
+            ("max_competitor_da", "REAL"),
+            ("min_non_directory_da", "REAL"),
+            ("non_directory_count", "INTEGER"),
+            ("entities_known", "INTEGER")])
 
         # --- Migrations: add Moz DA/PA columns to url_features if absent ---
-        for col, col_type in [("competitor_da", "INTEGER"), ("page_authority", "INTEGER")]:
-            try:
-                c.execute(f"ALTER TABLE url_features ADD COLUMN {col} {col_type}")
-            except sqlite3.OperationalError:
-                pass  # Column already exists — safe to ignore
+        _add_missing_columns(c, "url_features", [
+            ("competitor_da", "INTEGER"), ("page_authority", "INTEGER")])
 
         # --- Migrations: run-completion and query-label columns (D-C-22) ---
         # `runs.completed_at` is NULL until the run writes all its outputs, so
@@ -164,25 +193,21 @@ class SerpStorage:
         # Rows written before this migration keep NULL in both columns, which
         # means "unknown", not "A" and not "completed" — metrics.py counts and
         # reports what it skipped rather than guessing.
-        for table, col, col_type in [
-            ("runs", "completed_at", "TEXT"),
-            ("serp_results", "query_label", "TEXT"),
+        for table, columns in [
+            ("runs", [("completed_at", "TEXT")]),
+            ("serp_results", [("query_label", "TEXT")]),
             # D2a coverage/provenance. Rows written before this keep NULL,
             # which means "not recorded", never "0 of 0" (finding F9).
-            ("keyword_feasibility", "da_count", "INTEGER"),
-            ("keyword_feasibility", "da_missing", "INTEGER"),
-            ("keyword_feasibility", "da_provider", "TEXT"),
-            ("keyword_feasibility", "client_da_source", "TEXT"),
+            ("keyword_feasibility", [("da_count", "INTEGER"),
+                                     ("da_missing", "INTEGER"),
+                                     ("da_provider", "TEXT"),
+                                     ("client_da_source", "TEXT")]),
         ]:
-            try:
-                c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {col_type}")
-            except sqlite3.OperationalError:
-                pass  # Column already exists — safe to ignore
+            _add_missing_columns(c, table, columns)
 
         self._canonicalise_domain_columns(c)
 
         conn.commit()
-        conn.close()
 
     def _canonicalise_domain_columns(self, cursor):
         """One-off: bring rows written before chunk Y1 to the canonical host.

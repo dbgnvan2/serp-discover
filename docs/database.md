@@ -89,6 +89,16 @@ it travel together into rank history:
   active provider, an operator override, the `config.yml` fallback (whose
   scale against that provider is unverified), or not measured at all.
 
+Every migration in `storage._init_db` runs through
+`storage._add_missing_columns`, which adds only the absent columns and lets any
+other `sqlite3.OperationalError` out. Until review chunk Y5 the three migration
+sites sat inside `except sqlite3.OperationalError: pass`, so "database is
+locked", "no such table" and a read-only file all meant "column already
+exists": a migration that never ran left the column missing, the run carried on,
+and the provenance columns then read "not recorded" — the wording that means a
+row written before the migration (P1/P6). A missing table is now raised with
+the reason, because a database with no schema is not a migrated one.
+
 Rows written before the migration hold NULL in all four. NULL means *not
 recorded*, never `0 of 0`: every reader keeps absent and zero apart, and the
 reports print "coverage not recorded for this run" rather than inventing a

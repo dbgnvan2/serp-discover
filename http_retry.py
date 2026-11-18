@@ -10,6 +10,8 @@ from types import MappingProxyType
 
 import requests
 
+from timeouts import seconds_from_config
+
 logger = logging.getLogger(__name__)
 
 TRANSIENT_STATUSES = frozenset({429, 500, 502, 503, 504})
@@ -21,33 +23,105 @@ TRANSIENT_STATUSES = frozenset({429, 500, 502, 503, 504})
 #: Frozen, so the fallback is always the documented default and never a value
 #: a previous `apply_retry_policy` left behind — the module constants below
 #: are rebound, so reading them as the fallback made the policy compound.
+#: Three timeout classes, because one number cannot serve all three: a DA or
+#: GSC API answers in about a second, a ranked page may be slow and there are
+#: dozens of them per run, and an LLM with web search routinely takes tens of
+#: seconds. Each was a per-module Python constant until review chunk Y5, while
+#: the retry budget beside them became editorial in Y4 — one outbound policy
+#: that could be tuned in halves (P4/P25).
+#:
+#: Two of the three already had a config home and keep it (Y1 — one definition
+#: each): the ranked-page wait is `enrichment.timeout_seconds`, which
+#: `serp_audit` has always passed to `UrlEnricher`, and the probe's LLM wait is
+#: `ai_visibility.timeout_seconds` beside the engine list it belongs to. Only
+#: the generic API wait, which had no home at all, is an `http_retry` key.
 DEFAULT_RETRY_POLICY = MappingProxyType({
     "attempts": 2,
     "backoff": 1.0,
     "max_retry_after": 30.0,
+    "timeout": 30.0,
+    "page_fetch_timeout": 10.0,
+    "llm_timeout": 60.0,
 })
 
 RETRY_ATTEMPTS = DEFAULT_RETRY_POLICY["attempts"]
 RETRY_BACKOFF_SECONDS = DEFAULT_RETRY_POLICY["backoff"]
 MAX_RETRY_AFTER_SECONDS = DEFAULT_RETRY_POLICY["max_retry_after"]
+REQUEST_TIMEOUT_SECONDS = DEFAULT_RETRY_POLICY["timeout"]
+PAGE_FETCH_TIMEOUT_SECONDS = DEFAULT_RETRY_POLICY["page_fetch_timeout"]
+LLM_TIMEOUT_SECONDS = DEFAULT_RETRY_POLICY["llm_timeout"]
+
+
+def request_timeout() -> float:
+    """The API-call timeout this process is configured with.
+
+    A function, not a constant read at import: `apply_retry_policy` rebinds
+    the module globals, and a caller that captured the value in a default
+    argument would never see the configured one (the Y4 trap).
+    """
+    return REQUEST_TIMEOUT_SECONDS
+
+
+def page_fetch_timeout() -> float:
+    """The ranked-page fetch timeout this process is configured with."""
+    return PAGE_FETCH_TIMEOUT_SECONDS
+
+
+def llm_timeout() -> float:
+    """The LLM-answer timeout this process is configured with."""
+    return LLM_TIMEOUT_SECONDS
+
+
+#: Where each timeout class is configured: policy key -> (config section,
+#: key in it). Read by `resolve_retry_policy`, so there is one table rather
+#: than a `cfg.get(...)` at each call site.
+TIMEOUT_SOURCES = MappingProxyType({
+    "timeout": ("http_retry", "timeout_seconds"),
+    "page_fetch_timeout": ("enrichment", "timeout_seconds"),
+    "llm_timeout": ("ai_visibility", "timeout_seconds"),
+})
 
 
 def resolve_retry_policy(cfg: dict | None = None) -> dict:
-    """``{attempts, backoff, max_retry_after}`` from config `http_retry`.
+    """The outbound policy: retry budget plus the three timeout classes.
 
     `config.yml`, not the shared config: this is one tool's own outbound
-    policy, and `technical.*` is the cross-tool namespace.
+    policy, and `technical.*` is the cross-tool namespace. The retry budget
+    comes from `http_retry`; each timeout comes from the section named in
+    `TIMEOUT_SOURCES`.
 
     A value that is not a positive number is reported and the documented
-    default used: 0 attempts would make every transient failure terminal, and
-    a report cannot tell a configured 0 from a typo.
+    default used: 0 attempts would make every transient failure terminal, 0
+    seconds would fail every call, and a report cannot tell a configured 0
+    from a typo.
     """
-    block = (cfg or {}).get("http_retry") or {}
+    cfg = cfg or {}
+    block = cfg.get("http_retry") or {}
     out = dict(DEFAULT_RETRY_POLICY)
+    for key, (section_name, cfg_key) in TIMEOUT_SOURCES.items():
+        section = cfg.get(section_name)
+        if not isinstance(section, dict) or cfg_key not in section:
+            continue
+        if section[cfg_key] is None:
+            # `seconds_from_config` reads `None` as "key absent" and returns
+            # the default without a warning, which is right for an absent key
+            # and wrong for `timeout_seconds:` written with nothing after it —
+            # a typo the reader would never hear about (P2, cold review of
+            # chunk Y5).
+            logger.warning(
+                "config.yml %s.%s is empty; using the documented default %s.",
+                section_name, cfg_key, out[key])
+            continue
+        # `timeouts.seconds_from_config` is this repo's own rule for "a
+        # positive number of seconds, else the default with a warning", and it
+        # rejects booleans. Reimplementing it here is how two validators come
+        # to disagree (P32).
+        out[key] = seconds_from_config(
+            section[cfg_key], out[key], f"{section_name}.{cfg_key}")
     if not isinstance(block, dict):
         logger.warning(
             "config.yml http_retry is %r, not a block of settings; using the "
-            "documented defaults %r.", block, out)
+            "documented retry defaults.", block)
         return out
     for key, cfg_key, cast in (("attempts", "attempts", int),
                                ("backoff", "backoff_seconds", float),
@@ -89,10 +163,15 @@ def apply_retry_policy(cfg: dict | None) -> dict:
     site).
     """
     global RETRY_ATTEMPTS, RETRY_BACKOFF_SECONDS, MAX_RETRY_AFTER_SECONDS
+    global REQUEST_TIMEOUT_SECONDS, PAGE_FETCH_TIMEOUT_SECONDS
+    global LLM_TIMEOUT_SECONDS
     policy = resolve_retry_policy(cfg)
     RETRY_ATTEMPTS = policy["attempts"]
     RETRY_BACKOFF_SECONDS = policy["backoff"]
     MAX_RETRY_AFTER_SECONDS = policy["max_retry_after"]
+    REQUEST_TIMEOUT_SECONDS = policy["timeout"]
+    PAGE_FETCH_TIMEOUT_SECONDS = policy["page_fetch_timeout"]
+    LLM_TIMEOUT_SECONDS = policy["llm_timeout"]
     return policy
 
 #: Request errors that will fail again however many times they are retried:
@@ -116,7 +195,7 @@ def get_with_transient_retry(
     url,
     headers,
     batch_desc,
-    timeout=30,
+    timeout=None,
     attempts=None,
     backoff=None,
     get=None,
@@ -143,6 +222,7 @@ def get_with_transient_retry(
     # globals would never reach a caller that omits them (review chunk Y4).
     attempts = RETRY_ATTEMPTS if attempts is None else attempts
     backoff = RETRY_BACKOFF_SECONDS if backoff is None else backoff
+    timeout = REQUEST_TIMEOUT_SECONDS if timeout is None else timeout
     response = None
     for attempt in range(1, attempts + 1):
         try:
@@ -191,7 +271,7 @@ def post_with_transient_retry(
     headers,
     json_payload,
     batch_desc,
-    timeout=30,
+    timeout=None,
     attempts=None,
     backoff=None,
     post=None,
@@ -207,6 +287,7 @@ def post_with_transient_retry(
     # See `get_with_transient_retry`: resolved here, not as a default.
     attempts = RETRY_ATTEMPTS if attempts is None else attempts
     backoff = RETRY_BACKOFF_SECONDS if backoff is None else backoff
+    timeout = REQUEST_TIMEOUT_SECONDS if timeout is None else timeout
     # Callers pass their own module's requests.post so existing test
     # patch targets (e.g. moz_client.requests.post) keep intercepting.
     if post is None:

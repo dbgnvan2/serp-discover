@@ -41,6 +41,7 @@ import logging
 import os
 import re
 import sqlite3
+import storage
 import sys
 from datetime import datetime
 from urllib.parse import urlparse
@@ -130,6 +131,13 @@ DEFAULT_PERPLEXITY_MODEL = "sonar"
 DEFAULT_PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/chat/completions"
 
 GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+#: Documented default only — nothing in this module reads it. The live value
+#: is editorial, in `config.yml` under `ai_visibility.timeout_seconds`, and
+#: every engine asks `http_retry.llm_timeout()` for it at call time. An LLM
+#: with web search routinely takes tens of seconds, which is why it is its own
+#: class rather than the API timeout (P4/P25, review chunk Y5). It is the
+#: figure `http_retry.DEFAULT_RETRY_POLICY["llm_timeout"]` falls back to, and
+#: a guard holds the two equal.
 REQUEST_TIMEOUT = 60
 
 PROBE_TABLE = "ai_visibility_probes"
@@ -251,7 +259,18 @@ class ClaudeProbe:
         self.web_search_tool = web_search_tool
         self.max_tokens = max_tokens
         self.max_searches = max_searches
-        self._client = anthropic.Anthropic(api_key=api_key)
+        # The SDK's own default is ten minutes per call with its own retries,
+        # so without this one engine of the four was outside the configured
+        # LLM wait entirely (P5, cold review of chunk Y5). Resolved per
+        # request, not here, because the config may be applied after the probe
+        # is constructed.
+        self._api_key = api_key
+
+    @property
+    def _client(self):
+        """A client carrying this process's configured LLM timeout."""
+        return anthropic.Anthropic(api_key=self._api_key,
+                                   timeout=http_retry.llm_timeout())
 
     def ask(self, question: str) -> dict:
         response = self._client.messages.create(
@@ -322,7 +341,7 @@ class GeminiProbe:
         response = post_with_transient_retry(
             "Gemini", url, headers, payload,
             batch_desc=f"probe question ({self.model})",
-            timeout=REQUEST_TIMEOUT,
+            timeout=http_retry.llm_timeout(),
             post=requests.post,
         )
         if response is None:
@@ -394,7 +413,7 @@ class ChatGPTProbe:
         response = post_with_transient_retry(
             "OpenAI", self.endpoint, headers, payload,
             batch_desc=f"probe question ({self.model})",
-            timeout=REQUEST_TIMEOUT,
+            timeout=http_retry.llm_timeout(),
             post=requests.post,
         )
         if response is None:
@@ -483,7 +502,7 @@ class PerplexityProbe:
         response = post_with_transient_retry(
             "Perplexity", self.endpoint, headers, payload,
             batch_desc=f"probe question ({self.model})",
-            timeout=REQUEST_TIMEOUT,
+            timeout=http_retry.llm_timeout(),
             post=requests.post,
         )
         if response is None:
@@ -794,14 +813,13 @@ def init_probe_table(db_path: str) -> None:
             failure_reason          TEXT
         )''')
         # Migration for DBs created before Y.5: add persona/source columns.
-        # ALTER TABLE … ADD COLUMN wrapped in try/except OperationalError so
-        # the DB migrates automatically on first use — storage.py convention.
-        for col, col_type in _PROBE_MIGRATION_COLUMNS:
-            try:
-                conn.execute(
-                    f"ALTER TABLE {PROBE_TABLE} ADD COLUMN {col} {col_type}")
-            except sqlite3.OperationalError:
-                pass  # Column already exists — safe to ignore (idempotent).
+        # Through `storage._add_missing_columns`, which ALTERs only the
+        # genuinely absent columns and lets every other OperationalError out:
+        # the `except sqlite3.OperationalError: pass` this used to carry
+        # counted a locked or missing table as a finished migration, and the
+        # row then read "not recorded" (P1/P6, cold review of chunk Y5).
+        storage._add_missing_columns(conn, PROBE_TABLE,
+                                     _PROBE_MIGRATION_COLUMNS)
         conn.commit()
 
 
@@ -1304,6 +1322,11 @@ def run_report_enrichment(rows: list[dict], engines: list[str], config: dict,
     return {
         "leaderboards": leaderboards,
         "citations": citations,
+        # Editorial, from config: the classifier categories in which a
+        # citation carrying no brand is a rival the gazetteer is missing.
+        "brand_relevant_categories": (
+            (config.get("ai_visibility") or {})
+            .get("brand_relevant_categories") or []),
         "sentiment": {
             "enabled": sent_enabled, "rows": sent_rows, "calls": sent_calls,
             "client_brand": client_name, "top_competitor": top_competitor,
@@ -1545,7 +1568,9 @@ def _enrichment_sections(engines: list[str], enrichment: dict) -> list[str]:
                 engine, unmeasured_reason[engine], "citations", "citations"))
             continue
         out.extend(citation_mod.render_citation_section(
-            engine, citations.get(engine, []) or []))
+            engine, citations.get(engine, []) or [],
+            brand_relevant_categories=enrichment.get(
+                "brand_relevant_categories")))
 
     sent = enrichment.get("sentiment", {}) or {}
     out.extend(sentiment_mod.render_sentiment_section(

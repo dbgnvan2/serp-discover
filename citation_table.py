@@ -260,13 +260,48 @@ def get_citations_for_run(db_path: str, run_ts: str, engine: str) -> list[dict]:
     ]
 
 
+def unattributed_brands(table: list[dict],
+                        categories: list[str] | None = None
+                        ) -> tuple[int, int, int]:
+    """``(citations from a known brand, citations from none, total)``.
+
+    Counted by cite count, not by row: a brand the gazetteer does not know is
+    the thing the reader is meant to add to `known_brands`, and the table's
+    per-row "—" could not tell "this engine cites nobody we track" from "we
+    track everybody it cites" (P2/P9, review chunk Y5).
+
+    With *categories*, only rows in those classifier categories are counted.
+    A directory or a publisher has no brand by design, so the whole-table
+    figure is large on every run; the figure for the categories where a rival
+    would sit is the one worth acting on (cold review of chunk Y5).
+    """
+    attributed = 0
+    unattributed = 0
+    for row in table or []:
+        if categories is not None and row.get("category") not in categories:
+            continue
+        count = int(row.get("cite_count") or 0)
+        if row.get("brand"):
+            attributed += count
+        else:
+            unattributed += count
+    return attributed, unattributed, attributed + unattributed
+
+
 # ---------------------------------------------------------------------------
 # Report section
 # ---------------------------------------------------------------------------
 
 def render_citation_section(engine: str, table: list[dict],
-                            top_n: int = 40) -> list[str]:
-    """Render the citations table for one engine + the outreach shortline."""
+                            top_n: int = 40,
+                            brand_relevant_categories: list[str] | None = None
+                            ) -> list[str]:
+    """Render the citations table for one engine + the outreach shortline.
+
+    *brand_relevant_categories* is the editorial list from `config.yml`
+    (`ai_visibility.brand_relevant_categories`) — the classifier categories in
+    which a citation carrying no brand is a rival the gazetteer is missing.
+    """
     out: list[str] = []
     out.append(f"### {engine} — citations")
     if not table:
@@ -300,6 +335,36 @@ def render_citation_section(engine: str, table: list[dict],
             f"are not in the outreach shortlist"
             + ("—so this engine's answers produced no outreach target at all.*"
                if not _ordered else ".*"))
+    _attributed, _unattributed, _brand_total = unattributed_brands(table)
+    if _unattributed:
+        out.append("")
+        _tail = ("so none of this engine's citations is attributed to a brand "
+                 "this run tracks"
+                 if not _attributed else
+                 # Not "in the table above": above `top_n` cited URLs the
+                 # table is truncated, and some of the counted citations are
+                 # in the rows it just said it was hiding.
+                 "and carry no brand in this engine's citations")
+        _focus = ""
+        if brand_relevant_categories:
+            _, _rival_unattributed, _rival_total = unattributed_brands(
+                table, list(brand_relevant_categories))
+            # A directory or a publisher carries no brand by design, so the
+            # whole-table figure is high on every run and says nothing. The
+            # figure for the categories a rival would sit in is the one to act
+            # on, and it is printed even at zero, because zero is the answer
+            # (P2, cold review of chunk Y5).
+            _focus = (
+                f" {_rival_unattributed} of the {_rival_total} citation(s) in "
+                f"the categories a rival would sit in "
+                f"({', '.join(brand_relevant_categories)}) carry no brand — "
+                f"those are the ones to act on.")
+        out.append(
+            f"*{_unattributed} of {_brand_total} citation(s) are from a brand "
+            f"not in `known_brands`, {_tail}.{_focus} Add the ones that matter "
+            f"to `config.yml known_brands` (see "
+            f"`brand_mentions_candidates_*.md`) so the next run attributes "
+            f"them.*")
     if shortlist:
         joined = ", ".join(f"{dom} ({n})" for dom, n in shortlist)
         out.append("")

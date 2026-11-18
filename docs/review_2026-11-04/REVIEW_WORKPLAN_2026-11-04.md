@@ -816,7 +816,17 @@ close to call dominant" check broke its tie on dict order so the contradiction
 went unreported half the time, the rank-history chart plotted pivot queries and
 aborted runs as if they were the keyword's own history, and the audit's organic
 row stored a host form no other table used
-(`docs/review_2026-11-04/PLAN_Y4_config_not_constants.md`). The
+(`docs/review_2026-11-04/PLAN_Y4_config_not_constants.md`). Chunk Y5 is the
+fifth: an error is not an absence, and one wait is not three — three schema
+migrations ran inside `except sqlite3.OperationalError: pass`, so a locked or
+missing table counted as a finished migration and the provenance columns then
+read "not recorded"; the volatility reader closed its sqlite handle on some
+exits and not the failing one; a cited domain the brand gazetteer does not know
+printed the same dash as a citation with no brand and nothing counted them; the
+Y1 guard against hand-stripping `www.` was a source grep that a fourth spelling
+would pass; and four clients each carried their own `REQUEST_TIMEOUT`, so one
+number served an API call, a ranked-page fetch and an LLM answer
+(`docs/review_2026-11-04/PLAN_Y5_an_error_is_not_an_absence.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

@@ -78,6 +78,11 @@ GSC_ENDPOINT_TEMPLATE = (
 #: Rows requested per Search Analytics page (API maximum).
 ROW_LIMIT: int = 25000
 
+#: Documented default only. The live value is editorial, in `config.yml`
+#: under `http_retry.timeout_seconds`, and reaches this call through
+#: `http_retry` itself — one setting, every call site (P4/P25, review chunk
+#: Y5). Kept so a direct caller that builds its own request still has a
+#: timeout.
 REQUEST_TIMEOUT: int = 30
 
 CACHE_TABLE = "gsc_cache"
@@ -399,7 +404,6 @@ class GscClient:
             response = _post_with_transient_retry(
                 "GSC", url, headers, payload,
                 batch_desc=f"searchAnalytics rows {start_row}+",
-                timeout=REQUEST_TIMEOUT,
                 post=requests.post,
             )
             if response is None:

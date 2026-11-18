@@ -50,6 +50,7 @@ import uuid
 
 import requests
 
+import http_retry
 from http_retry import post_with_transient_retry as _post_with_transient_retry
 
 logger = logging.getLogger(__name__)
@@ -63,6 +64,11 @@ MOZ_JSONRPC_ENDPOINT = "https://api.moz.com/jsonrpc"
 
 #: Request timeout in seconds (external-api E1 — a named value, not a literal
 #: at the call site).
+#: Documented default only. The live value is editorial, in `config.yml`
+#: under `http_retry.timeout_seconds`, and reaches this call through
+#: `http_retry` itself — one setting, every call site (P4/P25, review chunk
+#: Y5). Kept so a direct caller that builds its own request still has a
+#: timeout.
 REQUEST_TIMEOUT: int = 30
 
 #: JSON-RPC protocol version required by the Moz Data API.
@@ -167,7 +173,7 @@ def moz_call(
     method: str,
     data: dict,
     *,
-    timeout: int = REQUEST_TIMEOUT,
+    timeout: float | None = None,
     post=None,
 ) -> dict:
     """Call a Moz Data API *method* and return its ``result`` object.
@@ -183,7 +189,11 @@ def moz_call(
     data:
         The object placed at ``params.data`` in the envelope.
     timeout:
-        Per-request timeout in seconds (external-api E1).
+        Per-request timeout in seconds (external-api E1). ``None`` — the
+        default — takes the configured `http_retry.timeout_seconds`, resolved
+        here rather than in the signature: a default argument binds when the
+        module is imported, so the configured value would never reach a caller
+        that omitted it (the Y4 trap, review chunk Y5).
     post:
         Injectable ``requests.post`` replacement, for tests.
 
@@ -205,6 +215,7 @@ def moz_call(
     envelope = build_envelope(method, data)
     poster = post if post is not None else requests.post
 
+    timeout = http_retry.request_timeout() if timeout is None else timeout
     response = _post_with_transient_retry(
         "Moz API",
         MOZ_JSONRPC_ENDPOINT,

@@ -34,6 +34,7 @@ import sqlite3
 
 import ai_visibility_messages as av_messages
 import brand_match
+import storage
 
 logger = logging.getLogger(__name__)
 
@@ -299,15 +300,14 @@ def init_sentiment_table(db_path: str) -> None:
             status                 TEXT,
             failure_reason         TEXT
         )''')
-        # D3.14: pre-D3b databases predate the two columns. Same idempotent
-        # ALTER TABLE convention as storage.py / the probe table; an old row
-        # carries no status and reads as classified, which is what it was.
-        for column, ddl_type in (("status", "TEXT"), ("failure_reason", "TEXT")):
-            try:
-                conn.execute(
-                    f"ALTER TABLE {SENTIMENT_TABLE} ADD COLUMN {column} {ddl_type}")
-            except sqlite3.OperationalError:
-                pass  # already present
+        # D3.14: pre-D3b databases predate the two columns. Through
+        # `storage._add_missing_columns`, so a locked or missing table raises
+        # instead of counting as a finished migration (cold review of chunk
+        # Y5); an old row carries no status and reads as classified, which is
+        # what it was.
+        storage._add_missing_columns(
+            conn, SENTIMENT_TABLE,
+            [("status", "TEXT"), ("failure_reason", "TEXT")])
         conn.commit()
 
 

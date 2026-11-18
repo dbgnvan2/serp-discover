@@ -72,6 +72,11 @@ DFS_ENDPOINT = "https://api.dataforseo.com/v3/backlinks/bulk_ranks/live"
 #: Maximum domains per API request.
 DFS_BATCH_SIZE: int = 1000
 
+#: Documented default only. The live value is editorial, in `config.yml`
+#: under `http_retry.timeout_seconds`, and reaches this call through
+#: `http_retry` itself — one setting, every call site (P4/P25, review chunk
+#: Y5). Kept so a direct caller that builds its own request still has a
+#: timeout.
 REQUEST_TIMEOUT: int = 30
 
 # Fallback for how many days a cached absence (a row with no rank) stays good
@@ -214,7 +219,6 @@ class DataForSEOClient:
             headers={**self._auth_header, "Content-Type": "application/json"},
             json_payload=payload,
             batch_desc=f"batch of {len(domains)} domains",
-            timeout=REQUEST_TIMEOUT,
         )
         if response is None:
             return {}

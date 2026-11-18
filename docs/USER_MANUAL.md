@@ -1567,6 +1567,21 @@ of them). You can drop any others outright by adding them to
 yourself in `known_brands` are never filtered, and the log says how many
 harvested names were dropped and why.
 
+**A dash in the Brand column is a question, not an answer.** The citations
+table names the brand behind each cited URL where it can, from the
+`known_brands` list in `config.yml`, and prints "—" where it cannot. That dash
+meant two different things: this citation is from nobody we track, and this
+citation has no brand at all. Nothing counted them, so an engine citing twenty
+untracked competitors read the same as an engine citing none. Under the table
+the report now says how many of that engine's citations carry no brand — by
+citation count, not by row, because one untracked domain can be cited a dozen
+times — and where to put them: `config.yml → known_brands`, with the
+candidates the run already surfaced in
+`brand_mentions_candidates_<topic>_<timestamp>.md`. Where *nothing* could be
+attributed the line says so in its own words, because that is the case where
+the leaderboard above holds no competitor at all and would otherwise read as
+"no competitor is cited".
+
 A shared rank is also not a win in the **score**: the Ranking axis that feeds
 AIVI used to give a client tied at first place with five other brands a
 perfect 100, a few lines away from prose saying "not ahead of them". A tie now

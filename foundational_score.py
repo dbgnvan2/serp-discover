@@ -52,6 +52,7 @@ import logging
 import sqlite3
 
 import ai_visibility_messages as av_messages
+import storage
 
 logger = logging.getLogger(__name__)
 
@@ -462,14 +463,13 @@ def init_foundational_table(db_path: str) -> None:
             weights_json  TEXT,
             definition_version INTEGER
         )''')
-        # Idempotent ADD COLUMN, as storage.py does: a pre-D3b row predates the
-        # column and reads as definition 1, which is what it was.
-        try:
-            conn.execute(
-                f"ALTER TABLE {FOUNDATIONAL_TABLE} "
-                f"ADD COLUMN definition_version INTEGER")
-        except sqlite3.OperationalError:
-            pass  # already present
+        # Through `storage._add_missing_columns`, so a locked or missing table
+        # raises instead of counting as a finished migration (cold review of
+        # chunk Y5): a pre-D3b row predates the column and reads as
+        # definition 1, which is what it was.
+        storage._add_missing_columns(
+            conn, FOUNDATIONAL_TABLE,
+            [("definition_version", "INTEGER")])
         conn.commit()
 
 

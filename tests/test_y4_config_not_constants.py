@@ -182,8 +182,13 @@ class TestRetryPolicyComesFromConfig(unittest.TestCase):
         out = http_retry.resolve_retry_policy(
             {"http_retry": {"attempts": 4, "backoff_seconds": 2.5,
                             "max_retry_after_seconds": 10}})
-        self.assertEqual(out, {"attempts": 4, "backoff": 2.5,
-                               "max_retry_after": 10.0})
+        # The retry budget only. Y5 added the three timeout classes to the
+        # same policy, each from the section that owns it, so this asserts its
+        # own three keys rather than the whole dict.
+        self.assertEqual({k: out[k] for k in ("attempts", "backoff",
+                                              "max_retry_after")},
+                         {"attempts": 4, "backoff": 2.5,
+                          "max_retry_after": 10.0})
 
     def test_a_policy_of_zero_is_refused(self):
         """Zero attempts makes every transient failure terminal (P1)."""

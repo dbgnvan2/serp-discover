@@ -159,6 +159,19 @@ bing_check:
   enabled: false
   num: 20
 ai_visibility:
+  # Y5 cold review — the classifier categories in which a cited domain
+  # carrying no `known_brands` entry is a rival the gazetteer is missing. A
+  # directory or a publisher has no brand by design, so the whole-table count
+  # is high on every run and says nothing; this is the subset worth acting on.
+  # Editorial: which categories hold this client's rivals.
+  brand_relevant_categories:
+  - counselling
+  - nonprofit
+  # Y5 — how long one engine answer may take. Far longer than an API call
+  # (`http_retry.timeout_seconds`) because these models search the web before
+  # answering; the API figure would file most probes as failures. A
+  # non-positive or non-numeric value is reported and the default (60) used.
+  timeout_seconds: 60
   # Engine defaults (gate Y-D9, user-approved): Gemini + ChatGPT ON (reach +
   # Google-organic carryover), Perplexity ON (referral-click value), Claude
   # available-but-not-default. Each engine still runs only if its API key is
@@ -340,6 +353,15 @@ http_retry:
   # Cap on a server's own Retry-After header, so a host asking for an hour
   # cannot stall the run.
   max_retry_after_seconds: 30.0
+  # Y5 — how long one API call may take before it counts as a failure:
+  # DataForSEO, Moz, Google Search Console. This was a per-module Python
+  # constant repeated in four clients, so it could not be tuned at all.
+  # A timeout cannot be switched off: a non-positive or non-numeric value is
+  # reported and the default (30) used. The tool's other two waits are longer
+  # and shorter on purpose and stay with the work they belong to —
+  # `enrichment.timeout_seconds` for one ranked competitor page, and
+  # `ai_visibility.timeout_seconds` for an LLM answer.
+  timeout_seconds: 30
 
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free

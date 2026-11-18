@@ -100,6 +100,11 @@ DEFAULT_NEGATIVE_CACHE_TTL_DAYS = 7
 MOZ_BATCH_SIZE: int = 50
 
 #: Request timeout in seconds.
+#: Documented default only. The live value is editorial, in `config.yml`
+#: under `http_retry.timeout_seconds`, and reaches this call through
+#: `http_retry` itself — one setting, every call site (P4/P25, review chunk
+#: Y5). Kept so a direct caller that builds its own request still has a
+#: timeout.
 REQUEST_TIMEOUT: int = 30
 
 #: SQLite table used for caching.
@@ -316,7 +321,6 @@ class MozClient:
             result = moz_call(
                 SITE_METRICS_METHOD,
                 {"site_queries": site_queries},
-                timeout=REQUEST_TIMEOUT,
             )
         except (MozRpcError, RuntimeError) as exc:
             logger.warning(

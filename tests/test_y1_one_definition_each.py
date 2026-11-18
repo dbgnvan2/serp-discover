@@ -38,17 +38,78 @@ HOST_MODULES = (brand_mentions, citation_table, dataforseo_client, feasibility,
                 probe_ai_visibility, run_feasibility, storage)
 
 
+#: The labels `domain_utils` owns, without the dots, so the guard below
+#: recognises a hand-rolled strip of any of them.
+_ALIAS_LABELS = {p.strip(".").lower() for p in ALIAS_PREFIXES}
+
+
+#: String methods that could take an alias prefix off a host by hand.
+_STRIPPERS = frozenset({"removeprefix", "lstrip", "rstrip", "strip", "replace",
+                        "split", "partition", "removesuffix"})
+
+
+#: Shapes that take a prefix off without a string method: a regex, or the
+#: idiomatic `startswith` test followed by a slice. Added by the cold review of
+#: chunk Y5, which found the AST walk blind to both.
+_RE_FUNCS = frozenset({"sub", "match", "fullmatch", "search"})
+
+
+def _alias_literal(value):
+    """True when *value* is an alias prefix, written plainly or as a regex."""
+    if not isinstance(value, str):
+        return False
+    label = value.replace("\\", "").strip("^$").strip(".").lower()
+    return label in _ALIAS_LABELS
+
+
+def hand_stripped_prefixes(source):
+    """``[(line, method, literal)]`` for every hand-rolled alias strip.
+
+    Walked, not grepped: the first form of this guard matched three spellings
+    of the `www.` strip as source text, so a fourth spelling passed and any
+    reformat broke it green (review chunk Y5). It covers a string method
+    (`removeprefix`, `replace`, `split`, …), `re.sub`/`re.match` and the
+    `startswith` test that precedes a slice — not every conceivable spelling,
+    but every one this repo has reached for.
+    """
+    import ast
+
+    found = []
+    for node in ast.walk(ast.parse(source)):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        if not isinstance(func, ast.Attribute):
+            continue
+        if func.attr in _STRIPPERS or func.attr == "startswith":
+            names = node.args
+        elif (func.attr in _RE_FUNCS
+              and isinstance(func.value, ast.Name) and func.value.id == "re"):
+            names = node.args
+        else:
+            continue
+        for arg in names:
+            if isinstance(arg, ast.Constant) and _alias_literal(arg.value):
+                found.append((node.lineno, func.attr, arg.value))
+            elif isinstance(arg, (ast.Tuple, ast.List)):
+                for item in arg.elts:
+                    if (isinstance(item, ast.Constant)
+                            and _alias_literal(item.value)):
+                        found.append((node.lineno, func.attr, item.value))
+    return found
+
+
 class TestOneHostRule(unittest.TestCase):
 
     def test_no_module_strips_the_prefix_by_hand(self):
         for module in HOST_MODULES:
-            source = inspect.getsource(module)
-            for bad in ('removeprefix("www.")', 'lstrip("www.")',
-                        'replace("www.", "")'):
-                self.assertNotIn(
-                    bad, source,
-                    f"{module.__name__} holds its own copy of the host rule; "
-                    f"call domain_utils.normalize_domain")
+            hits = hand_stripped_prefixes(inspect.getsource(module))
+            self.assertEqual(
+                hits, [],
+                f"{module.__name__} has its own copy of the host rule: "
+                + "; ".join(f"line {line} calls .{attr}({lit!r})"
+                            for line, attr, lit in hits)
+                + " — call domain_utils.normalize_domain")
 
     def test_every_local_helper_agrees_with_the_one_definition(self):
         cases = ["https://WWW.Example.com:8080/p", "example.com/page",

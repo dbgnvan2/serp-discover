@@ -53,9 +53,22 @@ def match_credential_tokens(text, tokens):
 
 
 class UrlEnricher:
-    def __init__(self, user_agent="MarketIntelligenceBot/1.0", timeout=10,
+    def _fetch_timeout(self):
+        """This enricher's per-request timeout, never ``None``."""
+        if self.timeout is not None:
+            return self.timeout
+        import http_retry
+
+        return http_retry.page_fetch_timeout()
+
+    def __init__(self, user_agent="MarketIntelligenceBot/1.0", timeout=None,
                  eeat_vocab=None, eeat_scan_chars=8000):
         self.headers = {'User-Agent': user_agent}
+        # `None` means "whatever this process is configured with"
+        # (`config.yml enrichment.timeout_seconds`), resolved per
+        # call by `_fetch_timeout` rather than here: the config may be applied
+        # after the enricher is constructed, and a timeout of `None` reaches
+        # `requests` as "wait forever" (review chunk Y5).
         self.timeout = timeout
         # E-E-A-T vocabulary is editorial and lives in serp_vocab.yml
         # (eeat_signals section); injectable for tests.
@@ -103,7 +116,8 @@ class UrlEnricher:
             # deliberately not retried.
             try:
                 head_resp = requests.head(
-                    url, headers=self.headers, timeout=self.timeout, allow_redirects=True)
+                    url, headers=self.headers,
+                    timeout=self._fetch_timeout(), allow_redirects=True)
                 content_type = head_resp.headers.get(
                     'Content-Type', '').lower()
 
@@ -121,7 +135,8 @@ class UrlEnricher:
 
             response = get_with_transient_retry(
                 "page fetch", url, self.headers,
-                batch_desc=url, timeout=self.timeout)
+                batch_desc=url,
+                timeout=self._fetch_timeout())
             if response is None:
                 # Every attempt failed at the network layer. `http_retry` has
                 # already logged each one.
