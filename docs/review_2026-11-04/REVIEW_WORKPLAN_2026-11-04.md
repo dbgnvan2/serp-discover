@@ -1025,6 +1025,62 @@ partial-save report; and the temp file was a fixed name, left behind on failure.
 Final mutation gate 18/18 caught, none vacuous
 (`docs/review_2026-11-04/PLAN_Y15_every_editorial_file_has_an_editor.md`).
 
+**Chunk Y16 — one reader for the shared config.** Carried as an adjacent issue
+by the cold reviews of chunks Y11, Y13, Y14 and Y15. `shared_config.json` is
+the editorial config both tools share — scoring weights, penalty thresholds,
+position thresholds, risk signals, the database path, the clinical vocabulary
+tiers — and Tool 2 had **five** bodies reading it, with different behaviour on
+a file that would not parse, and **five** modules each building the path to it
+from their own `__file__`. The serious one was on the scoring path:
+`scoring_logic` read the file at import time into module globals with an
+`except Exception: pass` behind it, so a `shared_config.json` with a trailing
+comma meant every competitor in the run was scored with the Python fallback
+weights and an **empty** clinical vocabulary — page scores of 0, a run that
+completed, a briefing whose numbers reconciled with nothing the owner had
+configured, and nothing logged, because the swallow was the only place that
+could have said so (P40 + P16, and the same shape as the bind-time trap of
+chunk Y4). The same import-time read also meant editing the config and running
+again inside one Streamlit process changed nothing.
+
+There is one reader now (`src/config_io.py::load_config`, which raises on a
+file it cannot parse, the rule `database.load_shared_config` already
+documented), one definition of the path, and the values are read when they are
+used — through accessors that take an already-loaded config so a caller holding
+it does not re-read the file (P25). The scoring path reads **once per run, when
+the analyser is built**: the cold review of this chunk found that a per-page
+read put the read inside `scrape_content`'s `except Exception`, where a config
+that could not be parsed mid-run became a per-URL record saying the competitor's
+PAGE was unreadable, with `rank` / `systems_score` / `medical_score` all NULL and
+the run completing (its F1, high). Built once per run, the read is outside every
+per-page handler, so the failure stops the run before the first page is fetched
+— and one analyser scores every page against one version of the file, so the
+weights and the vocabulary behind a single score can no longer come from two
+reads either side of a GUI edit. No cache: one read and parse is 0.095 ms over
+34 KB, measured rather than assumed, and a cache keyed on nothing is how the
+import-time read became a bug. The eleven Python fallbacks that mirror the
+file's own values are now asserted verbatim equal to them, so "degrades to the
+documented default" cannot degrade to a different number than the document.
+
+The cold review returned **8 findings (1 high, 7 medium)**, all fixed with a
+guard: the swallowed raise above; two opposite policies for the same file
+280 lines apart in `semantic.py`; four stale docstrings and doc paragraphs
+describing the behaviour the chunk reversed; a new guard that asserted the five
+path constants *agreed* (they always had — the five expressions resolved to the
+same string — so it was vacuous for its own criterion), replaced by a check that
+the file is NAMED once; a source-text guard that would stay green against a
+re-introduction of the import-time read, replaced by a consequence; the same
+EMPTY-vocabulary outcome still reachable through `load_dictionary`'s
+`except Exception: pass` on the `clinical_dictionary.json` fallback; three more
+mirrored fallbacks the equality sweep had not reached; and one score computable
+from two reads. Writing those guards also surfaced a P43 defect in the chunk
+itself: `scoring_logic` did `from src.config_io import load_config`, which binds
+at import, so patching the one reader did not reach the scoring path and several
+of the chunk's own tests were testing nothing. Mutation gate 33 mutations, 33 caught, none vacuous; the
+import-time guards run in a subprocess, because a test that imports the module
+in-process would pass either way
+(`docs/review_2026-11-04/PLAN_Y16_one_reader_for_the_shared_config.md`, in
+serp-compete).
+
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.
