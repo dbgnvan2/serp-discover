@@ -29,6 +29,13 @@ from storage import SerpStorage   # noqa: E402
 
 class TestSpongeThresholdsComeFromConfig(unittest.TestCase):
 
+    def setUp(self):
+        # `run_analysis` applies this run's thresholds to the module
+        # mapping (review chunk Y7), so a test that calls it leaves
+        # them behind for every later test in the process — the suite
+        # was green only on collection order (P28/P34, cold review).
+        self.addCleanup(rga.apply_sponge_thresholds, None)
+
     def test_the_bucket_size_and_bands_are_read_from_config(self):
         out = rga.resolve_sponge_thresholds(
             {"gsc": {"min_bucket_size": 5,
@@ -157,11 +164,21 @@ class TestSpongeThresholdsComeFromConfig(unittest.TestCase):
                                    _shortlist_spy):
                 rga.run_analysis(data, config, client, path,
                                  today=date(2026, 7, 4), db_path=None)
-        self.assertEqual(seen.get("min_bucket_size"), 9)
-        self.assertEqual(seen.get("bands"), [(2.0, 7.0)])
+        # The run applies its config once and the two helpers read that one
+        # mapping when an argument is omitted, so the criterion is that the
+        # configured numbers are what the comparison ran on — not that they
+        # travelled as keyword arguments (review chunk Y7).
+        active = rga.active_sponge_thresholds()
+        self.assertEqual(active["min_bucket_size"], 9)
+        self.assertEqual(active["position_bands"], [(2.0, 7.0)])
         # And the shortlist's own cap, which stayed a constant when the bands
         # became config.
-        self.assertEqual(shortlist_seen.get("max_position"), 15.0)
+        self.assertEqual(active["reformat_max_position"], 15.0)
+        self.assertFalse(
+            {"bands", "min_bucket_size"} & set(seen),
+            "the run passes the thresholds explicitly as well as applying "
+            "them, so the two can disagree (Y7)")
+        self.assertNotIn("max_position", shortlist_seen)
 
     def test_the_configured_bands_reach_the_comparison(self):
         rows = [{"found": True, "has_ai_overview": aio, "position": pos,

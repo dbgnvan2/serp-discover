@@ -8,6 +8,13 @@ serpapi:
   google_max_pages: 3
   google_max_results: 300
   maps_max_pages: 3
+  # Read and validated by `http_retry` alongside the `http_retry` block below,
+  # with the same warnings and the same documented defaults: junk here used to
+  # abort the run at import and a negative backoff reached time.sleep after the
+  # first paid call (review chunk Y7). This budget is deliberately one attempt
+  # longer than `http_retry.attempts` — a SERP fetch is a paid call against a
+  # single vendor and the run cannot continue without it, while a DA lookup has
+  # a second provider behind it.
   retry_max_attempts: 3
   retry_backoff_seconds: 1.0
   timeout_seconds: 60   # per SerpAPI call; slowest of 296 logged calls was 30s (2026-11-14)

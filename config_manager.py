@@ -192,14 +192,30 @@ HELP_BY_FIELD = {
     "config.yml.serpapi.num": "Number of results per SERP page (max 100). Higher = slower but more comprehensive.",
     "config.yml.serpapi.google_max_pages": "How many pages of Google results to fetch (max 3 for free tier).",
     "config.yml.serpapi.google_max_results": "Total maximum Google results to collect (roughly pages × num).",
-    "config.yml.serpapi.retry_max_attempts": "How many times to retry failed API requests before giving up.",
-    "config.yml.serpapi.retry_backoff_seconds": "Delay (seconds) between retry attempts. Increases with each attempt.",
+    "config.yml.serpapi.retry_max_attempts": "Total tries for one SerpAPI call, not extra ones: 3 means two retries and 1 means no retry at all. One more than http_retry.attempts on purpose — a SERP fetch is paid, single-vendor, and the run cannot continue without it.",
+    "config.yml.serpapi.retry_backoff_seconds": "Delay (seconds) before the first SerpAPI retry; it doubles with each further attempt, plus a little jitter. Zero or less would make every transient failure terminal, so it is refused and the default used.",
+    # The other half of the same policy. It had no help text at all while
+    # SerpAPI's two keys did, so the GUI showed one of the tool's two retry
+    # budgets and not the other (review chunk Y7). The wording states total
+    # tries and the shape of the growth, because the first draft said "how
+    # many times to retry" of a total and "doubles" of a linear backoff — help
+    # text that would have walked an operator into no retry at all on the paid
+    # fetch (P1, cold review of the same chunk).
+    "config.yml.http_retry.attempts": "Total tries for one call to any non-SerpAPI host (DataForSEO, Moz, Search Console, the AI-engine probes, the page fetch), not extra ones: 2 means one retry and 1 means no retry at all.",
+    "config.yml.http_retry.backoff_seconds": "Delay (seconds) before the first retry of a non-SerpAPI call; it grows linearly with the attempt number (1x, 2x, 3x), and does not double. Zero or less would make every transient failure terminal, so it is refused and the default used.",
+    "config.yml.http_retry.max_retry_after_seconds": "Cap on how long the tool will honour a server's own Retry-After header, so a host asking for an hour cannot stall the run.",
+    # The other two timeout classes, each in the section that owns the work.
+    # The derived guard in tests/test_y7_one_retry_budget.py found these two
+    # missing once it read the paths off `http_retry.TIMEOUT_SOURCES` instead
+    # of a hand-written list (cold review of chunk Y7).
+    "config.yml.enrichment.timeout_seconds": "How long to wait for one ranked competitor page to answer. Shorter than the API wait because every row of the top 10 is fetched; a page that does not answer is recorded as not read, never as empty.",
+    "config.yml.ai_visibility.timeout_seconds": "How long to wait for one AI-engine answer. Much longer than the API wait because these models search the web before answering; an engine that does not answer is recorded as not measured, never as a zero.",
+    "config.yml.http_retry.timeout_seconds": "How long to wait for one API call to answer. The two other waits live beside the work they belong to: enrichment.timeout_seconds for one ranked competitor page, ai_visibility.timeout_seconds for one engine answer.",
     "config.yml.serpapi.no_cache": "Set to true to bypass SerpAPI cache and always fetch fresh results.",
     "config.yml.files.input_csv": "CSV file with keywords to research (relative or absolute path).",
     "config.yml.files.output_folder": "Where to save analysis results (xlsx, json, md files).",
     "config.yml.enrichment.enabled": "Whether to fetch extra data (domain age, enrichment details). Slows down analysis but more complete.",
     "config.yml.enrichment.max_urls_per_keyword": "How many URLs per keyword to analyze for enrichment (higher = more thorough).",
-    "config.yml.enrichment.timeout_seconds": "How long to wait for enrichment requests before timing out.",
     "config.yml.app.force_local_intent": "Always label local pack results as 'local' intent (override classifier).",
     "config.yml.app.balanced_mode": "Use balanced approach: medium thoroughness, medium speed.",
     "config.yml.serp_intent.thresholds.primary_share": "Confidence threshold for primary intent (0.0-1.0). Higher = only certain results marked as primary.",

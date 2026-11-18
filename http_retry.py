@@ -42,6 +42,12 @@ DEFAULT_RETRY_POLICY = MappingProxyType({
     "timeout": 30.0,
     "page_fetch_timeout": 10.0,
     "llm_timeout": 60.0,
+    # The SerpAPI loop's own budget. A SERP fetch is a paid call against a
+    # single vendor and the run cannot continue without it, so it is worth one
+    # more attempt than a free DA lookup — the editorial reason the two
+    # budgets differ, which was nowhere until review chunk Y7.
+    "serpapi_attempts": 3,
+    "serpapi_backoff": 1.0,
 })
 
 RETRY_ATTEMPTS = DEFAULT_RETRY_POLICY["attempts"]
@@ -50,6 +56,8 @@ MAX_RETRY_AFTER_SECONDS = DEFAULT_RETRY_POLICY["max_retry_after"]
 REQUEST_TIMEOUT_SECONDS = DEFAULT_RETRY_POLICY["timeout"]
 PAGE_FETCH_TIMEOUT_SECONDS = DEFAULT_RETRY_POLICY["page_fetch_timeout"]
 LLM_TIMEOUT_SECONDS = DEFAULT_RETRY_POLICY["llm_timeout"]
+SERPAPI_RETRY_ATTEMPTS = DEFAULT_RETRY_POLICY["serpapi_attempts"]
+SERPAPI_RETRY_BACKOFF_SECONDS = DEFAULT_RETRY_POLICY["serpapi_backoff"]
 
 
 def request_timeout() -> float:
@@ -82,6 +90,20 @@ TIMEOUT_SOURCES = MappingProxyType({
 })
 
 
+#: Which config block each retry budget is read from, and under which key.
+#: `http_retry` is the policy for every `requests` call; `serpapi` is the
+#: budget for `serp_audit`'s own loop around the SerpAPI client, which is a
+#: different transport with its own error payload. Two budgets, one rule for
+#: reading them (review chunk Y7).
+BUDGET_SOURCES = (
+    ("http_retry", (("attempts", "attempts", int),
+                    ("backoff", "backoff_seconds", float),
+                    ("max_retry_after", "max_retry_after_seconds", float))),
+    ("serpapi", (("serpapi_attempts", "retry_max_attempts", int),
+                 ("serpapi_backoff", "retry_backoff_seconds", float))),
+)
+
+
 def resolve_retry_policy(cfg: dict | None = None) -> dict:
     """The outbound policy: retry budget plus the three timeout classes.
 
@@ -96,7 +118,6 @@ def resolve_retry_policy(cfg: dict | None = None) -> dict:
     from a typo.
     """
     cfg = cfg or {}
-    block = cfg.get("http_retry") or {}
     out = dict(DEFAULT_RETRY_POLICY)
     for key, (section_name, cfg_key) in TIMEOUT_SOURCES.items():
         section = cfg.get(section_name)
@@ -118,40 +139,83 @@ def resolve_retry_policy(cfg: dict | None = None) -> dict:
         # to disagree (P32).
         out[key] = seconds_from_config(
             section[cfg_key], out[key], f"{section_name}.{cfg_key}")
-    if not isinstance(block, dict):
-        logger.warning(
-            "config.yml http_retry is %r, not a block of settings; using the "
-            "documented retry defaults.", block)
-        return out
-    for key, cfg_key, cast in (("attempts", "attempts", int),
-                               ("backoff", "backoff_seconds", float),
-                               ("max_retry_after", "max_retry_after_seconds",
-                                float)):
-        if cfg_key not in block:
+    for section_name, keys in BUDGET_SOURCES:
+        if section_name not in cfg:
             continue
-        raw = block[cfg_key]
+        section = cfg[section_name]
+        # Both blocks read the same way. `http_retry` was read as
+        # `cfg.get("http_retry") or {}`, so a block mangled into `0`, `""` or
+        # nothing at all — an indentation typo is enough — was replaced by the
+        # defaults with nothing in the log, while the same mistake under
+        # `serpapi` warned (P2/P9, cold review of chunk Y7).
+        if not isinstance(section, dict):
+            logger.warning(
+                "config.yml %s is %r, not a block of settings; using the "
+                "documented retry defaults.", section_name, section)
+            continue
+        if not section:
+            logger.warning(
+                "config.yml %s is empty; using the documented retry defaults.",
+                section_name)
+            continue
+        _read_budget(section, section_name, keys, out)
+    return out
+
+
+def _read_budget(section, section_name, keys, out):
+    """Apply one config block's retry-budget keys to *out*, in place.
+
+    One rule for both budgets. The SerpAPI loop's two keys were read at
+    `serp_audit` import time with a bare `int()` / `float()`, so a value that
+    is not a number aborted the whole run with a traceback and a negative
+    backoff reached `time.sleep` — after the first paid call — while the three
+    keys beside them warned and used the documented default. Two validators
+    for one kind of setting is how they come to disagree (P4/P32, review
+    chunk Y7).
+    """
+    for key, cfg_key, cast in keys:
+        if cfg_key not in section:
+            continue
+        raw = section[cfg_key]
         if isinstance(raw, bool):
             logger.warning(
-                "config.yml http_retry.%s is %r, which is not a number; "
-                "using the documented default %s.", cfg_key, raw, out[key])
+                "config.yml %s.%s is %r, which is not a number; "
+                "using the documented default %s.",
+                section_name, cfg_key, raw, out[key])
             continue
         try:
             value = cast(raw)
         except (TypeError, ValueError):
             logger.warning(
-                "config.yml http_retry.%s is %r, which is not a "
+                "config.yml %s.%s is %r, which is not a "
                 "number; using the documented default %s.",
-                cfg_key, raw, out[key])
+                section_name, cfg_key, raw, out[key])
             continue
         if value <= 0:
             logger.warning(
-                "config.yml http_retry.%s is %r, which is %s as a retry "
+                "config.yml %s.%s is %r, which is %s as a retry "
                 "policy; zero or less makes every transient failure terminal "
                 "(P1). Using the documented default %s.",
-                cfg_key, raw, value, out[key])
+                section_name, cfg_key, raw, value, out[key])
             continue
         out[key] = value
-    return out
+
+
+def serpapi_retry_attempts() -> int:
+    """How many times the SerpAPI loop may try one call.
+
+    A function, like the three timeout accessors, so `apply_retry_policy`
+    reaches the call site: `serp_audit` read this at import into a module
+    constant, which is bound before any config is applied (review chunk Y7).
+    """
+    return SERPAPI_RETRY_ATTEMPTS
+
+
+def serpapi_retry_backoff() -> float:
+    """The SerpAPI loop's base backoff, in seconds. Never zero or negative —
+    `resolve_retry_policy` rejects those, so this cannot reach `time.sleep`
+    as a negative number."""
+    return SERPAPI_RETRY_BACKOFF_SECONDS
 
 
 def apply_retry_policy(cfg: dict | None) -> dict:
@@ -165,6 +229,7 @@ def apply_retry_policy(cfg: dict | None) -> dict:
     global RETRY_ATTEMPTS, RETRY_BACKOFF_SECONDS, MAX_RETRY_AFTER_SECONDS
     global REQUEST_TIMEOUT_SECONDS, PAGE_FETCH_TIMEOUT_SECONDS
     global LLM_TIMEOUT_SECONDS
+    global SERPAPI_RETRY_ATTEMPTS, SERPAPI_RETRY_BACKOFF_SECONDS
     policy = resolve_retry_policy(cfg)
     RETRY_ATTEMPTS = policy["attempts"]
     RETRY_BACKOFF_SECONDS = policy["backoff"]
@@ -172,6 +237,8 @@ def apply_retry_policy(cfg: dict | None) -> dict:
     REQUEST_TIMEOUT_SECONDS = policy["timeout"]
     PAGE_FETCH_TIMEOUT_SECONDS = policy["page_fetch_timeout"]
     LLM_TIMEOUT_SECONDS = policy["llm_timeout"]
+    SERPAPI_RETRY_ATTEMPTS = policy["serpapi_attempts"]
+    SERPAPI_RETRY_BACKOFF_SECONDS = policy["serpapi_backoff"]
     return policy
 
 #: Request errors that will fail again however many times they are retried:

@@ -10,6 +10,7 @@ import requests
 
 import feasibility
 import run_feasibility
+import http_retry
 import serp_audit
 import timeouts
 
@@ -36,7 +37,9 @@ def fake_search(monkeypatch):
     monkeypatch.setattr(serp_audit, "GoogleSearch", _FakeSearch)
     monkeypatch.setattr(serp_audit, "SERPAPI_AVAILABLE", True)
     monkeypatch.setattr(serp_audit, "SERPAPI_TIMEOUT_SECONDS", 7.5)
-    monkeypatch.setattr(serp_audit, "RETRY_MAX_ATTEMPTS", 3)
+    # The SerpAPI budget lives in `http_retry` beside the policy for
+    # every other outbound call (review chunk Y7).
+    monkeypatch.setattr(http_retry, "SERPAPI_RETRY_ATTEMPTS", 3)
     monkeypatch.setattr(serp_audit.time, "sleep", lambda s: None)
     return _FakeSearch
 

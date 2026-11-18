@@ -140,8 +140,9 @@ GOOGLE_NUM = int(CONFIG.get("serpapi", {}).get("num", 100))
 GOOGLE_MAX_PAGES = max(1, int(CONFIG.get("serpapi", {}).get("google_max_pages", 3)))
 GOOGLE_MAX_RESULTS = max(10, int(CONFIG.get("serpapi", {}).get("google_max_results", 300)))
 MAPS_MAX_PAGES = max(1, int(CONFIG.get("serpapi", {}).get("maps_max_pages", 3)))
-RETRY_MAX_ATTEMPTS = max(1, int(CONFIG.get("serpapi", {}).get("retry_max_attempts", 3)))
-RETRY_BACKOFF_SECONDS = float(CONFIG.get("serpapi", {}).get("retry_backoff_seconds", 1.0))
+# The SerpAPI retry budget is resolved by `http_retry`, with the same
+# validation as every other outbound call and read inside the fetch loop, not
+# bound here at import (review chunk Y7).
 SERPAPI_TIMEOUT_SECONDS = timeouts.serpapi_timeout(CONFIG)  # T1: the client default is 16.7 hours
 REQUEST_DELAY_SECONDS = float(CONFIG.get("serpapi", {}).get("request_delay_seconds", 0.2))
 AI_FALLBACK_WITHOUT_LOCATION = bool(
@@ -377,7 +378,8 @@ def _fetch_serp_api(params):
         # see the same recovered links.
         link_recovery.recover_response(stored)
         return stored
-    for attempt in range(1, RETRY_MAX_ATTEMPTS + 1):
+    max_attempts = http_retry.serpapi_retry_attempts()
+    for attempt in range(1, max_attempts + 1):
         try:
             SERPAPI_CALL_COUNT += 1
             logging.info(f"SerpApi Call Count: {SERPAPI_CALL_COUNT}")
@@ -404,7 +406,7 @@ def _fetch_serp_api(params):
                     )
                     return None
                 logging.error(f"API Error (attempt {attempt}): {results['error']}")
-                if attempt == RETRY_MAX_ATTEMPTS:
+                if attempt == max_attempts:
                     return None
             else:
                 serp_checkpoint.save(params, results)  # raw, as SerpAPI sent it
@@ -414,12 +416,13 @@ def _fetch_serp_api(params):
             logging.error(
                 f"Fetch error (attempt {attempt}) for query '{params.get('q', 'N/A')}': {_scrub_secrets(e)}"
             )
-            if attempt == RETRY_MAX_ATTEMPTS:
+            if attempt == max_attempts:
                 logging.critical(
                     f"CRITICAL ERROR fetching with params {params.get('q')}: {_scrub_secrets(e)}"
                 )
                 return None
-        sleep_s = RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)) + random.uniform(0, 0.2)
+        sleep_s = (http_retry.serpapi_retry_backoff() * (2 ** (attempt - 1))
+                   + random.uniform(0, 0.2))
         time.sleep(sleep_s)
     return None
 

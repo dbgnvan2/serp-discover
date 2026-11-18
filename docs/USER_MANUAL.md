@@ -2100,8 +2100,13 @@ results. Now it costs only the searches that had not been made.
 ### "SerpAPI rate limited or timed out"
 **Cause:** SerpAPI has temporarily blocked requests (too many calls from same IP), or a call
 did not answer within `serpapi.timeout_seconds` (60 by default). A call that times out is
-retried up to `retry_max_attempts` times; if every attempt fails the query is listed under
-"Fetched N of M queries" and the run carries on with the rest.
+retried up to `serpapi.retry_max_attempts` times (3 by default, one more than the
+`http_retry.attempts` used for every other host because a SERP fetch is a paid call against
+a single vendor that the run cannot continue without); if every attempt fails the query is
+listed under "Fetched N of M queries" and the run carries on with the rest. If either of the
+two SerpAPI retry settings holds something that is not a positive number, the run warns,
+names the setting and uses the documented default — it no longer stops with a traceback
+before any keyword is fetched.
 
 **Solution:**
 - Stop the pipeline and wait 30 minutes

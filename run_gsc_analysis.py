@@ -718,6 +718,10 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
     # The margin the run actually used, not one re-derived from the output
     # rows: with no candidates there is no row to read it off, and printing
     # the default while config says otherwise is a false claim (cold review 7).
+    # `run_analysis` always passes `thresholds`, so these two fallbacks are
+    # for a direct caller (a test, or a script rendering a report from stored
+    # rows) and are not a second live resolution of the same config — the one
+    # the run used is the mapping it applied (cold review of chunk Y7).
     _max_position = ((thresholds or {}).get("reformat_max_position")
                      or resolve_sponge_thresholds(config)[
                          "reformat_max_position"])
@@ -902,17 +906,20 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
             "returned data, {not_reached} were never reached.",
             asked=len(rows), measured=measured, not_reached=unreached))
 
-    _thresholds = resolve_sponge_thresholds(config)
-    sponge = compute_sponge_effect(
-        rows, bands=_thresholds["position_bands"],
-        not_reached=unreached,
-        min_bucket_size=_thresholds["min_bucket_size"],
-        min_impressions=_thresholds["min_impressions"])
+    # One resolution of this run's config, applied, so the mapping
+    # `compute_sponge_effect` and `find_reformat_candidates` read when an
+    # argument is omitted is the same one this function holds: resolving it
+    # here and also passing all five explicitly meant
+    # `_ACTIVE_SPONGE_THRESHOLDS` had no production reader, so a config this
+    # function had already resolved was resolved again behind it (P25, cold
+    # review of chunk Y6, finding 8). Resolved from the config argument rather
+    # than read from process state, so a caller that passes a config without
+    # having loaded it through `_load_config` still gets its own numbers
+    # (P28). Passed on to the report so it names what this run used.
+    _thresholds = apply_sponge_thresholds(config)
+    sponge = compute_sponge_effect(rows, not_reached=unreached)
     candidates = find_reformat_candidates(
-        rows, sponge, geo_alert_keywords(data),
-        max_position=_thresholds["reformat_max_position"],
-        min_impressions=_thresholds["min_impressions"],
-        ctr_margin=_thresholds["reformat_ctr_margin"])
+        rows, sponge, geo_alert_keywords(data))
 
     # D2/AV.2 — branded vs non-branded demand. Classify the rows just pulled and
     # persist per-run (grain = run_ts, parsed from the source filename) so the

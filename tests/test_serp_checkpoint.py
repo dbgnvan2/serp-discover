@@ -9,6 +9,7 @@ import os
 
 import pytest
 
+import http_retry
 import serp_audit
 import serp_checkpoint as cp
 
@@ -38,7 +39,9 @@ def audit(tmp_path, monkeypatch):
     monkeypatch.setattr(serp_audit, "GoogleSearch", _FakeSearch)
     monkeypatch.setattr(serp_audit, "SERPAPI_AVAILABLE", True)
     monkeypatch.setattr(serp_audit, "SERPAPI_CALL_COUNT", 0)
-    monkeypatch.setattr(serp_audit, "RETRY_MAX_ATTEMPTS", 1)
+    # The SerpAPI budget lives in `http_retry` beside the policy for
+    # every other outbound call (review chunk Y7).
+    monkeypatch.setattr(http_retry, "SERPAPI_RETRY_ATTEMPTS", 1)
     monkeypatch.setattr(serp_audit.time, "sleep", lambda s: None)
     monkeypatch.delenv(cp.RESUME_ENV, raising=False)
     return serp_audit

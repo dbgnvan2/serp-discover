@@ -838,7 +838,17 @@ database around `SerpStorage`'s migrations and raised `no such column` against
 a database written before them; and the two sponge helpers named module
 constants as default arguments, so a configured threshold reached `main` and no
 other caller
-(`docs/review_2026-11-04/PLAN_Y6_the_pipeline_agrees_with_the_run.md`). The
+(`docs/review_2026-11-04/PLAN_Y6_the_pipeline_agrees_with_the_run.md`). Chunk
+Y7 is the seventh: one retry budget, read in one place — the SerpAPI loop's own
+budget was read at `serp_audit` import with a bare `int()` / `float()`, so a
+value that is not a number aborted the run with a traceback before any keyword
+was fetched and a negative backoff reached `time.sleep` after the first paid
+call, while the three `http_retry` keys beside it warned and used the
+documented default; nothing recorded why the two budgets differ; the GUI
+explained SerpAPI's two keys and none of `http_retry`'s four; and
+`run_gsc_analysis.run_analysis` applied this run's sponge thresholds and also
+passed all five explicitly, so the applied mapping had no production reader
+(`docs/review_2026-11-04/PLAN_Y7_one_retry_budget.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)
