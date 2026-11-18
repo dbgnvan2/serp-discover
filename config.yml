@@ -325,6 +325,22 @@ commodity:
   bands:
     medium: 40
     high: 70
+http_retry:
+  # Y4 — the retry policy for every outbound call that is not SerpAPI:
+  # DataForSEO, Moz, Google Search Console, the AI-engine probes and the page
+  # fetch. SerpAPI has had its own keys (serpapi.retry_max_attempts /
+  # retry_backoff_seconds) since the start; these were Python constants, so
+  # one of the tool's two retry policies could be tuned and the other could
+  # not. Editorial: how long a run should spend on a failing host before it
+  # files the result as unread is a judgement about the connection it runs on.
+  # A retry policy of zero would make every transient failure terminal (P1),
+  # so a non-positive value is reported and the default used.
+  attempts: 2
+  backoff_seconds: 1.0
+  # Cap on a server's own Retry-After header, so a host asking for an hour
+  # cannot stall the run.
+  max_retry_after_seconds: 30.0
+
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant
@@ -344,6 +360,21 @@ gsc:
   # tighter margin shortlists more pages. Below the median is not, by itself,
   # a finding — half of every set is below its own median.
   reformat_ctr_margin: 0.25
+  # Y4 — the sponge comparison's shape. `min_bucket_size` is how many queries
+  # each side of the AIO/no-AIO comparison needs before a band reports one at
+  # all; `position_bands` are the rank bands the CTRs are compared within, so
+  # like is compared with like. Editorial: a property with few tracked
+  # queries reports nothing at a bucket size of 3, and the bands are a
+  # judgement about where this property's traffic sits.
+  min_bucket_size: 3
+  position_bands:
+    - [1, 3]
+    - [4, 10]
+    - [11, 20]
+  # The deepest ranking position the reformat shortlist will consider.
+  # Editorial, and it has to agree with position_bands: a client whose pages
+  # sit at 11-20 needs both widened, or the shortlist is always empty.
+  reformat_max_position: 10
   # D5.7 — which country and device the GSC pull is restricted to, so the
   # clicks are measured over the same population as the SERP fetch. Default
   # (when the key is absent) mirrors serpapi.gl / serpapi.device. Set either

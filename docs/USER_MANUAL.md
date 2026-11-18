@@ -386,6 +386,16 @@ than the rows already on disk, still needs Step 1.
 **Output:**
 - `history/rank_history_<keyword>.csv` (date, position, new_rank_gap, volatility score)
 
+**What the rank chart counts as history:** `visualize_volatility.py` plots only
+the primary SERP query of runs that finished. A run can store rows for other
+queries under the same keyword text — a neighbourhood pivot ("P") or an
+AI-likely alternative ("S") — and those measure a different search, so a pivot
+sitting at rank 1 is not the client at rank 1 for the keyword. A run that was
+cancelled part-way has only some of its rows. Both are left out, and the chart
+prints how many of the stored rows it left out, so a short line is not read as
+a short history. The keyword menu lists only keywords that have rows left
+after that, so it never offers a chart with nothing on it.
+
 **Cost:** Free.
 
 **Timing:** <1 minute.
@@ -1910,6 +1920,17 @@ what's the typical CTR when an AI Overview is present vs when it isn't?
     were reached, and no branded-share figure is written to the trend
     (a share of a truncated set is not comparable with other runs). When
     you see that warning, re-run before quoting any of the numbers.
+- The bands themselves (positions 1-3 / 4-10 / 11-20) and how many queries a
+  band needs before it reports a median (3 in each bucket) are settings, not
+  fixed rules: `gsc.position_bands` and `gsc.min_bucket_size` in `config.yml`.
+  Widen the bands if your pages sit deeper than the defaults assume; raise the
+  bucket size if you want a median only over a larger group. A band that
+  cannot hold a query, bands that overlap or leave a gap, or a bucket size
+  below 1, are refused with a warning and the default used, because a
+  "median" over one query is not a comparison and a query must count once.
+  If you widen the bands past position 10, raise `gsc.reformat_max_position`
+  with them: the reformat shortlist only considers queries at or above that
+  position, and the run warns when the two cannot agree.
 - "Insufficient data" in a sponge band means the band genuinely did not have
   enough queries — unless queries were never reached, in which case the row
   says so, because a gap in the fetch is not a measurement of the client.

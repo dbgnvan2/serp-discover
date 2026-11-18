@@ -17,6 +17,8 @@ import pattern_matching
 import query_variants
 import bing_check
 import handoff_writer
+import http_retry
+from domain_utils import normalize_domain
 import yaml
 import metrics
 import pipeline_status
@@ -27,7 +29,6 @@ import link_recovery
 import timeouts
 from run_feasibility import (  # requests errors carry api_key in the URL
     DEFAULT_LOCATION, _scrub_secrets)
-from urllib.parse import urlparse
 from classifiers import ContentClassifier, EntityClassifier
 from url_enricher import UrlEnricher
 from storage import SerpStorage
@@ -77,6 +78,12 @@ if os.path.exists("config.yml"):
     with open("config.yml", "r") as f:
         CONFIG = yaml.safe_load(f) or {}
 
+# One mapping from config to the shared retry policy, applied before any
+# outbound call is made: `http_retry`'s two helpers read the module defaults,
+# so this reaches DataForSEO, Moz, GSC, the AI probes and the page fetch
+# together (P25, review chunk Y4).
+http_retry.apply_retry_policy(CONFIG)
+
 # Cross-tool shared config (out-of-repo). Path resolution, the
 # SERP_SHARED_CONFIG env override, and malformed-file handling live in
 # shared_config.py — the single owner of that contract (Spec:
@@ -89,20 +96,6 @@ SHARED_CONFIG = load_shared_config()
 # The launcher names the keyword file in the environment; config.yml is the fallback.
 INPUT_FILE = (os.environ.get("SERP_INPUT_CSV", "").strip()
               or CONFIG.get("files", {}).get("input_csv", "keywords.csv"))
-
-
-def _unread_fetch_count(fetch_outcomes) -> int:
-    """How many of this keyword's pages were not read.
-
-    Counts every state in `enrichment.FAILED_FETCH_STATES`: a retryable
-    network exhaustion is a page the run did not read just as a 403 is, and
-    leaving one out is how the warning could say "0 of 10 pages were not read"
-    on a run where nothing was read at all. Derived from that tuple rather than
-    listed here, so a new failure state is counted the moment it exists
-    (review chunk Y2 and its cold review).
-    """
-    return sum(int(fetch_outcomes.get(state, 0) or 0)
-               for state in enrichment.FAILED_FETCH_STATES)
 
 
 def _derive_output_slug(input_csv):
@@ -1527,8 +1520,13 @@ def _run(run_id):
                                 item, enrichment.NO_URL)
                             continue
 
-                        # 1. Save basic SERP result to DB
-                        domain = urlparse(url).netloc
+                        # 1. Save basic SERP result to DB. One host form: the
+                        # hand-rolled netloc kept the port, the userinfo and
+                        # the www. prefix, so the value handed to the
+                        # classifier beside this row was not the canonical one
+                        # every other table uses (review chunk Y4; chunk Y1
+                        # routed eight sites through this and missed one).
+                        domain = normalize_domain(url)
                         storage.save_serp_result(
                             run_id, source_keyword, "organic", item.get("Rank"),
                             item.get("Title"), url, domain, item.get("Snippet"),
@@ -1560,7 +1558,7 @@ def _run(run_id):
                     # P2 — "N of M pages blocked" reaches a reader, not only
                     # the log. parsing_warnings is the project's channel for
                     # what the run could not read.
-                    unread = _unread_fetch_count(fetch_outcomes)
+                    unread = enrichment.unread_fetch_count(fetch_outcomes)
                     attempted = unread + fetch_outcomes.get(
                         enrichment.ENRICHED, 0)
                     if unread:

@@ -58,6 +58,7 @@ import citation_table as citation_mod
 import engine_recommendations as engine_recs_mod
 import engine_transfer as engine_transfer_mod
 import foundational_score as foundational_mod
+import http_retry
 from http_retry import post_with_transient_retry
 from pattern_matching import load_serp_vocab
 from profile_questions import generate as generate_profile_questions
@@ -159,10 +160,21 @@ def _load_env() -> None:
 
 
 def _load_config(config_path: str = "config.yml") -> dict:
+    """The config, with the outbound retry policy applied to this process.
+
+    Every entry point that makes outbound calls applies it, not just
+    `serp_audit.py`: a `config.yml http_retry` block that changed one script's
+    behaviour and silently did nothing in the other three is worse than no
+    setting at all (P5 — a class of calls is configured together, review
+    chunk Y4's cold review).
+    """
     if not os.path.exists(config_path):
+        http_retry.apply_retry_policy(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        config = yaml.safe_load(f) or {}
+    http_retry.apply_retry_policy(config)
+    return config
 
 
 def _latest_analysis_json(config: dict) -> str | None:

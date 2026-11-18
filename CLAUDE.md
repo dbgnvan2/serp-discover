@@ -204,6 +204,21 @@ Editorial content currently lives in:
   are not a mention of the client ("living systems theory" is the subject this
   client teaches about). `known_brands` is never filtered (added review
   chunk D3b)
+- `config.yml` `gsc.min_bucket_size` / `gsc.position_bands` — the shape of the
+  sponge comparison: which position bands queries are grouped into and how many
+  queries a band needs in both buckets before it reports a median, plus
+  `gsc.reformat_max_position`, the deepest position the reformat shortlist
+  considers. Editorial:
+  the bands decide which queries count as ranking comparably, and a client whose
+  pages sit deeper wants different ones. Both were Python constants (added
+  review chunk Y4)
+- `config.yml` `http_retry` — `attempts` / `backoff_seconds` /
+  `max_retry_after_seconds`, the retry policy for every outbound HTTP call
+  routed through `http_retry`. Editorial: how long the tool may spend on a
+  flaky host is a judgement, and SerpAPI's own retry has been configurable
+  since the start, so one of the two policies could be tuned and the other
+  could not. every entry point that loads the config applies it
+  once at startup — one setting, every call site (added review chunk Y4)
 - `config.yml` `thresholds_provenance` — one line per threshold family saying
   where that family's numbers came from (a study and a date, a decision record,
   a calibration). Printed in the report's §A appendix. A family left blank

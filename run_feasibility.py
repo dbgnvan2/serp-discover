@@ -35,6 +35,7 @@ import sys
 from datetime import datetime
 from urllib.parse import urlparse
 
+import http_retry
 import yaml
 
 import brief_data_extraction
@@ -104,10 +105,21 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 def _load_config(config_path: str = "config.yml") -> dict:
+    """The config, with the outbound retry policy applied to this process.
+
+    Every entry point that makes outbound calls applies it, not just
+    `serp_audit.py`: a `config.yml http_retry` block that changed one script's
+    behaviour and silently did nothing in the other three is worse than no
+    setting at all (P5 — a class of calls is configured together, review
+    chunk Y4's cold review).
+    """
     if not os.path.exists(config_path):
+        http_retry.apply_retry_policy(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        config = yaml.safe_load(f) or {}
+    http_retry.apply_retry_policy(config)
+    return config
 
 
 def _extract_domain(url: str) -> str:

@@ -16,6 +16,8 @@ from dataclasses import dataclass, field
 
 import yaml
 
+import http_retry
+
 from timeouts import seconds_from_config
 
 APP_NAME = "serp-discover"
@@ -91,10 +93,20 @@ def settings_from_config(config):
 
 
 def load_settings(config_path="config.yml"):
+    """The report-LLM settings, with the outbound retry policy applied.
+
+    `brief_llm` calls every provider through `http_retry`, so this config read
+    is the brief's only chance to pick up `config.yml http_retry` — without it
+    the setting changed the audit's behaviour and silently did nothing here
+    (P5, cold review of chunk Y4).
+    """
     if not os.path.exists(config_path):
+        http_retry.apply_retry_policy(None)
         return Settings()
     with open(config_path, "r", encoding="utf-8") as f:
-        return settings_from_config(yaml.safe_load(f) or {})
+        raw = yaml.safe_load(f) or {}
+    http_retry.apply_retry_policy(raw)
+    return settings_from_config(raw)
 
 
 def global_config_dir():

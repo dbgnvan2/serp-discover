@@ -807,7 +807,16 @@ dropped must be counted where the reader can see it — report section 6
 disappeared on four reasons it had already built the wording for, a
 foundational readiness nobody measured printed as 0.0 and entered the trend
 table, and one unreadable validation rule disabled every validation rule
-(`docs/review_2026-11-04/PLAN_Y3_a_zero_is_a_measurement.md`). The
+(`docs/review_2026-11-04/PLAN_Y3_a_zero_is_a_measurement.md`). Chunk Y4 is the
+fourth: a number that decides what a report says belongs in config, and a tie
+has to be broken on purpose — the sponge comparison's position bands and
+minimum bucket size were Python constants, the retry policy behind every
+outbound call could not be tuned while SerpAPI's own could, the "entity mix too
+close to call dominant" check broke its tie on dict order so the contradiction
+went unreported half the time, the rank-history chart plotted pivot queries and
+aborted runs as if they were the keyword's own history, and the audit's organic
+row stored a host form no other table used
+(`docs/review_2026-11-04/PLAN_Y4_config_not_constants.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

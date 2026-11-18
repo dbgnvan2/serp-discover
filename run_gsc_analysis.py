@@ -43,6 +43,7 @@ from statistics import median
 import gsc_client
 import gsc_demand
 
+import http_retry
 import yaml
 
 logging.basicConfig(
@@ -54,15 +55,24 @@ logger = logging.getLogger(__name__)
 
 # GSC positions are grouped into bands so CTRs are compared at comparable
 # rank ("median CTR at comparable position", spec G.4 required change 2).
+#: Documented default; the live value is editorial, in config under
+#: `gsc.position_bands` (P4, review chunk Y4).
 DEFAULT_POSITION_BANDS: list[tuple[float, float]] = [(1, 3), (4, 10), (11, 20)]
 
 #: Minimum queries per bucket before the sponge comparison is trusted.
+#: Documented default; the live value is editorial, in config under
+#: `gsc.min_bucket_size` (P4, review chunk Y4).
 MIN_BUCKET_SIZE = 3
 
 #: How many top PAA phrasings join the query set.
 MAX_PAA_QUERIES = 20
 
 #: Ranking is "good" (reformat candidate territory) up to this position.
+#: Documented default for the deepest position the reformat shortlist will
+#: consider. Editorial, in `config.yml` under `gsc.reformat_max_position`: it
+#: stayed a Python constant when the bands became config, so a client whose
+#: pages sit at 11-20 configured `position_bands` and got an always-empty
+#: shortlist with nothing saying why (cold review of chunk Y4).
 REFORMAT_MAX_POSITION = 10.0
 
 #: Minimum impressions before a query's CTR is treated as a measurement.
@@ -77,7 +87,8 @@ DEFAULT_REFORMAT_CTR_MARGIN = 0.25
 
 
 def resolve_sponge_thresholds(cfg: dict | None) -> dict:
-    """``{min_impressions, reformat_ctr_margin}`` from config `gsc`.
+    """``{min_impressions, reformat_ctr_margin, min_bucket_size,
+    position_bands}`` from config `gsc`.
 
     Spec: review_2026-11-04 D5.1 / D5.2 (D-M-15)
 
@@ -86,8 +97,15 @@ def resolve_sponge_thresholds(cfg: dict | None) -> dict:
     default rather than aborting.
     """
     gsc_cfg = (cfg or {}).get("gsc", {}) or {}
+    if not isinstance(gsc_cfg, dict):
+        logger.warning("config.yml gsc is %r, not a block of settings — using "
+                       "the documented defaults.", gsc_cfg)
+        gsc_cfg = {}
     out = {"min_impressions": DEFAULT_MIN_IMPRESSIONS,
-           "reformat_ctr_margin": DEFAULT_REFORMAT_CTR_MARGIN}
+           "reformat_ctr_margin": DEFAULT_REFORMAT_CTR_MARGIN,
+           "min_bucket_size": MIN_BUCKET_SIZE,
+           "reformat_max_position": REFORMAT_MAX_POSITION,
+           "position_bands": list(DEFAULT_POSITION_BANDS)}
     for key, cast in (("min_impressions", int), ("reformat_ctr_margin", float)):
         if key not in gsc_cfg:
             continue
@@ -102,7 +120,108 @@ def resolve_sponge_thresholds(cfg: dict | None) -> dict:
                            key, value, out[key])
             continue
         out[key] = value
+
+    # min_bucket_size decides whether a band reports a comparison at all, so a
+    # 0 would report a median over one query as a finding.
+    if "min_bucket_size" in gsc_cfg:
+        try:
+            bucket = int(gsc_cfg["min_bucket_size"])
+        except (TypeError, ValueError):
+            logger.warning("gsc.min_bucket_size is not a whole number (%r) — "
+                           "using %s.", gsc_cfg["min_bucket_size"],
+                           out["min_bucket_size"])
+        else:
+            if bucket < 1:
+                logger.warning("gsc.min_bucket_size is %r, which would report "
+                               "a median over one query as a comparison — "
+                               "using %s.", bucket, out["min_bucket_size"])
+            else:
+                out["min_bucket_size"] = bucket
+
+    if "position_bands" in gsc_cfg:
+        bands = _resolve_position_bands(gsc_cfg["position_bands"])
+        if bands:
+            out["position_bands"] = bands
+
+    if "reformat_max_position" in gsc_cfg:
+        try:
+            cap = float(gsc_cfg["reformat_max_position"])
+        except (TypeError, ValueError):
+            logger.warning("gsc.reformat_max_position is not a number (%r) — "
+                           "using %s.", gsc_cfg["reformat_max_position"],
+                           out["reformat_max_position"])
+        else:
+            if cap < 1:
+                logger.warning("gsc.reformat_max_position is %r, which no "
+                               "ranking position can satisfy — using %s.",
+                               cap, out["reformat_max_position"])
+            else:
+                out["reformat_max_position"] = cap
+
+    # The cap and the bands have to be able to agree, or the shortlist is
+    # empty whatever the data says.
+    if not any(low <= out["reformat_max_position"]
+               for low, _high in out["position_bands"]):
+        logger.warning(
+            "gsc.position_bands %r start below no position within "
+            "gsc.reformat_max_position (%s), so the reformat shortlist can "
+            "never name a query. Raise the cap or widen the bands.",
+            out["position_bands"], out["reformat_max_position"])
     return out
+
+
+def _resolve_position_bands(raw) -> list[tuple[float, float]]:
+    """Validated `[(low, high), ...]` from config, or `[]` to use the default.
+
+    A band whose low exceeds its high can never hold a query, so it would
+    report "insufficient data" forever and read as a measurement about the
+    property (review chunk Y4).
+    """
+    if not isinstance(raw, (list, tuple)) or not raw:
+        logger.warning("gsc.position_bands is not a non-empty list (%r) — "
+                       "using the documented default %r.",
+                       raw, DEFAULT_POSITION_BANDS)
+        return []
+    bands: list[tuple[float, float]] = []
+    for band in raw:
+        if not isinstance(band, (list, tuple)) or len(band) != 2:
+            logger.warning("gsc.position_bands entry %r is not a [low, high] "
+                           "pair — using the documented default %r.",
+                           band, DEFAULT_POSITION_BANDS)
+            return []
+        try:
+            low, high = float(band[0]), float(band[1])
+        except (TypeError, ValueError):
+            logger.warning("gsc.position_bands entry %r is not numeric — "
+                           "using the documented default %r.",
+                           band, DEFAULT_POSITION_BANDS)
+            return []
+        if low > high or low < 1:
+            logger.warning("gsc.position_bands entry %r cannot hold a query "
+                           "(low above high, or a position below 1) — using "
+                           "the documented default %r.",
+                           band, DEFAULT_POSITION_BANDS)
+            return []
+        bands.append((low, high))
+    ordered = sorted(bands)
+    for (low, high), (next_low, next_high) in zip(ordered, ordered[1:]):
+        # Overlapping bands count one query in two medians; a gap drops a
+        # query from every denominator with nothing saying so (P2/P9, cold
+        # review of chunk Y4).
+        if next_low <= high:
+            logger.warning("gsc.position_bands %r overlap (%g-%g and %g-%g), "
+                           "so a query would enter two medians — using the "
+                           "documented default %r.",
+                           raw, low, high, next_low, next_high,
+                           DEFAULT_POSITION_BANDS)
+            return []
+        if next_low > high + 1:
+            logger.warning("gsc.position_bands %r leave positions %g-%g in no "
+                           "band, so those queries would be dropped from "
+                           "every median — using the documented default %r.",
+                           raw, high + 1, next_low - 1, DEFAULT_POSITION_BANDS)
+            return []
+    return ordered
 
 
 # ---------------------------------------------------------------------------
@@ -121,10 +240,21 @@ def _load_env() -> None:
 
 
 def _load_config(config_path: str = "config.yml") -> dict:
+    """The config, with the outbound retry policy applied to this process.
+
+    Every entry point that makes outbound calls applies it, not just
+    `serp_audit.py`: a `config.yml http_retry` block that changed one script's
+    behaviour and silently did nothing in the other three is worse than no
+    setting at all (P5 — a class of calls is configured together, review
+    chunk Y4's cold review).
+    """
     if not os.path.exists(config_path):
+        http_retry.apply_retry_policy(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        config = yaml.safe_load(f) or {}
+    http_retry.apply_retry_policy(config)
+    return config
 
 
 def _latest_analysis_json(config: dict) -> str | None:
@@ -240,8 +370,10 @@ def compute_sponge_effect(rows: list[dict],
               if _to_number(r.get("impressions")) >= floor]
     below_floor = len(with_state) - len(usable)
     out_bands: list[dict] = []
+    in_any_band = set()
     for low, high in bands:
         in_band = [r for r in usable if low <= r["position"] <= high]
+        in_any_band.update(id(r) for r in in_band)
         aio_ctrs = [r["ctr"] for r in in_band if r["has_ai_overview"]]
         no_aio_ctrs = [r["ctr"] for r in in_band if not r["has_ai_overview"]]
         sufficient = len(aio_ctrs) >= min_bucket_size and len(no_aio_ctrs) >= min_bucket_size
@@ -268,6 +400,14 @@ def compute_sponge_effect(rows: list[dict],
         # D5.1 — and what the impression floor cost (P2/P9).
         "min_impressions": floor,
         "queries_below_impression_floor": below_floor,
+        # And what the bands themselves cost: a usable query outside every
+        # band enters no median. With the default bands that is positions
+        # above 20; with a narrower `gsc.position_bands` it can be most of the
+        # set, and the report read as a clean comparison (P2/P9, cold review
+        # of chunk Y4).
+        "queries_in_no_band": sum(1 for r in usable
+                                  if id(r) not in in_any_band),
+        "position_bands": [[low, high] for low, high in bands],
         "not_reached": int(not_reached or 0),
         "bands": out_bands,
     }
@@ -529,13 +669,17 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
     # The margin the run actually used, not one re-derived from the output
     # rows: with no candidates there is no row to read it off, and printing
     # the default while config says otherwise is a false claim (cold review 7).
+    _max_position = ((thresholds or {}).get("reformat_max_position")
+                     or resolve_sponge_thresholds(config)[
+                         "reformat_max_position"])
     _margin = (thresholds or {}).get("reformat_ctr_margin")
     if _margin is None:
         _margin = next((c.get("ctr_margin") for c in candidates
                         if c.get("ctr_margin") is not None),
                        resolve_sponge_thresholds(config)["reformat_ctr_margin"])
     lines.append(
-        f"Queries ranking in the top 10, **with an AI Overview on the SERP**, "
+        f"Queries ranking at position {_max_position:g} or better, **with an "
+        f"AI Overview on the SERP**, "
         f"whose CTR sits at least {_margin:.0%} below the no-AIO median for "
         f"their position band. ⚑ marks queries whose keyword also carries a "
         f"GEO alert (client ranks but the AI Overview cites other sources) — "
@@ -711,10 +855,13 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
 
     _thresholds = resolve_sponge_thresholds(config)
     sponge = compute_sponge_effect(
-        rows, not_reached=unreached,
+        rows, bands=_thresholds["position_bands"],
+        not_reached=unreached,
+        min_bucket_size=_thresholds["min_bucket_size"],
         min_impressions=_thresholds["min_impressions"])
     candidates = find_reformat_candidates(
         rows, sponge, geo_alert_keywords(data),
+        max_position=_thresholds["reformat_max_position"],
         min_impressions=_thresholds["min_impressions"],
         ctr_margin=_thresholds["reformat_ctr_margin"])
 

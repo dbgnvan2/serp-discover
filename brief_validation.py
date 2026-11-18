@@ -308,23 +308,43 @@ def _keyword_regions(report_text, keyword, other_keywords=()):
 
 
 def _mixed_keyword_dominance_profiles(extracted_data):
+    """Keywords whose entity mix is too close to call one entity dominant.
+
+    Yields ``(keyword, top_entities, top_count, second_count, top_share)``.
+    ``top_entities`` is every entity tied on the top count, not one of them:
+    the sort used to break a tie on the order the entities happened to appear
+    in the JSON, and the caller tests for "<top entity> … dominates" in that
+    keyword's section — so with `clinic: 4, directory: 4` and a brief saying
+    "directories dominate", the contradiction went unreported whenever dict
+    order picked `clinic` (P12/P19, review chunk Y4).
+    """
     profiles = []
     for keyword, profile in (extracted_data.get("keyword_profiles", {}) or {}).items():
         distribution = profile.get("entity_distribution", {}) or {}
         ranked = sorted(
             [(entity, count) for entity, count in distribution.items() if count],
-            key=lambda item: item[1],
-            reverse=True,
+            # Count first, then the name: a stated tie-break, so two runs over
+            # the same data report the same thing.
+            key=lambda item: (-item[1], str(item[0])),
         )
         if len(ranked) < 2:
             continue
-        (top_entity, top_count), (_second_entity, second_count) = ranked[:2]
+        top_count = ranked[0][1]
+        top_entities = [entity for entity, count in ranked if count == top_count]
+        # The runner-up's count, ties included. Taking the next *strictly
+        # lower* count instead dropped the most contested mix there is: with
+        # `clinic: 4, directory: 4` the runner-up became 0 and the
+        # `second_count >= 3` gate below discarded the keyword, so a brief
+        # calling a 4-4 split dominant passed with no issue at all (cold
+        # review of chunk Y4).
+        second_count = ranked[1][1]
         classified_total = sum(count for _entity, count in ranked)
         if classified_total <= 0:
             continue
         top_share = top_count / classified_total
         if second_count >= 3 and top_share <= 0.60:
-            profiles.append((keyword, top_entity, top_count, second_count, top_share))
+            profiles.append((keyword, top_entities, top_count, second_count,
+                             top_share))
     return profiles
 
 
@@ -523,7 +543,7 @@ def validate_llm_report(report_text, extracted_data):
     # (_mixed_keyword_dominance_profiles, _label_requires_mixed) cover the same
     # contradiction for all keywords.
 
-    for keyword, top_entity, top_count, second_count, top_share in _mixed_keyword_dominance_profiles(extracted_data):
+    for keyword, top_entities, top_count, second_count, top_share in _mixed_keyword_dominance_profiles(extracted_data):
         section_match = re.search(
             rf"\*\*{re.escape(keyword)} \([^\n]+\)\*\*(.*?)(?:\n\n\*\*|\n### |\Z)",
             report_text,
@@ -532,10 +552,21 @@ def validate_llm_report(report_text, extracted_data):
         if not section_match:
             continue
         section_text = section_match.group(1)
-        if re.search(rf"\b{re.escape(top_entity)} (?:entities )?(?:heavily )?dominat", section_text, flags=re.IGNORECASE):
-            issues.append(
-                f"Report labels '{keyword}' as {top_entity}-dominant, but the classified entity mix is too close ({top_count} vs {second_count}; {top_share:.0%} share) and should be described as mixed or contested."
-            )
+        for _entity in top_entities:
+            # Every entity tied at the top is tested, so the contradiction is
+            # found whichever of the tied names the brief used.
+            if re.search(rf"\b{re.escape(_entity)} (?:entities )?(?:heavily )?dominat",
+                         section_text, flags=re.IGNORECASE):
+                _tie = ("" if len(top_entities) < 2 else
+                        f" — and {top_count} is a tie between "
+                        f"{', '.join(top_entities)}")
+                issues.append(
+                    f"Report labels '{keyword}' as {_entity}-dominant, but the "
+                    f"classified entity mix is too close ({top_count} vs "
+                    f"{second_count}; {top_share:.0%} share) and should be "
+                    f"described as mixed or contested{_tie}."
+                )
+                break
 
     for keyword, profile in keyword_profiles.items():
         entity_label = profile.get("entity_label")

@@ -143,17 +143,15 @@ class TestARetryableFailureReadsAsRetryable(unittest.TestCase):
     def test_the_state_is_counted_as_a_page_not_read(self):
         """Left out of the unread count, the warning could say "0 of 10
         pages were not read" on a run where nothing was read at all."""
-        import serp_audit
-
         outcomes = {enrichment.ENRICHED: 2,
                     enrichment.BLOCKED: 1,
                     enrichment.FETCH_RETRYABLE: 3,
                     enrichment.UNREACHABLE: 1}
-        self.assertEqual(serp_audit._unread_fetch_count(outcomes), 5)
+        self.assertEqual(enrichment.unread_fetch_count(outcomes), 5)
         # A row past the rank cap was never meant to be read, so it must not
         # make the warning fire.
         outcomes[enrichment.NOT_ATTEMPTED] = 7
-        self.assertEqual(serp_audit._unread_fetch_count(outcomes), 5)
+        self.assertEqual(enrichment.unread_fetch_count(outcomes), 5)
         self.assertIn(enrichment.FETCH_RETRYABLE,
                       enrichment.FAILED_FETCH_STATES)
 

@@ -80,6 +80,20 @@ _DEFAULTS = {
 }
 
 
+def unread_fetch_count(fetch_outcomes) -> int:
+    """How many of this keyword's pages were not read.
+
+    Counts every state in `FAILED_FETCH_STATES`: a retryable
+    network exhaustion is a page the run did not read just as a 403 is, and
+    leaving one out is how the warning could say "0 of 10 pages were not read"
+    on a run where nothing was read at all. Derived from that tuple rather than
+    listed here, so a new failure state is counted the moment it exists
+    (review chunk Y2 and its cold review).
+    """
+    return sum(int(fetch_outcomes.get(state, 0) or 0)
+               for state in FAILED_FETCH_STATES)
+
+
 def status_text(state, **values):
     """The reader-facing words for one fetch outcome."""
     vocab = SERP_VOCAB.get("fetch_status") or {}

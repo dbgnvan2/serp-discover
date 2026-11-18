@@ -6,15 +6,94 @@ feasibility averages downstream.
 """
 import logging
 import time
+from types import MappingProxyType
 
 import requests
 
 logger = logging.getLogger(__name__)
 
 TRANSIENT_STATUSES = frozenset({429, 500, 502, 503, 504})
-RETRY_ATTEMPTS = 2
-RETRY_BACKOFF_SECONDS = 1.0
-MAX_RETRY_AFTER_SECONDS = 30.0
+
+#: Documented defaults. The live values are editorial, in `config.yml` under
+#: `http_retry`; SerpAPI's own retry has been configurable since the
+#: start (`serpapi.retry_max_attempts`), so one of the tool's two retry
+#: policies could be tuned and the other could not (P4/P25, review chunk Y4).
+#: Frozen, so the fallback is always the documented default and never a value
+#: a previous `apply_retry_policy` left behind — the module constants below
+#: are rebound, so reading them as the fallback made the policy compound.
+DEFAULT_RETRY_POLICY = MappingProxyType({
+    "attempts": 2,
+    "backoff": 1.0,
+    "max_retry_after": 30.0,
+})
+
+RETRY_ATTEMPTS = DEFAULT_RETRY_POLICY["attempts"]
+RETRY_BACKOFF_SECONDS = DEFAULT_RETRY_POLICY["backoff"]
+MAX_RETRY_AFTER_SECONDS = DEFAULT_RETRY_POLICY["max_retry_after"]
+
+
+def resolve_retry_policy(cfg: dict | None = None) -> dict:
+    """``{attempts, backoff, max_retry_after}`` from config `http_retry`.
+
+    `config.yml`, not the shared config: this is one tool's own outbound
+    policy, and `technical.*` is the cross-tool namespace.
+
+    A value that is not a positive number is reported and the documented
+    default used: 0 attempts would make every transient failure terminal, and
+    a report cannot tell a configured 0 from a typo.
+    """
+    block = (cfg or {}).get("http_retry") or {}
+    out = dict(DEFAULT_RETRY_POLICY)
+    if not isinstance(block, dict):
+        logger.warning(
+            "config.yml http_retry is %r, not a block of settings; using the "
+            "documented defaults %r.", block, out)
+        return out
+    for key, cfg_key, cast in (("attempts", "attempts", int),
+                               ("backoff", "backoff_seconds", float),
+                               ("max_retry_after", "max_retry_after_seconds",
+                                float)):
+        if cfg_key not in block:
+            continue
+        raw = block[cfg_key]
+        if isinstance(raw, bool):
+            logger.warning(
+                "config.yml http_retry.%s is %r, which is not a number; "
+                "using the documented default %s.", cfg_key, raw, out[key])
+            continue
+        try:
+            value = cast(raw)
+        except (TypeError, ValueError):
+            logger.warning(
+                "config.yml http_retry.%s is %r, which is not a "
+                "number; using the documented default %s.",
+                cfg_key, raw, out[key])
+            continue
+        if value <= 0:
+            logger.warning(
+                "config.yml http_retry.%s is %r, which is %s as a retry "
+                "policy; zero or less makes every transient failure terminal "
+                "(P1). Using the documented default %s.",
+                cfg_key, raw, value, out[key])
+            continue
+        out[key] = value
+    return out
+
+
+def apply_retry_policy(cfg: dict | None) -> dict:
+    """Set this process's retry defaults from *cfg* and return the policy.
+
+    The two helpers read the module constants as their default arguments, so
+    one assignment here reaches every caller that does not pass its own —
+    which is all of them (P25: one config→argument mapping, not one per call
+    site).
+    """
+    global RETRY_ATTEMPTS, RETRY_BACKOFF_SECONDS, MAX_RETRY_AFTER_SECONDS
+    policy = resolve_retry_policy(cfg)
+    RETRY_ATTEMPTS = policy["attempts"]
+    RETRY_BACKOFF_SECONDS = policy["backoff"]
+    MAX_RETRY_AFTER_SECONDS = policy["max_retry_after"]
+    return policy
 
 #: Request errors that will fail again however many times they are retried:
 #: the URL cannot be turned into a request, or the server sends the client
@@ -38,8 +117,8 @@ def get_with_transient_retry(
     headers,
     batch_desc,
     timeout=30,
-    attempts=RETRY_ATTEMPTS,
-    backoff=RETRY_BACKOFF_SECONDS,
+    attempts=None,
+    backoff=None,
     get=None,
     **kwargs,
 ):
@@ -59,6 +138,11 @@ def get_with_transient_retry(
     """
     if get is None:
         get = requests.get
+    # Resolved here, not as a default argument: a default is bound when the
+    # function is defined, so `apply_retry_policy` rebinding the module
+    # globals would never reach a caller that omits them (review chunk Y4).
+    attempts = RETRY_ATTEMPTS if attempts is None else attempts
+    backoff = RETRY_BACKOFF_SECONDS if backoff is None else backoff
     response = None
     for attempt in range(1, attempts + 1):
         try:
@@ -108,8 +192,8 @@ def post_with_transient_retry(
     json_payload,
     batch_desc,
     timeout=30,
-    attempts=RETRY_ATTEMPTS,
-    backoff=RETRY_BACKOFF_SECONDS,
+    attempts=None,
+    backoff=None,
     post=None,
 ):
     """POST with retry on network errors and transient HTTP statuses.
@@ -120,6 +204,9 @@ def post_with_transient_retry(
     ``Retry-After`` header on transient statuses, capped at
     :data:`MAX_RETRY_AFTER_SECONDS`.
     """
+    # See `get_with_transient_retry`: resolved here, not as a default.
+    attempts = RETRY_ATTEMPTS if attempts is None else attempts
+    backoff = RETRY_BACKOFF_SECONDS if backoff is None else backoff
     # Callers pass their own module's requests.post so existing test
     # patch targets (e.g. moz_client.requests.post) keep intercepting.
     if post is None:
