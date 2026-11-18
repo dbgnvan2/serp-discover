@@ -112,6 +112,18 @@ def load_validation_rules(path: str | None = None) -> dict:
                            "others are unaffected.", field, exc)
             skipped.append(str(field))
 
+    if not (raw.get("numeric_claims") or {}):
+        # A file that parses and declares no rules at all: every numeric check
+        # is off and the per-field list is empty, so nothing said so. Deleting
+        # `numeric_claims:` passed the config editor cleanly and the sidecar
+        # reported no skipped fields (the cold review of chunk Y15, finding
+        # 3). An absent section is the same fact as an unreadable file: the
+        # checks did not run.
+        rules["load_error"] = (
+            f"{INACTIVE_CHECK_PREFIX} brief_validation_rules.yml declares no "
+            f"numeric_claims, so none of the numeric-claim checks ran on this "
+            f"brief.")
+        logger.warning("%s", rules["load_error"])
     rules["numeric_claims"] = claims
     rules["fields_skipped"] = sorted(skipped)
     rules["patterns_dropped"] = dropped

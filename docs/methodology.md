@@ -639,6 +639,11 @@ the loaded rules (`load_error` for the file, `fields_skipped` for individual
 rules) and `validate_llm_report` states it as an issue, so the brief's
 `.validation.md` says a check was inactive instead of leaving a brief that
 passed nothing looking like a brief that passed everything (review chunk Y3).
+A file that parses and declares no `numeric_claims` at all is the same fact and
+is reported the same way: every numeric check is off, and the per-field list is
+empty, so nothing said so until the cold review of chunk Y15 found that
+deleting the section passed the config editor cleanly. The config editor now
+asks this loader what it dropped before writing an edit to the file.
 
 **A tie at the top of the entity mix is tested on every tied entity
 (review chunk Y4).** The "too close to call one entity dominant" check ranked

@@ -182,6 +182,10 @@ def tabs(tmp_path, monkeypatch):
     for name in CONFIG_FILES:
         shutil.copy(os.path.join(REPO, name), tmp_path / name)
     monkeypatch.chdir(tmp_path)
+    # The tabs anchor on the module's own directory, not the cwd (the cold
+    # review of chunk Y15, finding 2: the editor wrote where none of the
+    # readers look). Point that anchor at the copies.
+    monkeypatch.setattr(ctm, "EDITORIAL_DIR", str(tmp_path))
     for fn in ("showinfo", "showwarning", "showerror"):
         monkeypatch.setattr(config_manager.messagebox, fn, lambda *a, **k: None)
     root = tk.Tk()
@@ -212,6 +216,21 @@ def _press(dialog, label):
     from tkinter import ttk
     [button] = [b for b in _widgets(dialog, ttk.Button) if b.cget("text") == label]
     button.invoke()
+
+
+@pytestmark_tk
+def test_no_tab_in_this_fixture_can_write_into_the_repo(tabs, tmp_path):
+    """These tests press Save on real tabs. While the tabs joined their file
+    name onto the cwd and the fixture only chdir'd, that was the same thing;
+    after the tabs were anchored on their module's directory (the cold review
+    of chunk Y15, finding 2) a run of this file overwrote config.yml,
+    strategic_patterns.yml and brief_pattern_routing.yml in the working tree.
+    """
+    for file_name, tab in tabs.items():
+        assert os.path.realpath(tab.file_path).startswith(
+            os.path.realpath(str(tmp_path))), (
+            f"{file_name} tab would write to {tab.file_path}, outside the "
+            f"test's own directory")
 
 
 @pytestmark_tk
@@ -303,6 +322,10 @@ def test_load_error_shows_on_the_tab(tmp_path, monkeypatch):
     from tkinter import ttk
     (tmp_path / "domain_overrides.yml").write_text("a: [1, 2\n")
     monkeypatch.chdir(tmp_path)
+    # The tabs anchor on the module's own directory, not the cwd (the cold
+    # review of chunk Y15, finding 2: the editor wrote where none of the
+    # readers look). Point that anchor at the copies.
+    monkeypatch.setattr(ctm, "EDITORIAL_DIR", str(tmp_path))
     root = tk.Tk()
     root.withdraw()
     try:

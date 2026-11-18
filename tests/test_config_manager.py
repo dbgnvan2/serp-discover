@@ -65,11 +65,22 @@ class TestConfigManagerWindowCreation:
             root.destroy()
 
     def test_tabs_created(self):
-        """All 9 tabs should be created (8 file tabs + Client Profile & Queries)."""
+        """Every file the window claims to edit gets a tab.
+
+        Asserted against the files, not a count: the count is what went stale
+        when ten editorial files reached the repo with no editor (review chunk
+        Y15).
+        """
+        from config_tab_models import EDITORIAL_SOURCE_FILES
         root = tk.Tk()
         try:
             window = ConfigManagerWindow(root)
-            assert len(window.tabs) == 9
+            names = [tab.file_name for tab in window.tabs]
+            assert len(names) == len(set(names)), f"duplicate tab: {names}"
+            for file_name, _type, _title, _check in EDITORIAL_SOURCE_FILES:
+                assert file_name in names, f"no tab edits {file_name}"
+            # The nine bespoke forms are still there beside the source tabs.
+            assert len(names) == 9 + len(EDITORIAL_SOURCE_FILES)
             window.window.destroy()
         finally:
             root.destroy()
@@ -816,3 +827,234 @@ class TestUrlPatternRulesTabPhase5:
                 re.compile(pattern)
             except re.error as e:
                 assert False, f"Invalid regex pattern '{pattern}': {e}"
+
+
+@pytest.mark.skipif(not TKINTER_AVAILABLE, reason="tkinter not available")
+class TestEditorialSourceTab:
+    """Review chunk Y15. Driving the real tab, because the bug this class
+    produced was invisible to the data-side tests: `BaseConfigTab.validate`
+    returns early for a file with no validator, so reading a remembered parse
+    error there read the result of whenever the text was last parsed — and a
+    broken edit to glossary.yml saved successfully (P16).
+
+    `directory=` rather than `os.chdir`: the tab used to join the file name
+    onto the current directory, so the editor wrote somewhere none of the
+    file's ten readers look, and tests that chdir'd into a temp directory
+    pinned that behaviour instead of catching it (the cold review of chunk
+    Y15, finding 2).
+    """
+
+    @staticmethod
+    def _tab(tmp_path, source="a: 1\n", name="glossary.yml"):
+        import tkinter as tk
+        from config_manager import EditorialSourceTab
+        if source is not None:
+            (tmp_path / name).write_text(source, encoding="utf-8")
+        root = tk.Tk()
+        try:
+            return root, EditorialSourceTab(root, name, "yaml", "Glossary",
+                                            directory=str(tmp_path))
+        except Exception:
+            root.destroy()
+            raise
+
+    def test_the_tab_edits_the_file_beside_the_code_not_the_cwd(
+            self, tmp_path, monkeypatch):
+        """With no directory given, the tab must point at the same file the
+        readers do: nine of the ten anchor on the module's own directory.
+
+        Run from somewhere else on purpose. The test suite's own cwd IS that
+        directory, so asserting this from here proves nothing — which is why
+        the bug survived: a GUI started from another directory showed a blank
+        Glossary tab, reported no error, and Save All said it had written a
+        file nothing reads.
+        """
+        import os
+        import config_tab_models
+        monkeypatch.chdir(tmp_path)
+        resolved = config_tab_models.editorial_file_path("glossary.yml")
+        assert resolved == os.path.join(config_tab_models.EDITORIAL_DIR,
+                                        "glossary.yml")
+        assert not os.path.realpath(resolved).startswith(
+            os.path.realpath(str(tmp_path)))
+        assert os.path.isfile(resolved)
+
+    def test_a_broken_edit_is_refused_and_the_file_is_untouched(self, tmp_path):
+        root, tab = self._tab(tmp_path)
+        try:
+            before = (tmp_path / "glossary.yml").read_text(encoding="utf-8")
+            tab.source_widget.insert("1.0", "a: [1, 2\n")
+            ok, message = tab.save_to_disk()
+            assert not ok
+            assert "does not parse" in message
+            assert (tmp_path / "glossary.yml").read_text(
+                encoding="utf-8") == before
+        finally:
+            root.destroy()
+
+    def test_a_comment_the_user_typed_survives_the_save(self, tmp_path):
+        root, tab = self._tab(tmp_path)
+        try:
+            tab.source_widget.insert("1.0", "# why this is 1\n")
+            ok, _message = tab.save_to_disk()
+            assert ok
+            written = (tmp_path / "glossary.yml").read_text(encoding="utf-8")
+            assert written.startswith("# why this is 1")
+            assert not tab.has_unsaved_changes()
+        finally:
+            root.destroy()
+
+    def test_saving_an_unchanged_file_does_not_grow_it_by_a_blank_line(
+            self, tmp_path):
+        """Tk's text widget carries an implicit final newline, so reading to
+        tk.END returned the content plus one, and every save appended a blank
+        line — then `has_unsaved_changes` rstrips both sides, so a user
+        deleting the accumulated blanks was told nothing had changed (the cold
+        review of chunk Y15, finding 5)."""
+        root, tab = self._tab(tmp_path, source="a: 1\n")
+        try:
+            for _ in range(3):
+                ok, _message = tab.save_to_disk()
+                assert ok
+            assert (tmp_path / "glossary.yml").read_text(
+                encoding="utf-8") == "a: 1\n"
+        finally:
+            root.destroy()
+
+    def test_a_syntax_repair_typed_into_the_tab_can_be_saved(self, tmp_path):
+        """The file on disk does not parse, so the tab loads with a
+        `load_error`. The base refuses to save such a tab and reports no
+        unsaved changes — which for a source editor throws the repair away
+        with no prompt (the cold review of chunk Y15, finding 1)."""
+        root, tab = self._tab(tmp_path, source="a: [1, 2\n")
+        try:
+            assert tab.load_error is not None
+            assert "Discard Changes" in tab._load_error_message()
+            tab.source_widget.delete("1.0", "end")
+            tab.source_widget.insert("1.0", "a: [1, 2]\n")
+            assert tab.has_unsaved_changes()
+            assert tab.save_blocker() is None
+            ok, message = tab.save_to_disk()
+            assert ok, message
+            assert (tmp_path / "glossary.yml").read_text(
+                encoding="utf-8") == "a: [1, 2]\n"
+        finally:
+            root.destroy()
+
+    def test_a_declared_file_that_is_missing_reports_an_error(self, tmp_path):
+        """An empty editor and no error is what the cwd bug looked like: the
+        tab appeared to work and Save All reported success while writing a new
+        file somewhere nothing reads."""
+        root, tab = self._tab(tmp_path, source=None)
+        try:
+            assert tab.load_error is not None
+            assert tab.source_text == ""
+        finally:
+            root.destroy()
+
+    def test_a_structurally_broken_rule_table_is_refused(self, tmp_path):
+        """Valid YAML is not a valid rule table. Deleting `rules:` from
+        play_routing.yml parsed, saved, and killed the next run inside
+        brief_data_extraction (the cold review of chunk Y15, finding 3)."""
+        root, tab = self._tab(tmp_path, source="plays: {}\n",
+                              name="play_routing.yml")
+        try:
+            tab.source_widget.delete("1.0", "end")
+            tab.source_widget.insert("1.0", "plays: {}\nrules: []\n")
+            ok, message = tab.save_to_disk()
+            assert not ok
+            assert "play_routing.yml" in message
+        finally:
+            root.destroy()
+
+    def test_an_untouched_tab_reports_no_unsaved_changes(self, tmp_path):
+        root, tab = self._tab(tmp_path, source="# a note\na: 1\n")
+        try:
+            assert tab.load_error is None
+            assert not tab.has_unsaved_changes()
+        finally:
+            root.destroy()
+
+    def test_a_broken_edit_counts_as_an_unsaved_change(self, tmp_path):
+        """Otherwise Save All and the close prompt drop it in silence. Text
+        that does not parse leaves the loaded data in place, so a structural
+        comparison alone would call it no change."""
+        root, tab = self._tab(tmp_path)
+        try:
+            tab.source_widget.insert("1.0", "a: [1, 2\n")
+            assert tab.get_edited_data() == tab.current_data
+            assert tab.has_unsaved_changes()
+        finally:
+            root.destroy()
+
+    def test_an_edit_to_a_comment_alone_counts_as_an_unsaved_change(
+            self, tmp_path):
+        """A comment-only edit parses to exactly what was loaded, so a
+        structural comparison would discard it on close without a prompt —
+        and the comments are a good part of why these files are editable."""
+        root, tab = self._tab(tmp_path, source="# old note\na: 1\n")
+        try:
+            tab.source_widget.delete("1.0", "2.0")
+            tab.source_widget.insert("1.0", "# a better note\n")
+            assert tab.get_edited_data() == tab.current_data
+            assert tab.has_unsaved_changes()
+            ok, _message = tab.save_to_disk()
+            assert ok
+            assert "# a better note" in (
+                tmp_path / "glossary.yml").read_text(encoding="utf-8")
+        finally:
+            root.destroy()
+
+    def test_the_load_error_banner_is_actually_visible(self, tmp_path):
+        """It was packed after `render_ui`'s `expand=True` frame, so Tk
+        squeezed it to one pixel and `winfo_ismapped()` returned 0 — the one
+        thing saying the file could not be read was invisible (the cold review
+        of chunk Y15, finding 1)."""
+        from tkinter import ttk
+        root, tab = self._tab(tmp_path, source="a: [1, 2\n")
+        try:
+            # The real window puts the tab in a notebook; packing it here is
+            # what makes `winfo_ismapped` mean anything.
+            tab.pack(fill="both", expand=True)
+            root.geometry("900x600")
+            root.update()
+            banners = [w for w in tab.winfo_children()
+                       if isinstance(w, ttk.Label)
+                       and "could not be read" in str(w.cget("text"))]
+            assert banners, "no load-error banner on the tab"
+            assert banners[0].winfo_ismapped(), "the banner is not visible"
+            assert banners[0].winfo_height() > 5, (
+                f"the banner is {banners[0].winfo_height()}px high")
+        finally:
+            root.destroy()
+
+    def test_a_write_failure_that_is_not_an_oserror_is_reported(self, tmp_path):
+        """`save_changed_tabs` collects per-file results; anything that escapes
+        this method escapes that loop too and the user is never told which
+        files were already written (the cold review of chunk Y15, finding
+        6)."""
+        import config_manager as cm
+        root, tab = self._tab(tmp_path)
+        try:
+            tab.source_widget.insert("1.0", "# a change\n")
+
+            def boom(_path, _text):
+                raise ValueError("not an OSError")
+
+            original = cm.write_source
+            cm.write_source = boom
+            try:
+                ok, message = tab.save_to_disk()
+            finally:
+                cm.write_source = original
+            assert not ok
+            assert "not an OSError" in message
+        finally:
+            root.destroy()
+
+    def test_the_tab_shows_the_files_comments(self, tmp_path):
+        root, tab = self._tab(tmp_path, source="# a note\na: 1\n")
+        try:
+            assert "# a note" in tab.source_widget.get("1.0", "end")
+        finally:
+            root.destroy()

@@ -11,6 +11,8 @@ from yaml_io import save_yaml_preserving_comments
 from config_tab_models import (
     TabFileState, RowModel, save_changed_tabs, merge_settings_edits,
     update_record, apply_rule_row, restore_hidden, positive_only_fields,
+    EDITORIAL_SOURCE_FILES, parse_source, write_source, editorial_file_path,
+    structural_errors_for_text,
 )
 
 try:
@@ -152,6 +154,127 @@ HELP_BY_FILE = {
         "URL pattern fallbacks for content classification. Used when other classification "
         "methods fail. Patterns are regex; they are evaluated top-to-bottom (first-match-wins)."
     ),
+    # Review chunk Y15 — the ten editorial files that had no editor. Each is
+    # edited as source, so the help text says what the file decides and what
+    # changing it changes, which is what a reader of raw YAML needs.
+    "feasibility_messages.yml": (
+        "FEASIBILITY WORDING: every word the report uses about whether a keyword "
+        "is winnable.\n\n"
+        "HOLDS: the status labels and their icons; the per-keyword sentence "
+        "explaining why a keyword has no verdict; the coverage phrase printed "
+        "beside every mean (long form and table-cell form); and how a Client DA "
+        "cell states where its figure came from.\n\n"
+        "WHY IT MATTERS: this is the ONLY home for these words. Four Python "
+        "copies of the status map are how one unmeasured state came to carry two "
+        "different labels — 'No DA Data' and 'Not Measured' — in different "
+        "outputs.\n\n"
+        "NOT HERE: the minimum DA for a verdict is a threshold, not wording. It "
+        "is config.yml technical.min_da_for_verdict."
+    ),
+    "gsc_messages.yml": (
+        "SEARCH CONSOLE WORDING: the words for each of the three outcomes of a "
+        "Search Console fetch — measured, measured-and-absent (GSC answered, and "
+        "the answer was nothing), and not-reached (the fetch never happened).\n\n"
+        "EACH STATE HAS: a label, a table-cell form, a coverage phrase, and the "
+        "report and log lines.\n\n"
+        "WHY IT MATTERS: 'GSC answered nothing' and 'the fetch never reached "
+        "this' are two different facts, and they shared one label while the "
+        "wording was Python literals in three places. Keep them distinguishable."
+    ),
+    "ai_visibility_messages.yml": (
+        "AI VISIBILITY WORDING: the words for every 'not measured' state in the "
+        "AI-visibility family.\n\n"
+        "HOLDS: per engine, a label / cell / coverage phrase for each of "
+        "answered, failed, not-measured and not-comparable, plus the report "
+        "lines; per sentiment brand, a classification that failed, a call budget "
+        "that ran out before the answer was classified, and a brand no answer "
+        "portrayed; and the structure sub-score's two 'n/a' reasons.\n\n"
+        "WHY IT MATTERS: an engine that was never asked, one whose every call "
+        "failed, and two engines that cited nothing are three facts and none of "
+        "them is a zero. Do not collapse them into one phrase."
+    ),
+    "serp_vocab.yml": (
+        "SERP VOCABULARY: the word lists the SERP audit matches on, and the "
+        "sentences it prints about what it could not do.\n\n"
+        "HOLDS: stop words; People Also Ask category triggers; service tokens; "
+        "AI-alternative and situational probe query templates (keyed by persona, "
+        "with an optional {service} placeholder); E-E-A-T credential tokens and "
+        "review markers; fetch_status — the words a row's Fetch_Status can carry, "
+        "plus the 'N of M pages blocked' line; and db_cleanup, the words for a "
+        "failed database cleanup step.\n\n"
+        "WHY IT MATTERS: 'every attempt failed at the network layer' and 'no "
+        "request could be made at all' are two facts, not one. Tool 2 has no "
+        "vocabulary file, so its copy of the cleanup sentence is a Python "
+        "constant and the two must be changed together."
+    ),
+    "glossary.yml": (
+        "GLOSSARY: a plain-English definition for every term of art the market "
+        "report uses — SERP, PAA, AIO, DA gap, extraction play, commodity "
+        "score.\n\n"
+        "HOW IT IS USED: the report renders a Glossary section containing only "
+        "the terms that run actually used. A standing test fails the build when a "
+        "guarded term appears in a report with no entry here, so adding a term of "
+        "art to the report means adding it here.\n\n"
+        "ALSO HOLDS: 'columns' — plain-English meanings for the .xlsx headers, "
+        "written to the workbook's Glossary sheet — and 'sheet_guidance', the "
+        "workbook Help text.\n\n"
+        "NOTE: workbook headers are never renamed; the field vocabulary is a "
+        "contract that validate_xlsx_vs_json.py checks."
+    ),
+    "play_routing.yml": (
+        "RECOMMENDED PLAYS: the decision table that turns a keyword's measured "
+        "signals into one of five plays — rank, extraction, reformat, local pivot, "
+        "deprioritise.\n\n"
+        "HOW IT WORKS: ordered rules, first match wins, top of file is highest "
+        "priority. Each play also carries its label and its strategy text, plus "
+        "the variant used when no Domain Authority was measured.\n\n"
+        "ALSO HOLDS: validation.da_gap_claim_phrases — the phrases the brief "
+        "validator HARD-fails on when the model restates a DA-gap direction for a "
+        "keyword whose DA was never measured.\n\n"
+        "EDIT WHEN: the play a keyword gets does not match what you would advise."
+    ),
+    "engine_profiles.yml": (
+        "ENGINE PROFILES: per-engine source bias and the 'what to change here' "
+        "advice, for ChatGPT (openai), Perplexity, Gemini and Claude.\n\n"
+        "HOLDS: each engine's retrieval backend, its source-bias phrases, an "
+        "indicative and dated average citation count, its reach and referral-click "
+        "tiers, and the editorial list of recommended content moves that the "
+        "report joins into per-engine advice.\n\n"
+        "WHY IT MATTERS: this is the ONLY place engine advice lives — none is "
+        "hardcoded in Python.\n\n"
+        "CONFIDENCE CAVEAT (binding): the directional findings are high "
+        "confidence; the numbers are indicative and shift over time. Re-measure "
+        "rather than trusting a figure's age."
+    ),
+    "report_writing_directives.yml": (
+        "REPORT DIRECTIVES: the 'When you write:' line rendered under each "
+        "analytical section of the market report.\n\n"
+        "ALSO HOLDS: the page_types labels used by the What To Write content "
+        "plan; the mixed-intent strategy descriptions and their worked examples; "
+        "the section-5 examples; and unwritable_content_types — classifier "
+        "buckets such as 'other' and 'N/A' that must never be named to a reader "
+        "as a format to write.\n\n"
+        "DEGRADES SAFELY: a missing or malformed file means no directives, never "
+        "an aborted report."
+    ),
+    "brief_validation_rules.yml": (
+        "BRIEF VALIDATION: what the validator checks the brief's numbers "
+        "against before the brief is written.\n\n"
+        "HOLDS: numeric_claims — per field (client rank, total results, volume, "
+        "average SERP DA, gap) the words of the issue message, the tolerance, and "
+        "the one-capture-group regexes that find the claim in the prose — plus "
+        "market_size_phrases, the market-size wording that requires a measured "
+        "monthly volume for that keyword, inside that keyword's own section.\n\n"
+        "WHY IT MATTERS: client rank and average SERP DA appeared nowhere in the "
+        "validator, so a figure the model restated wrongly was written out as "
+        "fact."
+    ),
+    "schema_recommendations.yml": (
+        "SCHEMA RECOMMENDATIONS: the schema.org markup the content brief "
+        "recommends, per page type and context.\n\n"
+        "EDIT WHEN: the markup advice a brief gives is wrong for this client's "
+        "site, or a new page type needs its own recommendation."
+    ),
 }
 
 
@@ -242,31 +365,45 @@ class BaseConfigTab(TabFileState, ttk.Frame):
     which refuses to write a file that failed to load or changed on disk.
     """
 
-    def __init__(self, parent, file_name: str, file_type: str):
+    def __init__(self, parent, file_name: str, file_type: str,
+                 directory: str = None):
         """
         Args:
             parent: Parent widget
             file_name: Name of config file (e.g., 'intent_mapping.yml')
             file_type: 'yaml' or 'json'
+            directory: where the file lives. The repo's own directory by
+                default, NOT the current one — see
+                `config_tab_models.EDITORIAL_DIR` for what the cwd cost.
+                Passed only by tests.
         """
         super().__init__(parent)
         self.file_name = file_name
         self.file_type = file_type
-        self.file_path = os.path.join(os.getcwd(), file_name)
+        self.file_path = editorial_file_path(file_name, directory)
         self.current_data = None
         self.edited_data = None
         self.load_current_data()
-        self.render_ui()
+        # The banner is packed BEFORE the tab's own body: `render_ui` packs a
+        # frame with `expand=True`, and a bottom-packed label added after it
+        # was squeezed to one pixel — `winfo_ismapped()` returned 0, so the
+        # one thing saying the file could not be read was invisible (the cold
+        # review of chunk Y15, finding 1).
         self._show_load_error()
+        self.render_ui()
+
+    def _load_error_message(self) -> str:
+        """What the banner says. A tab that can save a repair overrides it."""
+        return (f"{self.file_name} could not be read: {self.load_error}\n"
+                "This tab will not be saved. Fix the file, then use Discard "
+                "Changes.")
 
     def _show_load_error(self):
         """Put a visible banner on a tab whose file could not be read."""
         if not self.load_error or not TKINTER_AVAILABLE:
             return
         ttk.Label(
-            self,
-            text=(f"{self.file_name} could not be read: {self.load_error}\n"
-                  "This tab will not be saved. Fix the file, then use Discard Changes."),
+            self, text=self._load_error_message(),
             foreground="red", wraplength=700, justify="left",
         ).pack(side="bottom", anchor="w", padx=10, pady=5)
 
@@ -300,8 +437,8 @@ class BaseConfigTab(TabFileState, ttk.Frame):
             for child in list(self.winfo_children()):
                 child.destroy()
         self.load_current_data()
-        self.render_ui()
         self._show_load_error()
+        self.render_ui()
 
 
 class DomainOverridesTab(BaseConfigTab):
@@ -2297,6 +2434,188 @@ def preview_client_questions(all_data, slug):
     return profile_questions.generate(block)
 
 
+class EditorialSourceTab(BaseConfigTab):
+    """A validated source editor for one editorial file (review chunk Y15).
+
+    The ten files this serves had no editor at all: the rule that editorial
+    content belongs in YAML was followed, and the consequence it exists for —
+    that somebody other than a developer can change it — was not delivered.
+    They are edited as source rather than as a widget form because they nest
+    arbitrarily; what this adds over a text editor is that the file is
+    discoverable here, its syntax is checked before the write, its own
+    validator runs, and it joins Save All, Discard and the unsaved-changes
+    prompt.
+
+    Comments survive exactly, including ones the user adds, because the text
+    is written verbatim rather than re-dumped from the parsed structure.
+    """
+
+    def __init__(self, parent, file_name: str, file_type: str, title: str,
+                 directory: str = None):
+        # Set before super().__init__, which calls render_ui — initialising
+        # instance state afterwards is the bug class this GUI has produced
+        # before (tests/test_config_manager.py::TestTabInitializationOrder).
+        self.title = title
+        self.source_widget = None
+        self.source_text = ""
+        self._parse_error = None
+        super().__init__(parent, file_name, file_type, directory)
+
+    def load_current_data(self):
+        """Load the parsed data, and the raw text the tab shows."""
+        self._parse_error = None
+        super().load_current_data()
+        try:
+            with open(self.file_path, "r", encoding="utf-8") as f:
+                self.source_text = f.read()
+        except OSError as e:
+            # `TabFileState.load_current_data` treats a missing file as an
+            # empty mapping, which is right for a file a tab may create. A
+            # file named in the declaration table is one that exists, so an
+            # empty editor here means the tab is pointed at the wrong path —
+            # which is exactly what the cwd bug did (the cold review of chunk
+            # Y15, finding 2). Say so rather than showing a blank page.
+            self.source_text = ""
+            if not self.load_error:
+                self.load_error = f"{type(e).__name__}: {e}"
+
+    def render_ui(self):
+        if not TKINTER_AVAILABLE:
+            return
+        frame = ttk.Frame(self)
+        frame.pack(fill="both", expand=True, padx=10, pady=10)
+
+        ttk.Label(frame, text=self.title,
+                  font=("Helvetica", 12, "bold")).pack(anchor="w")
+        ttk.Label(frame, text=HELP_BY_FILE.get(self.file_name, ""),
+                  wraplength=700, justify="left",
+                  foreground="gray").pack(anchor="w", pady=(5, 10))
+        ttk.Label(frame,
+                  text=(f"Editing {self.file_name} directly. Comments are "
+                        f"kept as you write them. The syntax is checked "
+                        f"before anything is saved."),
+                  wraplength=700, justify="left").pack(anchor="w",
+                                                       pady=(0, 10))
+
+        self.source_widget = scrolledtext.ScrolledText(
+            frame, wrap="none", width=100, height=30,
+            font=("Menlo", 11))
+        self.source_widget.insert("1.0", self.source_text)
+        self.source_widget.pack(fill="both", expand=True)
+
+    def _edited_text(self) -> str:
+        if not TKINTER_AVAILABLE or self.source_widget is None:
+            return self.source_text
+        # "end-1c", not tk.END: a Tk text widget carries an implicit final
+        # newline, so tk.END returned the content plus one "\n" and every
+        # save of an unchanged file appended a blank line (the cold review of
+        # chunk Y15, finding 5).
+        return self.source_widget.get("1.0", "end-1c")
+
+    def get_edited_data(self):
+        """The edited source, parsed. A parse failure keeps the loaded data.
+
+        The failure is remembered so `validate` reports it and the tab refuses
+        to save, rather than writing text nothing could read.
+        """
+        data, self._parse_error = parse_source(self._edited_text(),
+                                               self.file_type)
+        return self.current_data if data is None else data
+
+    def has_unsaved_changes(self):
+        """Any change to the text counts, so Save All and the close prompt
+        report it instead of dropping it silently.
+
+        The text, not just the parsed data: an edit to a comment alone parses
+        to exactly what was loaded, and so does text that does not parse at
+        all (`get_edited_data` keeps the loaded data in that case). Comparing
+        structures only would call both of those "no change".
+        """
+        # No early return on `load_error`, unlike the base: the raw text is
+        # what this tab edits and it loaded fine, so a syntax repair typed in
+        # here is a real change. The base's rule — never write over a file
+        # that was never read — belongs to a form that would re-dump a
+        # structure it could not parse; this tab writes the user's own text
+        # and re-parses it first, so there is nothing to lose. Returning
+        # False here discarded the repair with no prompt (the cold review of
+        # chunk Y15, finding 1).
+        data = self.get_edited_data()
+        return (data != self.current_data
+                or self._edited_text().rstrip("\n")
+                != self.source_text.rstrip("\n"))
+
+    def save_blocker(self):
+        """A file that would not parse does not block this tab's save.
+
+        `validate` re-parses the text before anything is written, so a repair
+        is safe; a file changed on disk since it loaded still blocks, because
+        saving would discard somebody else's edit.
+        """
+        if self.changed_on_disk():
+            return (f"{self.file_name} changed on disk after it was loaded. "
+                    f"Use Discard Changes to reload it, then redo the edit.")
+        return None
+
+    def _load_error_message(self) -> str:
+        return (f"{self.file_name} could not be read: {self.load_error}\n"
+                "Fix the syntax here and save, or use Discard Changes.")
+
+    def validate(self):
+        # Parse the text that is on screen now. `_parse_error` is set by
+        # `get_edited_data`, and `BaseConfigTab.validate` returns early
+        # without calling it for a file that has no validator — so reading
+        # the remembered error here would read the result of whenever the
+        # text was last parsed, which for most of these files is never
+        # (P16, a stale read). This was found by driving a real tab: a broken
+        # edit to glossary.yml saved successfully.
+        self.get_edited_data()
+        is_valid, errors, warnings = super().validate()
+        if self._parse_error:
+            return (False,
+                    list(errors) + [f"{self.file_name} does not parse: "
+                                    f"{self._parse_error}"],
+                    warnings)
+        # Valid YAML is not a valid rule table: the file's own loader is what
+        # knows the difference, and deleting `rules:` from play_routing.yml
+        # saved cleanly and killed the next run (the cold review of chunk
+        # Y15, finding 3).
+        structural = structural_errors_for_text(
+            self.file_name, self._edited_text(), self.file_type)
+        if structural:
+            return (False, list(errors) + structural, warnings)
+        return (is_valid, errors, warnings)
+
+    def save_to_disk(self):
+        """Validate, then write the user's own text.
+
+        `TabFileState.save_to_disk` re-dumps the parsed structure through
+        `save_yaml_preserving_comments`, which merges into the comments
+        already on disk — so a comment the user added in this editor would be
+        discarded. The checks it makes (a file that never loaded, a file
+        changed on disk, the file's validator) all still run.
+        """
+        blocker = self.save_blocker()
+        if blocker:
+            return (False, blocker)
+        is_valid, errors, _warnings = self.validate()
+        if not is_valid:
+            return (False, f"Validation failed for {self.file_name}:\n"
+                           + "\n".join(errors))
+        text = self._edited_text()
+        try:
+            write_source(self.file_path, text)
+        except Exception as e:
+            # `Exception`, matching `TabFileState.save_to_disk`: anything that
+            # escapes here escapes `save_changed_tabs` too, and the user is
+            # then never told which files were already written (the cold
+            # review of chunk Y15, finding 6).
+            return (False, f"Failed to save {self.file_name}: {e}")
+        self.source_text = text
+        self.current_data = copy.deepcopy(self.get_edited_data())
+        self._disk_mtime = self._file_mtime()
+        return (True, f"Saved {self.file_name}")
+
+
 class ClientProfileTab(BaseConfigTab):
     """Tab for client_profiles.yml — edit the SELECTED client's profile block,
     add/remove personas and funnel/intent tiers, and preview the generated
@@ -2472,9 +2791,21 @@ class ConfigManagerWindow:
             ClientProfileTab(notebook),
         ]
 
+        # Review chunk Y15 — one tab per editorial file that has no bespoke
+        # form, declared in `config_tab_models.EDITORIAL_SOURCE_FILES`. A new
+        # editorial file is a row in that table, and a standing guard fails
+        # the build when one is added with no editor at all.
+        self.tabs.extend(
+            EditorialSourceTab(notebook, file_name, file_type, title)
+            for file_name, file_type, title, _check in EDITORIAL_SOURCE_FILES
+        )
+
         # Add tabs to notebook. The client-profile tab shows a friendly title
         # since it edits the selected client's block, not just a raw file.
         _tab_titles = {CLIENT_PROFILES_FILE: "Client Profile & Queries"}
+        _tab_titles.update({file_name: title
+                            for file_name, _type, title, _check
+                            in EDITORIAL_SOURCE_FILES})
         for tab in self.tabs:
             notebook.add(tab, text=_tab_titles.get(tab.file_name, tab.file_name))
 

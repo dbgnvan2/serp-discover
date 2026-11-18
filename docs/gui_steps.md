@@ -14,8 +14,17 @@
 
 Opened via **Edit Configuration**. Each tab edits one editorial file with
 validation. The tabs and their files are listed in
-`docs/config_reference.md` ("Configuration Manager GUI"). One tab is not a
-raw-file editor:
+`docs/config_reference.md` ("Configuration Manager GUI"), which splits them
+into the nine that have a **form** and the ten edited as **source** — the ten
+editorial files that had no editor at all until review chunk Y15. A source tab
+checks the file's syntax before writing it, runs its validator, joins Save All
+and Discard, and keeps the comments exactly as you write them. Where a file's
+own loader can tell a usable rule table from valid YAML that is not one, it is
+run too (`play_routing.yml`, `brief_validation_rules.yml`). A source tab is
+also the one kind of tab that can repair a file that was already broken when
+the window opened: the raw text loads either way, and the save re-parses it, so
+a still-broken repair is refused and the file on disk is untouched. One tab is
+neither a form over a single file's fields nor a source editor:
 
 **Client Profile & Queries** (`client_profiles.yml`, yoast_geo_upgrade Y.13)
 edits the **selected client's** profile — brand, domain, location, cities, and

@@ -2238,7 +2238,40 @@ before any keyword is fetched.
    - Step 5 (Export History) generates time-series CSVs
    - Analyze rank movement: stable keywords (safe bets) vs volatile (risky)
 
-6. **Pivot to neighbourhood keywords (service keywords only)**
+6. **Change the words the report uses**
+   - Open Configuration Manager (GUI launcher → "Edit Configuration")
+   - Ten tabs edit an editorial file's own text rather than a form: Feasibility
+     Wording, Search Console Wording, AI Visibility Wording, SERP Vocabulary,
+     Glossary, Recommended Plays, Engine Profiles, Report Directives, Brief
+     Validation, Schema Recommendations
+   - WHAT THEY DO: these files hold the judgements, not the measurements — the
+     status labels and the sentences explaining why a keyword has no verdict,
+     the decision table that picks one of five recommended plays, the
+     definition of every term of art the report prints, the per-engine advice,
+     the "When you write:" line under each report section
+   - WHY IT MATTERS: each of these is the **only** home for its words. Four
+     Python copies of one status map are how a single unmeasured state came to
+     be called "No DA Data" in one output and "Not Measured" in another. Change
+     the file and every output that uses those words follows
+   - The tab shows the file as it is, comments included. The syntax is checked
+     before anything is written: a mistake is reported with its line and
+     nothing is saved, so a bad edit cannot break the next run. Comments you
+     add survive exactly, which is the point of writing down why a threshold is
+     what it is
+   - Two of the files are checked further, because valid YAML is not a valid
+     rule table: Recommended Plays and Brief Validation are handed to the code
+     that reads them, so a play table missing its `rules` list, or a validation
+     file that declares no numeric checks, is refused with what that code said.
+     Without it, deleting a section parsed cleanly and either killed the next
+     run or turned every numeric check off with nothing saying so
+   - If a file is already broken when the manager opens, its source tab loads
+     the text anyway and says so in red. Fix the syntax there and save — the
+     text is re-parsed first, so a repair that is still wrong is refused and
+     the file on disk is left as it was
+   - NOT HERE: thresholds and weights are numbers, not wording. They are in
+     Config Settings (`config.yml`)
+
+7. **Pivot to neighbourhood keywords (service keywords only)**
    - Run feasibility analysis (Step 7)
    - For low-feasibility **service** keywords (>15 gap), tool suggests pivots
    - Example: "Couples Counselling" (DA 25 gap) → "Couples Counselling Lonsdale" (DA 8 gap)

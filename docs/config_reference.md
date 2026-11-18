@@ -306,7 +306,7 @@ run.
 
 **How to access:** Click "Edit Configuration" button in `serp-me.py` launcher.
 
-The Configuration Manager allows you to edit all 9 configuration files in a GUI without opening a text editor:
+The Configuration Manager edits every editorial file in the repo without opening a text editor. Nine files have a **form** — a widget per field, listed first below. The other ten are edited as **source**, listed after them (review chunk Y15).
 
 | Tab | File | What You Can Do |
 |-----|------|-----------------|
@@ -320,11 +320,40 @@ The Configuration Manager allows you to edit all 9 configuration files in a GUI 
 | URL Pattern Rules | `url_pattern_rules.yml` | View/edit/add/delete URL fallback patterns (regex → content type). |
 | Client Profile & Queries | `client_profiles.yml` | Edit the **selected client's** profile (brand, domain, location, cities) and its personas with named funnel/intent tiers (verbatim `seed_questions` + per-city `templates`). **Preview generated questions** runs `profile_questions.generate` with persona/tier/city tags — no API calls. Save is atomic, validated (round-trips through the Y.1 loader; rejects empty persona labels / bad tiers inline), and never disturbs other clients' blocks. (yoast_geo_upgrade Y.13) |
 
+### Source tabs (review chunk Y15)
+
+Ten editorial files had no editor at all: the rule that editorial content belongs in YAML was followed, and the consequence it exists for — that somebody other than a developer can change it — was not delivered for them. Each now has a tab that edits the file's own text.
+
+They are source rather than forms because they nest arbitrarily: `engine_profiles.yml` and `report_writing_directives.yml` are three and four levels deep with prose leaves, and a widget tree over arbitrary nesting is more GUI surface than the editorial benefit justifies. What a source tab adds over opening the file in a text editor:
+
+- The file is **discoverable** in the window, with help text saying what it decides and what changing it changes.
+- The **syntax is checked before anything is written**, so a YAML error is reported with its line instead of breaking the next run. A file that does not parse is never saved.
+- The file's own **validator runs** if it has one.
+- The file's own **loader runs** where one can tell a usable table from valid YAML that is not one. `play_routing.yml` and `brief_validation_rules.yml` are checked this way: a play table with no `rules` list, or a validation file that declares no `numeric_claims`, is refused with what its loader said. Valid YAML is not a valid rule table — deleting `rules:` used to save cleanly and kill the next run, and deleting `numeric_claims:` used to turn every numeric check off with nothing saying so.
+- It joins **Save All**, **Discard Changes** and the unsaved-changes prompt, under the same all-or-nothing rule as every other tab.
+- **Comments survive exactly**, including ones you add: the text is written as you wrote it rather than re-dumped from the parsed structure. An edit to a comment alone counts as a change.
+
+| Tab | File | What it decides |
+|-----|------|-----------------|
+| Feasibility Wording | `feasibility_messages.yml` | Status labels and icons, the per-keyword "why there is no verdict" sentence, the coverage phrase beside every mean, how a Client DA cell states its provenance |
+| Search Console Wording | `gsc_messages.yml` | The words for each of the three GSC fetch outcomes — measured, measured-and-absent, not-reached |
+| AI Visibility Wording | `ai_visibility_messages.yml` | The words for every "not measured" state in the AI-visibility family, per engine, per sentiment brand and per foundational sub-score |
+| SERP Vocabulary | `serp_vocab.yml` | Stop words, PAA triggers, service tokens, probe templates, E-E-A-T markers, `fetch_status`, `db_cleanup` |
+| Glossary | `glossary.yml` | The plain-English definition of every term of art the report prints, plus the .xlsx column meanings and sheet help |
+| Recommended Plays | `play_routing.yml` | The ordered decision table mapping a keyword's signals to one of five plays, and each play's text |
+| Engine Profiles | `engine_profiles.yml` | Per-engine source bias, citation counts, reach tiers, and the "what to change here" advice |
+| Report Directives | `report_writing_directives.yml` | The "When you write:" line under each report section, page-type labels, mixed-intent strategies, unwritable content types |
+| Brief Validation | `brief_validation_rules.yml` | What the validator checks the brief's numbers against, and the market-size wording that requires a measured volume |
+| Schema Recommendations | `schema_recommendations.yml` | The schema.org markup the brief recommends, per page type and context |
+
+**Adding a file:** a row in `config_tab_models.EDITORIAL_SOURCE_FILES` — file name, type, tab title, and optionally a `module:function` structural check — not a class. A standing guard (`tests/test_y15_every_editorial_file_has_an_editor.py`) lists the editorial YAML and JSON **git tracks at the repo root** and fails the build when one has neither a tab nor an entry in `NOT_EDITORIAL` giving the reason it is not editable — today `handoff_schema.json` and `ai_visibility_export_schema.json` (contracts between the two tools, where hand-editing one side is how they drift). The count of tabs is what went stale before; the guard reads the files. Tracked files, not everything at the root: a run's own output and a reader's scratch files sit there too, and listing the directory made an untracked `zz_scratch.yml` fail the suite.
+
 **Saving:**
-- **Only changed files are written.** "Save All" writes the tabs you edited and reports "Saved N of 9". Pressing it with no edits writes nothing.
+- **Only changed files are written.** "Save All" writes the tabs you edited and reports how many of the changed tabs were saved. Pressing it with no edits writes nothing.
 - **Nothing is written unless everything can be.** Each changed file is validated first; if one is invalid, no file is written and the errors are listed. Each file is replaced atomically. There is no backup copy — use git to recover an earlier version.
 - **Keys the tab does not show are kept.** A save applies your edits to the file as it was loaded, so entries with no field in the GUI (for example `known_brands` in `config.yml`, or `rationale` on an intent rule) are left as they were.
-- **A file that could not be read is never overwritten.** If a file has a syntax error when the manager opens, its tab shows a red notice and is skipped on save. Fix the file in a text editor, then press "Discard Changes" to reload.
+- **A file that could not be read is never overwritten by a form tab.** If a file has a syntax error when the manager opens, its tab shows a red notice and is skipped on save. Fix the file in a text editor, then press "Discard Changes" to reload.
+- **A source tab can repair the file it could not read.** The ten source tabs above are the exception: the raw text loads even when it does not parse, so you can fix the syntax in the tab and save. The text is re-parsed first, so a still-broken repair is refused and the file on disk is untouched.
 - **A file changed by something else is not overwritten.** If the launcher or a pipeline run wrote a file after the manager loaded it, saving that file is refused; press "Discard Changes" to reload and redo the edit.
 - **A field that does not parse is an error.** A typo in a number or list field in Config Settings is reported by name instead of being saved as `0` or an empty list.
 - **Closing:** the Close button and the window's close box both ask about unsaved changes. If "save before closing" fails, the window stays open with your edits.

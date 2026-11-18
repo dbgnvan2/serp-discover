@@ -975,6 +975,56 @@ subclass spec names the class and the attribute instead of raising an SQL
 syntax error
 (`docs/review_2026-11-04/PLAN_Y14_one_cache_for_both_signals.md`).
 
+**Chunk Y15 — every editorial file has an editor.** Carried as an adjacent
+issue by the cold reviews of chunks Y1–Y6. `CLAUDE.md` says editorial content
+belongs in a YAML or JSON file rather than in Python, and the review chunks
+moved a great deal of it out; the Configuration Manager is how a non-developer
+reaches those files, and it was never extended. It registered nine tabs while
+the repo held nineteen editable editorial files, so ten — the feasibility,
+Search Console and AI-visibility wording, the SERP vocabulary, the glossary,
+the play routing table, the engine profiles, the report directives, the brief
+validation rules and the schema recommendations — were reachable only by
+opening the file in a text editor. The rule was followed and the consequence it
+exists for was not delivered for them.
+
+Each of the ten now has a source tab: it shows the file's own text, parses it
+before the write so a syntax error is reported with its line instead of
+breaking the next run, runs the file's validator if it has one, joins Save All
+and Discard under the same all-or-nothing rule, and writes the text verbatim so
+a comment the user adds survives. They are source rather than forms because
+these files nest arbitrarily — `engine_profiles.yml` and
+`report_writing_directives.yml` are three and four levels deep with prose
+leaves — and a widget tree over arbitrary nesting is more GUI surface than the
+editorial benefit justifies; a form for a given file stays available as a later
+per-file upgrade, which is what the nine bespoke tabs are.
+
+The part that stops the fault recurring is the guard, not the ten tabs: the
+files are declared in one table in `config_tab_models`, every exclusion is
+named with its reason, and a standing test walks the repo's editorial YAML and
+JSON and fails the build when a file has neither. The old test asserted the tab
+count equalled nine, which is exactly what went stale. Building it found one
+real bug by driving a real tab: `BaseConfigTab.validate` returns early for a
+file with no validator, so reading the remembered parse error there read
+whenever the text was last parsed, and a broken edit to `glossary.yml` saved
+successfully (P16).
+
+The chunk's cold review returned seven findings, four of them high, and all
+seven are fixed with a guard each. The two that mattered most were not in the
+new code's logic but in where and what it wrote: the tab joined the file name
+onto the **current directory** while nine of the ten readers anchor on the
+module's own, so a GUI started from elsewhere showed a blank tab, reported no
+error, and saved a new file nothing reads; and it checked **syntax only**, so
+deleting `rules:` from `play_routing.yml` saved cleanly and killed the next run,
+and deleting `numeric_claims:` from `brief_validation_rules.yml` turned every
+numeric check off with nothing saying so. A file's own loader is now run where
+it can tell a usable table from valid YAML that is not one. Also fixed: a
+syntax repair typed into a source tab was discarded with no prompt and its red
+warning was squeezed to one pixel; every save appended a blank line, because a
+Tk text widget carries an implicit final newline; a non-OSError lost the
+partial-save report; and the temp file was a fixed name, left behind on failure.
+Final mutation gate 18/18 caught, none vacuous
+(`docs/review_2026-11-04/PLAN_Y15_every_editorial_file_has_an_editor.md`).
+
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.

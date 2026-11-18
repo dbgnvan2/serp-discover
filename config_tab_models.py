@@ -11,6 +11,8 @@ Tests: tests/test_config_manager_save.py
 import copy
 import json
 import os
+import subprocess
+import tempfile
 
 import yaml
 
@@ -51,6 +53,27 @@ def positive_only_fields() -> set:
     pairs.add(db_connect.LOCK_TIMEOUT_SOURCE)
     pairs.update(report_llm.GOVERNED_FIELDS)
     return pairs
+
+
+#: The directory the repo's editorial files live in. `BaseConfigTab` resolved
+#: `file_name` against `os.getcwd()`, so the Configuration Manager edited
+#: whatever directory it happened to be started from while every reader of
+#: those files resolves against the module's own directory. Started anywhere
+#: but the repo root — a Finder launch gives `/` — the tab for an existing
+#: file showed empty, and saving created a brand-new file there and reported
+#: success, while the run went on reading the real one. This is the class
+#: review chunk Y12 fixed for the database and the config
+#: (`db_connect.database_path`, `process_config.config_path`); chunk Y15 made
+#: it worse by routing ten more files through it, and for a source tab a wrong
+#: cwd is indistinguishable from a legitimately empty file (the cold review of
+#: chunk Y15, finding 2).
+EDITORIAL_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def editorial_file_path(file_name: str, directory: str = None) -> str:
+    """Where this editorial file is. *directory* is for tests only."""
+    return os.path.join(EDITORIAL_DIR if directory is None else directory,
+                        file_name)
 
 
 class TabFileState:
@@ -291,3 +314,250 @@ def restore_hidden(shown, hidden):
     for index, rule in sorted(hidden, key=lambda pair: pair[0]):
         out.insert(min(index, len(out)), copy.deepcopy(rule))
     return out
+
+
+# ---------------------------------------------------------------------------
+# Review chunk Y15 — every editorial file has an editor
+# ---------------------------------------------------------------------------
+#
+# `CLAUDE.md` says editorial content — anything a non-developer might
+# reasonably want to change — belongs in a YAML or JSON file rather than in
+# Python, and the review chunks moved a great deal of it out. The
+# Configuration Manager is how a non-developer reaches those files, and it was
+# never extended: it registered nine tabs while the repo holds nineteen
+# editable editorial files. So the rule was followed and the consequence it
+# exists for was not delivered for ten of them.
+#
+# Each of the ten is a source tab rather than a widget form. The nine existing
+# tabs are hand-written forms for one file's particular shape; these ten nest
+# arbitrarily — `report_writing_directives.yml` and `engine_profiles.yml` are
+# three and four levels deep with prose leaves — and a widget tree over
+# arbitrary nesting is more GUI surface than the editorial benefit justifies.
+# What a source tab adds over opening the file in a text editor is what
+# matters: it is discoverable in the window, its YAML is parsed before the
+# write so a syntax error is caught with its line instead of breaking the next
+# run, the file's own validator runs if it has one, it joins Save All /
+# Discard / the unsaved-changes prompt, and it carries the help text saying
+# what the file is for. A form for a specific file stays available as a later
+# per-file upgrade — that is what the nine bespoke tabs are.
+
+#: `(file_name, file_type, title, structural_check)` for each editorial file
+#: with no bespoke form. Adding the eleventh file is a row here, not a class.
+#:
+#: `structural_check` is the name of a `module:function` taking the file's
+#: path and raising on a file whose *shape* is wrong — valid YAML is not a
+#: valid rule table. The source tab's own check is syntax, and a tab that
+#: checks only syntax while claiming to stop a broken edit reaching the next
+#: run is making a claim it cannot keep: deleting the `rules:` list from
+#: `play_routing.yml` saved cleanly and the next run died inside
+#: `brief_data_extraction`, and deleting `numeric_claims:` from
+#: `brief_validation_rules.yml` left every numeric check off while the
+#: sidecar reported nothing skipped (the cold review of chunk Y15, finding 3).
+#: `None` means the file's readers already degrade loudly and name what they
+#: dropped; the test beside this table records that decision per file.
+EDITORIAL_SOURCE_FILES = (
+    ("feasibility_messages.yml", "yaml", "Feasibility Wording", None),
+    ("gsc_messages.yml", "yaml", "Search Console Wording", None),
+    ("ai_visibility_messages.yml", "yaml", "AI Visibility Wording", None),
+    ("serp_vocab.yml", "yaml", "SERP Vocabulary", None),
+    ("glossary.yml", "yaml", "Glossary", None),
+    ("play_routing.yml", "yaml", "Recommended Plays",
+     "play_routing:load_play_routing"),
+    ("engine_profiles.yml", "yaml", "Engine Profiles", None),
+    ("report_writing_directives.yml", "yaml", "Report Directives", None),
+    ("brief_validation_rules.yml", "yaml", "Brief Validation",
+     "brief_validation:load_validation_rules"),
+    ("schema_recommendations.yml", "yaml", "Schema Recommendations", None),
+)
+
+
+def structural_check(name: str):
+    """Resolve a `module:function` structural check, or None.
+
+    Imported here rather than at module import: `config_tab_models` is
+    imported by the GUI launcher, and pulling in the report's own modules to
+    get a validator would make the launcher depend on the pipeline.
+    """
+    if not name:
+        return None
+    module_name, _, function_name = name.partition(":")
+    module = __import__(module_name)
+    return getattr(module, function_name)
+
+
+def structural_errors_for_text(file_name: str, text: str,
+                               file_type: str = "yaml") -> list:
+    """`structural_errors` for text that is not on disk yet.
+
+    The file's own loader takes a path, so the edit is checked where it can
+    do no harm rather than after it has replaced the real file.
+    """
+    row = next((r for r in EDITORIAL_SOURCE_FILES if r[0] == file_name), None)
+    if row is None or not row[3]:
+        return []
+    suffix = ".json" if file_type == "json" else ".yml"
+    handle, tmp = tempfile.mkstemp(prefix="check.", suffix=suffix)
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as f:
+            f.write(text if text.endswith("\n") else text + "\n")
+        return structural_errors(file_name, tmp)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+
+def structural_errors(file_name: str, path: str) -> list:
+    """What is wrong with the *shape* of this file, by its own reader.
+
+    The file's own loader is the check, never a second copy of its rules
+    (P32): `play_routing.load_play_routing` already raises on a missing
+    `plays` or `rules`, an unknown play id or a non-string `strategy_text`,
+    and `brief_validation.load_validation_rules` already records every rule
+    it had to skip.
+    """
+    row = next((r for r in EDITORIAL_SOURCE_FILES if r[0] == file_name), None)
+    if row is None or not row[3]:
+        return []
+    try:
+        check = structural_check(row[3])
+    except Exception as e:
+        # A check that cannot be imported must not block the save; say so.
+        return [f"could not run the structural check for {file_name} "
+                f"({type(e).__name__}: {e}); only the syntax was checked"]
+    try:
+        result = check(path)
+    except Exception as e:
+        return [f"{file_name} parses but is not a usable "
+                f"{row[2].lower()} table: {type(e).__name__}: {e}"]
+    # A loader that degrades rather than raising reports what it dropped.
+    if isinstance(result, dict):
+        problems = []
+        if result.get("load_error"):
+            problems.append(f"{file_name}: {result['load_error']}")
+        for field in result.get("fields_skipped") or []:
+            problems.append(f"{file_name}: the rule for {field} would be "
+                            f"skipped — it is not in a usable shape")
+        return problems
+    return []
+
+#: Files that are deliberately NOT editable in the Configuration Manager, each
+#: with the reason. An explicit list, so every exclusion is a decision on the
+#: record rather than something a filename pattern swept up.
+NOT_EDITORIAL = {
+    "handoff_schema.json":
+        "a contract between the two tools — hand-editing one side is how they "
+        "drift",
+    "ai_visibility_export_schema.json":
+        "a contract between the producer and its consumer, as above",
+    "diff_report.json": ("a generated artefact, rewritten by every run, and "
+                         "untracked, so the tracked-file inventory does not "
+                         "reach it either"),
+}
+
+
+def _tracked_names(root: str):
+    """Top-level file names git tracks in *root*, or None if it cannot say.
+
+    The inventory is the *tracked* files, because the untracked ones at this
+    root are a run's own output and a reader's scratch files. Listing the
+    directory instead made `touch zz_scratch.yml` fail the standing guard and
+    counted the gitignored `diff_report.json` as an editorial file somebody
+    had forgotten to wire up (the cold review of chunk Y15, finding 4).
+    """
+    try:
+        result = subprocess.run(
+            ["git", "-C", root, "ls-files", "-z", "--", "*.yml", "*.yaml",
+             "*.json"],
+            capture_output=True, text=True, timeout=30)
+    except Exception:
+        return None
+    if result.returncode != 0:
+        return None
+    return {entry for entry in result.stdout.split("\0")
+            if entry and "/" not in entry}
+
+
+def editorial_files(root: str) -> list:
+    """Every editorial YAML/JSON file git tracks at *root*, sorted.
+
+    Excludes nothing by pattern: the exclusions are named in
+    :data:`NOT_EDITORIAL` with their reasons. A *root* that is not a git work
+    tree falls back to listing the directory, which is what the tests of this
+    function use; the repo itself always has git to ask.
+    """
+    tracked = _tracked_names(root)
+    names = []
+    for name in sorted(os.listdir(root)):
+        if not name.endswith((".yml", ".yaml", ".json")):
+            continue
+        if not os.path.isfile(os.path.join(root, name)):
+            continue
+        if tracked is not None and name not in tracked:
+            continue
+        names.append(name)
+    return names
+
+
+def files_without_an_editor(root: str, covered) -> list:
+    """Editorial files in *root* that no tab edits and no exclusion names.
+
+    This is the part of chunk Y15 that stops the fault recurring. Ten files
+    reached the repo with no editor and nothing said so, because the only
+    record of what was covered was the list of tab classes.
+    """
+    covered = set(covered)
+    return [name for name in editorial_files(root)
+            if name not in covered and name not in NOT_EDITORIAL]
+
+
+def parse_source(text: str, file_type: str):
+    """``(data, error)`` for edited source text. Exactly one is None.
+
+    A parse failure is returned rather than raised so the tab can show it and
+    refuse to save, which is how every other tab treats an unreadable edit.
+    """
+    try:
+        if file_type == "yaml":
+            data = yaml.safe_load(text)
+        else:
+            data = json.loads(text)
+    except Exception as e:
+        return (None, f"{type(e).__name__}: {e}")
+    if data is None:
+        data = {}
+    if not isinstance(data, (dict, list)):
+        return (None, f"the file must hold a mapping or a list, not "
+                      f"{type(data).__name__}")
+    return (data, None)
+
+
+def write_source(path: str, text: str) -> None:
+    """Write edited source text verbatim, atomically.
+
+    Verbatim, not re-dumped from the parsed structure: a source tab shows the
+    file's comments, and a comment the user adds or changes has to survive the
+    save. `save_yaml_preserving_comments` merges a structure into the comments
+    already on disk, which would silently discard a new one.
+    """
+    if text and not text.endswith("\n"):
+        text += "\n"
+    # A unique name in the target directory, removed on any failure: a fixed
+    # `<file>.tmp` left partial content beside the file when the write failed,
+    # with nothing to clean it up or mention it, and two writers of one file
+    # collided on the name. `flush` + `fsync` before the rename, because a
+    # crash between them leaves a zero-length file where the good one was
+    # (the cold review of chunk Y15, finding 7).
+    directory = os.path.dirname(os.path.abspath(path))
+    handle, tmp = tempfile.mkstemp(dir=directory,
+                                   prefix=os.path.basename(path) + ".",
+                                   suffix=".tmp")
+    try:
+        with os.fdopen(handle, "w", encoding="utf-8") as f:
+            f.write(text)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+    except BaseException:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+        raise
