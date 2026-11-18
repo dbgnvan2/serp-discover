@@ -871,7 +871,17 @@ every cache being written. `db_connect.connection` does both, once, and every
 production module now opens the database through it — including two bare
 connections the adjacent issue had not counted, in `export_history.py` and
 `verify_enrichment.py`. The guard is the repo, not the two files
-(`docs/review_2026-11-04/PLAN_Y9_a_handle_is_closed.md`). The
+(`docs/review_2026-11-04/PLAN_Y9_a_handle_is_closed.md`).
+
+**Chunk Y10 — Tool 2 closes its handles too.** The same class, one level
+further in: `DatabaseManager._get_connection` and
+`VelocityModule._get_connection` returned a bare `sqlite3.connect`, used as
+`with ... as conn:` at 43 sites that commit and never close, and taken bare by
+two writers (`eeat_scorer`, `cluster_detector`) that never closed it at all.
+Both factories now return the same `db_connect.connection` helper and are
+renamed `connection()`; the old name is removed rather than aliased, because
+two doors is how one of them stays unfixed
+(`docs/review_2026-11-04/PLAN_Y10_tool2_closes_its_handles.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)
