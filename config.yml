@@ -370,6 +370,16 @@ http_retry:
   # `ai_visibility.timeout_seconds` for an LLM answer.
   timeout_seconds: 30
 
+database:
+  # Y11 — how long a writer waits for another writer's SQLite lock before the
+  # write fails with `database is locked`. It was sqlite3's own default of 5,
+  # passed by nobody and choosable by nobody, while the GUI runs
+  # `refresh_analysis_outputs` in the same process as a run and the AI probe
+  # writes the same file. Editorial: how long a concurrent write may block is
+  # a judgement about how this tool is driven. A wait cannot be switched off —
+  # a non-positive or non-numeric value is reported and the default (5) used.
+  lock_timeout_seconds: 5.0
+
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant

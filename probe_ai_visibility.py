@@ -60,6 +60,7 @@ import engine_recommendations as engine_recs_mod
 import engine_transfer as engine_transfer_mod
 import foundational_score as foundational_mod
 import http_retry
+import process_config
 from http_retry import post_with_transient_retry
 from pattern_matching import load_serp_vocab
 from profile_questions import generate as generate_profile_questions
@@ -178,11 +179,11 @@ def _load_config(config_path: str = "config.yml") -> dict:
     chunk Y4's cold review).
     """
     if not os.path.exists(config_path):
-        http_retry.apply_retry_policy(None)
+        process_config.apply(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
-    http_retry.apply_retry_policy(config)
+    process_config.apply(config)
     return config
 
 

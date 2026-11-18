@@ -881,7 +881,28 @@ two writers (`eeat_scorer`, `cluster_detector`) that never closed it at all.
 Both factories now return the same `db_connect.connection` helper and are
 renamed `connection()`; the old name is removed rather than aliased, because
 two doors is how one of them stays unfixed
-(`docs/review_2026-11-04/PLAN_Y10_tool2_closes_its_handles.md`). The
+(`docs/review_2026-11-04/PLAN_Y10_tool2_closes_its_handles.md`).
+
+**Chunk Y11 — a rollback is not the diagnosis, and five seconds is not a
+decision.** Both repos, because both share the helper Y9 and Y10 wrote, and
+both carried its two faults. `conn.rollback()` and `conn.close()` were
+unguarded, so an exception from either replaced the exception the caller needed
+to see — and on the clean path a failing `close()` after a successful
+`commit()` raised out of a block whose write was already durable, so the caller
+recorded the write as failed and the run reported an absence where there was a
+row. And `sqlite3.connect`'s `timeout` — the wait for another writer's lock —
+was left at its default of 5.0, a number nobody chose and nobody could change,
+while the GUI runs `refresh_analysis_outputs` in the same process as a run and
+Tool 2's Streamlit orchestrator writes the same file as an audit. Both steps
+now run through `_safely`, which logs the cleanup failure and lets the original
+outcome stand, and the wait is `config.yml database.lock_timeout_seconds` /
+`shared_config.json technical.db_lock_timeout_seconds`, shipped at 5.0 so
+naming it changed no behaviour. Applying it is the part that would have rotted:
+six loaders in Tool 1 read `config.yml`, five called
+`http_retry.apply_retry_policy` directly and the sixth applied nothing at all
+although it opens the database, so there is now one `process_config.apply` that
+every loader calls, guarded by a consequence test over all six
+(`docs/review_2026-11-04/PLAN_Y11_a_rollback_is_not_the_diagnosis.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

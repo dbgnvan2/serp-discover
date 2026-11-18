@@ -14,7 +14,9 @@ import os
 
 import yaml
 
+import db_connect
 import http_retry
+import report_llm
 import timeouts
 from yaml_io import save_yaml_preserving_comments
 
@@ -23,8 +25,10 @@ def positive_only_fields() -> set:
     """`(section, field)` pairs the loader refuses at zero or less.
 
     Read off the tables the loaders themselves drive — `http_retry`'s retry
-    budgets and timeout paths, and the keys `timeouts` governs — so this is
-    not a second list that can disagree with them (P32). The GUI is where
+    budgets and timeout paths, the keys `timeouts` governs, the SQLite lock
+    wait `db_connect` names and the brief's wait and token limits
+    `report_llm` names — so this is not a second list that can
+    disagree with them (P32). The GUI is where
     these are edited, and until review chunk Y8 it offered a floor of 0 for
     all of them: the value saved, the loader reported it and used the
     documented default, and the report went to a log the GUI operator never
@@ -37,6 +41,15 @@ def positive_only_fields() -> set:
     for section_name, cfg_key in http_retry.TIMEOUT_SOURCES.values():
         pairs.add((section_name, cfg_key))
     pairs.update(timeouts.GOVERNED_FIELDS)
+    # Each loader that refuses a value at zero names its own keys, and this
+    # reads them off the loader: `timeouts` cannot name the lock wait, because
+    # `db_connect` imports `timeouts` for its validator, and `report_llm`'s
+    # three were in no table at all — so the GUI saved a typed 0 for the
+    # brief's wait and token limits after chunk Y8 had fixed the other nine
+    # (review chunk Y11 and its cold review). A new refused key belongs in its
+    # loader's own tuple, not appended here.
+    pairs.add(db_connect.LOCK_TIMEOUT_SOURCE)
+    pairs.update(report_llm.GOVERNED_FIELDS)
     return pairs
 
 

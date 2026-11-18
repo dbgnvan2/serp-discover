@@ -212,6 +212,16 @@ Editorial content currently lives in:
   the bands decide which queries count as ranking comparably, and a client whose
   pages sit deeper wants different ones. Both were Python constants (added
   review chunk Y4)
+- `config.yml` `database.lock_timeout_seconds` — how long a writer waits for
+  another writer's SQLite lock before the write fails with `database is
+  locked`. Editorial: how long a concurrent write may block is a judgement
+  about how the tool is driven, and the GUI runs `refresh_analysis_outputs` in
+  the same process as a run. It was `sqlite3.connect`'s undeclared default of
+  5, chosen by nobody. `db_connect.connection` passes it with `setdefault`;
+  `process_config.apply` — the one function called by every loader of
+  `config.yml` that runs a step; the GUI's own editor read is not one, because
+  it loads the file to edit rather than to run — applies it beside the retry
+  policy (added review chunk Y11)
 - `config.yml` `http_retry` — `attempts` / `backoff_seconds` /
   `max_retry_after_seconds`, the retry policy for every outbound HTTP call
   routed through `http_retry`. Editorial: how long the tool may spend on a

@@ -42,6 +42,7 @@ from datetime import datetime
 import yaml
 
 import pattern_matching
+import process_config
 from play_rendering import format_play_cell, format_play_line, load_play_vocab
 
 import aio_exposure
@@ -104,14 +105,47 @@ def load_data(json_path):
         sys.exit(1)
 
 
+#: One read, one policy application, however many thresholds the report asks
+#: for. `_report_number` reaches this on the per-keyword narrative path, so
+#: before the cold review of chunk Y11 the file was re-parsed and both
+#: policies re-applied once per keyword — and every config warning was
+#: re-emitted with it, so one typo produced N identical lines and the reader
+#: could not tell one problem from N (P2/P25). Keyed by the path, so a caller
+#: that points `_REPO_ROOT` somewhere else reads that file rather than a
+#: cached answer about a different one.
+_CONFIG_CACHE = {}
+
+
 def _load_config():
-    """Load config.yml to get preferred_intents and report thresholds."""
+    """config.yml, with this process's policies applied (or reset). Read once.
+
+    The report makes no outbound call, but it opens the database, and the
+    SQLite lock wait is process-wide state like the retry policy
+    (`process_config`). This loader was the one of the six that set no policy
+    at all, so a report rendered in the GUI's process ran on whatever the
+    last loader happened to leave behind, or on the import defaults while
+    `config.yml` said otherwise (P5/P25, review chunk Y11).
+    """
     path = os.path.join(_REPO_ROOT, "config.yml")
+    if path in _CONFIG_CACHE:
+        return _CONFIG_CACHE[path]
     try:
         with open(path, 'r', encoding='utf-8') as f:
-            return yaml.safe_load(f) or {}
-    except Exception:
-        return {}
+            config = yaml.safe_load(f) or {}
+    except FileNotFoundError:
+        config = {}
+    except Exception as exc:
+        # A YAML typo used to leave the report running on every default with
+        # nothing said anywhere: the thresholds, the retry budget and the lock
+        # wait all silently built-in (P2, cold review of chunk Y11).
+        logging.error(
+            "Could not read %s (%s). The report runs on the built-in "
+            "defaults for every threshold, the retry policy and the database "
+            "lock wait.", path, exc)
+        config = {}
+    process_config.apply(config or None)
+    _CONFIG_CACHE[path] = config
+    return config
 
 
 _DA_GAP_NOISE_FLOOR_DEFAULT = 2.0

@@ -135,6 +135,30 @@ path or not at all. A standing guard
 fails the build when any production module opens `sqlite3.connect` outside this
 helper or a `contextlib.closing`.
 
+Two things the first version of the helper got wrong, fixed in review chunk
+Y11:
+
+* **A failing cleanup no longer replaces the diagnosis.** `rollback()` and
+  `close()` can each raise — a disk I/O error, a file that has gone away — and
+  when either did, its exception replaced the one the block raised, so the
+  `IntegrityError` saying which write was wrong arrived as an
+  `OperationalError` from the cleanup. On the clean path it was worse: a
+  `close()` that failed *after* a successful `commit()` raised out of a block
+  whose write was already durable, so the caller recorded the write as failed
+  and the run reported an absence where there was a row. Both steps now run
+  through `_safely`, which logs the cleanup failure and lets the original
+  outcome stand. It catches `Exception`, not `BaseException`, so a Ctrl-C
+  during cleanup still reaches the user.
+* **The lock wait is a configured number.** `sqlite3.connect(timeout=)` — how
+  long a writer waits for another writer's lock before raising `database is
+  locked` — was left at its default of 5.0, chosen by nobody and changeable by
+  nobody, while the GUI runs `refresh_analysis_outputs` in the same process as
+  a run and the AI probe writes the same file. It is now
+  `config.yml database.lock_timeout_seconds`, shipped at 5.0 so the change was
+  not a behaviour change, read through `timeouts.seconds_from_config` and
+  applied by `process_config.apply` — the one function every loader of
+  `config.yml` calls to set this process's policies.
+
 Rows written before the migration hold NULL in all four. NULL means *not
 recorded*, never `0 of 0`: every reader keeps absent and zero apart, and the
 reports print "coverage not recorded for this run" rather than inventing a

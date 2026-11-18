@@ -43,7 +43,7 @@ from statistics import median
 import gsc_client
 import gsc_demand
 
-import http_retry
+import process_config
 import yaml
 
 logging.basicConfig(
@@ -279,12 +279,12 @@ def _load_config(config_path: str = "config.yml") -> dict:
     chunk Y4's cold review).
     """
     if not os.path.exists(config_path):
-        http_retry.apply_retry_policy(None)
+        process_config.apply(None)
         apply_sponge_thresholds(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
-    http_retry.apply_retry_policy(config)
+    process_config.apply(config)
     apply_sponge_thresholds(config)
     return config
 

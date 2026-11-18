@@ -211,6 +211,11 @@ HELP_BY_FIELD = {
     # of a hand-written list (cold review of chunk Y7).
     "config.yml.enrichment.timeout_seconds": "How long to wait for one ranked competitor page to answer. Shorter than the API wait because every row of the top 10 is fetched; a page that does not answer is recorded as not read, never as empty.",
     "config.yml.ai_visibility.timeout_seconds": "How long to wait for one AI-engine answer. Much longer than the API wait because these models search the web before answering; an engine that does not answer is recorded as not measured, never as a zero.",
+    "config.yml.serpapi.timeout_seconds": "How long to wait for one SerpAPI search to answer before it counts as a failure. The default of 60 is twice the slowest of 296 real calls measured on 2026-11-14.",
+    "config.yml.report_llm.timeout_seconds": "How long to wait for one content-brief answer from the report LLM. Longer than the other waits on purpose: the model reads the whole keyword profile before it writes.",
+    "config.yml.report_llm.main_max_tokens": "The most tokens the main brief answer may use. Too low truncates the brief mid-section; the validator then reports a brief that does not match its own data.",
+    "config.yml.report_llm.advisory_max_tokens": "The most tokens one advisory answer may use. Smaller than the main limit because an advisory is a paragraph, not a brief.",
+    "config.yml.database.lock_timeout_seconds": "How long a write waits for another writer's database lock before it fails with 'database is locked'. Raise it if a run reports that error; a run started while another is still writing is the usual cause. Capped at 300 seconds, because a longer wait freezes this window rather than reporting anything.",
     "config.yml.http_retry.timeout_seconds": "How long to wait for one API call to answer. The two other waits live beside the work they belong to: enrichment.timeout_seconds for one ranked competitor page, ai_visibility.timeout_seconds for one engine answer.",
     "config.yml.serpapi.no_cache": "Set to true to bypass SerpAPI cache and always fetch fresh results.",
     "config.yml.files.input_csv": "CSV file with keywords to research (relative or absolute path).",

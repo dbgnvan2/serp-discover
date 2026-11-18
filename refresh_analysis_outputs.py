@@ -11,7 +11,7 @@ import openpyxl
 import yaml
 
 import brief_data_extraction
-import http_retry
+import process_config
 from classifiers import EntityClassifier
 from generate_domain_override_candidates import (
     collect_candidates,
@@ -37,11 +37,11 @@ def load_config(config_path="config.yml"):
     absent-config branch resets it rather than inheriting one (P5/P25).
     """
     if not os.path.exists(config_path):
-        http_retry.apply_retry_policy(None)
+        process_config.apply(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
-    http_retry.apply_retry_policy(config)
+    process_config.apply(config)
     return config
 
 

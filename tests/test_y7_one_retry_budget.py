@@ -18,6 +18,7 @@ from unittest import mock
 import requests
 
 import config_manager
+import config_tab_models
 import http_retry
 import run_gsc_analysis
 import serp_audit
@@ -159,16 +160,14 @@ class TestTheGuiExplainsBothBudgets(unittest.TestCase):
     four `http_retry` keys, so it showed one of the two policies."""
 
     def _expected_paths(self):
-        """Read off the tables `resolve_retry_policy` drives, so a key added
-        to the policy is a key this guard requires help text for — a
-        hardcoded list would have passed a seventh key by silence (P27)."""
-        paths = set()
-        for section_name, keys in http_retry.BUDGET_SOURCES:
-            for _, cfg_key, _ in keys:
-                paths.add(f"config.yml.{section_name}.{cfg_key}")
-        for section_name, cfg_key in http_retry.TIMEOUT_SOURCES.values():
-            paths.add(f"config.yml.{section_name}.{cfg_key}")
-        return paths
+        """Every field the GUI refuses at zero, read off
+        `config_tab_models.positive_only_fields()` — the same derivation the
+        refusal itself uses, so a key that is refused is a key this guard
+        requires help text for. It read only `http_retry`'s two tables until
+        the cold review of chunk Y11, so the lock wait and the brief's three
+        were refused in the GUI with no text saying why (P27/P32)."""
+        return {f"config.yml.{section}.{field}"
+                for section, field in config_tab_models.positive_only_fields()}
 
     def test_every_retry_and_timeout_key_has_help_text(self):
         for path in sorted(self._expected_paths()):

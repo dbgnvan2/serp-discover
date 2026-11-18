@@ -18,7 +18,9 @@ from unittest import mock
 import requests
 
 import config_tab_models
+import db_connect
 import http_retry
+import report_llm
 import run_gsc_analysis
 import serp_fetch
 import timeouts
@@ -176,7 +178,9 @@ class TestTheGuiCannotSaveARefusedBudget(unittest.TestCase):
     def test_every_positive_only_field_comes_from_the_loader_tables(self):
         """Derived from the loaders' own tables, not a second list that can
         disagree with them (P32): the retry budgets and timeout paths
-        `resolve_retry_policy` drives, plus the keys `timeouts` governs."""
+        `resolve_retry_policy` drives, the keys `timeouts` governs, and the
+        SQLite lock wait `db_connect` names, and the brief's wait and token
+        limits `report_llm` names (both added review chunk Y11)."""
         expected = set()
         for section_name, keys in http_retry.BUDGET_SOURCES:
             for _, cfg_key, _ in keys:
@@ -184,6 +188,8 @@ class TestTheGuiCannotSaveARefusedBudget(unittest.TestCase):
         for section_name, cfg_key in http_retry.TIMEOUT_SOURCES.values():
             expected.add((section_name, cfg_key))
         expected.update(timeouts.GOVERNED_FIELDS)
+        expected.add(db_connect.LOCK_TIMEOUT_SOURCE)
+        expected.update(report_llm.GOVERNED_FIELDS)
         self.assertEqual(config_tab_models.positive_only_fields(), expected)
 
     def test_the_serpapi_timeout_is_one_of_them(self):

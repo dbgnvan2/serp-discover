@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 
 import yaml
 
-import http_retry
+import process_config
 
 from timeouts import seconds_from_config
 
@@ -72,6 +72,20 @@ def _token_limit(value, default, name):
     return value
 
 
+#: The keys in this block that are refused at zero or less: the wait, read by
+#: `timeouts.seconds_from_config`, and the two token limits, read by
+#: `_token_limit`. Named here so `config_tab_models.positive_only_fields`
+#: reads the fact off this loader rather than keeping a list of its own (P32).
+#: They were in no table at all, so the GUI saved a typed 0 for a fourth
+#: timeout class after chunk Y8 had fixed the other nine — the same fault,
+#: surviving because the set was extended by hand (cold review of chunk Y11).
+GOVERNED_FIELDS = (
+    ("report_llm", "timeout_seconds"),
+    ("report_llm", "main_max_tokens"),
+    ("report_llm", "advisory_max_tokens"),
+)
+
+
 def settings_from_config(config):
     """The ``report_llm`` block of a loaded config.yml dict. Missing keys are empty."""
     block = config.get("report_llm") if isinstance(config, dict) else None
@@ -101,11 +115,11 @@ def load_settings(config_path="config.yml"):
     (P5, cold review of chunk Y4).
     """
     if not os.path.exists(config_path):
-        http_retry.apply_retry_policy(None)
+        process_config.apply(None)
         return Settings()
     with open(config_path, "r", encoding="utf-8") as f:
         raw = yaml.safe_load(f) or {}
-    http_retry.apply_retry_policy(raw)
+    process_config.apply(raw)
     return settings_from_config(raw)
 
 

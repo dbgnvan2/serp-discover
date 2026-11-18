@@ -18,7 +18,7 @@ import pivot_pass
 import query_variants
 import bing_check
 import handoff_writer
-import http_retry
+import process_config
 from domain_utils import normalize_domain
 import yaml
 import metrics
@@ -85,7 +85,7 @@ if os.path.exists("config.yml"):
 # outbound call is made: `http_retry`'s two helpers read the module defaults,
 # so this reaches DataForSEO, Moz, GSC, the AI probes and the page fetch
 # together (P25, review chunk Y4).
-http_retry.apply_retry_policy(CONFIG)
+process_config.apply(CONFIG)
 
 # Cross-tool shared config (out-of-repo). Path resolution, the
 # SERP_SHARED_CONFIG env override, and malformed-file handling live in
@@ -1373,7 +1373,7 @@ def _run(run_id):
     # Initialize Enrichment Modules
     storage = None
     if ENRICHMENT_ENABLED:
-        # No `timeout=`: `http_retry.apply_retry_policy(CONFIG)` above already
+        # No `timeout=`: `process_config.apply(CONFIG)` above already
         # resolved `enrichment.timeout_seconds`, and the enricher asks it per
         # request. Passing it here too was the second of two mappings for one
         # setting, and the one the tests did not take (P25, review chunk Y5).
