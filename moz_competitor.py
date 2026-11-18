@@ -40,6 +40,7 @@ import logging
 import sqlite3
 from datetime import datetime, timedelta
 
+from domain_utils import normalize_domain
 from moz_jsonrpc import MozRpcError, moz_call
 from moz_keywords import (
     NO_RECORD_CODE,
@@ -822,10 +823,18 @@ def competitor_domains(all_organic, client_domain, omit_from_audit=None) -> list
     domain and the configured omit list — and skips "S"-label situational
     probe rows, which never feed the handoff.
     """
-    from urllib.parse import urlparse
-
-    client = (client_domain or "").lower()
-    omit = {d.lower() for d in (omit_from_audit or [])}
+    # Review chunk X: one host, one answer, on both sides of the handoff.
+    # This function lower-cased the netloc and kept `www.`, so the handoff's
+    # `moz.domains` keys were the `www.` form while `targets[].domain` next to
+    # them was canonical — the same file disagreeing with itself. Worse, the
+    # two exclusions depended on the form the config happened to use: the
+    # client test was the substring test D-C-08 removed elsewhere (a bare
+    # `livingsystems.ca` dropped `notlivingsystems.ca` as "the client"), and
+    # the omit list only matched a host written in the same form. Which
+    # competitors are measured, and which the Moz row budget is spent on, then
+    # turned on a `www.` somebody typed in `config.yml`.
+    client = normalize_domain(client_domain)
+    omit = {normalize_domain(d) for d in (omit_from_audit or []) if d}
     domains, seen = [], set()
     for item in all_organic or []:
         if item.get("Query_Label") == "S":
@@ -833,10 +842,10 @@ def competitor_domains(all_organic, client_domain, omit_from_audit=None) -> list
         url = item.get("Link") or item.get("url", "")
         if not url or url == "N/A":
             continue
-        domain = urlparse(url).netloc.lower()
+        domain = normalize_domain(url)
         if not domain or domain in seen:
             continue
-        if domain == client or (client and client in domain):
+        if client and (domain == client or domain.endswith("." + client)):
             continue
         if domain in omit:
             continue
@@ -860,6 +869,12 @@ def build_handoff_block(config, all_organic, client_domain,
     """
     if not MozCompetitorClient.is_enabled(config):
         return None
+    # Every host this block publishes — the `domains` keys, the `client` entry,
+    # and the host the paid Moz calls are billed under — is the one canonical
+    # form (review chunk X, owner decision 4). The cache PK is
+    # (domain, scope, locale), so a `www.` from `config.yml` would query and
+    # bill the client's own site under a key no other path uses (P5).
+    client_domain = normalize_domain(client_domain) if client_domain else ""
     domains = competitor_domains(all_organic, client_domain, omit_from_audit)
     if not domains:
         return None
@@ -894,5 +909,5 @@ def build_handoff_block(config, all_organic, client_domain,
         client_entry["anchor_texts"] = client.anchor_texts_for(client_domain)
         client_entry["fetched_at"] = datetime.now(_UTC).isoformat()
     if client_entry:
-        block["client"] = {"domain": client_domain.lower(), **client_entry}
+        block["client"] = {"domain": client_domain, **client_entry}
     return block

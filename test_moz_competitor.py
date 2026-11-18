@@ -737,7 +737,11 @@ class TestClientBrandAuthority(unittest.TestCase):
             block = build_handoff_block(
                 {"moz": {"competitor": {"enabled": True}}},
                 self.ORGANIC, "LivingSystems.ca")
-        fake.brand_authority_for.assert_called_once_with("LivingSystems.ca")
+        # Review chunk X: the paid call is billed under the canonical host.
+        # This asserted the raw `config.yml` spelling, so the Moz cache PK
+        # (domain, scope, locale) held the client's site under a key no other
+        # path read.
+        fake.brand_authority_for.assert_called_once_with("livingsystems.ca")
         self.assertEqual(block["client"]["domain"], "livingsystems.ca")
         self.assertEqual(block["client"]["brand_authority"]["score"], 19)
 

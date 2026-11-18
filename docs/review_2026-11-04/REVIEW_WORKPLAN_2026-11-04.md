@@ -256,6 +256,14 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
 - **AI-visibility export.** The export itself is sound (checked both sides). As of review chunk D3a Tool 1 no longer writes brand_mentions / ai_citations / ai_visibility_index rows for an engine with zero answers, so the export carries only measured engines. Tool 2's SoV consumer should still require `questions_total > 0` per engine: it is cheap, and it also covers the exports written before D3a.
 - **GSC.** Both tools pull GSC with different windows and filters (discover: 90-day all-device; compete: 90-day, one 5000-row page, global). Agree one window and `country=can` and state it in both reports.
 
+**DONE 2026-11-17.** `docs/review_2026-11-04/PLAN_X_handoff_contract.md`.
+Canonical host form, absolute rank and its `schema_version`,
+`client_brand_names`, and the GSC pull (both tools now filter window, country
+and device, each report states its own pull and neither states the other's) are
+closed with a contract test on both sides. Not taken: `paa_questions` in the
+handoff and the stale-cached-Moz-error read, both of which need an owner
+decision on what the consumer should do with them.
+
 ---
 
 ## 4. Decisions the owner must make (the agent should not guess these)
@@ -341,7 +349,16 @@ market. **Chunk D2 is complete.** The verdict label landed as `"Not Measured"`, 
    Recorded in `docs/handoff_contract.md` ("The canonical host form"); the
    contract test on Tool 1's side is
    `tests/test_d2c_one_host_one_answer.py::TestTheHandoffAgreesOnWhichHostIsWhich`.
-   Tool 2 still needs its half of that contract test (chunk C1).
+
+   **SETTLED 2026-11-17 in chunk X.** The D2c paragraph above overstated what
+   had been done: `targets[].domain` was canonical, but `moz_competitor` built
+   the `moz.domains` keys with its own `netloc.lower()` and kept the leading
+   `www.`, and `client_domain` was published as typed in `config.yml` — so one
+   handoff carried two forms of one host, and the client and omit tests still
+   compared raw strings. Chunk X routes all four through `normalize_domain`.
+   Both halves of the contract test now exist and call the real code:
+   `tests/test_handoff_contract.py` here and
+   `Serp-compete/tests/test_handoff_contract.py` there.
 5. **`visibility_cliff` and the velocity alerts.** Keep with a real data source and floor, or remove until one exists.
 
    **RECOMMENDED by the agent 2026-11-16 (owner may overrule): remove the

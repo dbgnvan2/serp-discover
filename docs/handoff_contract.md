@@ -2,7 +2,7 @@
 
 **File:** `competitor_handoff_<topic>_<timestamp>.json`  
 **Schema:** `handoff_schema.json` (JSON Schema draft-07)  
-**Version:** 1.0
+**Version:** 2.1 (`2.0` without the optional `moz` block)
 
 This document describes the contract between Tool 1 (`serp-discover`) and Tool 2 (`serp-compete`). The handoff file is the stable, validated interface between the two tools.
 
@@ -99,6 +99,49 @@ any competitor whose host merely contained the client's
 Tool 2 normalises hosts at ingest too (`src/brand_utils.py`,
 `src/handoff_moz.py`), so the two tools agree on the key without either side
 having to guess.
+
+**Which side canonicalises (owner decision 4, settled in review chunk X).** The
+**producer** does, in every host it publishes: `targets[].domain`,
+`client_domain`, and every key of `moz.domains`. The consumer keeps its own
+normalisation on read, because handoff files already on disk carry the older
+`www.` form and because a consumer that trusts an upstream form has no way to
+tell a contract breach from a bad host. So both sides normalise and neither
+depends on the other having done it.
+
+Until chunk X two of those three were canonical. `moz_competitor.competitor_domains`
+lower-cased the netloc and kept `www.`, so one file carried
+`targets[].domain: psychologytoday.com` beside `moz.domains["www.psychologytoday.com"]`.
+In the same function the client test was a substring test, so a bare
+`livingsystems.ca` in `config.yml` dropped `notlivingsystems.ca` as "the client",
+and the omit list only matched a host written in the same form as the config
+entry. Which competitors were measured, and which the Moz row budget was spent
+on, followed from a `www.` somebody typed. `tests/test_handoff_contract.py`
+holds all of this; the consumer's half is
+`serp-compete/Serp-compete/tests/test_handoff_contract.py`.
+
+---
+
+## The Google Search Console pull (review chunk X)
+
+Both tools pull GSC themselves — there is no handoff field for it — so the
+contract is that each states the population it measured and the two agree on
+what that population is. A click-through rate from a desktop-only pull is not
+comparable with one from an all-device pull, and neither is comparable with a
+global pull when the SERP side is one country.
+
+| | serp-discover | serp-compete |
+|---|---|---|
+| Window | `gsc.lookback_days` (90) | `gsc_settings.date_range_days` (90) |
+| Country | `gsc.country` (`ca`, sent as GSC's `CAN`); mirrors `serpapi.gl` when absent; `all` turns the filter off and the report says the two sides are not comparable | `gsc_settings.country` (`can`), matching its Canada-scoped DataForSEO snapshot |
+| Device | `gsc.device` (`desktop`); mirrors `serpapi.device` when absent | `gsc_settings.device` (`desktop`), matching the DataForSEO `device` it requests |
+| Stated in the report | yes, beside every GSC figure (review chunk D5) | yes, `reporting.gsc_pull_caveat_line` |
+
+Neither tool reads the other's setting, so neither may describe the other's
+pull as a fact: each report states its own window, country and device, and says
+that the two are comparable only where both state the same. A report that
+asserts the other tool's filters is making a claim it cannot check (P6) — that
+is what serp-compete's caveat did until chunk X, when it still said
+serp-discover pulled "all devices, global".
 
 ---
 

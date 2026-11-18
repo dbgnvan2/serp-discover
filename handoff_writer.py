@@ -209,7 +209,11 @@ def build_competitor_handoff(
         ),
         "source_run_id": run_id,
         "source_run_timestamp": run_timestamp,
-        "client_domain": client_domain or "",
+        # Review chunk X: canonical, like every other host in this file.
+        # It was the raw `config.yml` value, so a `www.` there published a
+        # handoff whose `client_domain` did not match its own
+        # `targets[].domain` form and had to be re-normalised by every reader.
+        "client_domain": client_domain_lower,
         "client_brand_names": client_brand_names or [],
         "targets": targets,
         "exclusions": {
