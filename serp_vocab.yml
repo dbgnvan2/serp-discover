@@ -316,3 +316,34 @@ fetch_status:
     rather than zero
   no_url: "No URL"
   enrichment_disabled: "Enrichment Off"
+
+# Review chunk Y13 — the words for a cleanup step that failed. A failing
+# `rollback()` or `close()` does not make the run's data wrong (chunk Y11 made
+# sure of that), so this is reported, never raised; but a `close()` that keeps
+# failing leaks a file descriptor each time, and the operator who has to act
+# on that reads the workbook, not stderr. `{failures}` is the total, `{detail}`
+# a "N x close" / "N x roll back" breakdown.
+db_cleanup:
+  warning: >-
+    {failures} database cleanup step(s) failed during this run ({detail}).
+    {consequence} A cleanup that keeps failing usually means the database file
+    or its directory has become unwritable, and each failed close holds a file
+    handle open until the process exits
+  # Which consequence the sentence may claim. A failed close comes after the
+  # commit, so the writes are durable; a failed rollback means a block raised
+  # and its transaction was abandoned, which is not "the figures stand".
+  consequence_committed: >-
+    The run's own writes were committed and its figures stand.
+  consequence_rolled_back: >-
+    At least one of them was a failed rollback, which means a block raised and
+    abandoned its transaction: what that step was writing is incomplete, and
+    the earlier steps' committed figures stand.
+  detail_item: "{count} x {what}"
+  # Printed only when more than one database is involved, because the
+  # operator's next action is to check a file.
+  paths: ". The database(s) involved: {paths}"
+  # A workbook cannot be amended once written, and the run keeps writing to
+  # the database after it.
+  after_output: >-
+    {further} further database cleanup step(s) failed after this run's output
+    was written, so the row in it counts only the {counted} that came before

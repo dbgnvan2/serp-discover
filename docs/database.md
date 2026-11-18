@@ -129,6 +129,35 @@ through it is committed rather than discarded by the close (review chunk Y9 —
 until its cold review this returned `closing(sqlite3.connect(...))`, which
 closes the handle *instead of* committing).
 
+**What happens when the cleanup itself fails.** A failing `rollback()` or
+`close()` is logged and does not replace the exception the block raised
+(review chunk Y11) — but a log line on stderr is not where the GUI operator
+looks, and a `close()` that fails once inside a per-keyword or per-domain loop
+has usually failed every time, each one holding a file handle open until the
+process exits. `db_connect` therefore counts them, keyed by step and database
+path, and `cleanup_failure_warning()` renders the tally as one sentence: Tool
+1's audit writes it as a `parsing_warnings` row, so it reaches the JSON and the
+workbook's Parsing_Warnings sheet, and Tool 2's audit puts it in `run_coverage`,
+so it reaches the briefing's coverage block. What the sentence then claims depends on
+which step failed: a `close()` comes after the commit, so the writes are
+durable and it says so; a counted `roll back` means a block raised and
+abandoned its transaction, so it says that instead of telling the reader their
+figures stand. The run's exit code does not change either way — a failed
+cleanup after a successful commit is not a reason to discard the run. More than
+one database involved and the paths are named, because the reader's next action
+is to check a file and since chunk Y12 the path is configurable.
+
+The audit clears the tally where its own run begins, and reports again at the
+end: the workbook cannot be amended once it is on disk and the run keeps
+writing to the database after it — the report's trend reads and the write that
+marks the run complete both come later — so failures that arrive after the row
+was built are stated as "N further cleanup step(s) failed after this run's
+output was written". The other entry points are separate processes
+(`run_pipeline` and the GUI launch each step with `subprocess`), and only the
+audit renders the sentence into an artefact; for the rest the floor is an
+`atexit` hook in `db_connect`, which prints a non-empty tally on the way out if
+nothing else has, including on an abort (review chunk Y13 and its cold review).
+
 **How every other module opens the database.** `db_connect.connection(db_path)`
 (review chunk Y9). It commits on a clean exit, rolls back on an exception and
 closes the handle in a `finally`, which neither of the two obvious forms does:

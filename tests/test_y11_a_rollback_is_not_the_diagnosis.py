@@ -98,6 +98,12 @@ def _connecting_with_failing_cleanup(failing, error=None):
 
 class TestACleanupFailureDoesNotReplaceTheDiagnosis(unittest.TestCase):
 
+    def tearDown(self):
+        # These tests make cleanups fail on purpose. Since chunk Y13 a failed
+        # cleanup is counted and reported at exit, so what they cause has to
+        # be cleared or the suite's own exit prints their tally.
+        db_connect.reset_cleanup_failures()
+
     def _db(self):
         directory = tempfile.mkdtemp()
         return os.path.join(directory, "t.db")

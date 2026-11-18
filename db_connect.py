@@ -19,10 +19,14 @@ Tests: tests/test_y9_a_handle_is_closed.py,
        tests/test_y11_a_rollback_is_not_the_diagnosis.py
 """
 
+import atexit
 import logging
 import os
 import sqlite3
+import sys
+import threading
 from contextlib import contextmanager
+from datetime import datetime
 
 from timeouts import seconds_from_config
 
@@ -167,6 +171,221 @@ def apply_database_path(cfg: dict | None) -> str:
     return DATABASE_PATH
 
 
+#: Cleanup failures this process has seen, keyed by `(what, db_path)`.
+#:
+#: Chunk Y11 stopped a failing `rollback()` or `close()` replacing the
+#: exception that caused it, which was right — a failing cleanup is a second
+#: fact, not the diagnosis — but the second fact then only reached stderr. The
+#: GUI operator reads the workbook, and one `logger.exception` per occurrence
+#: is not the same statement as "this happened 437 times", which is what a
+#: repeating failed `close()` inside a loop is: one leaked file descriptor
+#: each (P2, review chunk Y13).
+_CLEANUP_FAILURES: dict = {}
+#: The tally is read and written from the GUI's worker thread as well as its
+#: Tk thread, so `dict[key] = dict.get(key) + 1` could lose a count and a
+#: `dict(...)` copy could raise `RuntimeError: dictionary changed size during
+#: iteration` — a diagnostic aborting the run it was diagnosing (the cold
+#: review of this chunk, P2/P40).
+_CLEANUP_LOCK = threading.Lock()
+_CLEANUP_REPORTED = False
+
+#: The step names `_safely` records, so the consequence can be chosen by what
+#: actually failed rather than by a literal repeated in three modules (P32).
+ROLL_BACK = "roll back"
+CLOSE = "close"
+
+
+def cleanup_failures() -> dict:
+    """A copy of this process's cleanup tally, `{(what, db_path): count}`."""
+    with _CLEANUP_LOCK:
+        return dict(_CLEANUP_FAILURES)
+
+
+def cleanup_failure_count() -> int:
+    """How many cleanup steps have failed in this process."""
+    with _CLEANUP_LOCK:
+        return sum(_CLEANUP_FAILURES.values())
+
+
+def reset_cleanup_failures() -> None:
+    """Start a fresh tally, and let it be reported again.
+
+    The audit calls this where its run begins. It is not called by every entry
+    point, because they are separate processes: `run_pipeline` and the GUI
+    launch each step with `subprocess`, so a step starts with an empty tally
+    anyway. `refresh_analysis_outputs` is the one step the GUI runs in its own
+    process, and it reports at exit like any other (the cold review of this
+    chunk corrected a docs claim that every entry point resets).
+    """
+    global _CLEANUP_REPORTED
+    with _CLEANUP_LOCK:
+        _CLEANUP_FAILURES.clear()
+        _CLEANUP_REPORTED = False
+
+
+#: The fallback copy of the editorial wording, for a `serp_vocab.yml` that
+#: cannot be read. It is verbatim equal to the file's text — the first version
+#: stopped at "its figures stand" and so dropped the diagnosis in the one
+#: situation the fallback exists for (the cold review of this chunk, P32). A
+#: test asserts the two are identical.
+_CLEANUP_DEFAULTS = {
+    "warning": ("{failures} database cleanup step(s) failed during this run "
+                "({detail}). {consequence} A cleanup that keeps failing "
+                "usually means the database file or its directory has become "
+                "unwritable, and each failed close holds a file handle open "
+                "until the process exits"),
+    "consequence_committed": ("The run's own writes were committed and its "
+                              "figures stand."),
+    "consequence_rolled_back": (
+        "At least one of them was a failed rollback, which means a block "
+        "raised and abandoned its transaction: what that step was writing is "
+        "incomplete, and the earlier steps' committed figures stand."),
+    "detail_item": "{count} x {what}",
+    "paths": ". The database(s) involved: {paths}",
+    "after_output": ("{further} further database cleanup step(s) failed after "
+                     "this run's output was written, so the row in it counts "
+                     "only the {counted} that came before"),
+}
+
+
+def _cleanup_vocab() -> dict:
+    """The editorial `db_cleanup` block, or `{}` if it cannot be read.
+
+    `pattern_matching` is imported here rather than at module scope: this
+    module is what every other one opens the database through, and it does not
+    load YAML to do that. The handler is narrow — `pattern_matching` raises
+    `KeyError` at import when `serp_vocab.yml` loses a top-level key, which is
+    the intended degrade — and says so at debug level, so a silent revert to
+    the Python copy is traceable (the cold review of this chunk, P40).
+    """
+    try:
+        from pattern_matching import SERP_VOCAB
+        block = SERP_VOCAB.get("db_cleanup") or {}
+        return block if isinstance(block, dict) else {}
+    except (ImportError, KeyError, AttributeError, TypeError):
+        logger.debug("serp_vocab.yml db_cleanup could not be read; using the "
+                     "built-in wording.", exc_info=True)
+        return {}
+
+
+def _format(template: str, fallback: str, **values) -> str:
+    """*template* filled in, or *fallback* if the editorial text is broken."""
+    try:
+        return template.format(**values)
+    except (KeyError, IndexError, ValueError, TypeError):
+        return fallback.format(**values)
+
+
+def cleanup_failure_warning() -> str | None:
+    """The reader-facing sentence for this process's tally, or None.
+
+    The words are editorial and live in `serp_vocab.yml` under `db_cleanup`,
+    like `fetch_status` beside them: an operator has to act on a repeating
+    cleanup failure, so the wording is theirs to refine (P4).
+    """
+    failures = cleanup_failures()
+    if not failures:
+        return None
+    vocab = _cleanup_vocab()
+
+    def _template(key):
+        return str(vocab.get(key) or _CLEANUP_DEFAULTS[key])
+
+    # Steps, not paths, for the count: one database failing to close three
+    # times and three failing once each are the same number of leaked
+    # handles. The paths are named separately, because the operator's next
+    # action is to check a file and since chunk Y12 the path is configurable
+    # (the cold review of this chunk).
+    by_step: dict = {}
+    for (what, _db_path), count in failures.items():
+        by_step[what] = by_step.get(what, 0) + count
+    detail_item = _template("detail_item")
+    detail = ", ".join(
+        _format(detail_item, _CLEANUP_DEFAULTS["detail_item"],
+                count=count, what=what)
+        for what, count in sorted(by_step.items()))
+    consequence = _template("consequence_rolled_back" if ROLL_BACK in by_step
+                            else "consequence_committed")
+    text = _format(_template("warning"), _CLEANUP_DEFAULTS["warning"],
+                   failures=sum(by_step.values()), detail=detail,
+                   consequence=consequence)
+    paths = sorted({path for _what, path in failures})
+    if len(paths) > 1:
+        text += _format(_template("paths"), _CLEANUP_DEFAULTS["paths"],
+                        paths=", ".join(paths))
+    return text
+
+
+def cleanup_failures_after(counted: int) -> str | None:
+    """The sentence for failures that arrived after an output was written.
+
+    A run's workbook cannot be amended once it is on disk, and the run keeps
+    writing to the database after it: the report's trend reads and the write
+    that marks the run complete both come later, and "the database file has
+    become unwritable" is as likely to begin late as early. The audit calls
+    this with the count its row carried, so a late failure is stated rather
+    than counted into a dict nobody reads again (the cold review of this
+    chunk, P2).
+    """
+    further = cleanup_failure_count() - counted
+    if further <= 0:
+        return None
+    return _format(str(_cleanup_vocab().get("after_output")
+                       or _CLEANUP_DEFAULTS["after_output"]),
+                   _CLEANUP_DEFAULTS["after_output"],
+                   further=further, counted=counted)
+
+
+def cleanup_warning_row(run_id) -> dict | None:
+    """The audit's `parsing_warnings` row for the tally, or None.
+
+    The row shape lives here, beside the tally, so it can be asserted against
+    the workbook contract (`validate_xlsx_vs_json.SPECS`) without running the
+    audit: `Run_ID`, `Module` and `Message` are the columns that validation
+    requires of every row on that sheet.
+    """
+    warning = cleanup_failure_warning()
+    if not warning:
+        return None
+    return {"Run_ID": run_id, "Created_At": datetime.now().isoformat(),
+            "Module": __name__, "Field": "cleanup", "Message": warning}
+
+
+def report_cleanup_failures(printer=None, counted: int = None) -> str | None:
+    """Print the tally once, wherever a run ends, and return what was printed.
+
+    Fifteen modules open the database through this one, and each pipeline step
+    is its own process; only the audit renders the sentence into an artefact.
+    This is the floor for the rest, and for the audit's own abort paths:
+    registered at exit, so a step that writes no reader-facing output, and a
+    run that ends early, still say it happened instead of leaving it in the
+    log (P5/P2, the cold review of this chunk). *counted* is how many the
+    caller's own output already carried; any that arrived after it are stated
+    separately, because that output cannot be amended.
+    """
+    global _CLEANUP_REPORTED
+    warning = cleanup_failure_warning()
+    _CLEANUP_REPORTED = True
+    if not warning:
+        return None
+    say = printer or (lambda line: print(line, file=sys.stderr))
+    say(f"{warning}.")
+    if counted is not None:
+        late = cleanup_failures_after(counted)
+        if late:
+            say(f"{late}.")
+    return warning
+
+
+def _report_cleanup_failures_at_exit() -> None:
+    """Say it on the way out if nothing else did."""
+    if _CLEANUP_FAILURES and not _CLEANUP_REPORTED:
+        report_cleanup_failures()
+
+
+atexit.register(_report_cleanup_failures_at_exit)
+
+
 def _safely(cleanup, what: str, db_path) -> None:
     """Run one cleanup step so it cannot replace the caller's exception.
 
@@ -180,10 +399,21 @@ def _safely(cleanup, what: str, db_path) -> None:
     try:
         cleanup()
     except Exception:
+        # The counting is itself inside the handler, so it must not escape and
+        # replace the caller's exception — the defect chunk Y11 removed.
+        seen = "an uncounted"
+        try:
+            key = (what, str(db_path))
+            with _CLEANUP_LOCK:
+                _CLEANUP_FAILURES[key] = _CLEANUP_FAILURES.get(key, 0) + 1
+                seen = _CLEANUP_FAILURES[key]
+        except Exception:
+            pass
         logger.exception(
-            "Could not %s the connection to %s. The original outcome of the "
-            "block stands; this is a failure of the cleanup, not of the work.",
-            what, db_path)
+            "Could not %s the connection to %s (%s time(s) in this run). The "
+            "original outcome of the block stands; this is a failure of the "
+            "cleanup, not of the work.",
+            what, db_path, seen)
 
 
 #: Paths already reported as new, so the notice is one line per database per
@@ -233,7 +463,7 @@ def connection(db_path, **kwargs):
         yield conn
         conn.commit()
     except BaseException:
-        _safely(conn.rollback, "roll back", db_path)
+        _safely(conn.rollback, ROLL_BACK, db_path)
         raise
     finally:
-        _safely(conn.close, "close", db_path)
+        _safely(conn.close, CLOSE, db_path)

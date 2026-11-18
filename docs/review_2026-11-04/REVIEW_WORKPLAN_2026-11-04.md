@@ -921,6 +921,31 @@ database and loaded no config at all (`export_history.py`,
 cold-review finding F5, and the four `--db` options now default to `None` and
 resolve after that loader. Tool 2 had one branch of the same fault left: `load_db_path` resolved a configured name against its config directory but returned the bare default when no config was present, so that path created a database beside the caller — it now resolves on every branch. The cold reviews of the two halves found twelve findings, five high, two of them the chunk's own bug surviving inside the fix: the report resolved its database before any loader had run, and eight loaders still read `config.yml` from the caller's working directory, so starting the tool from anywhere else abandoned the configured database for the built-in one. A second hand-rolled resolver in Tool 2's `VelocityTracker`, with a different default name, sent the competitor rows and the velocity reads to two different databases (`docs/review_2026-11-04/PLAN_Y12_one_database_named_once.md`).
 
+**Chunk Y13 — a cleanup failure is a number, not a line on stderr.** Chunk Y11
+stopped a failing `rollback()` or `close()` replacing the exception that caused
+it: `db_connect._safely` logs it and carries on. The second fact then went
+nowhere a reader looks. `logger.exception` writes to stderr, and the audits open
+and close a connection inside their per-keyword and per-domain loops, so a
+`close()` that fails once has usually failed every time — each one holding a
+file handle open until the process exits, with nothing saying "this happened N
+times". Both repos now count them, keyed by step and database path, and render
+the tally as one sentence: Tool 1 writes it as a `parsing_warnings` row, so it
+reaches the JSON and the workbook's Parsing_Warnings sheet; Tool 2 puts it in
+`run_coverage`, so it reaches the briefing's coverage block. Each audit clears
+the tally where its own run begins; the other entry points are separate
+processes and report at exit through an `atexit` hook, the floor for the
+fourteen consumers that write no artefact.
+The run's exit code does not change — a failed cleanup after a successful commit
+does not make the data wrong, which is the whole point of Y11. What the sentence then claims depends on which
+step failed: a `close()` comes after the commit, so the writes are durable; a
+counted `roll back` means a block raised and abandoned its transaction, and
+saying "the figures stand" there was the chunk's own bug, found by its cold
+review. Tool 1 reports again after its workbook is written, because the run
+keeps writing to the database and a workbook cannot be amended. The words are
+editorial, in Tool 1's `serp_vocab.yml` under `db_cleanup`; Tool 2 has no
+vocabulary file at all, which is recorded as an adjacent issue
+(`docs/review_2026-11-04/PLAN_Y13_a_cleanup_failure_is_a_number.md`).
+
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.

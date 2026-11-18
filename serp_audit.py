@@ -1350,6 +1350,9 @@ def load_keywords(input_file):
 
 def main():
     run_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+    # The GUI runs several steps in one process, so a tally left by the
+    # previous step would be reported as this run's (P6).
+    db_connect.reset_cleanup_failures()
     setup_logging(run_id)
     return serp_checkpoint.tracked_run(run_id, INPUT_FILE, CONFIG, _run)
 
@@ -1925,6 +1928,13 @@ def _run(run_id):
         x for x in all_expansion if x.get("Type") != "Related Search"]
     help_rows = build_help_rows()
 
+    # P2 — a failed database cleanup goes where the run's other "what this
+    # could not do" rows go, not only to the log (chunk Y13).
+    cleanup_counted = db_connect.cleanup_failure_count()
+    cleanup_row = db_connect.cleanup_warning_row(run_id)
+    if cleanup_row:
+        all_parsing_warnings.append(cleanup_row)
+
     full_data = {
         "overview": all_metrics,
         "organic_results": all_organic,
@@ -2176,6 +2186,12 @@ def _run(run_id):
                 f"Run outputs were written but the completion stamp failed "
                 f"({e}): run {run_id} will not be used as a rank-delta "
                 f"baseline.")
+
+    # The workbook cannot be amended now it is on disk, and the lines above
+    # kept writing to the database (the cold review of chunk Y13).
+    db_connect.report_cleanup_failures(
+        printer=lambda line: (print(line), logging.warning(line)),
+        counted=cleanup_counted)
 
     return exit_code
 
