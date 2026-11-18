@@ -31,7 +31,11 @@ statuses:
     label: "🔴 Low"
   Not Measured:
     icon: "❓"
-    label: "⚠️ Not measured"
+    # The glyph here is the `icon` above, not another one. "Not measured" wore
+    # ❓ in the audit console line and ⚠️ in the report tables — and ⚠️ is
+    # also "Moderate Feasibility"'s icon, so the two states shared a glyph
+    # while one state had two (review chunk Y1 cold review).
+    label: "❓ Not measured"
 
 # What to say when a keyword has no measurable gap. The three cases call for
 # different action, so they are not one sentence: no provider is an operator

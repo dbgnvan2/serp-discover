@@ -1,0 +1,33 @@
+{
+  "_comment": [
+    "The canonical host form, as a table, so the producer (serp-discover's",
+    "domain_utils.normalize_domain) and the consumer (serp-compete's",
+    "brand_utils.normalise_domain) are checked against one definition rather",
+    "than against each other's source text. Review chunk Y1's cold review: the",
+    "guard before this one grepped the sibling repo for the ALIAS_PREFIXES",
+    "constant, so it proved the prefix list and never the rule -- and compete's",
+    "copy kept the scheme, the path, the port and the userinfo the whole time.",
+    "This file is byte-identical in both repos and a test on each side asserts",
+    "that, the same arrangement handoff_schema.json uses."
+  ],
+  "cases": {
+    "livingsystems.ca": "livingsystems.ca",
+    "www.livingsystems.ca": "livingsystems.ca",
+    "WWW.LivingSystems.CA": "livingsystems.ca",
+    "m.livingsystems.ca": "livingsystems.ca",
+    "www.m.livingsystems.ca": "livingsystems.ca",
+    "m.m.livingsystems.ca": "livingsystems.ca",
+    "https://www.livingsystems.ca/couples": "livingsystems.ca",
+    "https://m.yelp.com/biz/x": "yelp.com",
+    "livingsystems.ca/couples": "livingsystems.ca",
+    "livingsystems.ca:8443": "livingsystems.ca",
+    "https://user:pass@www.livingsystems.ca:443/x": "livingsystems.ca",
+    "m.ca": "m.ca",
+    "www.ca": "www.ca",
+    "mail.example.com": "mail.example.com",
+    "wellness.ca": "wellness.ca",
+    "findwww.example.com": "findwww.example.com",
+    "not a url": "",
+    "": ""
+  }
+}

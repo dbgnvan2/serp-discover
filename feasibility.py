@@ -30,6 +30,7 @@ import yaml
 from urllib.parse import urlparse
 
 from shared_config import load_shared_config
+from domain_utils import normalize_domain
 
 
 def load_thresholds():
@@ -96,17 +97,15 @@ TOP_N_FOR_FEASIBILITY = 10
 def domain_of(url: str) -> str:
     """Return the bare, lower-cased domain of *url*, ``www.`` removed.
 
-    ``urlparse`` puts everything in ``path`` when there is no ``//``, so a
-    scheme-less key such as ``"example.com/page"`` (the format the Moz cache
-    writes) would otherwise yield an empty domain. ``removeprefix`` is correct
-    where ``lstrip("www.")`` is not: ``lstrip`` strips *characters*, so it
-    turns "worldbank.org" into "orldbank.org".
+    Delegates to ``domain_utils.normalize_domain``, which also handles the
+    scheme-less keys the Moz cache writes (``"example.com/page"``), a port and
+    userinfo. This module held a seventh copy of the rule (review chunk Y1);
+    a copy that merely agrees today is still a copy that can drift.
     """
     if not url:
         return ""
     try:
-        parsed = urlparse(url if "//" in url else "//" + url)
-        return parsed.netloc.lower().removeprefix("www.")
+        return normalize_domain(url)
     except Exception:
         return ""
 

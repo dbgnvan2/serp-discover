@@ -35,6 +35,7 @@ import sqlite3
 from urllib.parse import urlparse
 
 from classifiers import EntityClassifier
+from domain_utils import normalize_domain
 
 logger = logging.getLogger(__name__)
 
@@ -46,11 +47,14 @@ def _norm(name: str) -> str:
 
 
 def domain_of(url: str) -> str:
-    """Lower-cased registrable-ish domain, ``www.`` stripped. Never raises."""
+    """Lower-cased host, ``www.`` stripped. Never raises.
+
+    Delegates to ``domain_utils.normalize_domain`` — one definition of which
+    host is which, so this module cannot disagree with the override lookup or
+    the handoff about the same URL (review chunk Y1).
+    """
     try:
-        raw = str(url or "").strip()
-        parsed = urlparse(raw if "//" in raw else "//" + raw)
-        return (parsed.netloc or "").lower().removeprefix("www.")
+        return normalize_domain(url)
     except Exception:
         return ""
 
@@ -126,7 +130,7 @@ def build_citation_table(answers: list[dict], client_domain: str,
     categorizer = _Categorizer(classifier)
     brand_domains = brand_domains or {}
     brand_names = brand_names or []
-    client = (client_domain or "").lower().removeprefix("www.")
+    client = normalize_domain(client_domain)
 
     order: list[str] = []
     records: dict[str, dict] = {}

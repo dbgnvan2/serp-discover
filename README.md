@@ -249,7 +249,7 @@ This version adds deterministic pre-computed fields to every keyword profile, pr
 | `serp_intent.intent_distribution` | `{"informational": 7, "transactional": 1}` | Integer counts per intent bucket among classified organic URLs. |
 | `serp_intent.evidence.organic_url_count` | `10` | Top-10 organic URLs processed. |
 | `serp_intent.mixed_components` | `["informational", "transactional"]` | Populated only when `is_mixed: true`. |
-| `title_patterns.dominant_pattern` | `"how_to"` | Set when one pattern reaches ≥4 of 10 titles. `null` otherwise. Never `"other"`. |
+| `title_patterns.dominant_pattern` | `"how_to"` | Set when one pattern reaches `title_patterns.dominant_threshold` of the `title_patterns.top_n` titles read (`config.yml`; 4 of 10 by default). `null` otherwise. Never `"other"`. |
 | `mixed_intent_strategy` | `"backdoor"` | When `is_mixed: true`: `compete_on_dominant`, `backdoor`, or `avoid`. `null` otherwise. |
 
 **Validator changes:** contradicting `primary_intent`, `is_mixed`, or `title_patterns.dominant_pattern` is a HARD failure (no retry). Contradicting `mixed_intent_strategy` is a SOFT failure (one retry).
@@ -267,7 +267,7 @@ See `docs/intent_mapping_rationale.md` for the rationale behind each mapping dec
 To keep the LLM honest and reduce hallucination, the tool pre-computes deterministic verdicts before sending anything to the model:
 
 - **`serp_intent`** — primary intent (informational / commercial_investigation / transactional / navigational / local / uncategorised), whether the SERP is mixed-intent, and confidence level. Driven by `intent_mapping.yml`.
-- **`title_patterns`** — shape analysis of the top-10 organic titles (how_to, what_is, best_of, etc.). `dominant_pattern` is only set when one shape reaches ≥4 of 10 titles.
+- **`title_patterns`** — shape analysis of the top organic titles (how_to, what_is, best_of, etc.). How many titles are read and how many must share a shape before `dominant_pattern` is set are `title_patterns.top_n` and `title_patterns.dominant_threshold` in `config.yml` (10 and 4 by default; a threshold above `top_n` can never be reached, so it is refused with a warning).
 - **`mixed_intent_strategy`** — when the SERP is mixed-intent: `compete_on_dominant`, `backdoor`, or `avoid`. Driven by `client.preferred_intents` in `config.yml`.
 
 The validator hard-fails if the LLM report contradicts `serp_intent.primary_intent`, `is_mixed` or `title_patterns.dominant_pattern`, and soft-fails (one retry) on `mixed_intent_strategy` or `entity_label` contradictions. (Until review chunk D6 this sentence listed `title_patterns` among the retryable failures; the code has always blocked it, and the paragraph above said so.) If validation fails after retry, a companion `.validation.md` file is written explaining the rejected claims.

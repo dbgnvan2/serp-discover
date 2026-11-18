@@ -8,6 +8,7 @@ import re
 
 import yaml
 
+import keyword_demand
 from brief_data_extraction import _normalize_text
 # recommended_play vocabulary is shared with the report renderers (single source
 # of truth in play_routing.yml). Spec: seo_geo_review_20260704.md (T.4).
@@ -137,24 +138,11 @@ def missing_serp_keywords(data) -> list:
     return [k for k in asked if _normalize_text(k) not in have]
 
 
-def _keyword_volume(profile):
-    """The measured monthly volume for one keyword, or None.
-
-    Spec: review_2026-11-04 D4.16 (D-M-27)
-
-    One definition for both the per-keyword demand gate and the volume figure
-    the brief may restate.
-    """
-    moz = (profile or {}).get("moz")
-    if not isinstance(moz, dict) or not moz.get("data_available"):
-        return None
-    return moz.get("volume")
-
-
-def _any_demand_measured(keyword_profiles) -> bool:
-    """True when at least one keyword carries a measured monthly volume."""
-    return any(_keyword_volume(p) is not None
-               for p in (keyword_profiles or {}).values())
+# Review chunk Y1: one definition, in `keyword_demand`, shared with
+# `brief_data_extraction`. These were a second copy of the same two
+# predicates; the names stay because this module's checks read well with them.
+_keyword_volume = keyword_demand.measured_volume
+_any_demand_measured = keyword_demand.any_measured
 
 
 def _check_keyword_demand(issues, keyword, profile, regions, rules):
@@ -193,7 +181,13 @@ def _play_assignment_phrase(label):
     base = re.split(r"\s*\(", str(label).strip())[0].strip().lower()
     if not base:
         return None
-    return (rf"recommended play[:\-\s]*\**\s*{re.escape(base)}"
+    # Review chunk Y1: the label is `play_routing.yml`'s British spelling
+    # ("Deprioritise"), and a HARD rule built from it could not fire on a
+    # draft that wrote "Deprioritize". `s` and `z` are interchangeable in the
+    # pattern, so the rule holds whichever spelling the model used — the
+    # alternative is a parity rule a spelling evades.
+    pattern = "".join("[sz]" if ch in "sz" else re.escape(ch) for ch in base)
+    return (rf"recommended play[:\-\s]*\**\s*{pattern}"
             rf"(?:\s*\([^)]*\))?")
 
 

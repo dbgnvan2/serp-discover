@@ -10,6 +10,7 @@ from collections import Counter
 from datetime import datetime
 import yaml
 
+import title_patterns as title_patterns_mod
 from brief_data_extraction import (
     _safe_int, extract_analysis_data_from_json,
     load_yaml_config, load_client_context_from_config,
@@ -619,6 +620,8 @@ def list_recommendations(data, args):
         min_volume_for_investment=(
             (config.get("moz", {}) if isinstance(config, dict) else {})
             .get("keyword_metrics", {}).get("min_volume_for_investment")),
+        title_pattern_thresholds=title_patterns_mod.resolve_thresholds(
+            config if isinstance(config, dict) else None),
     )
     # Optional GSC feed-forward (Spec: seo_geo_deferred_spec_v1.md#G.4):
     # when config gsc.feed_strategic_flags is true and run_gsc_analysis.py

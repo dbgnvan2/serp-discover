@@ -792,7 +792,12 @@ admits 29 of 29" figure in its FEATURE_GUIDE is kept but labelled: it was measur
 on page-relative data and does not describe a v2.x run, and what the filter admits
 on absolute ranks has not been measured — no v2.x handoff exists yet.
 
-Chunks D2–D6 are unstarted; 44 findings remain open, all discover's.
+All 87 findings in the index read fixed as of chunk X (2026-11-17); none is
+open. Chunk Y1 is the first of the adjacent-issue batches — the issues the
+earlier chunks' cold reviews logged under "Adjacent issues found, not fixed"
+rather than fixing in a sweeping diff. It closed nine of them, one rule per
+finding (`docs/review_2026-11-04/PLAN_Y1_one_definition_each.md`); the
+remainder are listed at the end of that file and in each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)
 

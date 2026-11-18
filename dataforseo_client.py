@@ -53,6 +53,7 @@ import requests
 from http_retry import post_with_transient_retry as _post_with_transient_retry
 
 import feasibility
+from domain_utils import normalize_domain
 
 logger = logging.getLogger(__name__)
 
@@ -243,7 +244,7 @@ class DataForSEOClient:
             # Response structure: result[0].items[{target, rank}]
             for result_block in (task.get("result") or []):
                 for item in (result_block.get("items") or []):
-                    domain = item.get("target", "").removeprefix("www.")
+                    domain = normalize_domain(item.get("target", ""))
                     if not domain:
                         continue
                     # A domain DataForSEO has not crawled comes back with no
@@ -360,8 +361,9 @@ class DataForSEOClient:
 
     @staticmethod
     def _extract_domain(url: str) -> str:
+        """One definition of which host a URL is (review chunk Y1)."""
         try:
-            return urlparse(url).netloc.lower().removeprefix("www.")
+            return normalize_domain(url)
         except Exception:
             return ""
 

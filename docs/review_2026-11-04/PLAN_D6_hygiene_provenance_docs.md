@@ -191,4 +191,5 @@ medium-high, 4 low. Nine fixed, two dropped as low with no reader affected.
   where it changed. Low; the clamp itself is right.
 - `title_patterns.DOMINANT_THRESHOLD` is still a Python constant while every
   other threshold family it sits beside is config. The provenance line now says
-  so rather than hiding it.
+  so rather than hiding it. **Fixed in chunk Y1** — `title_patterns.top_n` /
+  `dominant_threshold` are config keys and the provenance line names them.

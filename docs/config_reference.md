@@ -278,6 +278,19 @@ degrades to the built-in wording and never aborts a report.
 | `feasibility.directory_entity_types` | which entity types count as a directory when the report prints the weakest **non**-directory competitor beside the mean (default `directory`). A directory holding a top-10 slot says nothing about whether a DA-35 clinic can hold one, which is why the two minima are separate. Must use `classification_rules.json`'s `entity_types` vocabulary; malformed → the default plus a warning. Editorial (D-M-09) |
 | `serp_intent.thresholds.confidence_high` / `confidence_medium` | the share of the **classified** ranking URLs the leading intent must hold for the verdict's certainty to read high / medium (0.8 / 0.5). Read by `intent_verdict._bucket_certainty`. These two keys were validated, documented and GUI-editable with no reader at all until this chunk, so tuning either changed nothing and warned about nothing; a test now fails if any key under the block loses its reader (D-C-17). Not the same figure as classification coverage, which counts how many URLs could be classified and rises with `enrichment.max_urls_per_keyword` (D-M-10) |
 
+### `title_patterns` — the dominant-pattern thresholds (review chunk Y1)
+
+| Key | What it sets |
+|-----|--------------|
+| `title_patterns.top_n` | how many of a keyword's ranking titles are read when the title-pattern profile is built (default 10). The profile's counts and its `brand_only` share are over this many titles, so widening it changes both |
+| `title_patterns.dominant_threshold` | how many of those titles must share a pattern before it is reported as the SERP's dominant title pattern (default 4). The brief's `title_patterns.dominant_pattern` is HARD-validated against this, so the figure decides what the LLM may say about the SERP's shape |
+
+Both were Python defaults on `compute_title_patterns` that nothing passed, while
+`thresholds_provenance` listed `title_patterns` as a tunable family — the
+provenance line named numbers no config held. A non-positive or unparseable
+value warns and falls back to the documented default rather than aborting the
+run.
+
 ---
 
 ## Configuration Manager GUI

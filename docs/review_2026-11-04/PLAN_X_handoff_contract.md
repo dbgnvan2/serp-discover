@@ -137,6 +137,7 @@ Dropped:
   reaching the competitor list at all looks unintended.
 - `normalize_domain` keeps a leading `m.` and other host prefixes, so a mobile
   subdomain of a competitor is still counted as a separate competitor.
+  **Fixed in chunk Y1** — `m.` is an alias prefix, stripped to a fixed point.
 - compete's `gsc_settings.country` is passed through as typed (`can`) while
   discover maps `ca` → `CAN`; the two configs name the same country differently
   and nothing checks they agree.

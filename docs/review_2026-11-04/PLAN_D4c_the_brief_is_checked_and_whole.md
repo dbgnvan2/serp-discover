@@ -290,10 +290,12 @@ adjacent list below.
   and "no issues" would be indistinguishable from "checks off".
 - `play_routing.yml` labels one play `Deprioritise`; the HARD parity phrase is
   built from the label, so a draft writing `Deprioritize` evades the rule.
+  **Fixed in chunk Y1** — the phrase is matched with `[sz]` at each `s`/`z`.
 - "Is demand measured" is now implemented in four places:
   `brief_data_extraction._demand_assessment` and `_demand_too_small`, and
   `brief_validation._keyword_volume` / `_any_demand_measured`. Duplicate
-  predicates must agree and nothing makes them.
+  predicates must agree and nothing makes them. **Fixed in chunk Y1** — one
+  `keyword_demand` module; both callers alias it.
 - `refresh_analysis_outputs.refresh_xlsx` counts a row with no domain as
   `updated` while changing nothing, so its "updated" figure is not the number
   of cells it wrote.

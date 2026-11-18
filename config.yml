@@ -392,6 +392,15 @@ thresholds_provenance:
   engine_prioritization: ""
   gsc_demand: ""
   entity_dominance: ""
+title_patterns:
+  # EDITORIAL: how many of the analysed titles must share a shape before the
+  # tool calls it the SERP's dominant pattern, and how many titles it looks at.
+  # These were Python constants in title_patterns.py while every threshold
+  # family beside them was config, and `dominant_pattern` is a claim the brief
+  # restates and the validator HARD-fails on (review chunk Y1, finding W).
+  dominant_threshold: 4
+  top_n: 10
+
 serp_intent:
   thresholds:
     # EDITORIAL: how much of a result page has to agree before the tool calls

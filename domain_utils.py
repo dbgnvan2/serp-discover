@@ -18,17 +18,30 @@ Two wrong ways to strip the prefix, both of which have been in this repo:
   ``"findwww.example.com"`` loses a piece of its label.
 
 ``removeprefix`` is the only correct one.
+
+Review chunk Y1 adds ``m.`` to the prefixes stripped. ``m.example.com`` is the
+same site as ``example.com`` by the same web convention that makes
+``www.example.com`` one — and this tool keys entity-type overrides, Moz cache
+rows, feasibility scores and the competitor handoff by this value, so a mobile
+host counted as a separate competitor takes a top-10 slot twice. The list is
+technical, not editorial: it is the set of hosts the web treats as aliases of
+the apex, not a judgement about this client's market, which is why it lives
+here beside the rule rather than in ``config.yml``.
 """
 from urllib.parse import urlparse
 
-__all__ = ["normalize_domain"]
+__all__ = ["normalize_domain", "ALIAS_PREFIXES"]
+
+#: Host prefixes that mean "the same site". Order matters only in that each is
+#: tried once: ``www.m.example.com`` is not a form anybody serves.
+ALIAS_PREFIXES = ("www.", "m.")
 
 
 def normalize_domain(url_or_domain):
     """Return the comparable host for a URL or a bare domain.
 
-    Lower-cased, without a leading ``www.``, without a port, and without
-    userinfo. Returns ``""`` for anything with no host in it.
+    Lower-cased, without a leading ``www.`` or ``m.``, without a port, and
+    without userinfo. Returns ``""`` for anything with no host in it.
     """
     raw = str(url_or_domain or "").strip()
     if not raw or any(ch.isspace() for ch in raw):
@@ -49,4 +62,18 @@ def normalize_domain(url_or_domain):
         netloc = host + "]"
     elif ":" in netloc:
         netloc = netloc.split(":", 1)[0]
-    return netloc.removeprefix("www.")
+    # Strip alias prefixes until none is left, so `www.m.example.com`,
+    # `m.example.com` and `example.com` all get one answer — the invariant the
+    # whole module exists for. A prefix is only stripped when something that
+    # can still be a site is left: `m.ca` is a registrable domain whose first
+    # label happens to be "m", and stripping it would leave a bare public
+    # suffix, which is not a host.
+    changed = True
+    while changed:
+        changed = False
+        for prefix in ALIAS_PREFIXES:
+            if netloc.startswith(prefix) and "." in netloc[len(prefix):]:
+                netloc = netloc[len(prefix):]
+                changed = True
+                break
+    return netloc

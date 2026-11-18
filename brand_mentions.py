@@ -40,6 +40,7 @@ from datetime import datetime
 from urllib.parse import urlparse
 
 import brand_match
+from domain_utils import normalize_domain
 
 try:
     from datetime import UTC as _UTC
@@ -67,9 +68,7 @@ def _norm(name: str) -> str:
 
 def _domain_stub(url_or_domain: str) -> str:
     """Human-ish brand label from a domain: ``livingsystems.ca`` -> ``livingsystems``."""
-    raw = str(url_or_domain or "").strip()
-    parsed = urlparse(raw if "//" in raw else "//" + raw)
-    domain = (parsed.netloc or raw).lower().removeprefix("www.")
+    domain = normalize_domain(url_or_domain)
     label = domain.split(".")[0] if domain else ""
     return label
 

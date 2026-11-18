@@ -44,6 +44,22 @@ carry NULL in both, which means *unknown* — not "completed" and not "primary".
   per-page `position` (see docs/methodology.md, Part 1 "Rank semantics
   (pagination)"), so `rank <= 10` in `get_entity_dominance` is the real top 10.
 
+- **`serp_results.domain` and `domain_features.domain`** hold the canonical
+  host (`domain_utils.normalize_domain`: lower-cased, no port, no userinfo, no
+  leading `www.` or `m.`). They are joined on each other, so both sides have
+  to agree about which host is which; before review chunk Y1 (2026-11-17) the
+  first held `urlparse(url).netloc` verbatim and one site could hold two rows
+  with one entity type each. Opening a database written before that runs a
+  one-off canonicalising pass over both columns — it is idempotent, logs how
+  many hosts it moved, and on a `domain_features` collision keeps the
+  canonical row's entity type and drops the alias. Without it a reader that
+  spans runs (`visualize_volatility.py` pivots this column) would see a
+  `www.x.ca` series stop at the change and an `x.ca` series start, which reads
+  as one competitor leaving and another arriving. A row whose URL has no
+  readable host is still stored, with an empty `domain` and a warning: it
+  joins against nothing, and the rank, title and URL are still facts about
+  the SERP.
+
 Runs recorded before 2026-11-16 therefore produce no deltas: `metrics.py`
 returns an `empty_data` status naming the missing labels instead of comparing
 rows it cannot interpret. Re-running rebuilds the history.

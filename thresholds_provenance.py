@@ -43,9 +43,8 @@ FAMILIES = {
         ("serp_intent.thresholds",),
     ),
     "title_patterns": (
-        "Title-pattern dominance (`title_patterns.DOMINANT_THRESHOLD`, a code "
-        "constant, not config)",
-        (),
+        "Title-pattern dominance and how many titles are read",
+        ("title_patterns.dominant_threshold", "title_patterns.top_n"),
     ),
     "commodity": (
         "Commodity score weights and bands",

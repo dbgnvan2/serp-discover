@@ -38,6 +38,7 @@ from urllib.parse import urlparse
 import yaml
 
 import brief_data_extraction
+from domain_utils import normalize_domain
 import feasibility as feasibility_module
 import link_recovery
 import timeouts
@@ -112,13 +113,10 @@ def _load_config(config_path: str = "config.yml") -> dict:
 def _extract_domain(url: str) -> str:
     """Return the bare domain for *url*, with or without a scheme.
 
-    ``urlparse`` puts everything in ``path`` when there is no ``//``, so a
-    scheme-less key such as ``"example.com/page"`` (the format the Moz cache
-    writes) would otherwise yield an empty domain.
+    One definition, in ``domain_utils`` (review chunk Y1).
     """
     try:
-        parsed = urlparse(url if "//" in url else "//" + url)
-        return parsed.netloc.lower().removeprefix("www.")
+        return normalize_domain(url)
     except Exception:
         return ""
 
@@ -709,10 +707,18 @@ def generate_feasibility_report(
 
     lines.append("## Summary")
     lines.append(f"- **Total keywords:** {len(primary)}")
-    lines.append(f"- ✅ High Feasibility: {len(high)}")
-    lines.append(f"- ⚠️ Moderate Feasibility: {len(mod)}")
-    lines.append(f"- 🔴 Low Feasibility: {len(low)}")
-    lines.append(f"- ⚠️ Not measured: {len(unmeasured)}")
+    # Both the glyph and the words come from `feasibility_messages.yml`, not
+    # from literals here: this summary printed ⚠️ for "Not measured" while
+    # the configured icon is ❓, so the same state wore two glyphs in two
+    # outputs of one run — the drift the config file exists to stop. The words
+    # were a literal with a special case for one status until the cold review
+    # of chunk Y1; the file is the only home for them.
+    for status, count in (("High Feasibility", len(high)),
+                          ("Moderate Feasibility", len(mod)),
+                          ("Low Feasibility", len(low)),
+                          ("Not Measured", len(unmeasured))):
+        lines.append(
+            f"- {feasibility_module.status_label(status)}: {count}".strip())
     lines.append(f"- Pivot SERPs fetched: {len(pivot_map)}\n")
 
     # Main table
@@ -967,9 +973,15 @@ def main() -> None:
     low_count = sum(1 for r in primary if r.get("feasibility_status") == "Low Feasibility")
     mod_count = sum(1 for r in primary if r.get("feasibility_status") == "Moderate Feasibility")
     high_count = sum(1 for r in primary if r.get("feasibility_status") == "High Feasibility")
+    def _icon(status):
+        return feasibility_module.status_label(status, bare_icon=True)
+
     logger.info(
-        "Done. %d keywords scored — ✅ %d High / ⚠️ %d Moderate / 🔴 %d Low",
-        len(primary), high_count, mod_count, low_count,
+        "Done. %d keywords scored — %s %d High / %s %d Moderate / %s %d Low",
+        len(primary),
+        _icon("High Feasibility"), high_count,
+        _icon("Moderate Feasibility"), mod_count,
+        _icon("Low Feasibility"), low_count,
     )
     logger.info("Report written: %s", out_path)
     print(f"FEASIBILITY_OUT={out_path}")

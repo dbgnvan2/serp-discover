@@ -29,8 +29,11 @@ how_to), which is the spec's required behaviour.
 
 from __future__ import annotations
 
+import logging
 import re
 from typing import Iterable
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Patterns, in priority order (top of list = highest priority) ────────────
@@ -90,9 +93,53 @@ PATTERNS = [
     # brand_only and other are decided separately below
 ]
 
+#: Documented defaults. The live values are editorial and live in `config.yml`
+#: under `title_patterns`; these are what applies when the config cannot be
+#: read, so a missing file degrades to the documented behaviour rather than to
+#: no threshold at all (P4, review chunk Y1).
 DOMINANT_THRESHOLD = 4  # ≥4 of top 10 → dominant_pattern set
 TOP_N_DEFAULT = 10
 EXAMPLES_PER_PATTERN = 3
+
+
+def resolve_thresholds(cfg: dict | None = None) -> tuple[int, int]:
+    """Return ``(top_n, dominant_threshold)`` from *cfg*, else the defaults.
+
+    A value that is not a positive integer is reported and the default used:
+    a `dominant_threshold` of 0 would make every pattern dominant, and a
+    report cannot tell a configured 0 from a typo.
+    """
+    block = ((cfg or {}).get("title_patterns") or {})
+    out = []
+    for key, default in (("top_n", TOP_N_DEFAULT),
+                         ("dominant_threshold", DOMINANT_THRESHOLD)):
+        raw = block.get(key, default)
+        try:
+            value = int(raw)
+        except (TypeError, ValueError):
+            value = 0
+        if value < 1:
+            logger.warning(
+                "config.yml title_patterns.%s is %r, which is not a positive "
+                "whole number; using the documented default %d.",
+                key, raw, default)
+            value = default
+        out.append(value)
+    top_n, dominant = out[0], out[1]
+    if dominant > top_n:
+        # A threshold above the number of titles read can never be reached, so
+        # `dominant_pattern` would be `None` on every SERP — and the brief and
+        # the report read that as a fact about the SERP ("no dominant title
+        # shape") rather than as a configuration that cannot produce one. Both
+        # keys go back to the documented defaults, because which of the two the
+        # user meant to change is not knowable here (cold review of chunk Y1).
+        logger.warning(
+            "config.yml title_patterns.dominant_threshold is %d but only %d "
+            "titles are read, so no pattern could ever be dominant; using the "
+            "documented defaults %d of %d.",
+            dominant, top_n, DOMINANT_THRESHOLD, TOP_N_DEFAULT)
+        return TOP_N_DEFAULT, DOMINANT_THRESHOLD
+    return top_n, dominant
 
 
 def _strip_site_suffix(title: str) -> str:

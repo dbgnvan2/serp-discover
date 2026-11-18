@@ -51,6 +51,7 @@ import yaml
 import ai_visibility_messages as av_messages
 import aivi as aivi_mod
 import answer_sentiment as sentiment_mod
+from domain_utils import normalize_domain
 import brand_match
 import brand_mentions as brand_mentions_mod
 import citation_table as citation_mod
@@ -625,8 +626,9 @@ def build_question_set(data: dict, templates: list[str], city: str,
 # ---------------------------------------------------------------------------
 
 def _domain_from_url(url: str) -> str:
+    """One definition of which host a URL is (review chunk Y1)."""
     try:
-        return urlparse(str(url)).netloc.lower().removeprefix("www.")
+        return normalize_domain(url)
     except Exception:
         return ""
 
@@ -659,10 +661,35 @@ def detect_visibility(answer_text: str, source_urls: list[str],
     mentioned = brand_match.matches_patterns(
         answer_text, client_name_patterns, negative_terms)
 
-    client_lower = (client_domain or "").lower().removeprefix("www.")
+    client_lower = normalize_domain(client_domain)
     cited = False
     competitor_hits: set[str] = set()
-    competitors = [str(c).lower().strip() for c in (competitor_domains or []) if str(c).strip()]
+    # Canonicalised like the client host above and like the URL hosts they are
+    # compared against: `_matches_domain` is equality-or-dot-suffix, so a
+    # `known_brands` entry somebody typed as `www.psychologytoday.com` or
+    # `m.yelp.com` could never match a canonical host and the citation count
+    # was short with nothing saying so (P2/P5, cold review of chunk Y1). A
+    # non-domain entry (a brand name) keeps its lower-cased word form, because
+    # the loop below matches those as substrings.
+    competitors = []
+    unusable = 0
+    for c in (competitor_domains or []):
+        raw = str(c).strip()
+        if not raw:
+            continue
+        if "." in raw:
+            canonical = normalize_domain(raw)
+            if not canonical:
+                unusable += 1
+                continue
+            competitors.append(canonical)
+        else:
+            competitors.append(raw.lower())
+    if unusable:
+        logger.warning(
+            "AI visibility: %d of %d competitor entries are not readable as a "
+            "host or a brand name and were not matched against the citations.",
+            unusable, len(competitor_domains or []))
     for url in source_urls or []:
         domain = _domain_from_url(url)
         if not domain:
@@ -684,7 +711,7 @@ def detect_visibility(answer_text: str, source_urls: list[str],
 
 def top_competitor_domains(data: dict, client_domain: str, limit: int = 15) -> list[str]:
     """Most frequent top-10 organic domains across root keywords, minus the client."""
-    client_lower = (client_domain or "").lower().removeprefix("www.")
+    client_lower = normalize_domain(client_domain)
     counts: dict[str, int] = {}
     for row in data.get("organic_results") or []:
         if row.get("Query_Label") != "A":
@@ -999,9 +1026,18 @@ def _brand_domain_map(known_brands: list[str], client_domain: str,
     for brand in known_brands or []:
         b = str(brand).strip()
         if "." in b:  # looks like a domain
-            mapping[b.lower()] = b
+            # Canonical, like the client entry below and like the hosts this
+            # map is looked up by: a `www.`-spelled entry never matched
+            # (cold review of chunk Y1).
+            key = normalize_domain(b)
+            if not key:
+                logger.warning(
+                    "known_brands: %r is not readable as a host; citations "
+                    "will not be attributed to it.", b)
+                continue
+            mapping[key] = b
     if client_domain:
-        mapping[client_domain.lower().removeprefix("www.")] = client_name or client_domain
+        mapping[normalize_domain(client_domain)] = client_name or client_domain
     return mapping
 
 

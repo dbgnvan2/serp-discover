@@ -25,6 +25,9 @@ from datetime import datetime
 # For MINIMA_FIELDS only — the names of the fields a feasibility
 # assessment carries, so this writer cannot fall behind the producer.
 import feasibility
+from domain_utils import normalize_domain
+
+logger = logging.getLogger(__name__)
 
 
 class SerpStorage:
@@ -176,8 +179,72 @@ class SerpStorage:
             except sqlite3.OperationalError:
                 pass  # Column already exists — safe to ignore
 
+        self._canonicalise_domain_columns(c)
+
         conn.commit()
         conn.close()
+
+    def _canonicalise_domain_columns(self, cursor):
+        """One-off: bring rows written before chunk Y1 to the canonical host.
+
+        `serp_results.domain` and `domain_features.domain` are joined on each
+        other, and both now hold `normalize_domain(...)`. Rows written by
+        earlier runs hold `urlparse(url).netloc` — `www.` kept, ports kept — so
+        without this a reader that spans runs sees one site as two: the
+        `www.x.ca` series stops dead at the change and an `x.ca` series starts,
+        which reads as a competitor dropping out and a new one arriving
+        (`visualize_volatility.py` pivots exactly that way). The old
+        `domain_features` rows would also sit orphaned, keeping a possibly
+        stale entity type under a key nothing looks up any more.
+
+        Idempotent and cheap: it only touches rows whose host is not already
+        canonical, and a `domain_features` collision (both forms present) keeps
+        the canonical row's entity type and drops the alias, because the
+        canonical one is what the current classifier wrote. Never raises — a
+        locked or older database must not stop a run (P1).
+        """
+        try:
+            from domain_utils import normalize_domain
+        except ImportError:                 # pragma: no cover
+            return
+        try:
+            for table in ("serp_results", "domain_features"):
+                cursor.execute(
+                    f"SELECT DISTINCT domain FROM {table} WHERE domain IS NOT NULL")
+                raw_hosts = [r[0] for r in cursor.fetchall()]
+                moved = 0
+                for raw in raw_hosts:
+                    canonical = normalize_domain(raw)
+                    if canonical == raw:
+                        continue
+                    if not canonical:
+                        # An unreadable host is left where it is rather than
+                        # collapsed into a `""` bucket that would merge
+                        # unrelated rows.
+                        continue
+                    if table == "domain_features":
+                        cursor.execute(
+                            "SELECT 1 FROM domain_features WHERE domain = ?",
+                            (canonical,))
+                        if cursor.fetchone():
+                            cursor.execute(
+                                "DELETE FROM domain_features WHERE domain = ?",
+                                (raw,))
+                            moved += 1
+                            continue
+                    cursor.execute(
+                        f"UPDATE {table} SET domain = ? WHERE domain = ?",
+                        (canonical, raw))
+                    moved += 1
+                if moved:
+                    logger.info(
+                        "%s.domain: %d of %d host(s) brought to the canonical "
+                        "form (review chunk Y1); rows written before this "
+                        "held the raw netloc.", table, moved, len(raw_hosts))
+        except sqlite3.Error as exc:
+            logger.warning(
+                "Host canonicalisation of the stored domains did not run "
+                "(%s); a reader spanning runs may see one site as two.", exc)
 
     def save_run(self, run_id, params_hash):
         """Record (or update) a run. ``completed_at`` stays NULL until
@@ -217,7 +284,25 @@ class SerpStorage:
         keyword, "A.1"/"A.2" for AI-alternative phrasings, "P" for a pivot
         fetch. All of them are stored under the root keyword, so rank history
         has to filter on the label (finding D-C-22).
+
+        *domain* is stored in the canonical host form, like every other host
+        this tool keys anything by (review chunk Y1). It held
+        `urlparse(url).netloc` verbatim, so `www.x.ca` and `x.ca` were two
+        sites: `metrics.get_entity_dominance` joins this column against
+        `domain_features.domain`, and `domain_features` is keyed by the same
+        value, so one site could hold two rows with one entity type each.
         """
+        raw_host = domain or url
+        domain = normalize_domain(raw_host)
+        if not domain:
+            # The row is still written — the rank, the title and the URL are
+            # facts about the SERP and losing them would be worse — but an
+            # empty host joins against nothing, so it is said rather than left
+            # for a reader to find as a gap (P2, cold review of chunk Y1).
+            logger.warning(
+                "serp_results: %r is not readable as a host, so this row "
+                "(%s rank %s) carries no domain and will not join against "
+                "domain_features.", raw_host, keyword, rank)
         features_json = json.dumps(features) if features else "{}"
         with sqlite3.connect(self.db_path) as conn:
             conn.execute('''INSERT INTO serp_results 
@@ -237,6 +322,18 @@ class SerpStorage:
                          (url, fetched_at, status_code, content_type, schema_json, word_count, evidence_json))
 
     def save_domain_features(self, domain, entity_type):
+        """One row per site. The key is the canonical host (review chunk Y1):
+        this table is joined against `serp_results.domain` and both sides have
+        to agree about which host is which."""
+        raw = domain
+        domain = normalize_domain(domain)
+        if not domain:
+            # The message names the value that failed, not the `""` the line
+            # above produced from it (cold review of chunk Y1).
+            logger.warning(
+                "save_domain_features called with no readable host (%r); the "
+                "entity type %r was not stored.", raw, entity_type)
+            return
         with sqlite3.connect(self.db_path) as conn:
             conn.execute('''INSERT OR REPLACE INTO domain_features (domain, entity_type) VALUES (?, ?)''',
                          (domain, entity_type))

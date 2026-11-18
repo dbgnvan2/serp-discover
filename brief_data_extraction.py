@@ -27,7 +27,8 @@ _UNMEASURED_CONTENT_TYPES = {"n/a", "not measured", ""}
 import yaml
 
 from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
-from title_patterns import compute_title_patterns
+import keyword_demand
+from title_patterns import compute_title_patterns, resolve_thresholds as _title_thresholds
 from classifiers import classify_url_from_patterns, EntityClassifier
 from play_routing import compute_recommended_play, load_play_routing
 import feasibility as feasibility_module
@@ -277,54 +278,13 @@ def _count_terms_in_texts(terms, texts):
     return counts
 
 
-def _demand_assessment(profile: dict, min_volume) -> tuple[bool, str]:
-    """(too_small, why the question could or could not be answered).
-
-    Spec: review_2026-11-04 D4.7 (D-M-12), cold-review finding 4
-
-    The caller needs to distinguish "demand measured and adequate" from
-    "demand never assessed". On the audit path no Moz metrics are fetched at
-    all, so the rule was silently inert and nothing in the record said so;
-    `opportunity_scale` could then carry `enter` for a keyword the brief path
-    calls `skip`.
-    """
-    if not min_volume:
-        return False, "no volume floor configured"
-    moz = profile.get("moz")
-    if not isinstance(moz, dict) or not moz.get("data_available"):
-        return False, f"demand not measured ({(moz or {}).get('status') or 'no Moz record'})"
-    volume = moz.get("volume")
-    if volume is None:
-        return False, "Moz returned no volume for this keyword"
-    try:
-        return float(volume) < float(min_volume), "measured"
-    except (TypeError, ValueError):
-        return False, "Moz volume was not a number"
-
-
-def _demand_too_small(profile: dict, min_volume) -> bool:
-    """True only when a real demand figure says so.
-
-    Spec: review_2026-11-04 D4.7 (D-M-12)
-
-    Three states, and only the first is a conclusion: Moz has a volume and it
-    is below the editorial floor; Moz has a volume at or above it; Moz has no
-    record for this keyword (`data_available` false, or `volume` None — low
-    volume and local keywords often have none). The third is not a small
-    market, it is an unmeasured one, and it draws no conclusion.
-    """
-    if not min_volume:
-        return False
-    moz = profile.get("moz")
-    if not isinstance(moz, dict) or not moz.get("data_available"):
-        return False
-    volume = moz.get("volume")
-    if volume is None:
-        return False
-    try:
-        return float(volume) < float(min_volume)
-    except (TypeError, ValueError):
-        return False
+# Review chunk Y1: both predicates now have ONE implementation, in
+# `keyword_demand`. `brief_validation` had its own pair, and four copies of
+# "is the demand measured" is four chances to lose the distinction between an
+# unmeasured market and a small one (P1). These names stay as thin aliases
+# because the audit path and the tests call them.
+_demand_assessment = keyword_demand.assessment
+_demand_too_small = keyword_demand.too_small
 
 
 def _compute_strategic_flags(
@@ -1390,6 +1350,7 @@ def extract_analysis_data_from_json(
     moz_intent_metrics=None,
     moz_intent_mapping=None,
     min_volume_for_investment=None,
+    title_pattern_thresholds=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
 
@@ -2065,9 +2026,16 @@ def extract_analysis_data_from_json(
             thresholds=serp_intent_thresholds,
         )
 
-        # Title pattern extraction (top 10 organic titles in rank order).
-        kw_titles = [r.get("title", "") for r in kw_rows[:10]]
-        title_patterns = compute_title_patterns(kw_titles, brand_aliases=title_brand_aliases)
+        # Title pattern extraction (the configured number of titles, in rank
+        # order). The count and the dominance threshold are editorial and come
+        # from `config.yml title_patterns`; they were Python constants while
+        # every threshold family beside them was config (review chunk Y1).
+        _top_n, _dominant = (title_pattern_thresholds
+                             or _title_thresholds(None))
+        kw_titles = [r.get("title", "") for r in kw_rows[:_top_n]]
+        title_patterns = compute_title_patterns(
+            kw_titles, brand_aliases=title_brand_aliases,
+            top_n=_top_n, dominant_threshold=_dominant)
 
         keyword_profiles[kw] = {
             # Moz demand/competition metrics, pre-computed and passed in by the
@@ -2311,5 +2279,6 @@ def build_keyword_profiles(data, config, client_domain=None):
         min_volume_for_investment=(
             (cfg.get("moz", {}) or {}).get("keyword_metrics", {})
             .get("min_volume_for_investment")),
+        title_pattern_thresholds=_title_thresholds(cfg),
     )
     return extracted.get("keyword_profiles", {}) or {}
