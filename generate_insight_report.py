@@ -42,6 +42,7 @@ from datetime import datetime
 import yaml
 
 import pattern_matching
+import db_connect
 import process_config
 from play_rendering import format_play_cell, format_play_line, load_play_vocab
 
@@ -2458,8 +2459,9 @@ def main():
                         help="Write the standalone glossary (CD.10) to this path "
                              "and exit. Needs no --json: the glossary is built "
                              "from glossary.yml, not from a run.")
-    parser.add_argument("--db", default="serp_data.db",
-                        help="SQLite DB for AI-Overview exposure trend (D1 / AV.1).")
+    parser.add_argument("--db", default=None,
+                        help="SQLite DB for AI-Overview exposure trend (D1 / AV.1); "
+                             "default: the configured database.path.")
     parser.add_argument("--run-ts", default=None,
                         help="Run timestamp YYYYMMDD_HHMM; default parsed from --json.")
     args = parser.parse_args()
@@ -2484,7 +2486,16 @@ def main():
     # market_analysis_* filename) so the trend is keyed to real runs, never a
     # wall-clock stamp. Unparseable → run_ts None → render-only (no persistence).
     run_ts = args.run_ts or aio_exposure.run_ts_from_filename(args.json)
-    report_content = generate_report(data, db_path=args.db, run_ts=run_ts)
+    # The loader applies the policies, and it is cached, so the call
+    # `generate_report` makes a moment later is free. `main` did not call it
+    # at all: the first load on this path was inside `generate_report`,
+    # *after* the line below had already read the import-time default, so a
+    # configured `database.path` never reached the AIO-exposure write and the
+    # trend split across two databases with nothing logged (P4/P16, the cold
+    # review of chunk Y12).
+    _load_config()
+    db_path = args.db if args.db else db_connect.database_path()
+    report_content = generate_report(data, db_path=db_path, run_ts=run_ts)
     # D4.13: the same .md the pipeline writes — report THEN briefs. Rendering
     # only the report here is what dropped every brief from the GUI's
     # post-feasibility regenerate.

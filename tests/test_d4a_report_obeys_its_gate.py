@@ -16,6 +16,7 @@ later:
 
 (D4.1-D4.5)
 """
+import db_connect
 import json
 import os
 import sqlite3
@@ -312,7 +313,7 @@ class TestVolatilityReturnsTheKeysTheReportPrints(unittest.TestCase):
             store.save_serp_result("run_curr", "kw_new", "organic", 1, "",
                                    "https://example.com/a", "example.com", "",
                                    query_label="A")
-            with unittest.mock.patch.object(metrics, "DB_PATH", db_path):
+            with unittest.mock.patch.object(db_connect, "DATABASE_PATH", db_path):
                 result = metrics.get_volatility_metrics("run_curr")
 
         self.assertTrue(result["comparability_warning"])

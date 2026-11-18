@@ -25,9 +25,9 @@ serpapi:
   related_questions_ai_followup: true
   related_questions_ai_max_calls: 5
 files:
-  input_csv: keywords_couples_counselling.csv
+  input_csv: new.csv
   output_xlsx: output/market_analysis_couples_counselling_20261114_1554.xlsx
-  output_json: output/market_analysis_couples_counselling_20261114_1554.json
+  output_json: new.json
   output_md: output/market_analysis_couples_counselling_20261114_1554.md
   domain_overrides: domain_overrides.yml
 enrichment:
@@ -380,6 +380,15 @@ database:
   # a non-positive or non-numeric value is reported and the default (5) used.
   lock_timeout_seconds: 5.0
 
+  # Where the SQLite history database lives. Relative paths are resolved
+  # against the repo root, never the current working directory: the path was
+  # the bare literal `serp_data.db` at 24 sites, so running a reader from
+  # anywhere else created a new empty database beside the caller instead of
+  # reporting that the history was missing (review chunk Y12). An absolute
+  # path is used as given; `~` is expanded. A blank or non-string value is
+  # reported and the default used.
+  path: serp_data.db
+
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
   # first-party data, but off by default until the service-account grant
@@ -407,9 +416,9 @@ gsc:
   # judgement about where this property's traffic sits.
   min_bucket_size: 3
   position_bands:
-    - [1, 3]
-    - [4, 10]
-    - [11, 20]
+  - [1, 3]
+  - [4, 10]
+  - [11, 20]
   # The deepest ranking position the reformat shortlist will consider.
   # Editorial, and it has to agree with position_bands: a client whose pages
   # sit at 11-20 needs both widened, or the shortlist is always empty.

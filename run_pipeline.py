@@ -8,12 +8,14 @@ Step 1.1-1.4 so they don't collide with the GUI's own item numbers 1-4:
   1.3 Verify DB Enrichment
   1.4 Generate Domain Override Review Candidates
 """
+import db_connect
 import subprocess
 import sys
 import os
 import yaml
 
 import pipeline_status
+import process_config
 
 
 def run_command(cmd, description, allow_codes=()):
@@ -45,6 +47,12 @@ def main():
     if os.path.exists("config.yml"):
         with open("config.yml", "r") as f:
             config = yaml.safe_load(f) or {}
+    # This process now reads one of the policies it sets — the closing
+    # summary names the database — so it applies them like every other
+    # loader. It was exempt on the grounds that it opens no database and
+    # makes no call, which stopped being true when the summary stopped
+    # printing a literal (the cold review of chunk Y12).
+    process_config.apply(config)
     files_cfg = config.get("files", {})
 
     # 1. Run SERP Audit
@@ -98,7 +106,7 @@ def main():
     print(f"   - Report: {md_file}")
     print(f"   - Excel:  {xlsx_file}")
     print(f"   - JSON:   {json_file}")
-    print(f"   - DB:     serp_data.db")
+    print(f"   - DB:     {db_connect.database_path()}")
     print(f"   - Override Candidates: domain_override_candidates.md")
     return audit_code
 

@@ -169,7 +169,7 @@ def _load_env() -> None:
                     os.environ.setdefault(k.strip(), v.strip())
 
 
-def _load_config(config_path: str = "config.yml") -> dict:
+def _load_config(config_path: str | None = None) -> dict:
     """The config, with the outbound retry policy applied to this process.
 
     Every entry point that makes outbound calls applies it, not just
@@ -178,6 +178,11 @@ def _load_config(config_path: str = "config.yml") -> dict:
     setting at all (P5 — a class of calls is configured together, review
     chunk Y4's cold review).
     """
+    # No path named means the repo's own config.yml, not the cwd's: the
+    # default was the bare `"config.yml"`, so starting the tool from
+    # another directory found no config and reset every policy, the
+    # configured database among them (the cold review of chunk Y12).
+    config_path = process_config.config_path(config_path)
     if not os.path.exists(config_path):
         process_config.apply(None)
         return {}
@@ -1718,12 +1723,16 @@ def main(argv: list[str] | None = None) -> int:
                         help="Confirm the paid API spend (cost guard)")
     parser.add_argument("--max-questions", type=int, default=None,
                         help="Override ai_visibility.max_questions (per-engine cap)")
-    parser.add_argument("--db", default="serp_data.db", help="SQLite database path")
+    parser.add_argument("--db", default=None,
+                        help="SQLite database path (default: the configured "
+                             "database.path)")
     parser.add_argument("--out", default=None, help="Output markdown path")
-    parser.add_argument("--config", default="config.yml", help="Config path")
+    parser.add_argument("--config", default=None, help="Config path")
     args = parser.parse_args(argv)
 
     config = _load_config(args.config)
+    # After the loader, so `database.path` is in force (review chunk Y12).
+    db_path = args.db if args.db else db_connect.database_path()
     av_config = config.get("ai_visibility", {}) or {}
     engines = resolve_engines(args.engines, av_config)
 
@@ -1840,14 +1849,14 @@ def main(argv: list[str] | None = None) -> int:
 
     if rows:
         save_probe_rows(
-            args.db, rows,
+            db_path, rows,
             store_raw_answer=bool(av_config.get("store_raw_answer", False)),
             raw_answer_max_chars=av_config.get(
                 "raw_answer_max_chars", DEFAULT_RAW_ANSWER_MAX_CHARS),
         )
     history_runs = int(av_config.get("history_runs", DEFAULT_HISTORY_RUNS))
     trends = {
-        engine: get_engine_trend(args.db, engine, limit=history_runs)
+        engine: get_engine_trend(db_path, engine, limit=history_runs)
         for engine in engines
     }
 
@@ -1861,7 +1870,7 @@ def main(argv: list[str] | None = None) -> int:
     if sentiment_mod.is_enabled(config.get("sentiment", {}) or {}):
         sentiment_budget = max(0, max_total_calls - total_calls)
     enrichment = run_report_enrichment(
-        rows, engines, config, data, run_ts, topic, args.db, json_path,
+        rows, engines, config, data, run_ts, topic, db_path, json_path,
         out_dir=os.path.dirname(os.path.abspath(args.out)) if args.out else ".",
         sentiment_call_budget=sentiment_budget,
         skipped=skipped, questions_planned=len(questions))
@@ -1879,7 +1888,7 @@ def main(argv: list[str] | None = None) -> int:
     # output/ regardless of where the human --out report goes. Guarded so an
     # export failure can never abort a paid probe run. Spec: discover AV-EXPORT.
     av_path = _safe_write_av_export(
-        args.db, "output", client_slug, analysis_cfg.get("client_name"), run_ts)
+        db_path, "output", client_slug, analysis_cfg.get("client_name"), run_ts)
     if av_path:
         print(f"AI_VISIBILITY_EXPORT_OUT={av_path}")
 

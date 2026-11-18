@@ -177,7 +177,7 @@ class _KeywordSignalClient:
 
     def __init__(
         self,
-        db_path: str = "serp_data.db",
+        db_path: str | None = None,
         cache_ttl_days: int = 30,
         engine: str = DEFAULT_ENGINE,
         locale: str = DEFAULT_LOCALE,
@@ -185,7 +185,10 @@ class _KeywordSignalClient:
         max_keywords: int = DEFAULT_MAX_KEYWORDS,
         rows_per_call: int | None = None,
     ) -> None:
-        self._db_path = db_path
+        # Resolved here, never as a default argument: that binds at `def`
+        # time, before any config has been read (review chunk Y12).
+        self._db_path = (db_connect.database_path()
+                         if db_path is None else db_path)
         self._cache_ttl = timedelta(days=cache_ttl_days)
         self._engine = engine or DEFAULT_ENGINE
         self._locale = locale or DEFAULT_LOCALE
@@ -198,7 +201,7 @@ class _KeywordSignalClient:
         self._init_cache_table()
 
     @classmethod
-    def from_config(cls, config: dict, db_path: str = "serp_data.db"):
+    def from_config(cls, config: dict, db_path: str | None = None):
         """Build a client from the ``moz:`` block of a loaded config.
 
         Purpose: one config→argument mapping shared by every front end (P25).

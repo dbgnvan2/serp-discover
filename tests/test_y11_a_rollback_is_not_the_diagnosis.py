@@ -38,15 +38,22 @@ REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 class _PolicyIsolation(unittest.TestCase):
-    """Both policies are process-wide state; a test must not leak its own."""
+    """Every policy is process-wide state; a test must not leak its own.
+
+    All eight retry globals, not just the timeout: saving one of them left a
+    test's budget installed for whatever ran next (the cold review of chunk
+    Y12).
+    """
 
     def setUp(self):
-        self._saved = (http_retry.REQUEST_TIMEOUT_SECONDS,
-                       db_connect.LOCK_TIMEOUT_SECONDS)
+        self._saved = (http_retry.current_retry_policy(),
+                       db_connect.LOCK_TIMEOUT_SECONDS,
+                       db_connect.DATABASE_PATH)
 
     def tearDown(self):
-        http_retry.REQUEST_TIMEOUT_SECONDS = self._saved[0]
+        http_retry.install_retry_policy(self._saved[0])
         db_connect.LOCK_TIMEOUT_SECONDS = self._saved[1]
+        db_connect.DATABASE_PATH = self._saved[2]
 
 
 class _CleanupFails:
@@ -286,6 +293,18 @@ class TestTheWaitIsReadLikeEveryOtherWait(_PolicyIsolation):
 #: so a loader added later cannot quietly skip the policies.
 _LOADERS = {
     ("refresh_analysis_outputs", "load_config"): None,
+    # Review chunk Y12 gave these three a loader: the first two read no config
+    # at all, and the third read it for the client slug alone, so none of them
+    # took the configured database path or lock wait.
+    ("export_history", "load_config"): None,
+    ("verify_enrichment", "load_config"): None,
+    ("export_ai_visibility", "_load_config"): None,
+    # Launches every step as a subprocess and opens no database itself, but
+    # its closing summary names the configured one, so it reads a policy it
+    # has to set. It was exempt until the cold review of chunk Y12. The
+    # structural half covers it; calling it would run the whole pipeline, so
+    # it carries the reason its consequence is not observed here.
+    ("run_pipeline", "main"): "calling it runs every step of the pipeline",
     ("run_feasibility", "_load_config"): None,
     ("probe_ai_visibility", "_load_config"): None,
     ("report_llm", "load_settings"): None,
@@ -297,20 +316,30 @@ _LOADERS = {
 #: the reason. An exemption is a claim about the function, so it is written
 #: down rather than left as an absence.
 _EXEMPT = {
-    # Launches every step as a subprocess; the policies belong to those
-    # processes, and this one makes no call and opens no database.
-    ("run_pipeline", "main"),
     # Writes the finished run's output paths back into config.yml.
     ("pipeline_status", "finish_run"),
     # Runs inside the report, after `_load_config` has applied the policies.
     ("generate_insight_report", "build_content_briefs_section"),
+    # A generic reader for whatever .yml path its caller passes — the
+    # editorial files, and config.yml itself from `brief_rendering`'s CLI.
+    # Exempt because it is a reader, not an entry point: nothing on the brief
+    # path opens the database, and the CLI that passes it config.yml applies
+    # the policies itself. Its first stated reason, that the path is never
+    # config.yml, was simply wrong (the cold review of chunk Y12).
+    ("brief_data_extraction", "load_yaml_config"),
 }
 
 
 def _functions_parsing_the_config():
     """`(module, function)` for every module-level function that parses
-    `config.yml`: it names the file and calls `yaml.safe_load`."""
+    `config.yml`: it calls `yaml.safe_load` and either names the file or takes
+    a `config_path`/`config_file` to read it from.
+
+    The parameter half was added in review chunk Y12: a loader whose path
+    arrives as an argument names no file, and `export_ai_visibility._load_config`
+    escaped the first version of this walk for exactly that reason."""
     found = set()
+    config_params = {"config_path", "config_file"}
     for path in sorted(glob.glob(os.path.join(REPO_ROOT, "*.py"))):
         module = os.path.basename(path)[:-3]
         try:
@@ -321,7 +350,11 @@ def _functions_parsing_the_config():
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             dumped = ast.dump(node)
-            if "'safe_load'" in dumped and "'config.yml'" in dumped:
+            if "'safe_load'" not in dumped:
+                continue
+            params = ({arg.arg for arg in node.args.args}
+                      | {arg.arg for arg in node.args.kwonlyargs})
+            if "'config.yml'" in dumped or (params & config_params):
                 found.add((module, node.name))
     return found
 
@@ -357,7 +390,7 @@ class TestEveryConfigReaderAppliesEveryPolicy(_PolicyIsolation):
         """The structural half. A loader added later has no consequence to
         observe until it exists, so this is the only form the guard can take —
         and it is paired with the consequence tests below, which prove the
-        existing six actually set both policies."""
+        existing loaders actually set both policies."""
         for key in sorted(_functions_parsing_the_config()):
             with self.subTest(key=key):
                 if key in _EXEMPT:
@@ -408,8 +441,12 @@ class TestEveryConfigReaderAppliesEveryPolicy(_PolicyIsolation):
         # no path and reads `_REPO_ROOT/config.yml`, so "absent" has to mean an
         # empty directory rather than another name in this one.
         missing = os.path.join(tempfile.mkdtemp(), "config.yml")
-        for module_name, function_name in sorted(_LOADERS):
+        skipped = []
+        for (module_name, function_name), reason in sorted(_LOADERS.items()):
             with self.subTest(loader=f"{module_name}.{function_name}"):
+                if reason:
+                    skipped.append((module_name, function_name))
+                    continue
                 process_config.apply(None)
                 self._call_loader(module_name, function_name, config_path)
                 self.assertEqual(http_retry.request_timeout(), 7.0)
@@ -423,6 +460,10 @@ class TestEveryConfigReaderAppliesEveryPolicy(_PolicyIsolation):
                     http_retry.DEFAULT_RETRY_POLICY["timeout"])
                 self.assertEqual(db_connect.lock_timeout(),
                                  db_connect.DEFAULT_LOCK_TIMEOUT_SECONDS)
+        # P21: the loop must have had something to do. A reason that silences
+        # a loader is written down above, so this only guards against the
+        # reasons quietly outnumbering the tests.
+        self.assertLess(len(skipped), len(_LOADERS))
 
     def test_apply_returns_the_outbound_policy_its_callers_expect(self):
         policy = process_config.apply({"http_retry": {"timeout_seconds": 7}})

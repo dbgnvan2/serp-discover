@@ -27,6 +27,7 @@ from unittest import mock
 import feasibility
 import gsc_client
 import http_retry
+import db_connect
 import metrics
 import pivot_pass
 import run_gsc_analysis as rga
@@ -329,7 +330,7 @@ class TestTheChartReadsAMigratedDatabase(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             path = self._legacy_db(tmp)
-            with mock.patch.object(viz, "DB_PATH", path):
+            with mock.patch.object(db_connect, "DATABASE_PATH", path):
                 # The row predates the migrations, so its query_label is NULL
                 # and it is not plottable — an empty list, not `no such
                 # column`.
@@ -341,7 +342,7 @@ class TestTheChartReadsAMigratedDatabase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = self._legacy_db(tmp)
             printed = []
-            with mock.patch.object(viz, "DB_PATH", path), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", path), \
                  mock.patch("builtins.print", printed.append):
                 viz.plot_history("k")
         text = "\n".join(printed)
@@ -357,7 +358,7 @@ class TestTheChartReadsAMigratedDatabase(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             missing = os.path.join(tmp, "nope.db")
             printed = []
-            with mock.patch.object(viz, "DB_PATH", missing), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", missing), \
                  mock.patch("builtins.print", printed.append):
                 self.assertEqual(viz.get_keywords(), [])
                 viz.plot_history("k")
@@ -398,7 +399,7 @@ class TestTheChartReadsAMigratedDatabase(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmp:
             path = self._legacy_db(tmp)
-            with mock.patch.object(metrics, "DB_PATH", path), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", path), \
                  mock.patch("builtins.print", lambda *_a, **_k: None):
                 dominance = metrics.get_entity_dominance("r1")
                 volatility = metrics.get_volatility_metrics("r1")

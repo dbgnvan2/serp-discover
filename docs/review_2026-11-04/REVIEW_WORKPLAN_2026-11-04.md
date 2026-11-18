@@ -905,6 +905,22 @@ every loader calls, guarded by a consequence test over all six
 (`docs/review_2026-11-04/PLAN_Y11_a_rollback_is_not_the_diagnosis.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
+**Chunk Y12 — one database, named once.** `"serp_data.db"` was a literal at
+24 sites in 17 modules of Tool 1, with no `config.yml` key at all, and every
+one of those literals was relative to the current working directory. A reader
+started from anywhere but the repo root therefore pointed SQLite at a path that
+did not exist, and SQLite created a new empty file beside the caller: a missing
+history reported as an empty one, which is the fault Tool 2's `ReportGenerator`
+had and the review had already recorded there. `db_connect` now owns the name —
+one literal, in one module — `database.path` sets it, a relative path resolves
+against the repo root, and every call site asks `db_connect.database_path()` at
+call time rather than taking it as a default argument, which binds at `def`
+time before any config has been read. Three entry points that opened the
+database and loaded no config at all (`export_history.py`,
+`verify_enrichment.py`, `export_ai_visibility.py`) got a loader, closing Y11's
+cold-review finding F5, and the four `--db` options now default to `None` and
+resolve after that loader. Tool 2 had one branch of the same fault left: `load_db_path` resolved a configured name against its config directory but returned the bare default when no config was present, so that path created a database beside the caller — it now resolves on every branch. The cold reviews of the two halves found twelve findings, five high, two of them the chunk's own bug surviving inside the fix: the report resolved its database before any loader had run, and eight loaders still read `config.yml` from the caller's working directory, so starting the tool from anywhere else abandoned the configured database for the built-in one. A second hand-rolled resolver in Tool 2's `VelocityTracker`, with a different default name, sent the competitor rows and the velocity reads to two different databases (`docs/review_2026-11-04/PLAN_Y12_one_database_named_once.md`).
+
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.

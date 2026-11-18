@@ -6,9 +6,19 @@ import pandas as pd
 import os
 import logging
 
+import db_connect
 import storage
 
-DB_PATH = "serp_data.db"
+def _db_path():
+    """The database this process opens, resolved at call time.
+
+    A module constant bound at import, and relative to the current working
+    directory: run from anywhere but the repo root and SQLite created a new
+    empty file beside the caller rather than reporting that the history was
+    missing (P4/P16, review chunk Y12). Kept as a callable with the same name
+    so a reader of these modules sees the resolution happen.
+    """
+    return db_connect.database_path()
 
 #: Rank history is only comparable across the primary query. AI-alternative
 #: ("A.1"/"A.2") and pivot ("P") rows are stored under the same root keyword,
@@ -124,16 +134,17 @@ def get_volatility_metrics(current_run_id):
     vanished with no note, which reads as "the market did not move" rather
     than "this run could not be compared" (P1/P2, review chunk Y3).
     """
-    if not os.path.exists(DB_PATH):
+    if not os.path.exists(_db_path()):
         return {"status": "no_database",
-                "msg": f"no history database at {DB_PATH} yet."}
+                "msg": f"no history database at {_db_path()} yet "
+                       f"(config.yml database.path names this file)."}
 
     try:
         # One `closing` around every read, not a `close()` on each of this
         # function's seven exits: a leaked sqlite handle is how a later write
         # meets "database is locked", and the next exit added is the one that
         # forgets (review chunk Y5).
-        with storage.migrated_connection(DB_PATH) as conn:
+        with storage.migrated_connection(_db_path()) as conn:
             runs_df = pd.read_sql(_RUNS_SQL, conn)
             frames = _rank_frames(conn, runs_df, current_run_id)
         if "status" in frames:
@@ -239,9 +250,10 @@ def get_entity_dominance(run_id):
     note, which reads as "the SERP has no composition" rather than "this run's
     rows cannot be interpreted".
     """
-    if not os.path.exists(DB_PATH):
+    if not os.path.exists(_db_path()):
         return {"status": "no_database",
-                "msg": f"no history database at {DB_PATH} yet."}
+                "msg": f"no history database at {_db_path()} yet "
+                       f"(config.yml database.path names this file)."}
 
     try:
         # `closing`, like `get_volatility_metrics`: the `except` path below
@@ -261,7 +273,7 @@ def get_entity_dominance(run_id):
         """
         # `rank <= 10` is the real top 10 since ranks became absolute
         # (D-C-01), and the label keeps alternative-query rows out (D-C-22).
-        with storage.migrated_connection(DB_PATH) as conn:
+        with storage.migrated_connection(_db_path()) as conn:
             df = pd.read_sql(query, conn,
                              params=(run_id, PRIMARY_QUERY_LABEL))
 
@@ -297,8 +309,8 @@ def get_rank_deltas(current_run_id, with_reason=False):
     def _out(deltas, reason=""):
         return (deltas, reason) if with_reason else deltas
 
-    if not os.path.exists(DB_PATH):
-        return _out({}, f"no history database at {DB_PATH} yet.")
+    if not os.path.exists(_db_path()):
+        return _out({}, f"no history database at {_db_path()} yet.")
 
     try:
         # All three reads go through `storage.migrated_connection`: they
@@ -309,7 +321,7 @@ def get_rank_deltas(current_run_id, with_reason=False):
         # "no such column" instead of bringing the schema forward. The bare
         # `with sqlite3.connect(...)` this one used also commits on exit and
         # never closes the handle (P5, cold review of chunk Y6, finding 5).
-        with storage.migrated_connection(DB_PATH) as conn:
+        with storage.migrated_connection(_db_path()) as conn:
             runs_df = pd.read_sql(_RUNS_SQL, conn)
 
             if len(runs_df) < 2:

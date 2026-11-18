@@ -218,6 +218,36 @@ def serpapi_retry_backoff() -> float:
     return SERPAPI_RETRY_BACKOFF_SECONDS
 
 
+#: The module globals `apply_retry_policy` rebinds. Named once, so a policy
+#: saved and restored elsewhere cannot cover seven of the eight: the first
+#: test base to do this saved `REQUEST_TIMEOUT_SECONDS` alone, which left a
+#: test's retry budget installed for whatever ran after it (the cold review of
+#: chunk Y12).
+POLICY_GLOBALS = (
+    "RETRY_ATTEMPTS",
+    "RETRY_BACKOFF_SECONDS",
+    "MAX_RETRY_AFTER_SECONDS",
+    "REQUEST_TIMEOUT_SECONDS",
+    "PAGE_FETCH_TIMEOUT_SECONDS",
+    "LLM_TIMEOUT_SECONDS",
+    "SERPAPI_RETRY_ATTEMPTS",
+    "SERPAPI_RETRY_BACKOFF_SECONDS",
+)
+
+
+def current_retry_policy() -> dict:
+    """This process's installed policy, as `{global name: value}`."""
+    return {name: globals()[name] for name in POLICY_GLOBALS}
+
+
+def install_retry_policy(policy: dict) -> None:
+    """Put back a policy taken by `current_retry_policy`."""
+    unknown = set(policy) - set(POLICY_GLOBALS)
+    if unknown:
+        raise ValueError(f"not retry-policy globals: {sorted(unknown)}")
+    globals().update(policy)
+
+
 def apply_retry_policy(cfg: dict | None) -> dict:
     """Set this process's retry defaults from *cfg* and return the policy.
 

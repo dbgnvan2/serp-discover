@@ -203,7 +203,7 @@ class GscClient:
         The Search Console property, e.g. ``"sc-domain:livingsystems.ca"``
         or ``"https://livingsystems.ca/"`` (config.yml ``gsc.property``).
     db_path:
-        SQLite database path. Defaults to ``"serp_data.db"``.
+        SQLite database path. Defaults to the configured database (``database.path``).
     cache_ttl_days:
         Days before a cached row is stale. Defaults to 7 (spec G.4).
     credentials_path:
@@ -221,9 +221,12 @@ class GscClient:
         or missing.
     """
 
-    def __init__(self, property_url: str, db_path: str = "serp_data.db",
+    def __init__(self, property_url: str, db_path: str | None = None,
                  cache_ttl_days: int = 7, credentials_path: str | None = None,
                  token_provider=None, filters: dict | None = None) -> None:
+        # Resolved in the body, never as a default argument: that binds
+        # at `def` time, before any config has been read (chunk Y12).
+        db_path = db_connect.database_path() if db_path is None else db_path
         if not property_url:
             raise RuntimeError("GSC property is not configured (config.yml gsc.property).")
         self._property = property_url

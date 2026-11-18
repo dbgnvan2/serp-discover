@@ -99,7 +99,7 @@ class DataForSEOClient:
     Parameters
     ----------
     db_path:
-        SQLite database path. Defaults to ``"serp_data.db"``.
+        SQLite database path. Defaults to the configured database (``database.path``).
     cache_ttl_days:
         Days before a cached result is considered stale. Defaults to 30.
     negative_cache_ttl_days:
@@ -113,8 +113,11 @@ class DataForSEOClient:
         If ``DATAFORSEO_LOGIN`` or ``DATAFORSEO_PASSWORD`` env vars are absent.
     """
 
-    def __init__(self, db_path: str = "serp_data.db", cache_ttl_days: int = 30,
+    def __init__(self, db_path: str | None = None, cache_ttl_days: int = 30,
                  negative_cache_ttl_days: int | None = None) -> None:
+        # Resolved in the body, never as a default argument: that binds
+        # at `def` time, before any config has been read (chunk Y12).
+        db_path = db_connect.database_path() if db_path is None else db_path
         login = os.getenv("DATAFORSEO_LOGIN", "").strip()
         password = os.getenv("DATAFORSEO_PASSWORD", "").strip()
         if not login or not password:

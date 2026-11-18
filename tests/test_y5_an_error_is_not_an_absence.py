@@ -21,6 +21,7 @@ Adjacent issues logged by earlier chunks' cold reviews (global rule 10):
 
 Spec: docs/review_2026-11-04/PLAN_Y5_an_error_is_not_an_absence.md
 """
+import db_connect
 import ast
 import os
 import sqlite3
@@ -162,7 +163,7 @@ class TestTheHistoryReaderIsAlwaysClosed(unittest.TestCase):
                 opened.append(conn)
                 return conn
 
-            with mock.patch.object(metrics, "DB_PATH", path), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", path), \
                  mock.patch.object(storage_mod.sqlite3, "connect", _connect):
                 if rows_sql_error:
                     with mock.patch.object(
@@ -205,7 +206,7 @@ class TestTheHistoryReaderIsAlwaysClosed(unittest.TestCase):
                 opened.append(conn)
                 return conn
 
-            with mock.patch.object(metrics, "DB_PATH", path), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", path), \
                  mock.patch.object(storage_mod.sqlite3, "connect", _connect), \
                  mock.patch.object(
                      metrics.pd, "read_sql",

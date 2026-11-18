@@ -104,7 +104,7 @@ except ImportError:
 # Config helpers
 # ---------------------------------------------------------------------------
 
-def _load_config(config_path: str = "config.yml") -> dict:
+def _load_config(config_path: str | None = None) -> dict:
     """The config, with the outbound retry policy applied to this process.
 
     Every entry point that makes outbound calls applies it, not just
@@ -113,6 +113,11 @@ def _load_config(config_path: str = "config.yml") -> dict:
     setting at all (P5 — a class of calls is configured together, review
     chunk Y4's cold review).
     """
+    # No path named means the repo's own config.yml, not the cwd's: the
+    # default was the bare `"config.yml"`, so starting the tool from
+    # another directory found no config and reset every policy, the
+    # configured database among them (the cold review of chunk Y12).
+    config_path = process_config.config_path(config_path)
     if not os.path.exists(config_path):
         process_config.apply(None)
         return {}

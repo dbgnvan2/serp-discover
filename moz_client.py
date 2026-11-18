@@ -177,7 +177,8 @@ class MozClient:
     ----------
     db_path:
         Path to the SQLite database used for caching.  Defaults to
-        ``"serp_data.db"`` (same DB as the rest of the pipeline).
+        the configured database (``database.path``) — the same DB as the rest of the
+        pipeline (review chunk Y12).
     cache_ttl_days:
         Number of days before a cached result is considered stale.
         Defaults to 30.  DA changes slowly so frequent refreshes are wasteful.
@@ -202,7 +203,7 @@ class MozClient:
 
     def __init__(
         self,
-        db_path: str = "serp_data.db",
+        db_path: str | None = None,
         cache_ttl_days: int = 30,
         negative_cache_ttl_days: int | None = None,
         scope: str = DEFAULT_SITE_SCOPE,
@@ -216,7 +217,10 @@ class MozClient:
                 "(generate a token in the Moz API dashboard)."
             )
         self._auth_header = {"x-moz-token": token}
-        self._db_path = db_path
+        # Resolved here, never as a default argument: that binds at `def`
+        # time, before any config has been read (review chunk Y12).
+        self._db_path = (db_connect.database_path()
+                         if db_path is None else db_path)
         self._cache_ttl = timedelta(days=cache_ttl_days)
         # An absence expires sooner than a measurement: see _cache_lookup.
         if negative_cache_ttl_days is None:
@@ -236,7 +240,7 @@ class MozClient:
         self._init_cache_table()
 
     @classmethod
-    def from_config(cls, config: dict, db_path: str = "serp_data.db") -> "MozClient":
+    def from_config(cls, config: dict, db_path: str | None = None) -> "MozClient":
         """Build a client from the ``moz:`` block of a loaded config.
 
         Purpose: keep the config→argument mapping in one place so every front

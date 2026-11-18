@@ -30,6 +30,7 @@ from run_control import (
     TIMED_OUT, ProcessCheckFailed, RunControl, close_action, install_exit_guards,
     launcher_settings, popen_kwargs, run_with_timeout, running_pipeline_processes,
 )
+import process_config
 import report_llm
 from report_models import (
     get_report_model_options,
@@ -171,7 +172,7 @@ class SerpLauncherApp:
                     "  - output/market_analysis_<topic>_<ts>.json / .xlsx / .md\n"
                     "  - output/competitor_handoff_<topic>_<ts>.json\n"
                     "  - normalized/<ts>.serp_norm.json\n"
-                    "  - serp_data.db (updated)\n"
+                    "  - the configured database (database.path) (updated)\n"
                     "  - diff_report.json (xlsx-vs-json validation)\n"
                     "  - domain_override_candidates.md\n\n"
                     "NOTE: Intent-ranked only. Feasibility ranking and the content\n"
@@ -571,7 +572,11 @@ class SerpLauncherApp:
         self.desc_text.config(state="disabled")
 
     def config_path(self):
-        return os.path.join(os.getcwd(), "config.yml")
+        # The repo's own config.yml, not the cwd's. It was `os.getcwd()`, so
+        # launching the GUI from another directory read — and saved — a
+        # different file from the one every step of the run uses (the cold
+        # review of chunk Y12).
+        return process_config.config_path()
 
     def _yaml(self):
         # Round-trip mode preserves comments and key order across a

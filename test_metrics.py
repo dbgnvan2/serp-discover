@@ -15,6 +15,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
+import db_connect
 import metrics
 from storage import SerpStorage
 
@@ -58,7 +59,7 @@ class TestRankDeltas(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp_dir:
             db_path = os.path.join(tmp_dir, "test.db")
             self._seed(db_path)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 deltas = metrics.get_rank_deltas("run_curr")
         self.assertEqual(deltas[("kw_a", SHARED_URL)], 5)
         self.assertEqual(deltas[("kw_b", SHARED_URL)], -4)
@@ -72,7 +73,7 @@ class TestRankDeltas(unittest.TestCase):
             # Alternative-query rows are stored under the root keyword.
             _result(store, "run_prev", "kw_a", 1, label="A.1")
             _result(store, "run_curr", "kw_a", 2, label="A.1")
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 deltas = metrics.get_rank_deltas("run_curr")
         self.assertEqual(len(deltas), 2)
         self.assertEqual(deltas[("kw_a", SHARED_URL)], 5)
@@ -85,7 +86,7 @@ class TestRankDeltas(unittest.TestCase):
                     label="P")
             _result(store, "run_curr", "kw_a", 1, url="https://p.example/x",
                     label="P")
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 deltas = metrics.get_rank_deltas("run_curr")
         self.assertNotIn(("kw_a", "https://p.example/x"), deltas)
 
@@ -97,7 +98,7 @@ class TestRankDeltas(unittest.TestCase):
             # An aborted run between the two: one keyword, then nothing.
             _run(store, "run_aborted", "2026-02-01T12:00:00", completed=False)
             _result(store, "run_aborted", "kw_a", 1)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 deltas = metrics.get_rank_deltas("run_curr")
         # Against run_prev (rank 9) the delta is +5; against the aborted run
         # (rank 1) it would be -3.
@@ -117,7 +118,7 @@ class TestRankDeltas(unittest.TestCase):
             _run(store, "run_curr", "2026-02-02T00:00:00")
             _result(store, "run_prev", "kw", 9, label=None)
             _result(store, "run_curr", "kw", 4, label=None)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 deltas, reason = metrics.get_rank_deltas(
                     "run_curr", with_reason=True)
         self.assertEqual(deltas, {})
@@ -131,7 +132,7 @@ class TestRankDeltas(unittest.TestCase):
             _run(store, "run_curr", "2026-02-02T00:00:00")
             _result(store, "run_prev", "kw_a", 9)
             _result(store, "run_curr", "kw_a", 4)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 deltas = metrics.get_rank_deltas("run_curr")
         self.assertEqual(deltas, {})
 
@@ -146,7 +147,7 @@ class TestVolatility(unittest.TestCase):
             _run(store, "run_curr", "2026-02-02T00:00:00")
             _result(store, "run_prev", "kw_old", 1, url="https://example.com/a")
             _result(store, "run_curr", "kw_new", 1, url="https://example.com/a")
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 result = metrics.get_volatility_metrics("run_curr")
         # The two runs share a URL but not a keyword, so the merge is empty.
         # This used to be status "success" with a NaN score, and report
@@ -164,7 +165,7 @@ class TestVolatility(unittest.TestCase):
             _run(store, "run_curr", "2026-02-02T00:00:00")
             _result(store, "run_a", "kw", 1)
             _result(store, "run_curr", "kw", 2)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 result = metrics.get_volatility_metrics("run_curr")
         self.assertEqual(result["status"], "insufficient_history")
         self.assertIn("2 earlier", result["msg"])
@@ -178,7 +179,7 @@ class TestVolatility(unittest.TestCase):
             _run(store, "run_curr", "2026-02-02T00:00:00")
             _result(store, "run_prev", "kw", 9, label=None)
             _result(store, "run_curr", "kw", 4, label=None)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 result = metrics.get_volatility_metrics("run_curr")
         self.assertEqual(result["status"], "empty_data")
         self.assertIn("query_label", result["msg"])
@@ -235,7 +236,7 @@ class TestEntityDominanceSaysWhyItIsEmpty(unittest.TestCase):
             store = _store(db_path)
             _run(store, "run_curr", "2026-02-02T00:00:00")
             _result(store, "run_curr", "kw", 4, label=None)
-            with patch.object(metrics, "DB_PATH", db_path):
+            with patch.object(db_connect, "DATABASE_PATH", db_path):
                 result = metrics.get_entity_dominance("run_curr")
         self.assertEqual(result["status"], "empty_data")
         self.assertIn("query_label", result["msg"])

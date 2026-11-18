@@ -21,7 +21,7 @@ from generate_domain_override_candidates import (
 )
 
 
-def load_config(config_path="config.yml"):
+def load_config(config_path=None):
     """config.yml as a dict, or {} when it is absent.
 
     Applies `config.yml http_retry` the way every other entry point does.
@@ -36,6 +36,9 @@ def load_config(config_path="config.yml"):
     Every loader of the five now applies the configured policy, and the
     absent-config branch resets it rather than inheriting one (P5/P25).
     """
+    # No path named means the repo's own config.yml, not the cwd's (the
+    # cold review of chunk Y12).
+    config_path = process_config.config_path(config_path)
     if not os.path.exists(config_path):
         process_config.apply(None)
         return {}
@@ -45,7 +48,7 @@ def load_config(config_path="config.yml"):
     return config
 
 
-def load_config_paths(config_path="config.yml"):
+def load_config_paths(config_path=None):
     config = load_config(config_path)
     files_cfg = config.get("files", {})
     return {

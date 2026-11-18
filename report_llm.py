@@ -106,7 +106,7 @@ def settings_from_config(config):
     )
 
 
-def load_settings(config_path="config.yml"):
+def load_settings(config_path=None):
     """The report-LLM settings, with the outbound retry policy applied.
 
     `brief_llm` calls every provider through `http_retry`, so this config read
@@ -114,6 +114,9 @@ def load_settings(config_path="config.yml"):
     the setting changed the audit's behaviour and silently did nothing here
     (P5, cold review of chunk Y4).
     """
+    # No path named means the repo's own config.yml, not the cwd's (the
+    # cold review of chunk Y12).
+    config_path = process_config.config_path(config_path)
     if not os.path.exists(config_path):
         process_config.apply(None)
         return Settings()

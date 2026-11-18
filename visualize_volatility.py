@@ -10,9 +10,19 @@ import sys
 import os
 
 import metrics
+import db_connect
 import storage
 
-DB_PATH = "serp_data.db"
+def _db_path():
+    """The database this process opens, resolved at call time.
+
+    A module constant bound at import, and relative to the current working
+    directory: run from anywhere but the repo root and SQLite created a new
+    empty file beside the caller rather than reporting that the history was
+    missing (P4/P16, review chunk Y12). Kept as a callable with the same name
+    so a reader of these modules sees the resolution happen.
+    """
+    return db_connect.database_path()
 
 #: The primary SERP's query label. Taken from `metrics` so the two modules
 #: cannot disagree about which rows are the rank history.
@@ -43,10 +53,12 @@ def _no_database() -> bool:
     (P35, cold review of chunk Y6). `metrics.py` has made the same check
     since chunk D1.
     """
-    if os.path.exists(DB_PATH):
+    if os.path.exists(_db_path()):
         return False
-    print(f"No history database at {DB_PATH} yet — run the audit once, or "
-          f"check the working directory.")
+    print(f"No history database at {_db_path()} yet — run the audit once, or "
+          f"check config.yml database.path, which names this file. (The\n"
+          f"working directory no longer decides it: a relative path\n"
+          f"resolves against the repo root since review chunk Y12.)")
     return True
 
 
@@ -59,7 +71,7 @@ def get_keywords():
     """
     if _no_database():
         return []
-    with storage.migrated_connection(DB_PATH) as conn:
+    with storage.migrated_connection(_db_path()) as conn:
         df = pd.read_sql("SELECT DISTINCT s.keyword_text" + PLOTTABLE_ROWS,
                          conn, params=(PRIMARY_QUERY_LABEL,))
         excluded = pd.read_sql("""
@@ -92,7 +104,7 @@ def plot_history(keyword):
     # either would be an invented cause (P35, cold review of chunk Y4).
     if _no_database():
         return
-    with storage.migrated_connection(DB_PATH) as conn:
+    with storage.migrated_connection(_db_path()) as conn:
         counts = pd.read_sql("""
         SELECT
             COUNT(*) AS stored,

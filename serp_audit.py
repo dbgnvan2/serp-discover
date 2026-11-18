@@ -11,6 +11,7 @@ from datetime import datetime, timezone
 from collections import Counter
 import hashlib
 import jsonschema
+import db_connect
 import generate_insight_report
 import generate_content_brief
 import pattern_matching
@@ -77,8 +78,13 @@ API_KEY = os.getenv("SERPAPI_KEY")
 
 # Load Config
 CONFIG = {}
-if os.path.exists("config.yml"):
-    with open("config.yml", "r") as f:
+# The repo's own config.yml, not the cwd's: the GUI launches this script
+# with `cwd=os.getcwd()`, so starting the GUI from another directory found
+# no config at all and the whole run went to the built-in defaults — the
+# database among them (the cold review of chunk Y12).
+CONFIG_PATH = process_config.config_path()
+if os.path.exists(CONFIG_PATH):
+    with open(CONFIG_PATH, "r") as f:
         CONFIG = yaml.safe_load(f) or {}
 
 # One mapping from config to the shared retry policy, applied before any
@@ -1390,7 +1396,7 @@ def _run(run_id):
     moz_client = None
     if FEASIBILITY_ENABLED and MOZ_AVAILABLE:
         try:
-            moz_client = MozClient.from_config(CONFIG, db_path="serp_data.db")
+            moz_client = MozClient.from_config(CONFIG)
             print(f"--- MOZ DA enrichment: ENABLED (client_da={FEASIBILITY_CLIENT_DA}) ---")
         except RuntimeError as e:
             print(f"--- MOZ DA enrichment: DISABLED ({e}) ---")
@@ -2127,7 +2133,7 @@ def _run(run_id):
         md_content = []
 
         # 1. Insight Report (D1/AV.1: db_path+run_ts persist ai_aio_exposure + trend on the primary market_analysis path; run_ts from OUTPUT_MD)
-        md_content.append(generate_insight_report.generate_report(full_data, db_path="serp_data.db", run_ts=generate_insight_report.aio_exposure.run_ts_from_filename(OUTPUT_MD)))
+        md_content.append(generate_insight_report.generate_report(full_data, db_path=db_connect.database_path(), run_ts=generate_insight_report.aio_exposure.run_ts_from_filename(OUTPUT_MD)))
         md_content.append("\n---\n")
 
         # 2. Content Briefs (RC.8 — brief sequencing). The assembly lives in

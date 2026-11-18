@@ -10,7 +10,7 @@ keywords.csv
             ├─► market_analysis_*.xlsx           Excel workbook
             ├─► market_analysis_*.md             markdown summary
             ├─► competitor_handoff_*.json        validated handoff for Tool 2 (Gap 3)
-            └─► serp_data.db                     SQLite history
+            └─► database.path                   SQLite history (serp_data.db)
 
 market_analysis_*.json
     ├─► run_feasibility.py (DA gap analysis — standalone, runs any time)
@@ -56,8 +56,8 @@ market_analysis_*.json
 | `dataforseo_client.py` | DataForSEO bulk_ranks API client with 30-day SQLite cache |
 | `moz_client.py` | Moz Links API v2 client with 30-day SQLite cache (fallback) |
 | `storage.py` | SQLite persistence layer. `save_feasibility_from_row` persists a feasibility assessment from the dict `compute_feasibility` produced, so a field added to the row cannot be dropped on the way to the database (review chunk D2) |
-| `db_connect.py` | The one way a module opens the SQLite database: `connection(db_path)` commits on a clean exit, rolls back on an exception, and closes the handle on every path. `with sqlite3.connect(...)` commits but never closes, and `with closing(sqlite3.connect(...))` closes but discards the commit; every production module goes through this helper instead of pairing them per site (review chunk Y9). A failing `rollback()` or `close()` is logged and does not replace the exception the block raised, and `timeout` — the wait for another writer's lock — comes from `config.yml database.lock_timeout_seconds` (review chunk Y11) |
-| `process_config.py` | The one function that sets this process's policies from a loaded `config.yml`: the outbound retry and timeout policy (`http_retry`) and the SQLite lock wait (`db_connect`). Six loaders read `config.yml`; asking each of them to remember two policies is how the next one gets only one, so they all call `process_config.apply` (review chunk Y11) |
+| `db_connect.py` | The one way a module opens the SQLite database: `connection(db_path)` commits on a clean exit, rolls back on an exception, and closes the handle on every path. `with sqlite3.connect(...)` commits but never closes, and `with closing(sqlite3.connect(...))` closes but discards the commit; every production module goes through this helper instead of pairing them per site (review chunk Y9). A failing `rollback()` or `close()` is logged and does not replace the exception the block raised, and `timeout` — the wait for another writer's lock — comes from `config.yml database.lock_timeout_seconds` (review chunk Y11). It also owns the database's **name**: `database_path()` returns the configured `database.path`, resolved against the repo root rather than the current working directory, and it is the only module that contains the literal `"serp_data.db"` (review chunk Y12) |
+| `process_config.py` | The one function that sets this process's policies from a loaded `config.yml`: the outbound retry and timeout policy (`http_retry`) and the SQLite lock wait and the database path (`db_connect`). Nine loaders read `config.yml`; asking each of them to remember two policies is how the next one gets only one, so they all call `process_config.apply` (review chunks Y11, Y12). It also owns the **config path**: `process_config.config_path()` is `config.yml` beside the repo, so no loader defaults to the bare cwd-relative name — eight of them did, and the GUI launched `serp_audit.py` with `cwd=os.getcwd()`, so starting the tool from another directory found no config and reset every policy silently (the cold review of chunk Y12) |
 | `metrics.py` | Volatility & entity dominance calculations; baselines against the previous **completed** run, primary-query rows only (D-C-22) |
 | `url_enricher.py` | URL fetching & feature extraction |
 | `enrichment.py` | One organic row's page-level enrichment, and the fetch-outcome gate: a response at or above 400 is recorded, not read (D2c / D-C-20) |

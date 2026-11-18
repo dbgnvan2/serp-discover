@@ -139,7 +139,7 @@ class MozCompetitorClient:
 
     def __init__(
         self,
-        db_path: str = "serp_data.db",
+        db_path: str | None = None,
         cache_ttl_days: int = 30,
         scope: str = DEFAULT_SCOPE,
         locale: str = DEFAULT_LOCALE,
@@ -151,7 +151,10 @@ class MozCompetitorClient:
         link_momentum: bool = False,
         link_momentum_limit: int = DEFAULT_LINK_MOMENTUM_LIMIT,
     ) -> None:
-        self._db_path = db_path
+        # Resolved here, never as a default argument: that binds at `def`
+        # time, before any config has been read (review chunk Y12).
+        self._db_path = (db_connect.database_path()
+                         if db_path is None else db_path)
         self._cache_ttl = timedelta(days=cache_ttl_days)
         self._scope = scope or DEFAULT_SCOPE
         self._locale = locale or DEFAULT_LOCALE
@@ -166,7 +169,7 @@ class MozCompetitorClient:
         self._init_cache_table()
 
     @classmethod
-    def from_config(cls, config: dict, db_path: str = "serp_data.db") -> "MozCompetitorClient":
+    def from_config(cls, config: dict, db_path: str | None = None) -> "MozCompetitorClient":
         """Build a client from the ``moz.competitor`` block of a config.
 
         Purpose: one config→argument mapping shared by every front end (P25).
@@ -855,7 +858,7 @@ def competitor_domains(all_organic, client_domain, omit_from_audit=None) -> list
 
 
 def build_handoff_block(config, all_organic, client_domain,
-                        omit_from_audit=None, db_path="serp_data.db"):
+                        omit_from_audit=None, db_path=None):
     """Build the optional ``moz`` block for the competitor handoff.
 
     Purpose: give serp_audit one call to make, and keep the enable/resolve/
@@ -869,6 +872,7 @@ def build_handoff_block(config, all_organic, client_domain,
     """
     if not MozCompetitorClient.is_enabled(config):
         return None
+    db_path = db_connect.database_path() if db_path is None else db_path
     # Every host this block publishes — the `domains` keys, the `client` entry,
     # and the host the paid Moz calls are billed under — is the one canonical
     # form (review chunk X, owner decision 4). The cache PK is

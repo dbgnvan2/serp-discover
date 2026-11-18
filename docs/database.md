@@ -1,6 +1,15 @@
 # Database — SQLite schema, tables, and migration notes
 
-SQLite at `serp_data.db`. Key tables:
+SQLite at the path `config.yml` gives as `database.path`, `serp_data.db` by
+default. A relative path resolves against the repo root, never the current
+working directory: the path was a bare literal at 24 sites and a reader
+started from another directory created a new empty database beside itself
+instead of reporting that the history was missing (review chunk Y12).
+`db_connect.database_path()` is the one place the default is read, and it is
+read at call time — a configured value taken as a default argument binds at
+`def` time, before any config has been loaded.
+
+Key tables:
 
 | Table | Contents |
 |-------|----------|

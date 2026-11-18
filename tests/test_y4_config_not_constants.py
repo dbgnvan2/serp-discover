@@ -5,6 +5,7 @@ One guard per finding in
 
 Spec: docs/review_2026-11-04/REVIEW_WORKPLAN_2026-11-04.md chunk Y4
 """
+import db_connect
 import os
 import sqlite3
 import subprocess
@@ -308,15 +309,22 @@ class TestRetryPolicyComesFromConfig(unittest.TestCase):
         """A consequence test in a real process: `serp_audit` applies the
         policy at import time, so what matters is the number a caller that
         passes nothing ends up with — not that a line of source exists."""
-        with tempfile.TemporaryDirectory() as tmp:
-            with open(os.path.join(tmp, "config.yml"), "w",
-                      encoding="utf-8") as fh:
+        with tempfile.TemporaryDirectory() as tmp, \
+                tempfile.TemporaryDirectory() as elsewhere:
+            config_path = os.path.join(tmp, "config.yml")
+            with open(config_path, "w", encoding="utf-8") as fh:
                 fh.write("http_retry:\n  attempts: 4\n  backoff_seconds: 0.1\n")
+            # The config is named, and the process runs somewhere else: the
+            # audit read the bare `"config.yml"` from its working directory
+            # until the cold review of chunk Y12, so launching it from another
+            # directory found no config and reset every policy silently.
             proc = subprocess.run(
                 [sys.executable, "-c",
+                 "import process_config; "
+                 f"process_config.DEFAULT_CONFIG_PATH = r'{config_path}'; "
                  "import serp_audit, http_retry; "
                  "print(http_retry.RETRY_ATTEMPTS)"],
-                cwd=tmp, capture_output=True, text=True,
+                cwd=elsewhere, capture_output=True, text=True,
                 env={**os.environ, "PYTHONPATH": REPO})
         self.assertEqual(proc.returncode, 0, proc.stderr[-2000:])
         self.assertEqual(proc.stdout.strip().splitlines()[-1], "4",
@@ -440,7 +448,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             db = self._db(tmp)
-            with mock.patch.object(vv, "DB_PATH", db), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", db), \
                  mock.patch.object(vv.plt, "show"), \
                  mock.patch.object(vv.plt, "savefig"):
                 captured = []
@@ -474,7 +482,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
                                    query_label="A")
             with sqlite3.connect(db) as conn:
                 conn.execute("UPDATE serp_results SET query_label = NULL")
-            with mock.patch.object(vv, "DB_PATH", db), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", db), \
                  mock.patch.object(vv.plt, "show"), \
                  mock.patch.object(vv.plt, "savefig"):
                 captured = []
@@ -494,7 +502,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
             store.save_serp_result("aborted", "half run", "organic", 1, "",
                                    "https://b/1", "b.example", "",
                                    query_label="A")
-            with mock.patch.object(vv, "DB_PATH", db):
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
                 self.assertEqual(vv.get_keywords(), [])
 
     def test_an_aborted_run_is_not_plotted(self):
@@ -502,7 +510,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             db = self._db(tmp)
-            with mock.patch.object(vv, "DB_PATH", db), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", db), \
                  mock.patch.object(vv.plt, "show"), \
                  mock.patch.object(vv.plt, "savefig"):
                 plotted = []
@@ -534,7 +542,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
             store.save_serp_result("done", "pivot kw", "organic", 1, "",
                                    "https://b/1", "b.example", "",
                                    query_label="P")
-            with mock.patch.object(vv, "DB_PATH", db):
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
                 self.assertEqual(vv.get_keywords(), [])
 
     def test_the_label_has_one_definition(self):

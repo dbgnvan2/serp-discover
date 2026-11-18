@@ -6,6 +6,7 @@ One guard per finding in
 
 Spec: docs/review_2026-11-04/REVIEW_WORKPLAN_2026-11-04.md chunk Y3
 """
+import db_connect
 import os
 import sqlite3
 import sys
@@ -50,7 +51,7 @@ def _result(store, run_id, keyword, rank, url, label="A"):
 class TestVolatilityAlwaysSaysWhy(unittest.TestCase):
 
     def test_no_database_is_a_status_not_a_none(self):
-        with mock.patch.object(metrics, "DB_PATH", "/nonexistent/x.db"):
+        with mock.patch.object(db_connect, "DATABASE_PATH", "/nonexistent/x.db"):
             out = metrics.get_volatility_metrics("run_1")
         self.assertEqual(out["status"], "no_database")
         self.assertTrue(out["msg"])
@@ -61,7 +62,7 @@ class TestVolatilityAlwaysSaysWhy(unittest.TestCase):
             store = _store(db)
             _run(store, "a", "2026-02-01T00:00:00")
             _run(store, "b", "2026-02-02T00:00:00")
-            with mock.patch.object(metrics, "DB_PATH", db):
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
                 out = metrics.get_volatility_metrics("not_a_run")
         self.assertEqual(out["status"], "run_not_found")
         self.assertIn("not_a_run", out["msg"])
@@ -70,7 +71,7 @@ class TestVolatilityAlwaysSaysWhy(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             db = os.path.join(tmp, "t.db")
             _store(db)
-            with mock.patch.object(metrics, "DB_PATH", db), \
+            with mock.patch.object(db_connect, "DATABASE_PATH", db), \
                  mock.patch.object(metrics.pd, "read_sql",
                                    side_effect=RuntimeError("no such column")):
                 out = metrics.get_volatility_metrics("run_1")
@@ -88,7 +89,7 @@ class TestVolatilityAlwaysSaysWhy(unittest.TestCase):
             _run(store, "curr", "2026-02-02T00:00:00")
             _result(store, "prev", "kw", 1, "https://a.example/1")
             _result(store, "curr", "kw", 1, "https://b.example/2")
-            with mock.patch.object(metrics, "DB_PATH", db):
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
                 out = metrics.get_volatility_metrics("curr")
         self.assertEqual(out["status"], "no_shared_urls")
         self.assertNotIn("volatility_score", out)

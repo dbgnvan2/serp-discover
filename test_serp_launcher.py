@@ -3,6 +3,9 @@ import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+import process_config
 
 from tk_probe import tkinter_usable
 
@@ -96,6 +99,12 @@ class TestSerpLauncherResolution(unittest.TestCase):
             cwd = os.getcwd()
             try:
                 os.chdir(tmpdir)
+                # The GUI reads the repo's own config.yml, not the cwd's (the
+                # cold review of chunk Y12), so the config under test has to be
+                # the one it names.
+                self.enterContext(mock.patch.object(
+                    process_config, "DEFAULT_CONFIG_PATH",
+                    os.path.join(tmpdir, "config.yml")))
                 Path("keywords.csv").write_text("estrangement\n", encoding="utf-8")
                 Path("config.yml").write_text(
                     "files:\n"
@@ -159,6 +168,10 @@ class TestConfigCommentPreservation(unittest.TestCase):
             cwd = os.getcwd()
             try:
                 os.chdir(tmpdir)
+                # As above: the GUI names the repo's config.yml.
+                self.enterContext(mock.patch.object(
+                    process_config, "DEFAULT_CONFIG_PATH",
+                    os.path.join(tmpdir, "config.yml")))
                 Path("config.yml").write_text(original, encoding="utf-8")
 
                 # Mimic the run_pipeline.py branch: load, mutate files:, save.

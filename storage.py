@@ -60,8 +60,10 @@ def _add_missing_columns(cursor, table, columns):
 
 
 class SerpStorage:
-    def __init__(self, db_path="serp_data.db"):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        # Resolved in the body, never as a default argument: that binds at
+        # `def` time, before any config has been read (review chunk Y12).
+        self.db_path = db_connect.database_path() if db_path is None else db_path
         #: What this construction changed, so a read-only consumer can say so
         #: rather than mutating the operator's history silently (cold review
         #: of chunk Y6, finding 3).
@@ -576,7 +578,7 @@ class SerpStorage:
         return result
 
 
-def migrated_connection(db_path="serp_data.db", create=False, log=None):
+def migrated_connection(db_path=None, create=False, log=None):
     """A `db_connect`-managed connection whose migrations have already run.
 
     The read-only consumers query columns that exist only after
@@ -602,6 +604,7 @@ def migrated_connection(db_path="serp_data.db", create=False, log=None):
     including a raised one (review chunk Y5), and a write made through it is
     committed rather than discarded by the close (review chunk Y9).
     """
+    db_path = db_connect.database_path() if db_path is None else db_path
     if not create and not os.path.exists(db_path):
         raise FileNotFoundError(db_path)
     store = SerpStorage(db_path)

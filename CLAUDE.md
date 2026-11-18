@@ -212,6 +212,16 @@ Editorial content currently lives in:
   the bands decide which queries count as ranking comparably, and a client whose
   pages sit deeper wants different ones. Both were Python constants (added
   review chunk Y4)
+- `config.yml` `database.path` — where the SQLite history database lives.
+  Editorial: a user may keep the history outside the repo, on another volume or
+  under a per-client directory. It was the bare literal `"serp_data.db"` at 24
+  sites in 17 modules with no config key at all, every one of them relative to
+  the current working directory, so a reader started from another directory
+  created a new empty database beside itself rather than reporting that the
+  history was missing. `db_connect` now owns the name — it is the only module
+  that contains the literal — a relative path resolves against the repo root,
+  and every call site asks `db_connect.database_path()` at call time
+  (added review chunk Y12)
 - `config.yml` `database.lock_timeout_seconds` — how long a writer waits for
   another writer's SQLite lock before the write fails with `database is
   locked`. Editorial: how long a concurrent write may block is a judgement

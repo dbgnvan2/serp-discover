@@ -20,6 +20,7 @@ Tests: tests/test_y9_a_handle_is_closed.py,
 """
 
 import logging
+import os
 import sqlite3
 from contextlib import contextmanager
 
@@ -105,6 +106,67 @@ def apply_lock_timeout(cfg: dict | None) -> float:
     return LOCK_TIMEOUT_SECONDS
 
 
+#: The database every module opens when its caller names none. It was the
+#: literal `"serp_data.db"` at 24 sites in 17 modules, with no config key at
+#: all — and every one of those literals was relative to the current working
+#: directory, so a reader run from anywhere but the repo root created a new
+#: empty database beside itself instead of reporting that the history was
+#: missing (P4/P16, review chunk Y12).
+DEFAULT_DATABASE_NAME = "serp_data.db"
+
+#: Where the path is configured, and the directory a relative one resolves
+#: against: the repo root, which is where `config.yml` lives. Tool 2 resolves
+#: its own `technical.database_path` against its config file for the same
+#: reason.
+DATABASE_PATH_SOURCE = ("database", "path")
+_REPO_ROOT = os.path.dirname(os.path.abspath(__file__))
+
+#: The resolved path. Rebound by `apply_database_path`; read through
+#: `database_path()`, never as a default argument, which binds at import.
+DATABASE_PATH = os.path.join(_REPO_ROOT, DEFAULT_DATABASE_NAME)
+
+
+def database_path() -> str:
+    """The database this process opens when the caller names none."""
+    return DATABASE_PATH
+
+
+def resolve_database_path(configured) -> str:
+    """*configured* as an absolute path, or the documented default.
+
+    A relative path resolves against the repo root rather than the current
+    working directory: `"serp_data.db"` read from the config means the one
+    database this tool keeps, not a new empty file in whatever directory the
+    script was started from.
+    """
+    if configured is None:
+        configured = DEFAULT_DATABASE_NAME
+    elif not isinstance(configured, str) or not configured.strip():
+        logger.warning(
+            "config.yml %s.%s is %r, which is not a path; using %s.",
+            DATABASE_PATH_SOURCE[0], DATABASE_PATH_SOURCE[1], configured,
+            DEFAULT_DATABASE_NAME)
+        configured = DEFAULT_DATABASE_NAME
+    configured = os.path.expanduser(configured.strip())
+    if os.path.isabs(configured):
+        return configured
+    return os.path.normpath(os.path.join(_REPO_ROOT, configured))
+
+
+def apply_database_path(cfg: dict | None) -> str:
+    """Set this process's database path from *cfg*, and return it.
+
+    Called by `process_config.apply`, like the lock wait beside it, so the one
+    function every loader of `config.yml` already calls carries this too.
+    """
+    global DATABASE_PATH
+    section_name, cfg_key = DATABASE_PATH_SOURCE
+    section = cfg.get(section_name) if isinstance(cfg, dict) else None
+    configured = section.get(cfg_key) if isinstance(section, dict) else None
+    DATABASE_PATH = resolve_database_path(configured)
+    return DATABASE_PATH
+
+
 def _safely(cleanup, what: str, db_path) -> None:
     """Run one cleanup step so it cannot replace the caller's exception.
 
@@ -124,6 +186,36 @@ def _safely(cleanup, what: str, db_path) -> None:
             what, db_path)
 
 
+#: Paths already reported as new, so the notice is one line per database per
+#: process rather than one per connection.
+_ANNOUNCED_NEW = set()
+
+
+def _announce_if_new(db_path) -> None:
+    """Say so when this is a database being created, not one being opened.
+
+    `sqlite3.connect` creates whatever path it is handed. While the name was a
+    literal that could not be wrong, this did not matter; now that
+    `database.path` is editable, a typo or an unmounted volume produces a new
+    empty history that every reader then reports as "no history yet" — a
+    mistake and a transient condition both delivered as a fact about the
+    client (P1/P2/P6, the cold review of chunk Y12).
+    """
+    try:
+        if db_path in _ANNOUNCED_NEW or os.path.exists(db_path):
+            return
+        _ANNOUNCED_NEW.add(db_path)
+        logger.warning(
+            "Creating a new, empty SQLite database at %s. If this is not where "
+            "the history should be, check config.yml %s.%s — nothing has been "
+            "read from an existing database.",
+            db_path, DATABASE_PATH_SOURCE[0], DATABASE_PATH_SOURCE[1])
+    except (TypeError, ValueError, OSError):
+        # A path-like this check cannot stat is `sqlite3.connect`'s problem to
+        # report, not a reason to fail before it gets there.
+        pass
+
+
 @contextmanager
 def connection(db_path, **kwargs):
     """A connection to *db_path*: committed on success, always closed.
@@ -135,6 +227,7 @@ def connection(db_path, **kwargs):
     that names its own is still honoured.
     """
     kwargs.setdefault("timeout", lock_timeout())
+    _announce_if_new(db_path)
     conn = sqlite3.connect(db_path, **kwargs)
     try:
         yield conn

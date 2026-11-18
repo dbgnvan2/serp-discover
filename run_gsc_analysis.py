@@ -43,6 +43,7 @@ from statistics import median
 import gsc_client
 import gsc_demand
 
+import db_connect
 import process_config
 import yaml
 
@@ -269,7 +270,7 @@ def _load_env() -> None:
                     os.environ.setdefault(k.strip(), v.strip())
 
 
-def _load_config(config_path: str = "config.yml") -> dict:
+def _load_config(config_path: str | None = None) -> dict:
     """The config, with the outbound retry policy applied to this process.
 
     Every entry point that makes outbound calls applies it, not just
@@ -278,6 +279,11 @@ def _load_config(config_path: str = "config.yml") -> dict:
     setting at all (P5 — a class of calls is configured together, review
     chunk Y4's cold review).
     """
+    # No path named means the repo's own config.yml, not the cwd's: the
+    # default was the bare `"config.yml"`, so starting the tool from
+    # another directory found no config and reset every policy, the
+    # configured database among them (the cold review of chunk Y12).
+    config_path = process_config.config_path(config_path)
     if not os.path.exists(config_path):
         process_config.apply(None)
         apply_sponge_thresholds(None)
@@ -989,11 +995,15 @@ def main(argv: list[str] | None = None) -> int:
                         help="Path to market_analysis_*.json (default: latest)")
     parser.add_argument("--out", default=None,
                         help="Output markdown path (sidecar JSON uses the same base name)")
-    parser.add_argument("--db", default="serp_data.db", help="SQLite database path (cache)")
-    parser.add_argument("--config", default="config.yml", help="Config path")
+    parser.add_argument("--db", default=None,
+                        help="SQLite database path (cache); default: the "
+                             "configured database.path")
+    parser.add_argument("--config", default=None, help="Config path")
     args = parser.parse_args(argv)
 
     config = _load_config(args.config)
+    # After the loader, so `database.path` is in force (review chunk Y12).
+    db_path = args.db if args.db else db_connect.database_path()
     ok, message = check_preconditions(config)
     if not ok:
         print(message)
@@ -1015,7 +1025,7 @@ def main(argv: list[str] | None = None) -> int:
             logger.warning("%s", warning)
         client = GscClient(
             property_url=gsc_cfg.get("property", ""),
-            db_path=args.db,
+            db_path=db_path,
             cache_ttl_days=int(gsc_cfg.get("cache_ttl_days", 7)),
             filters=query_filters,
         )
@@ -1027,7 +1037,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         report, sidecar = run_analysis(data, config, client, json_path,
-                                       db_path=args.db)
+                                       db_path=db_path)
     except RuntimeError as exc:
         logger.error("%s", exc)
         return 1
