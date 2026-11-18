@@ -356,7 +356,8 @@ def compute_foundational_score(analysis_data: dict,
     Returns::
 
         {
-          "score": float,                 # 0–100, rounded to one decimal
+          "score": float | None,          # 0–100, or None — nothing measured
+          "score_reason": str | None,     # WHY there is no composite
           "subscores": {sub: value|None}, # value 0–100 or None (n/a)
           "gaps": {sub: [str, ...]},      # top 2–3 concrete gaps per sub-score
           "weights_used": {sub: float},
@@ -367,6 +368,10 @@ def compute_foundational_score(analysis_data: dict,
 
     n/a sub-scores are EXCLUDED and the weights of the present sub-scores are
     renormalised so the score stays 0–100 (Spec Y.12.2) — never counted as 0.
+    With NO sub-score measured, or with every configured weight at zero, the
+    score is ``None`` and ``score_reason`` says which: a 0.0 there was a
+    measurement nobody made, and it was written to the trend table (review
+    chunk Y3).
     Deterministic given inputs (Spec Y.12.1).
     """
     weights = weights or dict(DEFAULT_WEIGHTS)
@@ -391,16 +396,48 @@ def compute_foundational_score(analysis_data: dict,
     excluded = [sub for sub in SUBSCORES if subscores[sub] is None]
 
     weight_sum = sum(weights.get(sub, 0.0) for sub in present)
-    if not present or weight_sum <= 0:
-        score = 0.0
+    score: float | None
+    score_reason: str | None = None
+    if not present:
+        # Nothing was measured, so there is no composite. 0.0 here was printed
+        # as "0.0/100" and written to the trend table as a real row, so the
+        # next run's Δ was measured against a number nobody measured — the
+        # thing this function's own docstring forbids for a single axis
+        # (P1/P6, review chunk Y3).
+        score = None
+        score_reason = av_messages.line(
+            "foundational_no_subscore",
+            "none of the three sub-scores could be measured this run")
+    elif weight_sum <= 0:
+        # A configuration error, not a measurement: the axes were measured and
+        # the weights discard all of them. Which error it is matters — telling
+        # the owner "every weight is zero" when they weighted one axis that
+        # happened to be unmeasurable this run is false, and `resolve_weights`
+        # makes the all-zero case unreachable from config anyway (cold review
+        # of chunk Y3).
+        score = None
+        if all(float(weights.get(sub, 0.0) or 0.0) <= 0 for sub in SUBSCORES):
+            score_reason = av_messages.line(
+                "foundational_no_weight",
+                "every configured weight is zero, so the weighted mean has no "
+                "basis")
+        else:
+            _measured = ", ".join(_SUB_LABELS.get(sub, sub)
+                                  for sub in SUBSCORES if sub in present)
+            score_reason = av_messages.line(
+                "foundational_measured_axes_unweighted",
+                "the only sub-score(s) measured this run ({measured}) carry "
+                "zero weight, so there is nothing to average",
+                measured=_measured)
     else:
-        score = sum(
+        score = round(sum(
             max(0.0, min(100.0, present[sub])) * (weights.get(sub, 0.0) / weight_sum)
             for sub in present
-        )
+        ), 1)
 
     return {
-        "score": round(score, 1),
+        "score": score,
+        "score_reason": score_reason,
         "subscores": subscores,
         "gaps": gaps,
         "reasons": {"structure": str_reason},
@@ -521,23 +558,39 @@ def render_foundational_section(result: dict, trend: list[dict] | None = None
     subs = result.get("subscores", {})
     delta = "—"
     trend = trend or []
-    if len(trend) >= 2 and trend[-1].get("score") is not None \
-            and trend[-2].get("score") is not None:
+    if len(trend) >= 2:
         # A definition change is not a readiness delta (cold-review finding 6):
         # rows written before D3b hold a structure value read off the enriched
         # top-10, so the two scores measure different things and their
-        # difference means nothing.
+        # difference means nothing. Stated whether or not both scores are
+        # present, because the incomparability is a fact about the two rows,
+        # not about this run's score (cold review of chunk Y3).
         if trend[-1].get("definition_version", 1) \
                 != trend[-2].get("definition_version", 1):
             delta = av_messages.line(
                 "foundational_delta_definition_changed",
                 "n/a — the structure sub-score changed definition since the "
                 "prior run, so the two scores are not comparable")
-        else:
+        elif trend[-1].get("score") is not None \
+                and trend[-2].get("score") is not None:
             delta = f"{trend[-1]['score'] - trend[-2]['score']:+.1f}"
 
-    out.append(f"**Foundational readiness: {result.get('score', 0):.1f}/100** "
-               f"(Δ prior {delta})")
+    _score = result.get("score")
+    if _score is None:
+        line = av_messages.line(
+            "foundational_score_not_measured",
+            "**Foundational readiness: not measured** — {reason}",
+            reason=(result.get("score_reason")
+                    or "nothing was measured this run"))
+        if delta != "—":
+            # There is no Δ for THIS run, but a trend the reader can see may
+            # still carry a note of its own (a definition change), and that
+            # note is not replaced by this run being unmeasured.
+            line = f"{line} (Δ prior {delta})"
+        out.append(line)
+    else:
+        out.append(f"**Foundational readiness: {_score:.1f}/100** "
+                   f"(Δ prior {delta})")
     out.append("")
     out.append("| Sub-score | Value |")
     out.append("|-----------|-------|")

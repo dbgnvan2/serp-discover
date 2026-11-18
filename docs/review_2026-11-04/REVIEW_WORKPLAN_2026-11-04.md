@@ -801,7 +801,13 @@ is the second: the page fetch had no retry while every other outbound call in
 the tool had one, so a single connection reset filed a page as permanently
 unreachable, and three of the four reasons a GSC demand section shows no
 run-over-run Δ printed as a first run
-(`docs/review_2026-11-04/PLAN_Y2_transient_is_not_terminal.md`). The
+(`docs/review_2026-11-04/PLAN_Y2_transient_is_not_terminal.md`). Chunk Y3 is the third:
+a figure the run did not measure must not print as a number, and a row the run
+dropped must be counted where the reader can see it — report section 6
+disappeared on four reasons it had already built the wording for, a
+foundational readiness nobody measured printed as 0.0 and entered the trend
+table, and one unreadable validation rule disabled every validation rule
+(`docs/review_2026-11-04/PLAN_Y3_a_zero_is_a_measurement.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

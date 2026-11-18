@@ -161,12 +161,31 @@ def build_citation_table(answers: list[dict], client_domain: str,
 
 def top_cited_domains(table: list[dict], limit: int = 5) -> list[tuple[str, int]]:
     """Aggregate cite counts by domain → the outreach shortlist (Spec Y.8.4)."""
+    return unattributed_citations(table)[0][:limit]
+
+
+def unattributed_citations(table: list[dict]) -> tuple[
+        list[tuple[str, int]], int, int]:
+    """``(domain counts, citations with no readable host, total citations)``.
+
+    A URL the parser could not read a host from is skipped — it cannot be an
+    outreach target — but the count is returned so the section can say so.
+    Dropping it silently built the shortlist over fewer citations than the
+    table above it lists (P2, review chunk Y3).
+    """
     counts: dict[str, int] = {}
+    dropped = 0
+    total = 0
     for row in table:
+        cites = int(row.get("cite_count") or 0)
+        total += cites
         dom = row["domain"]
         if dom:
-            counts[dom] = counts.get(dom, 0) + row["cite_count"]
-    return sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:limit]
+            counts[dom] = counts.get(dom, 0) + cites
+        else:
+            dropped += cites
+    ordered = sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))
+    return ordered, dropped, total
 
 
 def citations_axis(table: list[dict]) -> float:
@@ -263,7 +282,24 @@ def render_citation_section(engine: str, table: list[dict],
             f"| {index} | {row['url']} | {row['domain']} | {row['category']} "
             f"| {brand}{flag} | {row['cite_count']} |"
         )
+    if len(table) > top_n:
+        # P2 — the table is truncated, so the reader is told by how much
+        # rather than reading the top 40 as the whole citation set.
+        out.append("")
+        out.append(f"*Showing the {top_n} most-cited of {len(table)} "
+                   f"distinct cited URLs.*")
+    _ordered, _dropped, _total = unattributed_citations(table)
     shortlist = top_cited_domains(table)
+    if _dropped:
+        # Outside the shortlist block: when NOTHING could be attributed there
+        # is no shortlist, and that is the case this count exists for (cold
+        # review of chunk Y3).
+        out.append("")
+        out.append(
+            f"*{_dropped} of {_total} citation(s) carry no readable host and "
+            f"are not in the outreach shortlist"
+            + ("—so this engine's answers produced no outreach target at all.*"
+               if not _ordered else ".*"))
     if shortlist:
         joined = ", ".join(f"{dom} ({n})" for dom, n in shortlist)
         out.append("")

@@ -135,6 +135,24 @@ lines:
     no schema contexts are configured in schema_recommendations.yml, so
     there is nothing to measure the client's markup against
   foundational_subscore_reason: "*{label}: {reason}.*"
+  # Nothing was measured, so there is no composite. A 0.0 here read as a
+  # client that scores zero on every axis, and it was written to the trend
+  # table, so the next run's Δ was computed against it (review chunk Y3).
+  foundational_score_not_measured: >-
+    **Foundational readiness: not measured** — {reason}
+  foundational_no_subscore: >-
+    none of the three sub-scores could be measured this run, so there is
+    no composite to report
+  foundational_no_weight: >-
+    every configured weight in `foundational.weights` is zero, so the
+    weighted mean has no basis — set at least one weight above zero
+  # The reachable case: `resolve_weights` replaces an all-zero config with
+  # equal thirds, so what actually happens is that the axes measured this run
+  # are the ones carrying zero weight (cold review of chunk Y3).
+  foundational_measured_axes_unweighted: >-
+    the only sub-score(s) measured this run ({measured}) carry zero weight in
+    `foundational.weights`, so there is nothing to average — give one of them
+    a weight, or read the sub-score table below on its own
   foundational_delta_definition_changed: >-
     n/a — the structure sub-score changed definition since the prior run
     (it now reads the client's own page, not the enriched top-10), so the

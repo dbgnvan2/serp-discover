@@ -68,12 +68,22 @@ def _incomplete_history_msg(skipped):
 
 def get_volatility_metrics(current_run_id):
     """
-    Compares the current run against the immediate previous run to calculate rank volatility.
-    Returns a dictionary of metrics or None if insufficient history.
+    Compares the current run against the immediate previous run to calculate
+    rank volatility.
+
+    Always returns a dict carrying ``status``. On ``"success"`` it carries the
+    figures; on every other status it carries ``msg``, the reason the caller
+    renders in its place: ``no_database``, ``insufficient_history``,
+    ``run_not_found``, ``empty_data``, ``no_shared_urls``, ``query_failed``.
+    Four of those used to be a bare ``None``, and report section 6 then
+    vanished with no note, which reads as "the market did not move" rather
+    than "this run could not be compared" (P1/P2, review chunk Y3).
     """
     if not os.path.exists(DB_PATH):
-        return None
+        return {"status": "no_database",
+                "msg": f"no history database at {DB_PATH} yet."}
 
+    conn = None
     try:
         conn = sqlite3.connect(DB_PATH)
 
@@ -90,7 +100,12 @@ def get_volatility_metrics(current_run_id):
         current_run_date_row = runs_df[runs_df['run_id'] == current_run_id]
         if current_run_date_row.empty:
             conn.close()
-            return None
+            # Every exit carries a status and a msg: the caller renders the
+            # reason, and a bare None made report section 6 vanish with no
+            # note at all (P2, review chunk Y3).
+            return {"status": "run_not_found",
+                    "msg": (f"run {current_run_id} is not in the run history, "
+                            f"so there is nothing to compare it against.")}
 
         current_date = current_run_date_row.iloc[0]['run_date']
 
@@ -151,6 +166,19 @@ def get_volatility_metrics(current_run_id):
         # Positive means improved (rank went down numerically)
         merged['rank_delta'] = merged['rank_prev'] - merged['rank_curr']
 
+        if merged.empty:
+            # No (keyword, url) pair is in both runs, so the mean below would
+            # be NaN and the section printed its heading and nothing else.
+            # Not a volatility of zero: nothing was compared (P1).
+            return {"status": "no_shared_urls",
+                    "msg": ("no URL ranked for the same keyword in both runs, "
+                            "so there is no rank change to measure. The SERP "
+                            "turned over completely, or the two runs covered "
+                            "different keywords."),
+                    "comparability_warning": comparability_warning,
+                    "keywords_current": sorted(current_keywords),
+                    "keywords_previous": sorted(previous_keywords)}
+
         # Volatility Score (Average absolute change)
         volatility_score = merged['rank_delta'].abs().mean()
 
@@ -178,7 +206,17 @@ def get_volatility_metrics(current_run_id):
 
     except Exception as e:
         logging.error(f"Error calculating volatility: {e}")
-        return None
+        # Every other exit closes the connection; this one leaked it, and a
+        # leaked sqlite handle is how a later write meets "database is locked"
+        # (cold review of chunk Y3).
+        try:
+            if conn is not None:
+                conn.close()
+        except Exception:
+            pass
+        return {"status": "query_failed",
+                "msg": (f"the volatility query failed ({e}); the figures could "
+                        f"not be computed for this run.")}
 
 
 #: Why a result set is not comparable, for callers to render instead of

@@ -355,6 +355,7 @@ Any provider with the `anthropic` or `openai` dialect works. Google models are r
 **Process:**
 - Re-reads JSON SERP data (does NOT re-fetch)
 - Re-applies classification rules with updated domain overrides to `organic_results` in the JSON and to the `Organic_Results` sheet in the XLSX
+- Prints, for each of the two files, how many rows carry no usable domain (a Google redirect wrapper or a blank link) and therefore keep their existing `Entity_Type`. Those rows are not counted as updated on either side: the "N rows updated" figures are the rows actually written. The workbook also says so when it is missing, has no `Organic_Results` sheet, or lacks one of the Link / Source / Entity_Type columns — "0 rows updated" otherwise reads as "nothing needed changing"
 - Rebuilds `keyword_profiles` from the re-classified rows — the entity counts, the entity distribution and the AI-Overview citation analysis are all derived from them — and prints how many profiles changed
 - Regenerates `domain_override_candidates.md`
 
@@ -1129,7 +1130,7 @@ The main report. It opens with what to write and works backwards to the evidence
 | 3. The Words Competitors Use | Vocabulary already on the results page |
 | 4. Strategic Recommendations | The Bowen argument the page should make, with how much of the page set carries each pattern's trigger words |
 | 5–5f | The underlying data: competitor mix, intent, feasibility, AI Overview exposure, commodity risk |
-| 6. Market Volatility | Rank movement since the last run of the same keywords |
+| 6. Market Volatility | Rank movement since the last run of the same keywords. When it cannot be measured the section says why — no completed previous run, no primary-query rows, or no URL ranked for the same keyword in both runs — rather than disappearing |
 | **A. Glossary** | Plain-English definition of every term of art used above, plus where every band and weight in the report came from |
 
 **How to use:** read Section 1, write the page, and drop into the numbered
@@ -1802,7 +1803,12 @@ transferable *inputs* (a leading indicator that does not). The empirical evidenc
 says fix these foundations before chasing any single engine — they are the only
 work that lifts all engines together. A sub-score with no captured data shows
 `n/a` and is dropped from the average (never counted as zero), and the score is
-stored each run so you can watch it climb.
+stored each run so you can watch it climb. When *all three* sub-scores are
+`n/a` — or every weight in `foundational.weights` is zero — the headline reads
+"**Foundational readiness: not measured**" with the reason. A row is still
+stored for the run — the run happened — but with no score, so no Δ is ever
+computed against it. It used to read "0.0/100" and store that zero, so the
+next run's Δ was measured against a number nobody measured.
 
 **What "the client's own pages" means for the structure sub-score.** It is
 measured strictly from the markup on *your* pages, and your page has to be in

@@ -148,7 +148,10 @@ class TestVolatility(unittest.TestCase):
             _result(store, "run_curr", "kw_new", 1, url="https://example.com/a")
             with patch.object(metrics, "DB_PATH", db_path):
                 result = metrics.get_volatility_metrics("run_curr")
-        self.assertEqual(result["status"], "success")
+        # The two runs share a URL but not a keyword, so the merge is empty.
+        # This used to be status "success" with a NaN score, and report
+        # section 6 printed its heading and nothing else (review chunk Y3).
+        self.assertEqual(result["status"], "no_shared_urls")
         self.assertIn("non-identical keyword sets", result["comparability_warning"])
 
     def test_aborted_prior_run_reports_how_many_were_skipped(self):

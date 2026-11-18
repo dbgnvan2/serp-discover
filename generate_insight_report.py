@@ -2088,57 +2088,72 @@ def generate_report(data, db_path=None, run_ts=None):
         lambda: demand_dashboard.build_dashboard(_kp, config, db_path=db_path)))
 
     # Section 6 — Market Volatility (RC.7 — suppress or explain non-comparable runs)
-    if METRICS_AVAILABLE:
-        _overview = data.get("overview", [])
-        _run_id = _overview[0].get("Run_ID") if _overview else None
-        if _run_id:
-            vol = metrics.get_volatility_metrics(_run_id)
-            if vol and vol.get("status") == "success":
-                report.append("## 6. Market Volatility")
+    _overview = data.get("overview", [])
+    _run_id = _overview[0].get("Run_ID") if _overview else None
+    if not METRICS_AVAILABLE:
+        # The section disappeared on these two gates too, which is the same
+        # "the market did not move" misreading (cold review of chunk Y3).
+        report.append("## 6. Market Volatility")
+        report.append("**Not measured for this run:** the volatility metrics "
+                      "module could not be imported in this environment "
+                      "(pandas or matplotlib missing).")
+        report.append("\n")
+    elif not _run_id:
+        report.append("## 6. Market Volatility")
+        report.append("**Not measured for this run:** the overview rows carry "
+                      "no Run_ID, so this run cannot be matched against the "
+                      "run history.")
+        report.append("\n")
+    else:
+        vol = metrics.get_volatility_metrics(_run_id)
+        if vol and vol.get("status") != "success":
+            # Every reason there is no volatility figure is printed. The
+            # section used to render only on success, so a run with no
+            # completed baseline, an unknown run id or a failed query
+            # produced no section at all and the `msg` the metric built
+            # for the reader reached nothing (P2, review chunk Y3).
+            report.append("## 6. Market Volatility")
+            report.append(
+                f"**Not measured for this run:** "
+                f"{vol.get('msg') or vol.get('status')}")
+            if vol.get("comparability_warning"):
+                report.append(
+                    f"**Comparability Warning:** "
+                    f"{vol['comparability_warning']}")
+            if vol.get("keywords_current") or vol.get("keywords_previous"):
+                report.append(_render_volatility_keyword_sets(vol))
+            report.append("\n")
+        elif vol and vol.get("status") == "success":
+            report.append("## 6. Market Volatility")
 
-                # RC.7 — Handle nan or null volatility scores
-                vol_score = vol.get("volatility_score")
-                is_nan = (
-                    vol_score is None or
-                    str(vol_score).lower() == "nan" or
-                    (isinstance(vol_score, float) and vol_score != vol_score)  # NaN check
-                )
+            # The empty-merge case is `no_shared_urls` above, and the
+            # ranks are dropna'd before the merge, so a success result
+            # cannot carry a NaN score any more. The branch that used to
+            # handle it could print the heading and a blank line when the
+            # keyword sets matched but every URL moved — the bug this
+            # chunk fixes (cold review of chunk Y3).
+            vol_score = vol.get("volatility_score")
+            if vol_score is not None:
+                # Valid score: render as normal
+                report.append(
+                    f"**Volatility Score:** {vol_score} (Avg rank change)")
+                report.append(
+                    f"**Stable URLs:** {vol['stable_urls_count']} / {vol['total_compared']}")
+                if vol.get("comparability_warning"):
+                    report.append(f"**Comparability Warning:** {vol['comparability_warning']}")
 
-                if is_nan and vol.get("comparability_warning"):
-                    report.append("**Not applicable for this run.**\n")
-                    report.append(
-                        "Volatility requires two runs with the same keyword set. "
-                        "This run used a different keyword set than the previous run:\n"
-                    )
-                    # D4.5: the metric returns sorted lists; render them as
-                    # a readable line rather than a Python list repr, and say
-                    # "not recorded" only when the key really is absent (a
-                    # result from an older metrics build).
-                    report.append(_render_volatility_keyword_sets(vol))
-                    report.append(
-                        "Run again with the same keywords to establish a baseline for rank change tracking."
-                    )
-                elif not is_nan and vol_score is not None:
-                    # Valid score: render as normal
-                    report.append(
-                        f"**Volatility Score:** {vol_score} (Avg rank change)")
-                    report.append(
-                        f"**Stable URLs:** {vol['stable_urls_count']} / {vol['total_compared']}")
-                    if vol.get("comparability_warning"):
-                        report.append(f"**Comparability Warning:** {vol['comparability_warning']}")
+                if vol.get('winners'):
+                    report.append("\n### 🚀 Top Movers (Winners)")
+                    for w in vol['winners']:
+                        report.append(
+                            f"- **{w['url']}** (+{w['rank_delta']} positions) for '{w['keyword_text']}'")
 
-                    if vol.get('winners'):
-                        report.append("\n### 🚀 Top Movers (Winners)")
-                        for w in vol['winners']:
-                            report.append(
-                                f"- **{w['url']}** (+{w['rank_delta']} positions) for '{w['keyword_text']}'")
-
-                    if vol.get('losers'):
-                        report.append("\n### 🔻 Top Movers (Losers)")
-                        for l in vol['losers']:
-                            report.append(
-                                f"- **{l['url']}** ({l['rank_delta']} positions) for '{l['keyword_text']}'")
-                report.append("\n")
+                if vol.get('losers'):
+                    report.append("\n### 🔻 Top Movers (Losers)")
+                    for l in vol['losers']:
+                        report.append(
+                            f"- **{l['url']}** ({l['rank_delta']} positions) for '{l['keyword_text']}'")
+            report.append("\n")
 
     # A. Glossary (CD.4) — appended last so it can be built from the finished body:
     # only terms the reader actually met above get defined, and the glossary's own

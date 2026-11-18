@@ -167,8 +167,10 @@ class TestNaRenormalization(unittest.TestCase):
         self.assertIsNone(r["subscores"]["structure"])
         self.assertIsNone(r["subscores"]["authority"])
         self.assertEqual(set(r["excluded"]), {"accessibility", "structure", "authority"})
-        # No present sub-score → score 0.0 (nothing measurable), not fabricated.
-        self.assertEqual(r["score"], 0.0)
+        # No present sub-score → no composite at all. 0.0 printed as
+        # "0.0/100" and went into the trend table (review chunk Y3).
+        self.assertIsNone(r["score"])
+        self.assertIn("sub-score", r["score_reason"])
 
     def test_na_axis_excluded_not_zero(self):
         # Y.12.2 — structure present (100), accessibility n/a, authority present

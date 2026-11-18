@@ -306,6 +306,23 @@ Section 6 renders the keyword sets of a non-comparable volatility run from
 `keywords_current` / `keywords_previous`; it printed "unknown" for two keys
 `metrics.get_volatility_metrics` never returned.
 
+**Section 6 always says why there is no figure (review chunk Y3).**
+`get_volatility_metrics` returns a `status` on every path — `no_database`,
+`insufficient_history`, `run_not_found`, `empty_data`, `no_shared_urls`,
+`query_failed` — each with the `msg` the section prints in place of the
+figures. Four of those used to be a bare `None` and the section rendered only
+on `success`, so the whole section disappeared: a run with no completed
+baseline read as a market that did not move. `no_shared_urls` is the case
+where the two runs share no (keyword, URL) pair: the mean of an empty frame is
+NaN, and the section printed its heading and a blank line.
+
+**A foundational readiness of zero is a measurement (review chunk Y3).**
+`foundational_score.compute_foundational_score` returns `score: None` with a
+`score_reason` when none of its three sub-scores could be measured, or when
+every configured weight is zero. It returned `0.0`, which was printed as
+"0.0/100" and written to the `foundational_score` table as a real row, so the
+next run's Δ was measured against a number nobody measured.
+
 The Section-4 "Why this pattern fired" block quotes up to three competitor
 titles containing a pattern trigger. It read `title` / `domain`; `serp_audit.py`
 writes `Title` / `Link` / `Source`, so it never rendered on real data. It is
@@ -594,6 +611,15 @@ block, because the claim is per keyword and so is the evidence; the run-wide
 form of the rule remains for demand language written outside any keyword's
 section.
 
+Each field's rule is parsed in its own `try`, so a bad tolerance or an
+unreadable pattern costs that one check and not the rest — one `except` around
+the whole loop used to discard the fields already built and the
+`market_size_phrases` list with them. Which checks did not run is recorded on
+the loaded rules (`load_error` for the file, `fields_skipped` for individual
+rules) and `validate_llm_report` states it as an issue, so the brief's
+`.validation.md` says a check was inactive instead of leaving a brief that
+passed nothing looking like a brief that passed everything (review chunk Y3).
+
 *Spec: review_2026-11-04 D4.16 (D-M-27). Implemented 2026-11-17.*
 
 ### One home for the `# Content Briefs` assembly
@@ -830,7 +856,7 @@ Results persist per question in the SQLite table `ai_visibility_probes` (`run_ts
 These four read-side metrics are computed from the answers the probe already fetched — **no new engine calls** except Y.9's opt-in sentiment classification. They live in dedicated pure modules and are orchestrated by `probe_ai_visibility.run_report_enrichment`, which persists per-engine rows and returns the report sections. The one principled tension (an LLM extraction step, in tension with "deterministic Python computes; the LLM writes") is reconciled per decision gate Y-D7: **the LLM output is treated as a measured input, stored verbatim; Python computes every count, rank, and percentage.** A deterministic gazetteer pass runs first and both LLM steps are OFF by default.
 
 - **Competitor mention leaderboard (`brand_mentions.py`, Y.7).** Yoast's report ranked brands by how often the AI *named* them in answer text — many without any link — which our domain-based `competitors_cited` detection misses entirely. Two passes: a deterministic, case-insensitive, whole-word **gazetteer** match (from `known_brands` + the recurring competitor `Source` labels in the latest `market_analysis_*.json`), then a **gated LLM pass** (`brand_mentions.llm_extraction`, default off) that lists organisation names to fill unknowns. LLM-surfaced brands not already in `known_brands` are written to `brand_mentions_candidates_<topic>_<ts>.md` for manual promotion (same candidate-review pattern as `domain_override_candidates.md` from `generate_domain_override_candidates.py`). Python aggregates a mention-count leaderboard (ties broken alphabetically — deterministic) and computes the client's own rank (or "not mentioned"). Persisted per engine to `brand_mentions`. The client's normalised rank (rank 1 → 100, unranked → 0) is AIVI's Ranking axis.
-- **Categorized, brand-attributed citation table (`citation_table.py`, Y.8).** Every source URL is recorded once with a `cite_count` (identical URLs de-duplicated; **tracking params retained verbatim** — `?utm_source=openai` identifies the surfacing engine and must not be stripped), a domain, a **category from the existing content/entity classifier** (`classifiers.EntityClassifier.classify(domain, None)` over `classification_rules.json` + `domain_overrides.yml` — deliberately *not* a parallel category list; the `publisher` entity type + `publisher_domains` list were added to those editorial files, and the classifier's soup-less "not determined" sentinel maps to the Yoast-style `other` bucket), an attributed brand (gazetteer/domain match; `null` when unknown), and an `is_client` flag. Persisted to `ai_citations`. Client-owned citations as a share of the total (cite-count-weighted) are AIVI's Citations axis; a "top cited domains for this topic" shortline doubles as an outreach target list.
+- **Categorized, brand-attributed citation table (`citation_table.py`, Y.8).** Every source URL is recorded once with a `cite_count` (identical URLs de-duplicated; **tracking params retained verbatim** — `?utm_source=openai` identifies the surfacing engine and must not be stripped), a domain, a **category from the existing content/entity classifier** (`classifiers.EntityClassifier.classify(domain, None)` over `classification_rules.json` + `domain_overrides.yml` — deliberately *not* a parallel category list; the `publisher` entity type + `publisher_domains` list were added to those editorial files, and the classifier's soup-less "not determined" sentinel maps to the Yoast-style `other` bucket), an attributed brand (gazetteer/domain match; `null` when unknown), and an `is_client` flag. Persisted to `ai_citations`. Client-owned citations as a share of the total (cite-count-weighted) are AIVI's Citations axis; a "top cited domains for this topic" shortline doubles as an outreach target list. A citation whose URL yields no readable host cannot be an outreach target, so it is not in the shortlist — but the count is printed beside it ("N of M citation(s) carry no readable host"), and the table states "showing the 40 most-cited of N" when it truncates. Both were silent drops (P2, review chunk Y3).
 - **Per-brand sentiment + aspect keywords (`answer_sentiment.py`, Y.9).** OFF by default (`sentiment.enabled: false`, gate Y-D8): a disabled run makes **zero** sentiment calls, the report states "sentiment not measured", and AIVI excludes the axis (principle 3). When enabled, one LLM classification per answer that mentions the client or top competitor returns a polarity label + verbatim positive/negative aspect phrases (stored as a measured input); **Python computes `% positive`**. Each call counts against `ai_visibility.max_total_calls`. Persisted to `answer_sentiment`. The client's `% positive` is AIVI's Sentiment axis (or `None` → n/a when disabled/unmeasured). When sentiment is enabled, an own-brand **negative-sentiment alert** (D5/AV.5.2) surfaces in the report whenever the client is portrayed negatively in one or more answers this run — reporting the count, the engines, and the recurring verbatim negative aspect phrases — and stays silent (never fabricated) when sentiment is off or no negative client answer was measured.
 - **AI Visibility Index (`aivi.py`, Y.6).** A single 0–100 headline per engine (plus an all-engine average), computed by Python from the four normalised axes above using `config.yml aivi.weights` (default equal 25% each, gate Y-D6; malformed/missing weights fall back to equal with a warning — never a hardcoded score). An unmeasured axis is excluded and the remaining weights renormalise, so an absent axis is never counted as 0. Persisted per engine to `ai_visibility_index` (UTC `run_ts`, trendable); the report shows the headline, the four axis values (`n/a` where excluded), the prior-run delta, and the snapshot caveat — a text/4-value radar equivalent, no chart dependency. Because citation overlap between engines is empirically low, AIVI is reported strictly per engine — a high score on one engine is not a high score on all.
 

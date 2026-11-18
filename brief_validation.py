@@ -17,6 +17,13 @@ from play_rendering import load_play_vocab as _load_play_vocab
 logger = logging.getLogger(__name__)
 
 
+#: Marks an issue that is about the TOOL, not the brief: a validation rule
+#: that could not be read. `partition_validation_issues` routes these to the
+#: notes, because the correction loop cannot fix a YAML file and an abort
+#: would mean an unreadable editorial file stops every brief — the opposite of
+#: what `load_validation_rules` promises (cold review of chunk Y3).
+INACTIVE_CHECK_PREFIX = "Validation checks were inactive:"
+
 DEFAULT_RULES_PATH = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "brief_validation_rules.yml")
 
@@ -31,16 +38,45 @@ def load_validation_rules(path: str | None = None) -> dict:
     A missing or malformed file degrades to no numeric rules and says so once,
     rather than aborting a run — but it never degrades silently, because a rule
     that is off is indistinguishable from a brief that passed it (P6).
+
+    Each field is parsed in its own ``try``, so one bad rule costs that rule
+    and not the rest; the result carries ``load_error`` (the file) and
+    ``fields_skipped`` (the individual rules, `market_size_phrases` included)
+    and ``patterns_dropped`` (a rule kept on fewer phrasings than the file
+    declares), which `validate_llm_report` states in the brief's
+    `.validation.md` prefixed with ``INACTIVE_CHECK_PREFIX`` so the issue is
+    carried as a note rather than sent to the correction loop (review chunk
+    Y3 and its cold review).
     """
     global _RULES_CACHE
     if _RULES_CACHE is not None and path is None:
         return _RULES_CACHE
-    rules = {"numeric_claims": {}, "market_size_phrases": []}
+    rules = {"numeric_claims": {}, "market_size_phrases": [],
+             "load_error": None, "fields_skipped": []}
     try:
         with open(path or DEFAULT_RULES_PATH, "r", encoding="utf-8") as fh:
             raw = yaml.safe_load(fh) or {}
-        claims = {}
-        for field, spec in (raw.get("numeric_claims") or {}).items():
+    except Exception as exc:
+        # The file itself. Everything below depends on it, so this is the one
+        # failure that does take every check with it — and it is now stated on
+        # the result, not only in the log (P6, review chunk Y3).
+        rules["load_error"] = (
+            f"{INACTIVE_CHECK_PREFIX} brief_validation_rules.yml did not load "
+            f"({exc}), so the numeric-claim and demand-language checks did not "
+            f"run on this brief.")
+        logger.warning("%s", rules["load_error"])
+        if path is None:
+            _RULES_CACHE = rules
+        return rules
+
+    claims = {}
+    skipped = []
+    dropped: dict[str, int] = {}
+    for field, spec in (raw.get("numeric_claims") or {}).items():
+        # Per field, so a bad tolerance on the fourth of five fields costs
+        # that field. One `except` around the whole loop discarded the fields
+        # already built and the demand phrases with them (review chunk Y3).
+        try:
             pats = []
             for pat in (spec or {}).get("patterns") or []:
                 try:
@@ -56,19 +92,39 @@ def load_validation_rules(path: str | None = None) -> dict:
                                    field, pat)
                     continue
                 pats.append(compiled)
-            if pats:
-                claims[field] = {
-                    "label": str((spec or {}).get("label") or field),
-                    "tolerance": float((spec or {}).get("tolerance") or 0),
-                    "patterns": pats,
-                }
-        rules["numeric_claims"] = claims
+            declared = len((spec or {}).get("patterns") or [])
+            if not pats:
+                skipped.append(str(field))
+                continue
+            if declared > len(pats):
+                # The field is checked, but on fewer phrasings than the file
+                # declares, and 1-of-3 read in the sidecar exactly like 3-of-3
+                # (cold review of chunk Y3).
+                dropped[str(field)] = declared - len(pats)
+            claims[field] = {
+                "label": str((spec or {}).get("label") or field),
+                "tolerance": float((spec or {}).get("tolerance") or 0),
+                "patterns": pats,
+            }
+        except Exception as exc:
+            logger.warning("brief_validation_rules.yml: the %s rule did not "
+                           "load (%s) — that one check is inactive; the "
+                           "others are unaffected.", field, exc)
+            skipped.append(str(field))
+
+    rules["numeric_claims"] = claims
+    rules["fields_skipped"] = sorted(skipped)
+    rules["patterns_dropped"] = dropped
+    try:
         rules["market_size_phrases"] = [
             str(x) for x in (raw.get("market_size_phrases") or [])]
     except Exception as exc:
-        logger.warning("brief_validation_rules.yml did not load (%s): the "
-                       "numeric-claim and demand-language checks are inactive "
-                       "for this process.", exc)
+        logger.warning("brief_validation_rules.yml: market_size_phrases did "
+                       "not load (%s) — the demand-language check is "
+                       "inactive; the numeric checks are unaffected.", exc)
+        # Recorded, not only logged: it is one of the checks the sidecar
+        # claims to account for (cold review of chunk Y3).
+        rules["fields_skipped"] = sorted(skipped + ["market_size_phrases"])
     if path is None:
         _RULES_CACHE = rules
     return rules
@@ -324,6 +380,23 @@ def validate_llm_report(report_text, extracted_data):
     ) or sum(1 for q in extracted_data.get("queries", []) if q.get("has_ai_overview"))
 
     _rules = load_validation_rules()
+    if _rules.get("load_error"):
+        # The sidecar says which checks did not run. A check that is off is
+        # indistinguishable from a brief that passed it (P6, review chunk Y3).
+        issues.append(_rules["load_error"])
+    elif _rules.get("fields_skipped"):
+        issues.append(
+            f"{INACTIVE_CHECK_PREFIX} these rules in "
+            f"brief_validation_rules.yml could not be read, so the figures "
+            f"they cover were not checked against the data: "
+            + ", ".join(_rules["fields_skipped"]) + ".")
+    if _rules.get("patterns_dropped"):
+        issues.append(
+            f"{INACTIVE_CHECK_PREFIX} some phrasings of these rules in "
+            f"brief_validation_rules.yml could not be read, so the check ran "
+            f"on fewer phrasings than the file declares: "
+            + ", ".join(f"{field} ({n} dropped)" for field, n
+                        in sorted(_rules["patterns_dropped"].items())) + ".")
     # One row per keyword, primary label only: a pivot row ("P") measures a
     # different keyword and its DA must not be compared against this one.
     _feasibility_by_keyword = {}
@@ -847,9 +920,15 @@ def has_hard_validation_failures(validation_issues):
 def partition_validation_issues(validation_issues):
     blocking = []
     notes = []
+    inactive = _normalize_text(INACTIVE_CHECK_PREFIX)
     for issue in validation_issues:
         normalized = _normalize_text(issue)
-        if "contradicts keyword_profiles.entity_label" in normalized:
+        if inactive in normalized:
+            # About the tool, not the brief. A correction prompt cannot fix a
+            # YAML file, and sending it there spent a second LLM call and then
+            # aborted the run (cold review of chunk Y3).
+            notes.append(issue)
+        elif "contradicts keyword_profiles.entity_label" in normalized:
             notes.append(issue)
         elif "contradicts keyword_profiles.mixed_intent_strategy" in normalized:
             notes.append(issue)

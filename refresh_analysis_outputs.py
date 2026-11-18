@@ -64,7 +64,12 @@ def refresh_json(json_path, classifier):
     rows = data.get("organic_results", [])
     for row in rows:
         if not normalize_domain(row.get("Link") or row.get("Source")):
+            # Not counted as updated: the row keeps the type it had, and
+            # calling it updated made the JSON figure mean something different
+            # from the workbook figure over the same data (P5/P6, cold review
+            # of chunk Y3).
             unclassifiable += 1
+            continue
         new_type = classify_domain_for_row(classifier, row)
         old_type = row.get("Entity_Type", "N/A")
         row["Entity_Type"] = new_type
@@ -78,18 +83,24 @@ def refresh_json(json_path, classifier):
               f"usable domain (a Google redirect wrapper or a blank link) and "
               f"keep their existing Entity_Type.")
 
-    with open(json_path, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
+    # No write here. This pass classifies; `refresh_analysis_outputs` writes
+    # once, through `_write_json_atomically`. The direct `json.dump` that used
+    # to be here truncated the live file first — the exact window that helper
+    # exists to close — and the caller then wrote the same data again
+    # (review chunk Y3).
     return data, updated, changed
 
 
 def refresh_xlsx(xlsx_path, classifier):
     if not os.path.exists(xlsx_path):
+        print(f"  no workbook at {xlsx_path}, so no workbook row was "
+              f"re-classified.")
         return 0, 0
 
     wb = openpyxl.load_workbook(xlsx_path)
     if "Organic_Results" not in wb.sheetnames:
+        print(f"  {xlsx_path} has no Organic_Results sheet, so no workbook "
+              f"row was re-classified.")
         return 0, 0
 
     ws = wb["Organic_Results"]
@@ -98,10 +109,16 @@ def refresh_xlsx(xlsx_path, classifier):
     source_col = headers.get("Source")
     entity_col = headers.get("Entity_Type")
     if not link_col or not source_col or not entity_col:
+        # "0 rows updated" reads as "nothing needed changing"; the workbook
+        # was never read (P2, cold review of chunk Y3).
+        print(f"  {xlsx_path} Organic_Results is missing one of the Link / "
+              f"Source / Entity_Type columns, so no workbook row was "
+              f"re-classified.")
         return 0, 0
 
     updated = 0
     changed = 0
+    skipped = 0
     for row_idx in range(2, ws.max_row + 1):
         link = ws.cell(row=row_idx, column=link_col).value
         source = ws.cell(row=row_idx, column=source_col).value
@@ -109,8 +126,10 @@ def refresh_xlsx(xlsx_path, classifier):
         domain = normalize_domain(link or source)
         if not domain:
             # No domain to classify; overwriting with "N/A" would turn an
-            # unknown into a measured negative (P1).
-            updated += 1
+            # unknown into a measured negative (P1). Counted as skipped, not
+            # updated: nothing was written to this row, and calling it updated
+            # overstated what the refresh did (P6, review chunk Y3).
+            skipped += 1
             continue
         new_type, _confidence, _evidence = classifier.classify(domain, None)
         new_type = new_type or "N/A"
@@ -120,6 +139,11 @@ def refresh_xlsx(xlsx_path, classifier):
             changed += 1
 
     wb.save(xlsx_path)
+    if skipped:
+        # The same line the JSON pass prints, so the two sides of one refresh
+        # account for their rows the same way (P2).
+        print(f"  {skipped} of {skipped + updated} workbook row(s) carry no "
+              f"usable domain and keep their existing Entity_Type.")
     return updated, changed
 
 
@@ -206,6 +230,15 @@ def refresh_analysis_outputs(json_path, xlsx_path, overrides_path, candidates_re
                           f"in {json_path} still describe the previous "
                           f"taxonomy.")
         print(f"  WARNING: {profiles_error}")
+        # The re-classified rows still have to reach disk: `refresh_json` no
+        # longer writes, so this is the only write on this path.
+        try:
+            _write_json_atomically(json_path, data)
+        except Exception as write_exc:
+            profiles_error += (f" The re-classified rows could not be written "
+                               f"either ({write_exc}): {json_path} is "
+                               f"unchanged.")
+            print(f"  WARNING: {json_path} could not be written: {write_exc}")
     else:
         try:
             _write_json_atomically(json_path, data)
