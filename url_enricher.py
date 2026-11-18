@@ -71,12 +71,36 @@ class UrlEnricher:
         self.eeat_scan_chars = int(eeat_scan_chars)
 
     def fetch_url(self, url):
+        """Fetch *url* and return what was read, or why it was not.
+
+        HEAD first (to skip downloading a PDF body), then GET.
+
+        Returns a dict. On success it carries `status_code`, `headers`,
+        `content` and `is_pdf`. When the page was not read it carries `error`
+        and `retryable`, because the two outcomes are different facts:
+
+        - `retryable: True` — every attempt failed at the network layer: a
+          timeout, a connection reset, a resolver that did not answer. The
+          page may well read on the next run, and `http_retry` has already
+          retried with backoff.
+        - `retryable: False` — no request could be made at all: a URL that
+          cannot be turned into a request, or a redirect loop
+          (`http_retry.PERMANENT_REQUEST_ERRORS`). Retrying changes nothing.
+
+        Before review chunk Y2 this returned `None` for both and the row read
+        "Unreachable" either way (P1), and the GET had no retry at all while
+        every other outbound call in the tool had one (P5). The split between
+        the two came from the cold review of that chunk: retrying a malformed
+        URL spent `attempts × timeout` to reach the same answer and then told
+        the reader to try again.
         """
-        Fetches URL and returns response object.
-        Tries HEAD first, then GET if content-type is HTML.
-        """
+        import http_retry
+        from http_retry import get_with_transient_retry
+
         try:
-            # Try HEAD first to check content type
+            # HEAD is best-effort: many servers block it, and a failure here
+            # costs nothing because the GET below is the real attempt. It is
+            # deliberately not retried.
             try:
                 head_resp = requests.head(
                     url, headers=self.headers, timeout=self.timeout, allow_redirects=True)
@@ -95,9 +119,15 @@ class UrlEnricher:
             except requests.RequestException:
                 pass  # Fallback to GET if HEAD fails (some servers block HEAD)
 
-            # GET request
-            response = requests.get(
-                url, headers=self.headers, timeout=self.timeout)
+            response = get_with_transient_retry(
+                "page fetch", url, self.headers,
+                batch_desc=url, timeout=self.timeout)
+            if response is None:
+                # Every attempt failed at the network layer. `http_retry` has
+                # already logged each one.
+                return {'url': url, 'status_code': None, 'headers': {},
+                        'content': None, 'is_pdf': False,
+                        'error': 'network', 'retryable': True}
             return {
                 'url': url,
                 'status_code': response.status_code,
@@ -105,9 +135,24 @@ class UrlEnricher:
                 'content': response.content,
                 'is_pdf': False
             }
+        except http_retry.PERMANENT_REQUEST_ERRORS as e:
+            # A URL requests cannot even form a request for, or a redirect
+            # loop. `http_retry` re-raises these rather than retrying.
+            logging.warning(f"Cannot request {url}: {e}")
+            return {'url': url, 'status_code': None, 'headers': {},
+                    'content': None, 'is_pdf': False,
+                    'error': str(e) or e.__class__.__name__,
+                    'retryable': False}
         except Exception as e:
+            # A defect in this path, not an answer about the page. Reported as
+            # not retryable, and the message names the class so `error` is
+            # never the empty string an `enrich_row` gate would read as "no
+            # error" (cold review of chunk Y2).
             logging.warning(f"Error fetching {url}: {e}")
-            return None
+            return {'url': url, 'status_code': None, 'headers': {},
+                    'content': None, 'is_pdf': False,
+                    'error': str(e) or e.__class__.__name__,
+                    'retryable': False}
 
     def extract_features(self, fetch_result):
         """

@@ -365,7 +365,32 @@ def get_demand_trend(db_path, property_, limit=5) -> list[dict]:
 _BAND_LABEL = {"below_avg": "below average", "avg": "average", "top": "top"}
 
 
-def render_demand_section(score, trend=None) -> list[str]:
+def _trend_messages() -> dict:
+    """The `demand_trend` block of `gsc_messages.yml`, or `{}`.
+
+    The words for every "there is no Δ, and here is why" case. Editorial, so
+    they live in the messages file like every other GSC fetch-outcome word.
+    """
+    try:
+        from gsc_client import load_messages
+    except ImportError:                     # pragma: no cover
+        return {}
+    try:
+        return (load_messages() or {}).get("demand_trend") or {}
+    except Exception as exc:                # noqa: BLE001
+        logger.warning("gsc_messages.yml demand_trend not loaded: %s", exc)
+        return {}
+
+
+def render_demand_section(score, trend=None, trend_error=None) -> list[str]:
+    """The branded-demand section.
+
+    `trend_error` is the reason there is no trend when the history could not
+    be read or written, as opposed to there being no history yet. The two
+    looked identical in the report until review chunk Y2: a persistence
+    failure was caught, logged and the section rendered with no trend line at
+    all, so a reader saw the same thing as a first run (P2/P6).
+    """
     out: list[str] = []
     out.append("## Branded vs Non-Branded Demand")
     out.append(
@@ -437,7 +462,16 @@ def render_demand_section(score, trend=None) -> list[str]:
     )
     if score["matched_patterns"]:
         out.append(f"- **Matched brand patterns:** {', '.join(score['matched_patterns'])}.")
-    if trend and len(trend) >= 2:
+    if trend_error or not trend or len(trend) < 2:
+        # Every reason there is no Δ is stated. Printing no Δ line at all was
+        # indistinguishable from a first run, and three of the four reasons are
+        # a configuration gap or a failed write (cold review of chunk Y2).
+        messages = _trend_messages()
+        reason = trend_error or messages.get("first_run") or "no history yet"
+        line = messages.get("line")
+        out.append(line.format(reason=str(reason).rstrip(". ")).strip()
+                   if line else f"- *No run-over-run Δ: {reason}.*")
+    elif trend and len(trend) >= 2:
         latest, prior = trend[-1], trend[-2]
         basis = latest.get("band_basis", "tracked")
         if prior.get("band_basis", "tracked") != basis:

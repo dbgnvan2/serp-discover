@@ -300,11 +300,19 @@ display_stop_words:
 fetch_status:
   enriched: "Enriched"
   blocked: "Blocked ({status})"
+  # No request could be made at all: an unparseable URL or a redirect
+  # loop. Retrying cannot change the answer.
   unreachable: "Unreachable"
+  # Every attempt failed at the network layer after the retries — a
+  # timeout, a reset, a host that did not resolve. This page may be
+  # readable on the next run, which "Unreachable" denied (review chunk Y2).
+  fetch_retryable: "Not Read (network, retry)"
   not_attempted: "Not Fetched"
   not_destination_page: "Not The Ranked Page"
   blocked_warning: >-
-    {blocked} of {attempted} pages were not read (error status or
-    unreachable); their page-level figures read Not Measured rather than zero
+    {blocked} of {attempted} pages were not read (an error status, a network
+    failure after the retries, or no request possible at all — the rows' own
+    Fetch_Status says which); their page-level figures read Not Measured
+    rather than zero
   no_url: "No URL"
   enrichment_disabled: "Enrichment Off"

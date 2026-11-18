@@ -585,10 +585,21 @@ def _classify_paa_intent(paa_rows):
 
 #: Fetch states meaning "we never read this page's body", with the
 #: plain-English reason each one is. Keyed by enrichment.py's states.
+#: Every `enrichment` state that means "this page was not read", with the
+#: reason in the words the brief prints. A state missing from here falls to
+#: the `elif state: read += 1` branch below and is counted as a page that WAS
+#: read, so the brief is told its signals were measured over more pages than
+#: they were. `fetch_retryable` (added with the state in review chunk Y2) and
+#: `not_destination_page` were both missing. A guard now asserts this dict
+#: holds every unread state `enrichment` defines, so the next one cannot be
+#: added in one place only.
 _UNREAD_FETCH_STATES = {
     "blocked": "the site returned an error status",
+    "fetch_retryable": "every attempt failed at the network layer",
     "unreachable": "the page could not be reached",
     "not_attempted": "the per-run page budget stopped before this rank",
+    "not_destination_page": "the link resolved to the site root, not the "
+                            "ranked page",
     "no_url": "the row carried no URL",
     "enrichment_disabled": "page enrichment was switched off for this run",
 }

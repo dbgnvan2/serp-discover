@@ -91,6 +91,20 @@ INPUT_FILE = (os.environ.get("SERP_INPUT_CSV", "").strip()
               or CONFIG.get("files", {}).get("input_csv", "keywords.csv"))
 
 
+def _unread_fetch_count(fetch_outcomes) -> int:
+    """How many of this keyword's pages were not read.
+
+    Counts every state in `enrichment.FAILED_FETCH_STATES`: a retryable
+    network exhaustion is a page the run did not read just as a 403 is, and
+    leaving one out is how the warning could say "0 of 10 pages were not read"
+    on a run where nothing was read at all. Derived from that tuple rather than
+    listed here, so a new failure state is counted the moment it exists
+    (review chunk Y2 and its cold review).
+    """
+    return sum(int(fetch_outcomes.get(state, 0) or 0)
+               for state in enrichment.FAILED_FETCH_STATES)
+
+
 def _derive_output_slug(input_csv):
     """Return a normalized lowercase slug from the keyword CSV filename.
 
@@ -1546,8 +1560,7 @@ def _run(run_id):
                     # P2 — "N of M pages blocked" reaches a reader, not only
                     # the log. parsing_warnings is the project's channel for
                     # what the run could not read.
-                    unread = (fetch_outcomes.get(enrichment.BLOCKED, 0)
-                              + fetch_outcomes.get(enrichment.UNREACHABLE, 0))
+                    unread = _unread_fetch_count(fetch_outcomes)
                     attempted = unread + fetch_outcomes.get(
                         enrichment.ENRICHED, 0)
                     if unread:

@@ -65,3 +65,26 @@ lines:
   band_short_of_rows: >-
     insufficient data (needs ≥{needed} queries per bucket; {not_reached}
     queries were never reached, so this may be a fetch gap, not the client's)
+
+# Why the branded-demand section has no run-over-run Δ. Printing nothing was
+# indistinguishable from a first run, and three of the four reasons are
+# configuration or a failed write, not an absence of history (review chunk Y2
+# and its cold review). Rendered by gsc_demand.render_demand_section.
+demand_trend:
+  write_failed: >-
+    this run's branded share could not be recorded or read back ({reason}), so
+    there is no history to compare against
+  no_property: >-
+    `gsc.property` is not set, so nothing can be filed under a property and no
+    history accumulates — set it and the Δ appears from the run after next
+  no_database: >-
+    this run had no database path, so the branded share was not recorded
+  no_run_timestamp: >-
+    the run timestamp could not be read from the analysis filename, so the
+    share could not be filed against a run
+  first_run: >-
+    this is the first run recorded for this property, so there is nothing to
+    compare against yet
+  line: >-
+    - *No run-over-run Δ: {reason}. The share above is this run's own
+    measurement and is unaffected.*

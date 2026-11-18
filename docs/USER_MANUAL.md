@@ -916,14 +916,15 @@ There is a second reason a row reads Not Measured, and the new
 |---|---|---|
 | `Enriched` | The page was read. | Nothing — the page-level figures are real. |
 | `Blocked (403)` / `(429)` / `(503)` | The site answered with an error or a bot challenge instead of the page. | Nothing is wrong with your analysis; the site refused this reader. The figures read Not Measured rather than zero. Re-running later often works, since a block is usually temporary. |
-| `Unreachable` | The request failed outright (timeout, DNS, connection refused). | As above — re-run; the site may have been down. |
+| `Not Read (network, retry)` | Every attempt failed at the network layer — a timeout, a connection reset, a host that did not resolve — after the fetch had already retried with backoff. | Re-run. This is a fact about the attempt, not about the page: it says nothing about the site, and the page may read fine next time. Several of these in one run usually means your own connection. |
+| `Unreachable` | No request could be made at all — a URL the fetcher cannot form a request for (no scheme, an unparseable address) or a redirect loop. | Retrying will not help. Check the URL on the SERP row. |
 | `Not Fetched` | The result ranked below the enrichment cap (`technical.max_urls_to_enrich`), so the page was never asked for. | Raise the cap if you need page-level detail further down the SERP. |
 | `Not The Ranked Page` | Google hid the destination URL (see above). | Nothing — the site-level findings stand. |
 | `No URL` | The result carried no link at all. | Nothing — there was nothing to fetch. |
 | `Not Enriched (disabled)` | Page enrichment was switched off for this run (`technical.enrichment_enabled`). | Switch it on if you want page-level detail. |
 
 Beside the words there is a machine-readable **`Fetch_State`** column
-(`enriched`, `blocked`, `unreachable`, `not_attempted`,
+(`enriched`, `blocked`, `fetch_retryable`, `unreachable`, `not_attempted`,
 `not_destination_page`, `no_url`, `enrichment_disabled`). The words in
 `Fetch_Status` are editable in `serp_vocab.yml`; anything that filters or
 counts rows reads `Fetch_State`, so re-wording a status never changes a

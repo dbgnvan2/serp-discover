@@ -18,14 +18,38 @@ import logging
 
 from pattern_matching import SERP_VOCAB
 
-# The four outcomes a row can report, plus the recovered-link case.
+#: The states a row's `Fetch_State` can carry. `UNREAD_STATES` below is the
+#: subset that means the page was not read; `brief_data_extraction` is checked
+#: against it, because a state it does not know is counted as a page that was
+#: read (review chunk Y2's cold review).
 ENRICHED = "enriched"
 BLOCKED = "blocked"
+#: No request could be made at all: an unparseable URL or a redirect loop
+#: (`http_retry.PERMANENT_REQUEST_ERRORS`). Retrying cannot change it.
 UNREACHABLE = "unreachable"
+#: Every fetch attempt failed at the network layer after `http_retry`'s
+#: retries — a timeout, a reset, a host that did not resolve. The page may
+#: well be readable on the next run, which `UNREACHABLE` denied (P1, review
+#: chunk Y2).
+FETCH_RETRYABLE = "fetch_retryable"
 NOT_ATTEMPTED = "not_attempted"
 NOT_DESTINATION_PAGE = "not_destination_page"
 NO_URL = "no_url"
 DISABLED = "enrichment_disabled"
+
+#: Everything except `ENRICHED`: the page was not read, for one reason or
+#: another, and its page-level figures read `Not Measured` rather than zero.
+UNREAD_STATES = (BLOCKED, FETCH_RETRYABLE, UNREACHABLE, NOT_ATTEMPTED,
+                 NOT_DESTINATION_PAGE, NO_URL, DISABLED)
+
+#: The subset of `UNREAD_STATES` where the run tried to read the page and did
+#: not get it. The "N of M pages were not read" warning counts these and not
+#: the rest: a row past the enrichment rank cap, a row with no URL and a run
+#: with enrichment switched off were never meant to be read, and counting them
+#: would fire the warning on almost every run. `fetch_retryable` belongs here
+#: — it was missing, so a run where every page timed out could warn about 0
+#: (review chunk Y2 and its cold review).
+FAILED_FETCH_STATES = (BLOCKED, FETCH_RETRYABLE, UNREACHABLE)
 
 #: What a row's page-level fields read when the page was not read. The same
 #: string the recovered-link path already used, so one unmeasured state has
@@ -43,13 +67,16 @@ _DEFAULTS = {
     ENRICHED: "Enriched",
     BLOCKED: "Blocked ({status})",
     UNREACHABLE: "Unreachable",
+    FETCH_RETRYABLE: "Not Read (network, retry)",
     NOT_ATTEMPTED: "Not Fetched",
     NOT_DESTINATION_PAGE: "Not The Ranked Page",
     NO_URL: "No URL",
     DISABLED: "Enrichment Off",
-    "blocked_warning": ("{blocked} of {attempted} pages were not read "
-                        "(error status or unreachable); their page-level "
-                        "figures read Not Measured rather than zero"),
+    "blocked_warning": ("{blocked} of {attempted} pages were not read (an "
+                        "error status, a network failure after the retries, "
+                        "or no request possible at all — the rows' own "
+                        "Fetch_Status says which); their page-level figures "
+                        "read Not Measured rather than zero"),
 }
 
 
@@ -103,8 +130,17 @@ def enrich_row(item, url, rank_val, max_urls_to_enrich, enricher,
 
     fetch_res = enricher.fetch_url(url)
     if not fetch_res:
-        # fetch_url logged the exception and returned None.
+        # Older injected enrichers (and tests) still return None.
         return _mark_unmeasured(item, UNREACHABLE)
+    if "error" in fetch_res:
+        # A network failure after every retry is a fact about the attempt; a
+        # URL no request can be formed from is a fact about the row. The row
+        # said "Unreachable" for both until review chunk Y2, so a run on a bad
+        # connection read as a permanent verdict on every page it touched, and
+        # a reader had no way to know a re-run would change it (P1).
+        return _mark_unmeasured(
+            item,
+            FETCH_RETRYABLE if fetch_res.get("retryable") else UNREACHABLE)
 
     status = fetch_res.get("status_code")
     if status is None or int(status) >= ERROR_STATUS_FLOOR:

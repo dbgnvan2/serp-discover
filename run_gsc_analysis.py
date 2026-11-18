@@ -377,10 +377,25 @@ def _pct(value) -> str:
     return f"{value:.1%}" if value is not None else "—"
 
 
+def _trend_reason(key: str, **values) -> str:
+    """One `gsc_messages.yml` `demand_trend` reason, or a plain fallback.
+
+    Three of the four reasons the branded-demand section has no Δ are a
+    configuration gap or a failed write, not an absence of history, and the
+    report printed nothing for all of them (cold review of chunk Y2).
+    """
+    template = gsc_demand._trend_messages().get(key) or key.replace("_", " ")
+    try:
+        return str(template).format(**values)
+    except (KeyError, IndexError, ValueError, TypeError):
+        return str(template)
+
+
 def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
                     config: dict, source_json: str, date_range: tuple[str, str],
                     demand_score: dict | None = None,
                     demand_trend: list | None = None,
+                    demand_trend_error: str | None = None,
                     fetch_complete: bool = True,
                     filters: dict | None = None,
                     thresholds: dict | None = None) -> str:
@@ -443,7 +458,8 @@ def generate_report(rows: list[dict], sponge: dict, candidates: list[dict],
     lines.append("")
 
     if demand_score is not None:
-        lines.extend(gsc_demand.render_demand_section(demand_score, demand_trend))
+        lines.extend(gsc_demand.render_demand_section(
+            demand_score, demand_trend, trend_error=demand_trend_error))
 
     lines.append("## The sponge table — does an AI Overview soak up clicks?")
     lines.append(
@@ -712,6 +728,7 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
         property_rows=getattr(stats, "property_rows", None),
         filters={**_filters, "text": gsc_client.filters_text(_filters)})
     demand_trend = None
+    demand_trend_error = None
     run_ts = gsc_demand.run_ts_from_filename(source_json)
     property_ = (config.get("gsc", {}) or {}).get("property")
     if db_path and run_ts and property_:
@@ -721,16 +738,27 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
             demand_trend = gsc_demand.get_demand_trend(db_path, property_)
         except Exception as exc:   # persistence must never break the report
             logger.warning("gsc_demand persistence failed: %s", exc)
+            # ... but the report must not then read like a first run. The
+            # section says why there is no Δ rather than printing no Δ line
+            # (P2/P6, review chunk Y2).
+            demand_trend_error = _trend_reason(
+                "write_failed", reason=str(exc) or exc.__class__.__name__)
     elif db_path and run_ts and not property_:
         # Without a property the (property, run_ts) idempotency key matches on NULL
         # and every re-run would append duplicates — skip + warn, render still fires.
         logger.warning("gsc.property is not set — skipping gsc_demand persistence "
                        "(the demand section still renders).")
+        demand_trend_error = _trend_reason("no_property")
+    elif not db_path:
+        demand_trend_error = _trend_reason("no_database")
+    elif not run_ts:
+        demand_trend_error = _trend_reason("no_run_timestamp")
 
     filters = _filters
     report = generate_report(rows, sponge, candidates, config, source_json,
                              date_range, demand_score=demand_score,
                              demand_trend=demand_trend,
+                             demand_trend_error=demand_trend_error,
                              fetch_complete=stats.complete and not unreached,
                              filters=filters, thresholds=_thresholds)
     sidecar = build_sidecar(rows, sponge, candidates, config, source_json,
