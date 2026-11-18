@@ -38,3 +38,12 @@ def serpapi_timeout(config):
     section = config.get("serpapi") if isinstance(config, dict) else None
     value = section.get("timeout_seconds") if isinstance(section, dict) else None
     return seconds_from_config(value, DEFAULT_SERPAPI_TIMEOUT_SECONDS, "serpapi.timeout_seconds")
+
+
+# The config keys this module governs, named here so a caller that needs to
+# know which settings are refused at zero can read the fact off the loader
+# rather than keeping a second list (P32). `http_retry` names its own three
+# timeout keys in `TIMEOUT_SOURCES`; this is the one that is not in that
+# table because `serp_audit` reads it through `serpapi_timeout` directly.
+# Added review chunk Y8: the GUI offered a floor of 0 for it.
+GOVERNED_FIELDS = (("serpapi", "timeout_seconds"),)

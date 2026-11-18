@@ -44,6 +44,13 @@ Functions to move from `serp_audit.py`:
 
 Module-level globals moving with this file: `SERPAPI_AVAILABLE`/`GoogleSearch` import guard, `SERPAPI_CALL_COUNT`, `RETRY_MAX_ATTEMPTS`, `RETRY_BACKOFF_BASE`, `API_KEY`.
 
+**Partly done (review chunk Y8, 2026-11-18):** the fetch loop now lives in
+`serp_fetch.py`. The call counter moved with it and is `serp_fetch.CALL_COUNT`,
+read through `serp_fetch.call_count()`; `SERPAPI_CALL_COUNT` no longer exists.
+The retry budget is not a `serp_audit` global either — it is read per call from
+`http_retry.serpapi_retry_attempts()` / `serpapi_retry_backoff()` (review chunk
+Y7), so `RETRY_MAX_ATTEMPTS` / `RETRY_BACKOFF_BASE` are gone too.
+
 External callers of `fetch_serp_data` and `save_raw_json`: only `main()` in `serp_audit.py`. No other modules import these.
 
 ---

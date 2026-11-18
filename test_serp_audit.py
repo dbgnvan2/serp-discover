@@ -1,6 +1,7 @@
 import unittest
 from unittest.mock import patch, MagicMock, mock_open
 import serp_audit
+import serp_fetch
 import serp_checkpoint
 import json
 import os
@@ -658,13 +659,13 @@ class TestSerpAudit(unittest.TestCase):
     @patch("serp_audit.GoogleSearch")
     @patch.object(serp_audit, "SERPAPI_AVAILABLE", True)
     def test_fetch_serp_api_increments_call_counter(self, mock_search_cls):
-        serp_audit.SERPAPI_CALL_COUNT = 0
         mock_search = MagicMock()
         mock_search.get_dict.return_value = {"organic_results": []}
         mock_search_cls.return_value = mock_search
+        _before = serp_fetch.call_count()
         result = serp_audit._fetch_serp_api({"engine": "google", "q": "test"})
         self.assertEqual(result, {"organic_results": []})
-        self.assertEqual(serp_audit.SERPAPI_CALL_COUNT, 1)
+        self.assertEqual(serp_fetch.call_count(), _before + 1)
 
     @patch("os.path.exists", return_value=False)
     @patch("pandas.read_csv")

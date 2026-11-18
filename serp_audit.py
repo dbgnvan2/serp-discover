@@ -26,6 +26,7 @@ import pipeline_status
 import brief_validation
 import brief_data_extraction
 import serp_checkpoint
+import serp_fetch
 import link_recovery
 import timeouts
 from run_feasibility import (  # requests errors carry api_key in the URL
@@ -40,6 +41,7 @@ try:
 except ImportError:
     GoogleSearch = None
     SERPAPI_AVAILABLE = False
+
 
 try:
     import moz_client as moz_client_mod   # write_metrics: see the Moz/DA pass
@@ -219,7 +221,9 @@ if os.path.exists(_omitted_path):
     except Exception as e:
         print(f"Warning: Could not load omitted domains from {_omitted_path}: {e}")
 
-SERPAPI_CALL_COUNT = 0
+# The counter lives with the loop that increments it (`serp_fetch.CALL_COUNT`,
+# review chunk Y8). Keeping a second one here is how a run reports a call count
+# that is not the number of calls it made (P6).
 
 
 def _env_bool(name, default=False):
@@ -357,74 +361,34 @@ def setup_logging(run_id):
     )
 
 
-def _fetch_serp_api(params):
-    """Internal function to query SerpApi with retry logic."""
-    global SERPAPI_CALL_COUNT
-    if not SERPAPI_AVAILABLE:
-        logging.error(
-            "SerpApi client library is not installed. Install dependencies with: pip install -r requirements.txt"
-        )
-        return None
+def _fetch_serp_api(params, status_out=None):
+    """One SerpAPI call through `serp_fetch`.
 
-    # Redact API Key for logging
-    log_params = params.copy()
-    if "api_key" in log_params:
-        log_params["api_key"] = "REDACTED"
-    logging.info(f"API Call Parameters: {json.dumps(log_params, indent=2)}")
-    stored = serp_checkpoint.lookup(params)  # resume: a call already paid for
-    if stored is not None:
-        # Recovered on the way out, not on the way in: the checkpoint keeps
-        # SerpAPI's response as it arrived, so a resumed run and a fresh one
-        # see the same recovered links.
-        link_recovery.recover_response(stored)
-        return stored
-    max_attempts = http_retry.serpapi_retry_attempts()
-    for attempt in range(1, max_attempts + 1):
-        try:
-            SERPAPI_CALL_COUNT += 1
-            logging.info(f"SerpApi Call Count: {SERPAPI_CALL_COUNT}")
-            search = GoogleSearch(dict(params))  # the client adds fields to what it is given
-            search.timeout = SERPAPI_TIMEOUT_SECONDS  # the constructor takes no timeout
-            results = search.get_dict()
-            logging.info(f"API Return Message: {json.dumps(results, indent=2)}")
-            if "error" in results:
-                error_text = str(results["error"]).lower()
-                # Quota/auth errors never succeed on retry — fail fast
-                # instead of burning paid attempts (seo_geo_review C.6).
-                # A bad parameter is settled, not transient: retrying it
-                # spends the clock and the search allowance to be told the
-                # same thing (P1 in reverse).
-                non_retryable = (
-                    "invalid api key", "unauthorized", "account",
-                    "run out of searches", "out of searches", "plan limit",
-                    "unsupported", "not supported", "invalid location",
-                    "missing query", "invalid parameter", "unrecognized",
-                )
-                if any(marker in error_text for marker in non_retryable):
-                    logging.error(
-                        f"API Error (non-retryable, aborting): {results['error']}"
-                    )
-                    return None
-                logging.error(f"API Error (attempt {attempt}): {results['error']}")
-                if attempt == max_attempts:
-                    return None
-            else:
-                serp_checkpoint.save(params, results)  # raw, as SerpAPI sent it
-                link_recovery.recover_response(results)
-                return results
-        except Exception as e:
-            logging.error(
-                f"Fetch error (attempt {attempt}) for query '{params.get('q', 'N/A')}': {_scrub_secrets(e)}"
-            )
-            if attempt == max_attempts:
-                logging.critical(
-                    f"CRITICAL ERROR fetching with params {params.get('q')}: {_scrub_secrets(e)}"
-                )
-                return None
-        sleep_s = (http_retry.serpapi_retry_backoff() * (2 ** (attempt - 1))
-                   + random.uniform(0, 0.2))
-        time.sleep(sleep_s)
-    return None
+    *status_out*, when given, receives ``fetch_status`` — one of
+    `serp_fetch`'s ``STATUS_*`` words for the outcome.
+
+    The loop itself lives in `serp_fetch` (review chunk Y8): it has its own
+    failure taxonomy — a transport error is retried, a fault in this process
+    is not, because every attempt costs a paid call — and this module is at
+    its line ceiling. The client and the availability flag are passed rather
+    than read there, so a caller that has replaced either on this module is
+    honoured.
+    """
+    results, status = serp_fetch.fetch_with_status(
+        params,
+        timeout_seconds=SERPAPI_TIMEOUT_SECONDS,
+        client=GoogleSearch,
+        available=SERPAPI_AVAILABLE,
+    )
+    if status_out is not None:
+        # One seam for every call site, so a caller that replaces this
+        # function replaces all of them; the outcome comes back through a
+        # mapping the caller owns rather than a second function or a module
+        # global (P28). Six outcomes returned a bare `None`, so a fault in
+        # this tool and a dead host were both recorded as "no SERP data
+        # returned" (cold review of chunk Y8).
+        status_out["fetch_status"] = status
+    return results
 
 
 def _extract_text_blocks_text(item):
@@ -500,22 +464,29 @@ def fetch_serp_data(keyword, run_id):
         primary_params, sort_keys=True).encode()).hexdigest()
 
     logging.info(f"  - Fetching main SERP for '{query_term}'...")
-    primary_results = _fetch_serp_api(primary_params)
+    _primary = {}
+    primary_results = _fetch_serp_api(primary_params, status_out=_primary)
+    primary_status = _primary.get("fetch_status")
 
     # Metadata capture
     created_at = datetime.now().isoformat()
     google_url = "N/A"
 
     if not primary_results:
-        # Even on failure, we return metadata structure
-        return {}, aio_log, {"run_id": run_id, "created_at": created_at, "google_url": "N/A", "params_hash": params_hash}
+        # Even on failure, we return metadata structure — carrying which
+        # failure it was, so the run summary does not file a fault in this
+        # tool as a missing SERP (cold review of chunk Y8).
+        return {}, aio_log, {"run_id": run_id, "created_at": created_at,
+                             "google_url": "N/A", "params_hash": params_hash,
+                             "fetch_status": primary_status}
 
     google_url = primary_results.get(
         "search_metadata", {}).get("google_url", "N/A")
 
     # Bundle metadata for downstream processing
     query_metadata = {"run_id": run_id, "created_at": created_at,
-                      "google_url": google_url, "params_hash": params_hash}
+                      "google_url": google_url, "params_hash": params_hash,
+                      "fetch_status": primary_status}
 
     # Fetch additional Google pages, then merge.
     google_pages = [primary_results]
@@ -1483,8 +1454,15 @@ def _run(run_id):
         all_aio_logs.append(aio_log)
 
         if not raw_data_dict:
-            failed_queries.append({"query": keyword, "source_keyword": source_keyword,
-                                   "reason": "no SERP data returned"})
+            failed_queries.append({
+                "query": keyword, "source_keyword": source_keyword,
+                # The outcome the fetch reported, not one word for all six:
+                # a resumed run re-pays a call per keyword, so "a fault in
+                # this tool" and "the host never answered" are different
+                # facts to the person deciding whether to resume (P2/P9).
+                "reason": serp_fetch.status_text(
+                    query_metadata.get("fetch_status")
+                    or serp_fetch.STATUS_TRANSPORT_FAILED)})
         if raw_data_dict:
             m, o, p, e, c, lp, ac, sm, rf, pw = parse_data(
                 keyword, raw_data_dict, query_metadata)
@@ -2168,7 +2146,7 @@ def _run(run_id):
     except Exception as e:
         logging.error(f"Error saving Markdown report: {e}")
 
-    print(serp_checkpoint.calls_line(SERPAPI_CALL_COUNT))
+    print(serp_checkpoint.calls_line(serp_fetch.call_count()))
 
     # B3: fail the run unless every output was written; only then point
     # config.yml at the new files (run_pipeline.py and the refresh step read it).

@@ -3,6 +3,7 @@
 ```
 keywords.csv
     └─► serp_audit.py (fetch + parse + enrich)
+            ├─► serp_fetch.py                    one SerpAPI call: resume, retry budget, recovery
             ├─► pivot_pass.py                    pivot decision, on the measured SERP intent
             ├─► raw/{run_id}/                    raw JSON from SerpAPI
             ├─► market_analysis_*.json           aggregated data
@@ -29,6 +30,7 @@ market_analysis_*.json
 |--------|------|
 | `serp_audit.py` | Main SERP engine — fetches, parses, enriches, tags PAA intent |
 | `pattern_matching.py` | N-gram analysis and Bowen strategic pattern matching (extracted from `serp_audit.py` I.6) |
+| `serp_fetch.py` | One SerpAPI call: the resume lookup, the retry budget, and the post-response checkpoint write and link recovery. A transport error is retried (`SERPAPI_TRANSPORT_ERRORS`, caught by name); anything else is a fault in this process, is logged as an internal error and is **not** retried, because every attempt costs a paid call. The loop used to sit in `serp_audit` and caught every exception the same way, so a fault in the checkpoint write or the link recovery — both of which run after a response has been paid for — was retried with two more paid calls and then filed beside genuine network failures (extracted from `serp_audit.py` by review chunk Y8) |
 | `serp_pagination.py` | SerpAPI pagination: next-page `start` offset, and the page merge that renumbers `position` to the absolute SERP rank (extracted from `serp_audit.py` by review chunk D1) |
 | `handoff_writer.py` | Builds and schema-validates the `competitor_handoff_*.json` handoff for Tool 2 (extracted from `serp_audit.py` I.6) |
 | `generate_insight_report.py` | Renders `market_analysis_*.md` — Sections 1–6 including `## 5b. Per-Keyword SERP Intent`, Mixed-Intent Strategic Notes (Section 4), and per-pattern SERP intent context lines (C.2) |

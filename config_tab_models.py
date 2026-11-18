@@ -14,7 +14,30 @@ import os
 
 import yaml
 
+import http_retry
+import timeouts
 from yaml_io import save_yaml_preserving_comments
+
+
+def positive_only_fields() -> set:
+    """`(section, field)` pairs the loader refuses at zero or less.
+
+    Read off the tables the loaders themselves drive — `http_retry`'s retry
+    budgets and timeout paths, and the keys `timeouts` governs — so this is
+    not a second list that can disagree with them (P32). The GUI is where
+    these are edited, and until review chunk Y8 it offered a floor of 0 for
+    all of them: the value saved, the loader reported it and used the
+    documented default, and the report went to a log the GUI operator never
+    reads (P2).
+    """
+    pairs = set()
+    for section_name, keys in http_retry.BUDGET_SOURCES:
+        for _, cfg_key, _ in keys:
+            pairs.add((section_name, cfg_key))
+    for section_name, cfg_key in http_retry.TIMEOUT_SOURCES.values():
+        pairs.add((section_name, cfg_key))
+    pairs.update(timeouts.GOVERNED_FIELDS)
+    return pairs
 
 
 class TabFileState:
@@ -155,20 +178,35 @@ def merge_settings_edits(current, raw_values):
 
     ``raw_values`` is ``{section: {field: (raw, field_type)}}``. Keys with no
     widget are kept as loaded. A field that does not parse keeps its loaded
-    value and is reported, never coerced to 0 / [] / {}.
+    value and is reported, never coerced to 0 / [] / {}. A field the loader
+    refuses at zero or less (``positive_only_fields``) is reported the same
+    way and keeps its loaded value: the Spinbox floor only constrains its
+    spin arrows, so a typed 0 for a retry budget or a timeout used to save
+    (review chunk Y8).
     Returns ``(data, errors)``.
     """
     data = copy.deepcopy(current) if isinstance(current, dict) else {}
     errors = []
+    positive_only = positive_only_fields()
     for section, fields in raw_values.items():
         if not fields:
             continue
         target = data.setdefault(section, {})
         for field, (raw, field_type) in fields.items():
             try:
-                target[field] = _parse_field(raw, field_type)
+                parsed = _parse_field(raw, field_type)
             except (ValueError, TypeError, yaml.YAMLError) as e:
                 errors.append(f"{section}.{field}: not a valid {field_type} ({e})")
+                continue
+            if ((section, field) in positive_only
+                    and isinstance(parsed, (int, float))
+                    and not isinstance(parsed, bool)
+                    and parsed <= 0):
+                errors.append(f"{section}.{field}: must be greater than zero "
+                              f"({parsed} would be refused by the loader and "
+                              f"the built-in default used instead)")
+                continue
+            target[field] = parsed
     return data, errors
 
 

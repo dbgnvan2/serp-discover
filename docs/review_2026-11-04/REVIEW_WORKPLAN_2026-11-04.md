@@ -848,7 +848,19 @@ documented default; nothing recorded why the two budgets differ; the GUI
 explained SerpAPI's two keys and none of `http_retry`'s four; and
 `run_gsc_analysis.run_analysis` applied this run's sponge thresholds and also
 passed all five explicitly, so the applied mapping had no production reader
-(`docs/review_2026-11-04/PLAN_Y7_one_retry_budget.md`). The
+(`docs/review_2026-11-04/PLAN_Y7_one_retry_budget.md`). Chunk Y8 is the
+eighth: a bug is not a dead network — the paid SerpAPI fetch loop wrapped every
+attempt in `except Exception`, and the body included the checkpoint write and
+the link recovery, which run after a response has been paid for, so a
+`TypeError` in either was retried with two more paid calls and then filed
+beside genuine network failures; the GUI offered a retry budget of zero that
+the loader refuses to a log the operator never reads; and the GSC sidecar
+recorded none of the thresholds the markdown beside it names. The loop now
+lives in `serp_fetch.py` with a failure taxonomy of its own — a `STATUS_*` per
+outcome, reaching the failed-keyword record's `reason` — the Configuration
+Manager refuses a zero for any of the nine settings whose loader refuses it,
+and the sidecar names the thresholds the run applied
+(`docs/review_2026-11-04/PLAN_Y8_a_bug_is_not_a_dead_network.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

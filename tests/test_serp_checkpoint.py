@@ -11,6 +11,7 @@ import pytest
 
 import http_retry
 import serp_audit
+import serp_fetch
 import serp_checkpoint as cp
 
 KEY = "sk-secret-123"
@@ -38,7 +39,8 @@ def audit(tmp_path, monkeypatch):
     _FakeSearch.calls, _FakeSearch.fail = [], set()
     monkeypatch.setattr(serp_audit, "GoogleSearch", _FakeSearch)
     monkeypatch.setattr(serp_audit, "SERPAPI_AVAILABLE", True)
-    monkeypatch.setattr(serp_audit, "SERPAPI_CALL_COUNT", 0)
+    # The counter lives with the loop that increments it (review chunk Y8).
+    monkeypatch.setattr(serp_fetch, "CALL_COUNT", 0)
     # The SerpAPI budget lives in `http_retry` beside the policy for
     # every other outbound call (review chunk Y7).
     monkeypatch.setattr(http_retry, "SERPAPI_RETRY_ATTEMPTS", 1)
@@ -111,7 +113,7 @@ def test_resume_reuses_stored_calls_and_fetches_the_rest(audit, monkeypatch, cap
     _FakeSearch.fail = {"beta"}
     _fetch(audit, ["alpha", "beta"], "run1", code=1)
     _FakeSearch.calls, _FakeSearch.fail = [], set()
-    monkeypatch.setattr(audit, "SERPAPI_CALL_COUNT", 0)
+    monkeypatch.setattr(serp_fetch, "CALL_COUNT", 0)
 
     seen = {}
 
@@ -120,13 +122,13 @@ def test_resume_reuses_stored_calls_and_fetches_the_rest(audit, monkeypatch, cap
             audit._fetch_serp_api({"engine": "google", "q": q, "api_key": "another-key"})
             for q in ("alpha", "beta")]
         seen["summary"] = cp.summary()
-        print(cp.calls_line(audit.SERPAPI_CALL_COUNT))
+        print(cp.calls_line(serp_fetch.call_count()))
         return 0
 
     assert cp.tracked_run("run2", "keywords_x.csv", {}, run, environ={cp.RESUME_ENV: "run1"}) == 0
 
     assert _FakeSearch.calls == ["beta"]                 # alpha came from disk
-    assert audit.SERPAPI_CALL_COUNT == 1
+    assert serp_fetch.call_count() == 1
     assert seen["responses"][0]["q"] == "alpha"
     assert seen["summary"] == {"resumed_from": "run1", "reused_calls": 1}      # C5
     assert "Reused 1 stored responses; made 1 new SerpAPI calls" in capsys.readouterr().out

@@ -804,7 +804,8 @@ def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
                   config: dict, source_json: str, date_range: tuple[str, str],
                   demand_score: dict | None = None,
                   fetch_complete: bool = True,
-                  filters: dict | None = None) -> dict:
+                  filters: dict | None = None,
+                  thresholds: dict | None = None) -> dict:
     gsc_cfg = config.get("gsc", {}) or {}
     unreached = [r["query"] for r in rows
                  if r.get("gsc_status") == gsc_client.STATUS_NOT_REACHED]
@@ -831,6 +832,14 @@ def build_sidecar(rows: list[dict], sponge: dict, candidates: list[dict],
         "sponge": sponge,
         "reformat_candidates": candidates,
         "demand": demand_score,
+        # The bands and floors that produced the medians above. The markdown
+        # has named them since chunk Y4; the sidecar named none, so two
+        # artifacts of one run carried different provenance and a consumer
+        # reading the machine-readable one could not tell which bands the
+        # medians came from (P6, review chunk Y8). Falls back to the applied
+        # mapping rather than recording nothing.
+        "thresholds": dict(thresholds if thresholds is not None
+                           else active_sponge_thresholds()),
     }
 
 
@@ -967,7 +976,7 @@ def run_analysis(data: dict, config: dict, client, source_json: str,
     sidecar = build_sidecar(rows, sponge, candidates, config, source_json,
                             date_range, demand_score=demand_score,
                             fetch_complete=stats.complete and not unreached,
-                            filters=filters)
+                            filters=filters, thresholds=_thresholds)
     return report, sidecar
 
 

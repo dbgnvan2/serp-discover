@@ -33,20 +33,74 @@ def _function(name, func):
     return rest[:end.start()] if end else rest
 
 
+_WRAPPED = ("https://www.google.com/url?q=https%3A%2F%2Fexample.ca%2Fpage"
+            "&sa=U")
+
+
 class TestEveryFetcherRecovers:
-    def test_the_audit_recovers_on_both_fetch_paths(self):
+    """Consequence tests since review chunk Y8 moved the loop into
+    `serp_fetch`: the criterion is that a wrapped link never leaves the
+    fetcher and that the checkpoint keeps the response as SerpAPI sent it,
+    which a source guard could only approximate (P27)."""
+
+    def _fetch(self, monkeypatch, response, stored=None):
+        import serp_fetch
+
+        saved = {}
+
+        class _Search:
+            def __init__(self, params):
+                pass
+
+            def get_dict(self):
+                return response
+
+        monkeypatch.setattr(serp_fetch, "CALL_COUNT", 0)
+        monkeypatch.setattr(serp_fetch.serp_checkpoint, "lookup",
+                            lambda params: stored)
+        monkeypatch.setattr(serp_fetch.serp_checkpoint, "save",
+                            lambda params, results: saved.update(
+                                {"body": __import__("copy").deepcopy(results)}))
+        out = serp_fetch.fetch({"q": "x"}, timeout_seconds=5,
+                               client=_Search, available=True)
+        return out, saved
+
+    def test_the_audit_recovers_on_the_fresh_path(self):
+        import pytest
+
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            out, _ = self._fetch(
+                monkeypatch, {"organic_results": [{"link": _WRAPPED}]})
+        finally:
+            monkeypatch.undo()
+        assert out["organic_results"][0]["link"] == "https://example.ca/page"
+
+    def test_the_audit_recovers_on_the_resume_path(self):
         """A resumed call is a paid-for response; it needs the same treatment."""
-        body = _function("serp_audit.py", "_fetch_serp_api")
-        assert body.count("link_recovery.recover_response(") == 2, (
-            "_fetch_serp_api must recover on the resume path and the fresh "
-            "path; a wrapped link reaching either one poisons every "
-            "URL-derived stage")
+        import pytest
+
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            out, _ = self._fetch(
+                monkeypatch, {"organic_results": []},
+                stored={"organic_results": [{"link": _WRAPPED}]})
+        finally:
+            monkeypatch.undo()
+        assert out["organic_results"][0]["link"] == "https://example.ca/page"
 
     def test_the_audit_keeps_the_checkpoint_raw(self):
         """Recovery happens after the save, so raw/ stays as SerpAPI sent it."""
-        body = _function("serp_audit.py", "_fetch_serp_api")
-        assert body.index("serp_checkpoint.save(params, results)") < body.index(
-            "link_recovery.recover_response(results)")
+        import pytest
+
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            out, saved = self._fetch(
+                monkeypatch, {"organic_results": [{"link": _WRAPPED}]})
+        finally:
+            monkeypatch.undo()
+        assert saved["body"]["organic_results"][0]["link"] == _WRAPPED
+        assert out["organic_results"][0]["link"] == "https://example.ca/page"
 
     def test_the_pivot_fetch_recovers_too(self):
         """P5 — the same fix on every sibling call site."""

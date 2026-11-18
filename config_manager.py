@@ -10,7 +10,7 @@ from pathlib import Path
 from yaml_io import save_yaml_preserving_comments
 from config_tab_models import (
     TabFileState, RowModel, save_changed_tabs, merge_settings_edits,
-    update_record, apply_rule_row, restore_hidden,
+    update_record, apply_rule_row, restore_hidden, positive_only_fields,
 )
 
 try:
@@ -153,6 +153,7 @@ HELP_BY_FILE = {
         "methods fail. Patterns are regex; they are evaluated top-to-bottom (first-match-wins)."
     ),
 }
+
 
 HELP_BY_FIELD = {
     "intent_mapping.rules[].intent": (
@@ -1720,7 +1721,8 @@ class ConfigSettingsTab(BaseConfigTab):
             var = tk.IntVar(value=value)
             widget = ttk.Spinbox(
                 field_frame,
-                from_=0,
+                from_=1 if (section_name, field_name) in positive_only_fields()
+                else 0,
                 to=10000,
                 textvariable=var,
                 width=20
@@ -1732,7 +1734,8 @@ class ConfigSettingsTab(BaseConfigTab):
             var = tk.DoubleVar(value=value)
             widget = ttk.Spinbox(
                 field_frame,
-                from_=0.0,
+                from_=0.1 if (section_name, field_name)
+                in positive_only_fields() else 0.0,
                 to=10000.0,
                 increment=0.1,
                 textvariable=var,

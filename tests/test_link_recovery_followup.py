@@ -160,15 +160,52 @@ class TestAlreadyLocalIsMatchedOnWordBoundaries:
 
 
 class TestASettledErrorIsNotRetried:
+    """Consequence tests since review chunk Y8 moved the loop into
+    `serp_fetch`: a settled error must spend one paid call, not the whole
+    budget, which is the fact the old source guard stood in for (P27)."""
+
+    def _calls_for(self, error_text):
+        import pytest
+        import http_retry
+        import serp_fetch
+
+        calls = []
+
+        class _Search:
+            def __init__(self, params):
+                pass
+
+            def get_dict(self):
+                calls.append(1)
+                return {"error": error_text}
+
+        monkeypatch = pytest.MonkeyPatch()
+        try:
+            monkeypatch.setattr(http_retry, "SERPAPI_RETRY_ATTEMPTS", 3)
+            monkeypatch.setattr(serp_fetch.time, "sleep", lambda s: None)
+            monkeypatch.setattr(serp_fetch.serp_checkpoint, "lookup",
+                                lambda params: None)
+            out = serp_fetch.fetch({"q": "x"}, timeout_seconds=5,
+                                   client=_Search, available=True)
+        finally:
+            monkeypatch.undo()
+        return out, len(calls)
+
     def test_a_parameter_error_aborts_rather_than_backing_off(self):
         """Three retries on "unsupported location" spend the search allowance."""
-        src = open(os.path.join(
-            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
-            "serp_audit.py"), encoding="utf-8").read()
-        body = src[src.index("non_retryable = ("):]
-        body = body[:body.index(")")]
-        for marker in ("unsupported", "invalid location", "invalid parameter"):
-            assert f'"{marker}"' in body, marker
+        for error_text in ("Unsupported location parameter",
+                           "Invalid location provided",
+                           "Invalid parameter: num"):
+            out, calls = self._calls_for(error_text)
+            assert out is None
+            assert calls == 1, (
+                f"{error_text!r} is settled, so it must spend one paid call, "
+                f"not {calls}")
+
+    def test_a_transient_error_still_spends_the_budget(self):
+        out, calls = self._calls_for("Google hasn't returned any results")
+        assert out is None
+        assert calls == 3
 
 
 class TestTheExtractedHelpersBehave:
