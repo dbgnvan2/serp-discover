@@ -21,13 +21,13 @@ import os
 import sqlite3
 import json
 import logging
-from contextlib import closing
 from datetime import datetime
 
 # For MINIMA_FIELDS only — the names of the fields a feasibility
 # assessment carries, so this writer cannot fall behind the producer.
 import feasibility
 from domain_utils import normalize_domain
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -70,11 +70,17 @@ class SerpStorage:
         self._init_db()
 
     def _init_db(self):
-        # `closing`, because a migration now raises on a locked or missing
-        # table: the hand-written `close()` at the end of this method was not
-        # reached on that path, which is the leak the same chunk removed from
-        # `metrics.py` (cold review of chunk Y5).
-        with closing(sqlite3.connect(self.db_path)) as conn:
+        # The handle is closed on every path, because a migration now raises
+        # on a locked or missing table: the hand-written `close()` at the end
+        # of this method was not reached on that path, which is the leak the
+        # same chunk removed from `metrics.py` (cold review of chunk Y5).
+        # `db_connect.connection` rather than `closing` since review chunk
+        # Y9's cold review: `closing` alone would have discarded the commit
+        # `_create_and_migrate` depends on — it writes, through
+        # `_add_missing_columns` and `_canonicalise_domain_columns` — and that
+        # commit was hand-written 140 lines away from the `closing` that made
+        # it necessary.
+        with db_connect.connection(self.db_path) as conn:
             self._create_and_migrate(conn)
 
     def _create_and_migrate(self, conn):
@@ -288,7 +294,7 @@ class SerpStorage:
         (finding D-C-22).
         """
         run_date = datetime.now().isoformat()
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             # UPSERT rather than INSERT OR REPLACE: REPLACE deletes the row and
             # re-inserts it, which would wipe a completed_at already set.
             conn.execute(
@@ -307,7 +313,7 @@ class SerpStorage:
         (finding D-C-22).
         """
         stamp = completed_at or datetime.now().isoformat()
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute("UPDATE runs SET completed_at = ? WHERE run_id = ?",
                          (stamp, run_id))
 
@@ -339,7 +345,7 @@ class SerpStorage:
                 "(%s rank %s) carries no domain and will not join against "
                 "domain_features.", raw_host, keyword, rank)
         features_json = json.dumps(features) if features else "{}"
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute('''INSERT INTO serp_results 
                             (run_id, keyword_text, result_type, rank, title, url, domain, snippet, features_json, query_label)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
@@ -350,7 +356,7 @@ class SerpStorage:
         schema_json = json.dumps(schema_types)
         evidence_json = json.dumps(evidence)
 
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute('''INSERT OR REPLACE INTO url_features 
                             (url, fetched_at, status_code, content_type, schema_types, word_count_est, evidence_json)
                             VALUES (?, ?, ?, ?, ?, ?, ?)''',
@@ -369,12 +375,12 @@ class SerpStorage:
                 "save_domain_features called with no readable host (%r); the "
                 "entity type %r was not stored.", raw, entity_type)
             return
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute('''INSERT OR REPLACE INTO domain_features (domain, entity_type) VALUES (?, ?)''',
                          (domain, entity_type))
 
     def save_autocomplete_suggestion(self, run_id, source_keyword, suggestion, rank, relevance=None, type_=None):
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute('''INSERT INTO autocomplete_suggestions
                             (run_id, source_keyword, suggestion, rank, relevance, type)
                             VALUES (?, ?, ?, ?, ?, ?)''',
@@ -397,7 +403,7 @@ class SerpStorage:
         under the ranked page's row. Domain Authority is a property of the
         domain and is stored either way.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute(
                 "INSERT OR IGNORE INTO url_features (url) VALUES (?)", (url,)
             )
@@ -482,7 +488,7 @@ class SerpStorage:
         pivot_json = json.dumps(pivot_variants)
         computed_at = datetime.now().isoformat()
         mins = minima or {}
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.execute(
                 """INSERT OR REPLACE INTO keyword_feasibility
                    (keyword_text, run_id, query_label, avg_serp_da, client_da,
@@ -551,7 +557,7 @@ class SerpStorage:
         Primary keywords (``query_label = "A"``) come first; pivot keywords
         (``"P"``) immediately follow their parent sorted by gap.
         """
-        with sqlite3.connect(self.db_path) as conn:
+        with db_connect.connection(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute(
                 """SELECT * FROM keyword_feasibility
@@ -571,7 +577,7 @@ class SerpStorage:
 
 
 def migrated_connection(db_path="serp_data.db", create=False, log=None):
-    """A `closing`-wrapped connection whose migrations have already run.
+    """A `db_connect`-managed connection whose migrations have already run.
 
     The read-only consumers query columns that exist only after
     `SerpStorage`'s migrations — `serp_results.query_label` and
@@ -593,7 +599,8 @@ def migrated_connection(db_path="serp_data.db", create=False, log=None):
     review, finding 2).
 
     Returns a context manager, so the handle is closed on every exit
-    including a raised one (review chunk Y5).
+    including a raised one (review chunk Y5), and a write made through it is
+    committed rather than discarded by the close (review chunk Y9).
     """
     if not create and not os.path.exists(db_path):
         raise FileNotFoundError(db_path)
@@ -607,4 +614,8 @@ def migrated_connection(db_path="serp_data.db", create=False, log=None):
         say(f"  {store.canonicalised_hosts} stored host(s) were rewritten to "
             f"the canonical form and any orphaned feature rows removed "
             f"(review chunk Y1).")
-    return closing(sqlite3.connect(db_path))
+    # `db_connect.connection`, not `closing(sqlite3.connect(...))`: the
+    # latter closes the handle and discards the commit, so the day a caller
+    # writes through this connection the write is rolled back by the close,
+    # silently (cold review of chunk Y9, finding 2).
+    return db_connect.connection(db_path)

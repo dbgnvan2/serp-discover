@@ -114,8 +114,26 @@ first. `visualize_volatility.py` used a bare `sqlite3.connect`, and every
 query it makes filters on `serp_results.query_label` and `runs.completed_at` —
 columns a migration added — so against a database written before them the chart
 raised `no such column` rather than reporting an empty rank history (review
-chunk Y6). The helper returns a `contextlib.closing` wrapper, so the handle is
-closed on a raised exit too.
+chunk Y6). The helper returns a `db_connect.connection`
+context manager, so the handle is closed on a raised exit too and a write made
+through it is committed rather than discarded by the close (review chunk Y9 —
+until its cold review this returned `closing(sqlite3.connect(...))`, which
+closes the handle *instead of* committing).
+
+**How every other module opens the database.** `db_connect.connection(db_path)`
+(review chunk Y9). It commits on a clean exit, rolls back on an exception and
+closes the handle in a `finally`, which neither of the two obvious forms does:
+`with sqlite3.connect(path) as conn:` commits but leaves the handle to the
+garbage collector, and `with closing(sqlite3.connect(path)) as conn:` closes
+the handle and discards the commit, because `closing` does not run the
+connection's own `__exit__`. 61 production sites used the first form — the DA,
+keyword, intent, GSC, AI-visibility and citation caches all open per lookup
+inside per-keyword and per-engine loops — and `export_history.py` and
+`verify_enrichment.py` opened bare connections that were closed on the happy
+path or not at all. A standing guard
+(`tests/test_y9_a_handle_is_closed.py::TestNoProductionModuleLeavesAHandleOpen`)
+fails the build when any production module opens `sqlite3.connect` outside this
+helper or a `contextlib.closing`.
 
 Rows written before the migration hold NULL in all four. NULL means *not
 recorded*, never `0 of 0`: every reader keeps absent and zero apart, and the

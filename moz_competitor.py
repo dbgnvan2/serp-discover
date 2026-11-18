@@ -37,11 +37,11 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 from datetime import datetime, timedelta
 
 from domain_utils import normalize_domain
 from moz_jsonrpc import MozRpcError, moz_call
+import db_connect
 from moz_keywords import (
     NO_RECORD_CODE,
     NO_RECORD_STATUS,
@@ -642,7 +642,7 @@ class MozCompetitorClient:
     # ------------------------------------------------------------------
 
     def _init_cache_table(self) -> None:
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
                     domain           TEXT NOT NULL,
@@ -695,7 +695,7 @@ class MozCompetitorClient:
         select = ", ".join(columns)
 
         rows = []
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             for start in range(0, len(domains), 500):
                 chunk = domains[start:start + 500]
                 placeholders = ",".join("?" * len(chunk))
@@ -739,7 +739,7 @@ class MozCompetitorClient:
         not ask for. A non-cacheable status is skipped entirely — no blob, no
         timestamp, so the next run asks again (D2b.9/D2b.10).
         """
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             for domain, blocks in fetched.items():
                 storable = {
                     signal: block for signal, block in blocks.items()

@@ -49,10 +49,10 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 
 import ai_visibility_messages as av_messages
 import storage
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -453,7 +453,7 @@ def compute_foundational_score(analysis_data: dict,
 # ---------------------------------------------------------------------------
 
 def init_foundational_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {FOUNDATIONAL_TABLE} (
             run_ts        TEXT,
             score         REAL,
@@ -476,7 +476,7 @@ def init_foundational_table(db_path: str) -> None:
 def save_foundational_score(db_path: str, run_ts: str, result: dict) -> None:
     init_foundational_table(db_path)
     subs = result.get("subscores", {})
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {FOUNDATIONAL_TABLE} WHERE run_ts = ?",
                      (run_ts,))   # idempotent per run_ts — P8
         conn.execute(
@@ -495,7 +495,7 @@ def save_foundational_score(db_path: str, run_ts: str, result: dict) -> None:
 def get_foundational_trend(db_path: str, limit: int = 5) -> list[dict]:
     """Per-run foundational score, oldest→newest (trendable, Spec Y.12.4)."""
     init_foundational_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT run_ts, score, accessibility, structure, authority,
                        definition_version

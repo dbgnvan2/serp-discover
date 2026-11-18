@@ -42,7 +42,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sqlite3
 from base64 import b64encode
 from datetime import datetime, timedelta
 from typing import Iterator
@@ -54,6 +53,7 @@ from http_retry import post_with_transient_retry as _post_with_transient_retry
 
 import feasibility
 from domain_utils import normalize_domain
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -288,7 +288,7 @@ class DataForSEOClient:
     # ------------------------------------------------------------------
 
     def _init_cache_table(self) -> None:
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
                     domain           TEXT PRIMARY KEY,
@@ -317,7 +317,7 @@ class DataForSEOClient:
         # Batch the IN(...) query — SQLite caps bound variables (999 in
         # older builds), and large runs can exceed it (seo_geo_review C.7).
         rows = []
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             for start in range(0, len(domains), 500):
                 chunk = domains[start:start + 500]
                 placeholders = ",".join("?" * len(chunk))
@@ -351,7 +351,7 @@ class DataForSEOClient:
             (domain, v["da"], v["pa"], v["fetched_at"])
             for domain, v in results.items()
         ]
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {CACHE_TABLE} "
                 f"(domain, domain_authority, page_authority, fetched_at) VALUES (?,?,?,?)",

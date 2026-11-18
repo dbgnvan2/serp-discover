@@ -30,11 +30,11 @@ from __future__ import annotations
 import json
 import logging
 import re
-import sqlite3
 
 import ai_visibility_messages as av_messages
 import brand_match
 import storage
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -288,7 +288,7 @@ def sentiment_axis(rows: list[dict], client_brand: str) -> float | None:
 # ---------------------------------------------------------------------------
 
 def init_sentiment_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {SENTIMENT_TABLE} (
             run_ts                 TEXT,
             engine                 TEXT,
@@ -313,7 +313,7 @@ def init_sentiment_table(db_path: str) -> None:
 
 def save_sentiment(db_path: str, run_ts: str, rows: list[dict]) -> None:
     init_sentiment_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {SENTIMENT_TABLE} WHERE run_ts = ?",
                      (run_ts,))   # idempotent per run_ts (all engines saved together) — P8
         conn.executemany(

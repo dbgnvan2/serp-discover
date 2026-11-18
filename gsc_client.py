@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import logging
 import os
-import sqlite3
 from datetime import datetime, timedelta
 from typing import NamedTuple
 from urllib.parse import quote
@@ -46,6 +45,7 @@ import requests
 import yaml
 
 from http_retry import post_with_transient_retry as _post_with_transient_retry
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -488,7 +488,7 @@ class GscClient:
         copy happens once; afterwards the ``CREATE TABLE IF NOT EXISTS`` is a
         no-op.
         """
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.execute(self._CACHE_DDL)
             columns = {row[1] for row in conn.execute(
                 f"PRAGMA table_info({CACHE_TABLE})")}
@@ -528,7 +528,7 @@ class GscClient:
             return {}, [], []
         cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
         rows = []
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             # Batch the IN(...) query — SQLite caps bound variables
             # (999 in older builds; seo_geo_review C.7 pattern).
             for start in range(0, len(queries), CACHE_LOOKUP_CHUNK):
@@ -572,7 +572,7 @@ class GscClient:
             else:
                 rows.append((query, start_date, end_date,
                              None, None, None, None, 0, fetched_at, key))
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {CACHE_TABLE} "
                 f"(query, start_date, end_date, clicks, impressions, ctr, "

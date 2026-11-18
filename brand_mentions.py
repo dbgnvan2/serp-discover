@@ -35,12 +35,12 @@ import json
 import logging
 import os
 import re
-import sqlite3
 from datetime import datetime
 from urllib.parse import urlparse
 
 import brand_match
 from domain_utils import normalize_domain
+import db_connect
 
 try:
     from datetime import UTC as _UTC
@@ -477,7 +477,7 @@ def write_candidates_file(candidates: list[str], topic: str, run_ts: str,
 # ---------------------------------------------------------------------------
 
 def init_brand_mentions_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {BRAND_MENTIONS_TABLE} (
             run_ts          TEXT,
             engine          TEXT,
@@ -496,7 +496,7 @@ def save_brand_mentions(db_path: str, run_ts: str, engine: str,
     init_brand_mentions_table(db_path)
     questions_total = leaderboard.get("questions_total", 0)
     rows = leaderboard.get("rows", [])
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {BRAND_MENTIONS_TABLE} WHERE run_ts = ? AND engine = ?",
                      (run_ts, engine))   # idempotent per (run_ts, engine) — P8
         conn.executemany(
@@ -517,7 +517,7 @@ def get_brand_mentions_trend(db_path: str, engine: str,
                              limit: int = 5) -> list[dict]:
     """Per-run leaderboards for one engine, oldest→newest (trendable)."""
     init_brand_mentions_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         run_ids = [
             r[0] for r in conn.execute(
                 f"""SELECT DISTINCT run_ts FROM {BRAND_MENTIONS_TABLE}

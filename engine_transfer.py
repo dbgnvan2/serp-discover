@@ -28,10 +28,10 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 from itertools import combinations
 
 import ai_visibility_messages as av_messages
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -233,7 +233,7 @@ def compute_transfer(engines: list[str], mention_by_engine: dict,
 # ---------------------------------------------------------------------------
 
 def init_transfer_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {TRANSFER_TABLE} (
             run_ts               TEXT,
             engine_count         INTEGER,
@@ -276,7 +276,7 @@ def save_transfer(db_path: str, run_ts: str, result: dict) -> None:
                 "interpretation": result.get("interpretation"),
             }),
         )
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {TRANSFER_TABLE} WHERE run_ts = ?",
                      (run_ts,))   # idempotent per run_ts — P8
         conn.execute(
@@ -292,7 +292,7 @@ def save_transfer(db_path: str, run_ts: str, result: dict) -> None:
 def get_transfer_trend(db_path: str, limit: int = 5) -> list[dict]:
     """Per-run transfer metrics, oldest→newest (trendable, Spec Y.11.4)."""
     init_transfer_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT run_ts, engine_count, mentioned_count, cited_count,
                        avg_jaccard, cited_by_all, cited_by_exactly_one, rank_spread

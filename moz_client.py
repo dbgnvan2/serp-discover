@@ -68,13 +68,13 @@ from __future__ import annotations
 import json
 import logging
 import os
-import sqlite3
 from datetime import datetime, timedelta
 from typing import Iterator
 
 from moz_jsonrpc import MozRpcError, moz_call
 
 import feasibility
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -410,7 +410,7 @@ class MozClient:
         list — mirroring the CREATE TABLE IF NOT EXISTS discipline so a
         database written by the legacy client upgrades in place.
         """
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
                     url               TEXT PRIMARY KEY,
@@ -460,7 +460,7 @@ class MozClient:
         # Batch the IN(...) query — SQLite caps bound variables (999 in
         # older builds), and large runs can exceed it (seo_geo_review C.7).
         rows = []
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             for start in range(0, len(keys), 500):
                 chunk = keys[start:start + 500]
                 placeholders = ",".join("?" * len(chunk))
@@ -510,7 +510,7 @@ class MozClient:
             )
             for url, v in results.items()
         ]
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {CACHE_TABLE} "
                 f"(url, domain_authority, page_authority, fetched_at, "

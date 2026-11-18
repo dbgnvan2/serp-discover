@@ -860,7 +860,18 @@ lives in `serp_fetch.py` with a failure taxonomy of its own — a `STATUS_*` per
 outcome, reaching the failed-keyword record's `reason` — the Configuration
 Manager refuses a zero for any of the nine settings whose loader refuses it,
 and the sidecar names the thresholds the run applied
-(`docs/review_2026-11-04/PLAN_Y8_a_bug_is_not_a_dead_network.md`). The
+(`docs/review_2026-11-04/PLAN_Y8_a_bug_is_not_a_dead_network.md`). 
+
+**Chunk Y9 — a committed write is not a closed handle.** The adjacent issue
+both Y5 and Y6 carried, and the reason the Y6 guard named two files instead of
+the repo: `with sqlite3.connect(path) as conn:` commits and rolls back but
+never closes the handle, and `with closing(sqlite3.connect(path))` closes but
+discards the commit, so converting 61 sites the obvious way would have stopped
+every cache being written. `db_connect.connection` does both, once, and every
+production module now opens the database through it — including two bare
+connections the adjacent issue had not counted, in `export_history.py` and
+`verify_enrichment.py`. The guard is the repo, not the two files
+(`docs/review_2026-11-04/PLAN_Y9_a_handle_is_closed.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

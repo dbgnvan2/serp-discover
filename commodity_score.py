@@ -39,7 +39,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-import sqlite3
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -303,7 +303,7 @@ def compute_commodity(keyword_profiles: dict, data: dict | None,
 # ---------------------------------------------------------------------------
 
 def init_commodity_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {COMMODITY_TABLE} (
             run_ts                   TEXT,
             keyword                  TEXT,
@@ -324,7 +324,7 @@ def save_commodity(db_path: str, run_ts: str, rows: list[dict]) -> None:
     """Idempotent: re-saving the same ``run_ts`` REPLACES prior rows (the report is
     regenerated for the same run — P8, the D1 learning)."""
     init_commodity_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {COMMODITY_TABLE} WHERE run_ts = ?", (run_ts,))
         conn.executemany(
             f"""INSERT INTO {COMMODITY_TABLE}
@@ -345,7 +345,7 @@ def save_commodity(db_path: str, run_ts: str, rows: list[dict]) -> None:
 
 def get_commodity_for_run(db_path: str, run_ts: str) -> list[dict]:
     init_commodity_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT keyword, commodity_score, risk_band, answer_similarity,
                        serp_homogeneity, aio_present, low_confidence

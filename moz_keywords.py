@@ -54,10 +54,10 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 from datetime import datetime, timedelta
 
 from moz_jsonrpc import MozRpcError, moz_call, quota_status
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -364,7 +364,7 @@ class MozKeywordClient(_KeywordSignalClient):
     # ------------------------------------------------------------------
 
     def _init_cache_table(self) -> None:
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {CACHE_TABLE} (
                     keyword      TEXT NOT NULL,
@@ -387,7 +387,7 @@ class MozKeywordClient(_KeywordSignalClient):
         cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
 
         rows = []
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             for start in range(0, len(keywords), 500):
                 chunk = keywords[start:start + 500]
                 placeholders = ",".join("?" * len(chunk))
@@ -433,7 +433,7 @@ class MozKeywordClient(_KeywordSignalClient):
         ]
         if not rows:
             return
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {CACHE_TABLE} "
                 f"(keyword, engine, locale, device, status, volume, difficulty, "
@@ -529,7 +529,7 @@ class MozIntentClient(_KeywordSignalClient):
     # ------------------------------------------------------------------
 
     def _init_cache_table(self) -> None:
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS {INTENT_CACHE_TABLE} (
                     keyword         TEXT NOT NULL,
@@ -550,7 +550,7 @@ class MozIntentClient(_KeywordSignalClient):
         cutoff = (datetime.now(_UTC) - self._cache_ttl).isoformat()
 
         rows = []
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             for start in range(0, len(keywords), 500):
                 chunk = keywords[start:start + 500]
                 placeholders = ",".join("?" * len(chunk))
@@ -598,7 +598,7 @@ class MozIntentClient(_KeywordSignalClient):
         ]
         if not rows:
             return
-        with sqlite3.connect(self._db_path) as conn:
+        with db_connect.connection(self._db_path) as conn:
             conn.executemany(
                 f"INSERT OR REPLACE INTO {INTENT_CACHE_TABLE} "
                 f"(keyword, engine, locale, device, status, primary_intents, "

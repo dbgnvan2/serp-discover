@@ -34,6 +34,7 @@ import sqlite3
 
 import aio_exposure
 import gsc_filters
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,7 @@ def _latest_gsc(db_path, filter_key=""):
     if not db_path:
         return {}, False
     try:
-        with sqlite3.connect(db_path) as conn:
+        with db_connect.connection(db_path) as conn:
             # SQLite single-min/max bare-column rule: with exactly ONE MAX()/MIN()
             # and GROUP BY, the bare columns come from the row holding that
             # MAX(fetched_at) — i.e. the latest fetch per query. Adding a

@@ -417,38 +417,13 @@ class TestTheChartReadsAMigratedDatabase(unittest.TestCase):
                 conn.execute("SELECT 1")
 
 
-class TestTheTwoHistoryReadersCloseTheirHandles(unittest.TestCase):
-    """Y6.7 — `with sqlite3.connect(...)` commits on exit; it never closes.
-
-    Scope: the two rank-history readers this chunk touched, not the repo. The
-    same form remains at ~50 other sites (`storage.py`'s own writes, every
-    `aivi` / `aio_exposure` / `brand_mentions` / `moz_*` / `gsc_*` reader);
-    converting them is a sweeping diff and is logged as an adjacent issue in
-    the Y5 and Y6 plans. A guard named for the repo while walking two files
-    would read as cover the repo does not have (cold review of chunk Y6,
-    finding 4).
-    """
-
-    def test_neither_rank_history_reader_leaks_a_connection(self):
-        for name in ("metrics.py", "visualize_volatility.py"):
-            source = (_REPO_ROOT / name).read_text(encoding="utf-8")
-            tree = ast.parse(source)
-            for node in ast.walk(tree):
-                if not isinstance(node, ast.With):
-                    continue
-                for item in node.items:
-                    call = item.context_expr
-                    if not isinstance(call, ast.Call):
-                        continue
-                    func = call.func
-                    if (isinstance(func, ast.Attribute)
-                            and func.attr == "connect"
-                            and isinstance(func.value, ast.Name)
-                            and func.value.id == "sqlite3"):
-                        self.fail(
-                            f"{name}:{node.lineno} opens sqlite3.connect in a "
-                            "`with` that never closes the handle — wrap it in "
-                            "contextlib.closing")
+# Y6.7 — `with sqlite3.connect(...)` commits on exit but never closes the
+# handle. This chunk's guard walked the two rank-history readers it touched,
+# because converting the other ~50 sites was a sweeping diff logged as an
+# adjacent issue. Review chunk Y9 is that diff: every production module now
+# opens the database through `db_connect.connection`, and the guard that
+# covers these two files along with the rest is
+# `tests/test_y9_a_handle_is_closed.py::TestNoProductionModuleLeavesAHandleOpen`.
 
 
 class TestTheSpongeHelpersSeeTheConfiguredValue(unittest.TestCase):

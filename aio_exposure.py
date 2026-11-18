@@ -38,7 +38,7 @@ import json
 import logging
 import os
 import re
-import sqlite3
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -331,7 +331,7 @@ def compute_aio_exposure(keyword_profiles: dict, cfg: dict | None = None):
 # ---------------------------------------------------------------------------
 
 def init_aio_exposure_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {AIO_EXPOSURE_TABLE} (
             run_ts           TEXT,
             keyword          TEXT,
@@ -354,7 +354,7 @@ def save_aio_exposure(db_path: str, run_ts: str, rows: list[dict]) -> None:
     accumulate duplicate keyword rows per regeneration and inflate
     ``get_aio_exposure_for_run`` (P8)."""
     init_aio_exposure_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {AIO_EXPOSURE_TABLE} WHERE run_ts = ?", (run_ts,))
         conn.executemany(
             f"""INSERT INTO {AIO_EXPOSURE_TABLE}
@@ -373,7 +373,7 @@ def save_aio_exposure(db_path: str, run_ts: str, rows: list[dict]) -> None:
 
 def get_aio_exposure_for_run(db_path: str, run_ts: str) -> list[dict]:
     init_aio_exposure_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT keyword, source, aio_present, client_cited, cited_urls_json,
                        organic_position, est_ctr_loss, weights_json
@@ -402,7 +402,7 @@ def get_aio_exposure_trend(db_path: str, limit: int = DEFAULT_HISTORY_RUNS) -> l
     runs and says which it left out (D5.5 / finding D-M-20).
     """
     init_aio_exposure_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         run_ids = [r[0] for r in conn.execute(
             f"""SELECT run_ts FROM {AIO_EXPOSURE_TABLE}
                 GROUP BY run_ts ORDER BY run_ts DESC LIMIT ?""", (limit,))]

@@ -31,7 +31,7 @@ import json
 import logging
 import os
 import re
-import sqlite3
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -264,7 +264,7 @@ def compute_demand(rows, cfg, fetch_complete: bool = True, property_rows=None,
 # ---------------------------------------------------------------------------
 
 def init_demand_tables(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {DEMAND_RUN_TABLE} (
             property TEXT, run_ts TEXT, query TEXT, clicks INTEGER,
             impressions INTEGER, position REAL, is_branded INTEGER,
@@ -297,7 +297,7 @@ def save_demand(db_path, property_, run_ts, rows, score, fetched_at=None) -> Non
     re-classifies in place — a ``client_name_patterns`` edit must reclassify, and
     the 7-day GSC cache must never gate classification (acceptance D2.1, P8)."""
     init_demand_tables(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {DEMAND_RUN_TABLE} WHERE property=? AND run_ts=?",
                      (property_, run_ts))
         conn.execute(f"DELETE FROM {DEMAND_SCORE_TABLE} WHERE property=? AND run_ts=?",
@@ -341,7 +341,7 @@ def get_demand_trend(db_path, property_, limit=5) -> list[dict]:
     measurements and a Δ between them means nothing (D5.4).
     """
     init_demand_tables(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT run_ts, branded_click_share, benchmark_band,
                        property_branded_click_share, band_basis

@@ -32,9 +32,9 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 
 import ai_visibility_messages as messages
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,7 @@ def compute_aivi(axes: dict, weights: dict | None = None) -> dict:
 # ---------------------------------------------------------------------------
 
 def init_aivi_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {AIVI_TABLE} (
             run_ts          TEXT,
             engine          TEXT,
@@ -144,7 +144,7 @@ def init_aivi_table(db_path: str) -> None:
 def save_aivi(db_path: str, run_ts: str, engine: str, result: dict) -> None:
     init_aivi_table(db_path)
     axes = result.get("axes", {})
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f"DELETE FROM {AIVI_TABLE} WHERE run_ts = ? AND engine = ?",
                      (run_ts, engine))   # idempotent per (run_ts, engine) — P8
         conn.execute(
@@ -163,7 +163,7 @@ def save_aivi(db_path: str, run_ts: str, engine: str, result: dict) -> None:
 def get_aivi_trend(db_path: str, engine: str, limit: int = 5) -> list[dict]:
     """Per-run AIVI for one engine, oldest→newest (trendable, Spec Y.6.4)."""
     init_aivi_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT run_ts, aivi, mentions_axis, ranking_axis,
                        citations_axis, sentiment_axis

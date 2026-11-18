@@ -65,6 +65,7 @@ from pattern_matching import load_serp_vocab
 from profile_questions import generate as generate_profile_questions
 from profile_questions import interleave_by_persona
 from profile_questions import load_client_profiles
+import db_connect
 from query_variants import (
     flatten_situational_templates,
     situational_template_probes,
@@ -796,7 +797,7 @@ def _coerce_raw_cap(value) -> int:
 
 
 def init_probe_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {PROBE_TABLE} (
             run_ts                  TEXT,
             engine                  TEXT,
@@ -846,7 +847,7 @@ def save_probe_rows(db_path: str, rows: list[dict], *,
             return text[:room] + _TRUNC_MARKER
         return text
 
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.executemany(
             f"""INSERT INTO {PROBE_TABLE}
                 (run_ts, engine, model, question, mentioned, cited,
@@ -875,7 +876,7 @@ def save_probe_rows(db_path: str, rows: list[dict], *,
 def get_engine_trend(db_path: str, engine: str, limit: int = DEFAULT_HISTORY_RUNS) -> list[dict]:
     """Per-run aggregates for one engine, oldest→newest (G.1.2)."""
     init_probe_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT run_ts, MAX(model), COUNT(*),
                        SUM(CASE WHEN status IS NULL OR status = '{STATUS_ANSWERED}'

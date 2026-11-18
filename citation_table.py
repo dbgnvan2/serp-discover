@@ -31,11 +31,11 @@ from __future__ import annotations
 
 import logging
 import re
-import sqlite3
 from urllib.parse import urlparse
 
 from classifiers import EntityClassifier
 from domain_utils import normalize_domain
+import db_connect
 
 logger = logging.getLogger(__name__)
 
@@ -207,7 +207,7 @@ def citations_axis(table: list[dict]) -> float:
 # ---------------------------------------------------------------------------
 
 def init_citations_table(db_path: str) -> None:
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         conn.execute(f'''CREATE TABLE IF NOT EXISTS {CITATIONS_TABLE} (
             run_ts     TEXT,
             engine     TEXT,
@@ -224,7 +224,7 @@ def init_citations_table(db_path: str) -> None:
 def save_citations(db_path: str, run_ts: str, engine: str,
                    table: list[dict]) -> None:
     init_citations_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         # Idempotent per (run_ts, engine): replace this engine's rows for the run so
         # a re-save appends no duplicates (P8, matching aio_exposure/commodity).
         conn.execute(f"DELETE FROM {CITATIONS_TABLE} WHERE run_ts = ? AND engine = ?",
@@ -245,7 +245,7 @@ def save_citations(db_path: str, run_ts: str, engine: str,
 
 def get_citations_for_run(db_path: str, run_ts: str, engine: str) -> list[dict]:
     init_citations_table(db_path)
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         rows = conn.execute(
             f"""SELECT url, domain, category, brand, is_client, cite_count
                 FROM {CITATIONS_TABLE}

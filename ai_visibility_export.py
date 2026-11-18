@@ -44,6 +44,7 @@ import re
 import sqlite3
 
 import jsonschema
+import db_connect
 
 try:
     from datetime import UTC as _UTC
@@ -215,7 +216,7 @@ def build_ai_visibility_export(db_path: str, run_ts: str | None = None,
         export = _empty_export(client_name)
         return _validated(export)
 
-    with sqlite3.connect(db_path) as conn:
+    with db_connect.connection(db_path) as conn:
         resolved_run_ts = run_ts or _latest_run_ts(conn)
         if resolved_run_ts is None:
             return _validated(_empty_export(client_name))

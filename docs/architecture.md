@@ -56,6 +56,7 @@ market_analysis_*.json
 | `dataforseo_client.py` | DataForSEO bulk_ranks API client with 30-day SQLite cache |
 | `moz_client.py` | Moz Links API v2 client with 30-day SQLite cache (fallback) |
 | `storage.py` | SQLite persistence layer. `save_feasibility_from_row` persists a feasibility assessment from the dict `compute_feasibility` produced, so a field added to the row cannot be dropped on the way to the database (review chunk D2) |
+| `db_connect.py` | The one way a module opens the SQLite database: `connection(db_path)` commits on a clean exit, rolls back on an exception, and closes the handle on every path. `with sqlite3.connect(...)` commits but never closes, and `with closing(sqlite3.connect(...))` closes but discards the commit; every production module goes through this helper instead of pairing them per site (review chunk Y9) |
 | `metrics.py` | Volatility & entity dominance calculations; baselines against the previous **completed** run, primary-query rows only (D-C-22) |
 | `url_enricher.py` | URL fetching & feature extraction |
 | `enrichment.py` | One organic row's page-level enrichment, and the fetch-outcome gate: a response at or above 400 is recorded, not read (D2c / D-C-20) |
