@@ -106,6 +106,26 @@ class TestAStatedNAIsNotAMissingCell(unittest.TestCase):
                       "this limitation can be dropped and #N/A folded back "
                       "into the list above")
 
+    def test_a_key_written_as_an_empty_string_round_trips(self):
+        """The other half of the same defect, found by this fix's cold review.
+
+        The first version of the fix normalised `""` to `None` on the
+        WORKBOOK side only, so a key cell that is `""` in the JSON and blank
+        in the sheet reproduced the identical both-sides-missing signature.
+        `Rich_Features.Details` is a key column written as
+        `primary_results[key].get("title")`, which is `""` for a Knowledge
+        Panel with no title, so this was reachable on a real run. The collapse
+        now happens in `index_records`, where both record sets pass through.
+        """
+        _code, diff = self._run([_organic("")])
+        self._assert_organic_agrees(diff)
+
+    def test_a_key_of_only_whitespace_round_trips(self):
+        """A cell of spaces strips to the empty string, which is the same
+        absence; `norm_text` already stripped it and then returned `""`."""
+        _code, diff = self._run([_organic("   ")])
+        self._assert_organic_agrees(diff)
+
     def test_an_empty_cell_still_reads_as_absent(self):
         """The fix must not turn a blank into the empty string: the JSON side
         writes `null` for the same absence, and a key of `""` would not match

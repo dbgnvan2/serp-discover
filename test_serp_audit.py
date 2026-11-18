@@ -687,7 +687,9 @@ class TestSerpAudit(unittest.TestCase):
             })
             keywords = serp_audit.load_keywords("keywords.csv")
         self.assertEqual(keywords, ["k1", "k2"])
-        mock_read_csv.assert_called_once_with("keywords.csv", header=None)
+        mock_read_csv.assert_called_once_with(
+            "keywords.csv", header=None, keep_default_na=False, na_values=[],
+            skip_blank_lines=False)
 
     def test_entity_classifier_domain_only_directory(self):
         """Known directory domains should classify without fetched HTML."""

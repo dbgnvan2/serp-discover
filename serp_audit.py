@@ -19,6 +19,7 @@ import pivot_pass
 import query_variants
 import bing_check
 import handoff_writer
+import keyword_input
 import process_config
 from domain_utils import normalize_domain
 import yaml
@@ -1330,22 +1331,15 @@ build_help_rows = generate_insight_report.load_sheet_guidance
 
 
 def load_keywords(input_file):
-    """Load keywords from env override or CSV file."""
-    if SINGLE_KEYWORD_OVERRIDE:
-        print("Using single keyword override from SERP_SINGLE_KEYWORD...")
-        return [SINGLE_KEYWORD_OVERRIDE]
+    """Load keywords from env override or CSV file.
 
-    if not os.path.exists(input_file):
-        logging.error(f"{input_file} not found.")
-        return None
-
-    print("Reading keywords...")
-    try:
-        df_input = pd.read_csv(input_file, header=None)
-        return df_input[0].tolist()
-    except Exception as e:
-        logging.error(f"Error reading CSV: {e}")
-        return None
+    The body lives in `keyword_input`; this wrapper supplies the module-level
+    override so that every caller and test keeps addressing
+    `serp_audit.load_keywords`. Moved out on 2026-11-18 because hardening the
+    CSV read would have pushed this module past its own line cap, and raising
+    a cap to fit a fix is how the cap came to be needed.
+    """
+    return keyword_input.load_keywords(input_file, SINGLE_KEYWORD_OVERRIDE)
 
 
 def main():

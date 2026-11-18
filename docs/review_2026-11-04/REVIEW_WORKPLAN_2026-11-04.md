@@ -1246,3 +1246,82 @@ One lived in the boundary between real file formats, the other in prose nobody
 executes. A live run is not a formality at the end of a review; it is a test
 class of its own, and these two are the argument for making one the last step
 of any chunk that touches an output a person reads.
+
+### The cold review of those two fixes, and what it changed
+
+Run over the diff after the suite was green. It returned five findings, two
+high; all five are fixed with a guard, because every one of them was in the
+fix itself rather than in the old code.
+
+**F1 (high) — the N/A fix normalised one side.** The `"" → None` collapse went
+into `df_to_records`, the WORKBOOK reader. `norm_text` left a JSON `""` as
+`""`, so a key cell that is an empty string in the JSON and blank in the sheet
+reproduced the identical both-sides-missing signature the fix was for.
+Reproduced against the real validator with a `Rich_Features` row, where
+`Details` is a key column written as `primary_results[key].get("title")` and
+yields `""` for a Knowledge Panel with no title. One absence now has one
+representation: `blank_to_none` is applied in `index_records`, where both
+record sets pass through, and to every key part whether or not its column is
+declared in `normalize_text_cols` — `Details` is not.
+
+**F2 (high) — a wrong-shaped YAML edit aborted the whole market report.**
+`.get("no_data_section") or {}` guards `None`, not a wrong type, and §5c is
+deliberately outside `_safe_section`. `no_data_section` written as a plain
+string — the likeliest typo in a block whose entire purpose is to be
+hand-edited by a non-developer — raised `AttributeError` and took the report
+down, while the comment above it claimed the loader degraded. Type-checked
+now, and subtested against a string, a list and an int.
+
+**F3 (medium) — and an unreadable file made the warning vanish.** Before the
+change the "feasibility data unavailable" line was unconditional; after it, a
+missing messages file rendered the heading with nothing under it, which reads
+as "nothing to report" rather than "DA was never fetched". The test asserted
+that silence as the contract, so the weaker behaviour was defended rather than
+caught. `generate_insight_report.FALLBACK_NO_FEASIBILITY` is the built-in
+wording now, the same shape as `db_connect.FALLBACK_*`, and it says that it
+was used.
+
+**F4 (medium) — the new guard proved an absence over a narrowed population.**
+It globbed `REPO/*.py`, so `scripts/` and any future package directory were
+outside a claim worded "no module may know this number", and it matched
+physical lines, so the offending literal — an implicitly-concatenated
+multi-line string — tripped it only because one fragment happened to carry
+both the figure and the word "tier". Re-wrapped, the defect would have passed.
+It walks the tree now and matches against AST string constants, with
+docstrings excluded, which is what lets `moz_competitor.brand_authority_for`
+keep explaining that its uncached call costs "~4 rows a month" — a statement
+about this code, not a claim about the account.
+
+**F5 (medium) — the sibling pandas read was not swept.** `load_keywords` read
+the keyword CSV with pandas' defaults, so a keyword cell of `NA`, `null`, `-`
+or `nan` came back as `float('nan')` and was handed on as a paid search query.
+Same root cause, same class, and `CLAUDE.md` says fix the class. Fixed, and
+`skip_blank_lines=False` with it: pandas drops blank lines before the caller
+sees them, so the "N of M lines were blank" warning could never have fired and
+a keyword file with a gap in it ran shorter than the operator wrote with
+nothing said (P2).
+
+**What F5 cost, and why that is the right price.** Hardening it added eighteen
+lines to `serp_audit.py`, which sat at exactly the 2200-line cap its own test
+enforces. Raising a cap to fit a fix is how a 2200-line module comes about, so
+the function moved to `keyword_input.py` instead; `serp_audit.load_keywords`
+is a wrapper, so no caller or test changed. The module is 2194 lines.
+
+Also taken from the review: the `("heading", "body")` key list meant a third
+paragraph added to the YAML block was silently unread (P36), so the block's
+own order is the render order now.
+
+**Verification after the fixes.** 2349 passed, 68 skipped, 214 subtests, exit
+0. Mutation gate over 12 reverts — one per fix plus the three parts of F1 —
+**12 caught, 0 vacuous, 0 anchor-failures**.
+
+**Adjacent issues found, not fixed.** `validate_xlsx_vs_json.py` compares only
+row counts and key tuples: `normalize_text_cols` is applied into a record that
+is then discarded and `required_cols` is never read, so the step-1.2 gate
+cannot see a divergence in `Title`, `Snippet`, `Word_Count` or any other
+non-key field, while its name and the pipeline's step label both say "validate
+xlsx vs json" (P33 — complete along one axis, presented as a full
+cross-check). `config_manager.py` carries an unprovenanced "max 3 for free
+tier" claim about SerpAPI page limits. `norm_text`'s nan arm covers
+`float`/`numpy.float64` but not `pd.NaT` or `pd.NA`; neither can reach a key
+column today.

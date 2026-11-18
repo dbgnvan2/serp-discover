@@ -23,7 +23,7 @@ wrong fix.
 Spec: docs/review_2026-11-04/REVIEW_WORKPLAN_2026-11-04.md (live-run finding)
       report_clarity_spec.md (RC.5)
 """
-import glob
+import ast
 import os
 import re
 import sys
@@ -53,6 +53,65 @@ PLAN_CONTEXT = re.compile(
     r"moz|dataforseo|serpapi|anthropic|gemini|tier|plan\b|allowance|quota",
     re.I)
 
+#: Directories that are not this tool's source.
+SKIP_DIRS = {"venv", ".git", "node_modules", "__pycache__", "output",
+             ".claude", "docs"}
+
+
+def _modules():
+    """Every Python module in the repo, not just the top level.
+
+    The first version of this guard globbed `REPO/*.py`, which proves nothing
+    about `scripts/` or any package directory added later while the failure
+    message says "no module may know this number" (P31: an absence computed
+    over a narrowed population is not the absence claimed). Found by this
+    change's own cold review.
+    """
+    for root, dirs, files in os.walk(REPO):
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS
+                   and not d.startswith(".")]
+        for name in sorted(files):
+            if not name.endswith(".py") or name.startswith("test_"):
+                continue
+            path = os.path.join(root, name)
+            with open(path, encoding="utf-8") as handle:
+                yield path, handle.read()
+
+
+def _string_constants(text):
+    """Every string constant a reader could be shown, joined as they see it.
+
+    A physical-line scan is the wrong unit: the literal this guard exists to
+    forbid was an implicitly-concatenated multi-line string, and it tripped
+    the first version of the guard only because one of its fragments happened
+    to carry both the figure and the word "tier". Re-wrapped as
+    `"...MOZ_TOKEN in .env\\n" "(50 rows/month)\\n"` it would have passed with
+    the defect intact. The AST joins adjacent fragments for us, so the text
+    under test is the sentence rather than the source layout.
+
+    Docstrings are excluded, and so are comments by construction. Neither is
+    printed to a reader, and both are where a module legitimately explains
+    its own cost: `moz_competitor.brand_authority_for` records that leaving
+    one call uncached costs "~4 rows a month" at one run a week, which is a
+    statement about this code, not a claim about what the account is entitled
+    to. The defect this guard forbids is a figure a reader is shown.
+    """
+    tree = ast.parse(text)
+    docstrings = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
+                                 ast.AsyncFunctionDef)):
+            continue
+        body = getattr(node, "body", None) or []
+        if (body and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)):
+            docstrings.add(id(body[0].value))
+    for node in ast.walk(tree):
+        if (isinstance(node, ast.Constant) and isinstance(node.value, str)
+                and id(node) not in docstrings):
+            yield node.value
+
 
 def _no_feasibility_data():
     return {
@@ -69,45 +128,57 @@ def _no_feasibility_data():
 
 class TestNoModuleKnowsTheMozAllowance(unittest.TestCase):
 
-    def _sources(self):
-        for path in glob.glob(os.path.join(REPO, "*.py")):
-            if os.path.basename(path).startswith("test_"):
-                continue
-            with open(path, encoding="utf-8") as handle:
-                yield path, handle.read()
-
     def test_no_python_module_quotes_a_plan_figure(self):
         """The allowance is read from the account at runtime (`quota.lookup`)
         and recorded in `config.yml` as `moz.rows_per_month`. A copy in source
-        goes stale silently — this one was four years and one plan upgrade out
-        of date and was being printed to the reader as guidance."""
-        for path, text in self._sources():
-            for number, line in enumerate(text.splitlines(), start=1):
-                hit = PLAN_FIGURE.search(line)
-                if hit is None or not PLAN_CONTEXT.search(line):
+        goes stale silently — this one was a plan upgrade out of date and was
+        being printed to the reader as guidance."""
+        for path, text in _modules():
+            for value in _string_constants(text):
+                hit = PLAN_FIGURE.search(value)
+                if hit is None or not PLAN_CONTEXT.search(value):
                     continue
                 self.fail(
-                    f"{os.path.relpath(path, REPO)}:{number} quotes a plan "
-                    f"figure ({hit.group(0)}); read moz.rows_per_month or "
-                    f"name no figure")
+                    f"{os.path.relpath(path, REPO)} quotes a plan figure "
+                    f"({hit.group(0)}); read moz.rows_per_month or name no "
+                    f"figure")
 
     def test_no_python_module_calls_the_moz_account_a_free_tier(self):
         """Separate from the figure: the plan is Starter Medium. "Free tier"
         was wrong on its own, and would have survived deleting the number.
 
-        Scoped to lines that name Moz, because that is the account CLAUDE.md
-        makes a claim about. `config_manager.py` carries one other free-tier
-        claim, about SerpAPI page limits, with no provenance either; it is
-        recorded as an adjacent issue rather than swept into this change.
+        Scoped to strings that name Moz, because that is the account
+        CLAUDE.md makes a claim about. `config_manager.py` carries one other
+        free-tier claim, about SerpAPI page limits, with no provenance
+        either; it is recorded as an adjacent issue rather than swept into
+        this change.
         """
-        for path, text in self._sources():
-            for number, line in enumerate(text.splitlines(), start=1):
-                if "moz" not in line.lower():
+        for path, text in _modules():
+            for value in _string_constants(text):
+                if "moz" not in value.lower():
                     continue
                 self.assertIsNone(
-                    FREE_TIER.search(line),
-                    f"{os.path.relpath(path, REPO)}:{number} calls the Moz "
-                    f"account a free tier; it is Starter Medium")
+                    FREE_TIER.search(value),
+                    f"{os.path.relpath(path, REPO)} calls the Moz account a "
+                    f"free tier; it is Starter Medium")
+
+    def test_the_scan_sees_more_than_the_repo_root(self):
+        """The guard's own population, asserted rather than assumed: a
+        narrowed scan would pass every absence test above while proving
+        nothing about the modules it skipped."""
+        paths = {os.path.relpath(p, REPO) for p, _ in _modules()}
+        self.assertIn("generate_insight_report.py", paths)
+        self.assertTrue(
+            any(os.sep in p for p in paths),
+            "the scan found no module below the repo root; it is globbing "
+            "the top level again")
+
+    def test_the_scan_reads_joined_string_fragments(self):
+        """The unit under test is the sentence, not the source line."""
+        source = 'x = ("MOZ_TOKEN in .env "\n     "(50 rows/month)")\n'
+        joined = list(_string_constants(source))
+        self.assertTrue(any(PLAN_FIGURE.search(v) and PLAN_CONTEXT.search(v)
+                            for v in joined), joined)
 
 
 class TestTheSectionSaysWhatConfigSays(unittest.TestCase):
@@ -142,17 +213,52 @@ class TestTheSectionSaysWhatConfigSays(unittest.TestCase):
         self.assertIsNone(PLAN_FIGURE.search(self.words["body"]))
         self.assertIsNone(FREE_TIER.search(self.words["body"]))
 
-    def test_a_missing_messages_file_leaves_the_section_empty(self):
-        """This loader degrades everywhere else it is read; the report must
-        not become the one place where a malformed editorial file aborts a
-        run."""
-        feasibility._MESSAGES_CACHE = {}
+    def _rendered_with(self, messages):
+        feasibility._MESSAGES_CACHE = messages
         try:
-            report = generate_report(_no_feasibility_data())
+            return generate_report(_no_feasibility_data())
         finally:
             feasibility._MESSAGES_CACHE = None
-        self.assertNotIn("Feasibility data unavailable", report)
-        self.assertIn("5c", report)
+
+    def test_an_unreadable_messages_file_still_says_what_is_missing(self):
+        """Section 5c is outside `_safe_section`, so it may not raise — and it
+        may not fall silent either. The first version of this fix rendered
+        nothing when the file could not be read, and an empty section reads
+        as "nothing to report" rather than "Domain Authority was never
+        fetched". The built-in wording says it was used (P2)."""
+        report = self._rendered_with({})
+        self.assertIn("Feasibility data unavailable", report)
+        self.assertIn("run_feasibility.py", report)
+        self.assertIn("could not be read", report)
+
+    def test_a_wrongly_shaped_block_does_not_abort_the_report(self):
+        """The likeliest typo in a hand-edited block is writing it as a plain
+        value. `.get(...) or {}` guards `None`, not a wrong type, and the
+        AttributeError took down the whole market report rather than the
+        section."""
+        for shape in ("a string, not a block", ["a", "list"], 7):
+            with self.subTest(shape=type(shape).__name__):
+                report = self._rendered_with({"no_data_section": shape})
+                self.assertIn("Feasibility data unavailable", report)
+                self.assertIn("5c", report)
+
+    def test_the_fallback_wording_quotes_no_plan_figure(self):
+        """It is a Python literal by design, so it is the one string the
+        module-wide guard above must still clear."""
+        from generate_insight_report import FALLBACK_NO_FEASIBILITY
+        self.assertIsNone(PLAN_FIGURE.search(FALLBACK_NO_FEASIBILITY))
+        self.assertIsNone(FREE_TIER.search(FALLBACK_NO_FEASIBILITY))
+
+    def test_every_paragraph_in_the_block_is_rendered(self):
+        """The first version read a hardcoded `("heading", "body")`, so a
+        third paragraph added to the YAML was silently unread (P36). The
+        block's own order is the render order."""
+        report = self._rendered_with({"no_data_section": {
+            "heading": "FIRST-MARKER", "body": "SECOND-MARKER",
+            "postscript": "THIRD-MARKER"}})
+        self.assertLess(report.index("FIRST-MARKER"),
+                        report.index("SECOND-MARKER"))
+        self.assertIn("THIRD-MARKER", report)
 
 
 if __name__ == "__main__":

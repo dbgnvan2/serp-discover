@@ -152,15 +152,40 @@ SPECS: List[SheetSpec] = [
 # ----------------------------
 
 
-def norm_text(x: Any) -> Any:
+def blank_to_none(x: Any) -> Any:
+    """`None` for every way a cell can be empty, on either side.
+
+    One absence, one representation. A blank cell and a written empty string
+    are indistinguishable once a workbook has been saved, and the JSON side
+    writes `null` where the sheet side writes nothing, so a key of `""` and a
+    key of `None` are the same key and must compare equal.
+
+    This is the second half of the fix for the 2026-11-18 live-run failure.
+    The first half stopped a stated `"N/A"` being read as a blank; the empty
+    string was left normalised on the workbook side only, which reproduced
+    the identical both-sides-missing signature for a key cell that is `""` in
+    the JSON and blank in the sheet — `Rich_Features.Details` is written as
+    `primary_results[key].get("title")` and yields `""` for a Knowledge Panel
+    with no title. Found by the cold review of that fix; applied here, in the
+    one place both record sets pass through.
+    """
     if x is None or (isinstance(x, float) and pd.isna(x)):
         return None
+    if isinstance(x, str) and x.strip() == "":
+        return None
+    return x
+
+
+def norm_text(x: Any) -> Any:
+    x = blank_to_none(x)
     if not isinstance(x, str):
         return x
     s = x.replace("\r\n", "\n").strip()
     # optional: collapse runs of whitespace
     s = " ".join(s.split())
-    return s
+    # A string of nothing but whitespace strips to "", which is the same
+    # absence `blank_to_none` just handled — said once, both ways in.
+    return s or None
 
 
 #: How a sheet is read back. `keep_default_na=False` with an empty `na_values`
@@ -189,13 +214,10 @@ def df_to_records(df: pd.DataFrame) -> List[Dict[str, Any]]:
     out = df.where(pd.notnull(df), None).to_dict(orient="records")
     for row in out:
         for column, value in row.items():
-            if isinstance(value, str) and value == "":
-                row[column] = None
-            elif isinstance(value, float) and pd.isna(value):
-                # `DataFrame.where` leaves NaN in place on an object column in
-                # some pandas versions, which is how a float nan reached a key
-                # tuple in the first place.
-                row[column] = None
+            # `DataFrame.where` leaves NaN in place on an object column in
+            # some pandas versions, which is how a float nan reached a key
+            # tuple in the first place.
+            row[column] = blank_to_none(value)
     return out
 
 
@@ -214,7 +236,12 @@ def index_records(records: List[Dict[str, Any]], key_cols: Tuple[str, ...], text
             # Normalize key text fields too if they are in text_cols
             if k in text_cols:
                 val = norm_text(val)
-            key_parts.append(val)
+            # Every key part, declared a text column or not: a key column that
+            # is not in `normalize_text_cols` (`Rich_Features.Details` is one)
+            # would otherwise keep `""` on the JSON side while the sheet side
+            # read `None`, and the two rows would each report the other as
+            # missing.
+            key_parts.append(blank_to_none(val))
 
         key = tuple(key_parts)
 

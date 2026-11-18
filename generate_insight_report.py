@@ -117,6 +117,24 @@ def load_data(json_path):
 _CONFIG_CACHE = {}
 
 
+#: What section 5c says when `feasibility_messages.yml` cannot supply the
+#: words. The same shape as `db_connect.FALLBACK_*`: a built-in wording for
+#: the one sentence that is said from a place where the editorial file may
+#: itself be the broken thing. Before this existed, an unreadable file left
+#: the section empty, and an empty section reads as "nothing to report"
+#: rather than "Domain Authority was never fetched" (cold review of the
+#: 2026-11-18 live-run fix). It names no Moz plan figure and no allowance —
+#: `tests/test_moz_plan_figure_is_not_hardcoded.py` would fail if it did.
+FALLBACK_NO_FEASIBILITY = (
+    "**⚠️ Feasibility data unavailable for this run.** No Domain Authority "
+    "was measured. Set `DATAFORSEO_LOGIN`/`DATAFORSEO_PASSWORD` or "
+    "`MOZ_TOKEN` in `.env` and run `run_feasibility.py` against this run's "
+    "`market_analysis_*.json`. (The wording file "
+    "`feasibility_messages.yml` could not be read, so this built-in wording "
+    "was used.)"
+)
+
+
 def _load_config():
     """config.yml, with this process's policies applied (or reset). Read once.
 
@@ -2100,15 +2118,31 @@ def generate_report(data, db_path=None, run_ts=None):
         # wrong for this account and the one number CLAUDE.md says must never
         # be hardcoded, since the allowance is read from the account at
         # runtime. The old wording is recorded in feasibility_messages.yml,
-        # not quoted here, because a guard forbids the figure in source. A
-        # missing or malformed file leaves
-        # the section empty rather than aborting the report, which is this
-        # loader's documented behaviour everywhere else it is read.
-        _no_data = (feasibility.load_messages().get("no_data_section") or {})
-        for _key in ("heading", "body"):
-            _text = _no_data.get(_key)
-            if _text:
-                report.append(f"{_text}\n")
+        # not quoted here, because a guard forbids the figure in source.
+        #
+        # §5c is deliberately outside `_safe_section`, so this branch may not
+        # raise and may not fall silent either. Both were true of the first
+        # version of it, found by its cold review: a `no_data_section` written
+        # as a plain string — the likeliest typo in a block whose whole
+        # purpose is to be hand-edited — raised AttributeError and took down
+        # the whole market report, and an unreadable file left the heading
+        # with nothing under it, which reads as "nothing to report" rather
+        # than "DA was never fetched". `FALLBACK_NO_FEASIBILITY` is the
+        # built-in wording, the same shape as `db_connect.FALLBACK_*`, and it
+        # says that it was used.
+        _no_data = feasibility.load_messages().get("no_data_section")
+        if not isinstance(_no_data, dict):
+            _no_data = {}
+        _lines = [str(_no_data[_key]).strip() for _key in _no_data
+                  if isinstance(_no_data.get(_key), str)
+                  and str(_no_data[_key]).strip()]
+        if not _lines:
+            logging.warning(
+                "feasibility_messages.yml no_data_section is missing or "
+                "unusable; section 5c used the built-in wording.")
+            _lines = [FALLBACK_NO_FEASIBILITY]
+        for _text in _lines:
+            report.append(f"{_text}\n")
 
     # 5d / 5e / 5f — the three AI-era sections (D1 AIO exposure, D4 commodity risk,
     # D3 demand dashboard). Each is composed in ISOLATION via _safe_section: a raise
