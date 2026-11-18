@@ -330,20 +330,18 @@ Section 5c (`## 5c. Keyword Feasibility & Pivot Recommendations`) is currently
 guarded by `if feasibility_rows:` — it renders only when DA data is present.
 
 Change to: **always render Section 5c.** When `feasibility_rows` is empty or
-absent, render:
+absent, render the heading followed by `feasibility_messages.yml`
+`no_data_section` (`heading` then `body`).
 
-```markdown
-## 5c. Keyword Feasibility & Pivot Recommendations
-
-**⚠️ Feasibility data unavailable for this run.**
-
-Domain Authority scoring requires at least one of:
-- `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` in `.env` (pay-per-use, primary)
-- `MOZ_TOKEN` in `.env` (free tier, 50 rows/month)
-
-Without DA data, keyword ranking is based on intent alignment only (see
-Section 0). Re-run with credentials to enable full feasibility scoring.
-```
+The wording lived in this spec and in `generate_insight_report.py` as a
+literal until 2026-11-18, when a live run showed what that costs: the Moz line
+read "(free tier, 50 rows/month)", which is wrong for this account — the plan
+is Starter Medium and the allowance is read from the account at runtime, which
+CLAUDE.md requires. The block also now names the step that fills the section
+in (`run_feasibility.py`), because credentials alone do not: `run_pipeline.py`
+runs steps 1.1-1.4 and feasibility is not one of them. Reword it in the YAML
+file; a missing or malformed file leaves the section empty rather than
+aborting the report.
 
 When partial data is present (some keywords have DA data, some do not), the
 table renders with `—` in the `Client DA`, `Avg Comp DA`, and `Gap` columns
@@ -353,10 +351,19 @@ for keywords with missing data, and `📊 No DA data` in the `Status` column.
 
 - `## 5c.` appears in all rendered reports regardless of whether
   `feasibility_rows` is populated.
-- When feasibility_rows is empty, the section contains the credential
-  instructions and the exact string `Re-run with credentials`.
+- When feasibility_rows is empty, the section contains
+  `feasibility_messages.yml` `no_data_section` — its `heading` then its
+  `body`, asserted against the file's own values, never against a copy of
+  them (`tests/test_moz_plan_figure_is_not_hardcoded.py`). The criterion
+  previously required the exact string `Re-run with credentials`, which the
+  2026-11-18 rewording dropped: that sentence named credentials as the only
+  fix, and the fix is usually to run `run_feasibility.py`.
 - When feasibility_rows is partially populated, keywords with no DA data show
-  `📊 No DA data` in the Status column.
+  the configured `Not Measured` label. **Stale as written:** this criterion
+  said `📊 No DA data`, a label review chunk D2a retired — one unmeasured
+  state had two wordings — in favour of `feasibility_messages.yml`
+  `statuses`. Recorded here rather than silently corrected because the
+  criterion is outside this change's subject.
 - `tests/test_report_clarity.py::test_rc5_feasibility_always_rendered_*`
   covers: data present, data absent, data partial.
 

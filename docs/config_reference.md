@@ -216,6 +216,9 @@ the bare status string and never aborts a report.
 | `coverage` | the sentence form: "mean of 7 of 10 ranking domains (3 unscored)" |
 | `coverage_short` | the same fact for the reports' `DA Coverage` column: "7/10 (3 unscored)" |
 | `client_da` | how a `Client DA` cell states its own provenance |
+| `coverage_unknown` | a row from a run written before coverage was recorded — a third state, not "0 of 0" |
+| `minima` | the sentence stating the weakest competitor holding a slot, and the weakest that is not a directory, beside the mean (D-M-09) |
+| `no_data_section` | `heading` + `body`: what report section 5c says in place of a feasibility table when no DA was measured at all. Added 2026-11-18 after a live run found the words hardcoded in `generate_insight_report.py` with a Moz plan figure in them ("free tier, 50 rows/month") that is both wrong for this account and the one number `CLAUDE.md` forbids hardcoding — the allowance is read from the account at runtime. The block names no figure, and it names `run_feasibility.py`, because credentials alone do not fill the section in: `run_pipeline.py` runs steps 1.1-1.4 and feasibility is not one of them |
 
 Not editorial, and so still in `feasibility.py`: `MIN_DA_FOR_VERDICT` (5), the
 number of measured ranking domains a verdict requires.

@@ -133,7 +133,11 @@ Editorial content currently lives in:
   map are how one unmeasured state came to carry two labels ("No DA Data" and
   "Not Measured") in different outputs. The minimum itself is a threshold, not
   wording, so it lives in config as `technical.min_da_for_verdict` and
-  `feasibility.MIN_DA_FOR_VERDICT` reads it (added review chunk D2a)
+  `feasibility.MIN_DA_FOR_VERDICT` reads it (added review chunk D2a). Also
+  `no_data_section`, what report section 5c says when no DA was measured at
+  all — it names no Moz plan figure, and it names `run_feasibility.py`,
+  because `run_pipeline.py` does not run feasibility and credentials alone
+  therefore do not fill the section in (added 2026-11-18 from a live run)
 - `serp_vocab.yml` `fetch_status` — the words a row's `Fetch_Status` can
   carry (`enriched`, `blocked` with `{status}`, `fetch_retryable`,
   `unreachable`, `not_attempted`, `not_destination_page`) plus

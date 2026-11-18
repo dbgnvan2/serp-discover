@@ -139,3 +139,43 @@ minima:
     The weakest page holding a slot scores {min_da} over {n} scored
     competitors. None of them carries an entity type this run, so the
     directory split is not measured.
+
+# What the report says in place of the feasibility section when no DA was
+# measured at all. The reader of that section is being told to do something,
+# so it names the two providers and the step that fetches the data.
+#
+# Why it is here: the words were a Python literal in
+# generate_insight_report.py, and one of them was a plan figure — "MOZ_TOKEN
+# in .env (free tier, 50 rows/month)" — which is wrong for this account (the
+# Moz plan is Starter Medium) and is the one number CLAUDE.md says must never
+# be hardcoded, because the real allowance is read at runtime via
+# `quota.lookup` and recorded as `moz.rows_per_month`. A report printing a
+# stale plan figure as instruction is worse than one printing none. The
+# allowance is deliberately absent below: the provider knows it, this file
+# does not.
+#
+# Found by the second live run after the 2026-11-04 review (2026-11-18). The
+# same run showed why the section renders at all on a correctly configured
+# machine: `run_pipeline.py` runs steps 1.1-1.4 and feasibility is not one of
+# them, so a pipeline run alone never fetches DA however the credentials are
+# set. The last line says so.
+#
+# Placeholders: none.
+no_data_section:
+  heading: "**⚠️ Feasibility data unavailable for this run.**"
+  # A literal block, not a folded one: the blank lines are markdown structure
+  # (a list, then two paragraphs) and folding them away runs the paragraphs
+  # into the list.
+  body: |-
+    Domain Authority scoring requires at least one of:
+
+    - `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` in `.env` (pay-per-use, primary)
+    - `MOZ_TOKEN` in `.env` (fallback; the row allowance is read from the
+      account at runtime, not set here)
+
+    Without DA data, keyword ranking is based on intent alignment only (see
+    Section 0).
+
+    Credentials alone do not produce this section: DA is fetched by
+    `run_feasibility.py`, which `run_pipeline.py` does not run. Run it against
+    this run's `market_analysis_*.json` to fill the section in.

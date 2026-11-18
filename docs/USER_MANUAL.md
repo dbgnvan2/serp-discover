@@ -426,10 +426,25 @@ after that, so it never offers a chart with nothing on it.
 
 ---
 
-### **Step 7: Feasibility Analysis** (Optional)
-**What:** Re-runs Domain Authority scoring from existing JSON.
+### **Step 7: Feasibility Analysis**
+**What:** Scores Domain Authority from an existing market_analysis JSON, and
+rewrites the market report with the feasibility section filled in.
 
-**When to use:** You want to re-score feasibility without re-fetching SERPs (DA results cache for 30 days, so re-running is free).
+**When to use:** Every run where you want a feasibility verdict, and again
+whenever you want to re-score without re-fetching SERPs (DA results cache for
+30 days, so re-running inside that window is free).
+
+**This step is not optional if you want feasibility.** The Full Pipeline runs
+steps 1.1-1.4 and feasibility is not one of them, so a pipeline run alone
+never fetches Domain Authority, however `DATAFORSEO_LOGIN` / `MOZ_TOKEN` are
+set in `.env`. Section 5c of the market report then says "Feasibility data
+unavailable for this run" and names this step. Run it against that run's
+`output/market_analysis_*.json` and the section fills in.
+
+**Credentials:** `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` (primary,
+pay-per-use) or `MOZ_TOKEN` (fallback). The Moz row allowance is read from
+the account at runtime — no plan figure is recorded in this tool, so none can
+go stale and mislead you.
 
 **Input:** Existing market_analysis JSON
 

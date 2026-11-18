@@ -1160,3 +1160,89 @@ serp-compete).
 ## 7. What was checked and found sound (so it is not re-reviewed)
 
 Each finding file ends with a "Checked and found sound" list. Highlights: the handoff schema is byte-identical on both sides and the consumer reads exactly the required fields; the AI-visibility export matches its consumer; `http_retry.py`, `moz_jsonrpc.py`, `moz_keywords.py` never cache an error; `intent_verdict.py`, `play_routing.py`, `aivi.compute_aivi` arithmetic are correct given correct inputs; compete's anchor-spam path, YouTube error/none split, serp_overlap `self_unknown` banner, positioning renormalisation and the "report reads a different DB" fix are all verified. The problems are upstream of the honesty scaffolding, not in it.
+
+## 8. What the first live run found (2026-11-18)
+
+The review closed with all 87 indexed findings fixed and 2330 tests passing, so
+the next step was a small live run — two keywords, Low API mode — to confirm
+the tool end to end on real data. It found two defects in one run. Both are
+recorded here because of what they say about the review itself: neither was
+reachable from a mocked suite, and the second was a rule the project had
+written down and not enforced.
+
+**L1 — a written-out "N/A" was read back as a blank cell, and the pipeline
+hard-failed.** Step 1.2 (`validate_xlsx_vs_json.py`) reported the same organic
+result as missing from BOTH files:
+
+    "missing_in_xlsx_sample": ["('20261118_153321', 9, 'N/A')"]
+    "missing_in_json_sample": ["('20261118_153321', 9, nan)"]
+
+`Link` is part of that sheet's key tuple, a SERP result with no link carries the
+string `"N/A"` — this tool states an absence rather than leaving a blank, which
+is the whole H2 family of fixes — and pandas' DEFAULT missing-value list
+contains `"N/A"`. So the workbook read back `NaN` where the JSON held `"N/A"`
+and the two keys could not match. Any run where one result has no link, which
+is most real runs, aborted at step 1.2. Fixed by reading every sheet with
+`keep_default_na=False` and an empty `na_values`
+(`validate_xlsx_vs_json.READ_OPTIONS`), and guarded by
+`tests/test_validate_xlsx_vs_json_na_marker.py`, which round-trips through a
+real `.xlsx` via `subprocess` rather than building frames in memory — the
+collision is between a real workbook and pandas' own defaults, so no fixture in
+the suite could have produced it. The residual limitation is recorded as a test
+rather than a comment: Excel's own error literal `#N/A` cannot round-trip at
+all, because pandas maps it to `NaN` at the Excel layer whatever `na_values`
+says (`openpyxl` reads the same cell back as the string). Nothing writes `#N/A`
+today; if a provider value ever does, the fix is to read that sheet through
+openpyxl, not to widen `na_values`.
+
+**L2 — the report printed a Moz plan figure the project forbids hardcoding.**
+With no DA measured, section 5c rendered its "no feasibility data" branch,
+which said `MOZ_TOKEN` in `.env` "(free tier, 50 rows/month)". The figure is
+wrong — this account is on Starter Medium, `config.yml` records
+`moz.rows_per_month: 3000` — and `CLAUDE.md` states that the real allowance is
+read at runtime via `quota.lookup` and that a plan figure must never be
+hardcoded. Two further copies of the same claim were found by the guard, in
+`serp-me.py` and in `report_clarity_spec.md`, which is the familiar shape: one
+claim, three homes, all stale together. The words now live in
+`feasibility_messages.yml` `no_data_section`, where the rest of this family's
+vocabulary already lives, and name no figure at all.
+`tests/test_moz_plan_figure_is_not_hardcoded.py` fails on any plan figure or
+free-tier claim in a Python module, scoped to lines that name a provider or a
+plan so a module's estimate of its own usage ("~4 rows a month" in
+`moz_competitor.brand_authority_for`) is not swept up.
+
+A detail that makes L2 worse than a stale string. `moz_api_upgrade_spec_v1.md`
+(2026-08) already carried the correction as an explicit task: "`MOZ_TOKEN` is
+*not* 'free tier: 50 rows/month' — it is the **Starter Medium** API plan;
+correct the note and say the real quota is read at runtime via
+`quota.lookup`." The `CLAUDE.md` note named in that task was fixed. The two
+copies in `generate_insight_report.py` and `serp-me.py` were not, because the
+task named one document rather than the claim, and nobody searched for the
+other homes. That is the same shape as the defects this review spent eighty-
+seven findings on, committed while fixing one of them: the fix that corrects
+one copy of a claim and does not grep for the rest leaves the claim alive. The
+guard is the part that was missing — it fails on the claim wherever it appears,
+so the next copy cannot be added quietly.
+
+**What the run also established, which is not a defect.** Feasibility was
+absent although `MOZ_TOKEN` is present: `run_pipeline.py` runs steps 1.1-1.4
+and feasibility is not one of them, so a pipeline run never fetches DA however
+`.env` is set. The 5c text listed only credentials, which sent the reader to
+fix the one thing that was not wrong; it now names `run_feasibility.py`. The
+same correction went into `docs/USER_MANUAL.md`, where step 7 was headed
+"(Optional)".
+
+**And what the run confirms works.** On real data with no DA provider reached,
+the report says feasibility is unavailable, routes every play on intent and
+AI-Overview alone with "inputs missing" stated, prints "insufficient data —
+only 2 of 9 URLs could be classified", "1 of 57 SERP text blocks (2%)" and
+"Not Measured: 16.7%", and closes with a §A appendix declaring all ten
+threshold families "editorial, uncalibrated". Pre-review, the same run would
+have produced DA 0 and a confident "Low Feasibility". That is the H2 family of
+fixes behaving as designed, measured rather than asserted.
+
+**The lesson for the process.** 2330 mocked tests did not reach either defect.
+One lived in the boundary between real file formats, the other in prose nobody
+executes. A live run is not a formality at the end of a review; it is a test
+class of its own, and these two are the argument for making one the last step
+of any chunk that touches an output a person reads.

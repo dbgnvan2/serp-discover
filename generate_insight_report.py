@@ -2094,15 +2094,21 @@ def generate_report(data, db_path=None, run_ts=None):
 
         report.append("\n")
     else:
-        # RC.5 — No feasibility data: show credential instructions
-        report.append("**⚠️ Feasibility data unavailable for this run.**\n")
-        report.append(
-            "Domain Authority scoring requires at least one of:\n"
-            "- `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` in `.env` (pay-per-use, primary)\n"
-            "- `MOZ_TOKEN` in `.env` (free tier, 50 rows/month)\n\n"
-            "Without DA data, keyword ranking is based on intent alignment only (see Section 0). "
-            "Re-run with credentials to enable full feasibility scoring.\n"
-        )
+        # RC.5 — No feasibility data: say so, and say what fills it in.
+        # The words live in feasibility_messages.yml `no_data_section`. They
+        # were a literal here, and one of them was a Moz plan figure — both
+        # wrong for this account and the one number CLAUDE.md says must never
+        # be hardcoded, since the allowance is read from the account at
+        # runtime. The old wording is recorded in feasibility_messages.yml,
+        # not quoted here, because a guard forbids the figure in source. A
+        # missing or malformed file leaves
+        # the section empty rather than aborting the report, which is this
+        # loader's documented behaviour everywhere else it is read.
+        _no_data = (feasibility.load_messages().get("no_data_section") or {})
+        for _key in ("heading", "body"):
+            _text = _no_data.get(_key)
+            if _text:
+                report.append(f"{_text}\n")
 
     # 5d / 5e / 5f — the three AI-era sections (D1 AIO exposure, D4 commodity risk,
     # D3 demand dashboard). Each is composed in ISOLATION via _safe_section: a raise
