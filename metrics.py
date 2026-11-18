@@ -2,12 +2,11 @@
 metrics.py
 Calculates SEO metrics (Volatility, Dominance) from the SQLite history.
 """
-import sqlite3
-from contextlib import closing
-
 import pandas as pd
 import os
 import logging
+
+import storage
 
 DB_PATH = "serp_data.db"
 
@@ -134,7 +133,7 @@ def get_volatility_metrics(current_run_id):
         # function's seven exits: a leaked sqlite handle is how a later write
         # meets "database is locked", and the next exit added is the one that
         # forgets (review chunk Y5).
-        with closing(sqlite3.connect(DB_PATH)) as conn:
+        with storage.migrated_connection(DB_PATH) as conn:
             runs_df = pd.read_sql(_RUNS_SQL, conn)
             frames = _rank_frames(conn, runs_df, current_run_id)
         if "status" in frames:
@@ -262,7 +261,7 @@ def get_entity_dominance(run_id):
         """
         # `rank <= 10` is the real top 10 since ranks became absolute
         # (D-C-01), and the label keeps alternative-query rows out (D-C-22).
-        with closing(sqlite3.connect(DB_PATH)) as conn:
+        with storage.migrated_connection(DB_PATH) as conn:
             df = pd.read_sql(query, conn,
                              params=(run_id, PRIMARY_QUERY_LABEL))
 
@@ -302,7 +301,15 @@ def get_rank_deltas(current_run_id, with_reason=False):
         return _out({}, f"no history database at {DB_PATH} yet.")
 
     try:
-        with sqlite3.connect(DB_PATH) as conn:
+        # All three reads go through `storage.migrated_connection`: they
+        # filter on `runs.completed_at` and `serp_results.query_label`,
+        # columns a migration added, and `generate_insight_report.py` calls
+        # them standalone with no `SerpStorage` constructed first — so
+        # against a database written before those columns the report printed
+        # "no such column" instead of bringing the schema forward. The bare
+        # `with sqlite3.connect(...)` this one used also commits on exit and
+        # never closes the handle (P5, cold review of chunk Y6, finding 5).
+        with storage.migrated_connection(DB_PATH) as conn:
             runs_df = pd.read_sql(_RUNS_SQL, conn)
 
             if len(runs_df) < 2:

@@ -3,6 +3,7 @@
 ```
 keywords.csv
     └─► serp_audit.py (fetch + parse + enrich)
+            ├─► pivot_pass.py                    pivot decision, on the measured SERP intent
             ├─► raw/{run_id}/                    raw JSON from SerpAPI
             ├─► market_analysis_*.json           aggregated data
             ├─► market_analysis_*.xlsx           Excel workbook
@@ -48,6 +49,7 @@ market_analysis_*.json
 | `intent_classifier.py` | Tags PAA questions as External Locus / Systemic / General |
 | `intent_verdict.py` | Spec v2 — computes per-keyword SERP intent verdict from intent_mapping.yml rules (primary_intent, is_mixed, confidence, distribution) |
 | `title_patterns.py` | Spec v2 — extracts shape patterns (how_to, what_is, listicle_numeric, vs_comparison, best_of, brand_only, question, other) from top-10 titles with dominance threshold |
+| `pivot_pass.py` | The in-pipeline neighbourhood-pivot decision, run between `serp_audit`'s SERP fetch loop and its pivot fetch pass. `build_pivot_profiles` builds the keyword profiles through the shared `brief_data_extraction.build_keyword_profiles`; `decide_pivots` calls `feasibility.generate_hyper_local_pivot` with the measured `serp_intent` and `entity_distribution` and returns the feasibility rows and the pivot fetch jobs. The decision used to sit inside the fetch loop, where no profile existed yet, so the pipeline and `run_feasibility.py` could reach different pivots from the same SERP (review chunk Y6) |
 | `feasibility.py` | DA gap scoring (`compute_feasibility`) + pivot suggestions (`generate_hyper_local_pivot`) + the one definition of the feasibility input set (`url_window` / `usable_url` / `competitor_da_window`), of the client's own DA (`with_client_url` / `resolve_client_da`), of a provider batch's coverage (`batch_coverage`, used by both DA clients) and of the row index (`index_feasibility_by_keyword`), shared by both producers (D-C-19, D-M-05). `NOT_MEASURED` is the status key every consumer branches on. Status labels, coverage phrases and the no-verdict sentences are read from `feasibility_messages.yml` (`load_messages`) |
 | `dataforseo_client.py` | DataForSEO bulk_ranks API client with 30-day SQLite cache |
 | `moz_client.py` | Moz Links API v2 client with 30-day SQLite cache (fallback) |

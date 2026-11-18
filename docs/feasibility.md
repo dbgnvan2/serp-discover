@@ -90,7 +90,10 @@ conclusion the row refuses to draw:
 
 - No geographic pivot and no paid Maps fetch (`generate_hyper_local_pivot`
   returns "Stay the course" with no recommendation either way; it used to
-  answer an unmeasured keyword with "Current keyword is feasible").
+  answer an unmeasured keyword with "Current keyword is feasible"). The
+  pipeline's own queue asks for the `Low Feasibility` verdict before it adds a
+  pivot fetch job, independently of what the pivot function suggested, because
+  the job costs a SerpAPI call (`pivot_pass.decide_pivots`, review chunk Y6).
 - No directional Domain Authority sentence in the content plan — §1 states
   the coverage instead of saying which site is stronger.
 - No "best opportunity" recommendation: §0 ranks only keywords that have a

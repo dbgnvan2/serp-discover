@@ -176,6 +176,14 @@ quietly treated as a bad keyword, and not treated as a good one either:
 - For low-feasibility **service** keywords, suggests neighbourhood pivots (e.g., "Couples Counselling" → "Couples Counselling Lonsdale")
 - Informational keywords (e.g. "how does birth order affect personality") get **no** neighbourhood pivot — a geographic variant is meaningless for a question nobody searches with a neighbourhood. They are listed separately for the content extraction play instead.
 - If a pivot's validation SERP fetch fails, the tool says **"not measured"** rather than falsely reporting the client as absent from the local pack.
+- Whether a keyword counts as a service keyword is decided by the **measured
+  SERP intent** — what the result page actually turned out to be — and only
+  falls back to reading the words of the keyword when no intent could be
+  measured. The full run used to decide it on the keyword's words alone while
+  the standalone feasibility script used the measured verdict, so the same
+  keyword could get a pivot in one and not the other. The run now prints
+  `[Pivot gate] N of M keyword(s) decided on a measured SERP intent; the rest
+  on the keyword text`, so you can see which basis was used.
 
 **Why:** Not all keywords are worth targeting. If competitors have DA 60 and Living Systems has DA 35, ranking is nearly impossible without massive link building. Feasibility scoring helps you focus on winnable keywords. And a neighbourhood pivot only works when *proximity can substitute for authority* — that is only true for service queries (someone looking for a counsellor near them), never for informational questions, so pivots are gated to service keywords.
 

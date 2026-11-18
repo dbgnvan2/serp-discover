@@ -17,6 +17,7 @@ All schema changes use ``CREATE TABLE IF NOT EXISTS`` or
 ``ALTER TABLE … ADD COLUMN`` wrapped in ``try/except OperationalError``
 so the database migrates automatically on first use with no manual steps.
 """
+import os
 import sqlite3
 import json
 import logging
@@ -61,6 +62,11 @@ def _add_missing_columns(cursor, table, columns):
 class SerpStorage:
     def __init__(self, db_path="serp_data.db"):
         self.db_path = db_path
+        #: What this construction changed, so a read-only consumer can say so
+        #: rather than mutating the operator's history silently (cold review
+        #: of chunk Y6, finding 3).
+        self.migrated_columns: list[str] = []
+        self.canonicalised_hosts = 0
         self._init_db()
 
     def _init_db(self):
@@ -172,7 +178,8 @@ class SerpStorage:
         )''')
 
         # --- Migration: feasibility minima columns (review chunk D6) ---
-        _add_missing_columns(c, "keyword_feasibility", [
+        self.migrated_columns += _add_missing_columns(
+            c, "keyword_feasibility", [
             ("min_competitor_da", "REAL"),
             ("max_competitor_da", "REAL"),
             ("min_non_directory_da", "REAL"),
@@ -180,7 +187,8 @@ class SerpStorage:
             ("entities_known", "INTEGER")])
 
         # --- Migrations: add Moz DA/PA columns to url_features if absent ---
-        _add_missing_columns(c, "url_features", [
+        self.migrated_columns += _add_missing_columns(
+            c, "url_features", [
             ("competitor_da", "INTEGER"), ("page_authority", "INTEGER")])
 
         # --- Migrations: run-completion and query-label columns (D-C-22) ---
@@ -203,7 +211,8 @@ class SerpStorage:
                                      ("da_provider", "TEXT"),
                                      ("client_da_source", "TEXT")]),
         ]:
-            _add_missing_columns(c, table, columns)
+            self.migrated_columns += _add_missing_columns(
+                c, table, columns)
 
         self._canonicalise_domain_columns(c)
 
@@ -261,6 +270,7 @@ class SerpStorage:
                         f"UPDATE {table} SET domain = ? WHERE domain = ?",
                         (canonical, raw))
                     moved += 1
+                self.canonicalised_hosts += moved
                 if moved:
                     logger.info(
                         "%s.domain: %d of %d host(s) brought to the canonical "
@@ -558,3 +568,43 @@ class SerpStorage:
                 d["pivot_variants"] = []
             result.append(d)
         return result
+
+
+def migrated_connection(db_path="serp_data.db", create=False, log=None):
+    """A `closing`-wrapped connection whose migrations have already run.
+
+    The read-only consumers query columns that exist only after
+    `SerpStorage`'s migrations — `serp_results.query_label` and
+    `runs.completed_at` among them. `visualize_volatility.py` opened the file
+    with a bare `sqlite3.connect`, so against a database written before those
+    columns were added every query raised `no such column`: a schema that was
+    never brought forward, reported as a crash rather than as the empty
+    history it is (review chunk Y6).
+
+    Bringing a schema forward is a write, and this is called from read-only
+    scripts, so it is announced: the columns added and the hosts
+    canonicalised are reported through *log* (default `print`), because a
+    chart that quietly rewrote rows in the operator's history would leave no
+    record of having done it (cold review of chunk Y6, finding 3).
+
+    *create* is False, so an absent file raises `FileNotFoundError` rather
+    than being created and read back as an empty history: "no database yet"
+    and "this keyword never ranked" are two different answers (P35, same
+    review, finding 2).
+
+    Returns a context manager, so the handle is closed on every exit
+    including a raised one (review chunk Y5).
+    """
+    if not create and not os.path.exists(db_path):
+        raise FileNotFoundError(db_path)
+    store = SerpStorage(db_path)
+    say = log or print
+    if store.migrated_columns:
+        say(f"  The history database was brought forward: "
+            f"{len(store.migrated_columns)} column(s) added "
+            f"({', '.join(store.migrated_columns)}).")
+    if store.canonicalised_hosts:
+        say(f"  {store.canonicalised_hosts} stored host(s) were rewritten to "
+            f"the canonical form and any orphaned feature rows removed "
+            f"(review chunk Y1).")
+    return closing(sqlite3.connect(db_path))

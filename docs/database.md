@@ -99,6 +99,24 @@ and the provenance columns then read "not recorded" — the wording that means a
 row written before the migration (P1/P6). A missing table is now raised with
 the reason, because a database with no schema is not a migrated one.
 
+A read-only consumer opens the database through `storage.migrated_connection`,
+which constructs a `SerpStorage` first, so the migrations have run before the
+first query. Bringing a schema forward is a write, and these are read-only
+scripts, so it is announced: the helper reports the columns added and the hosts
+the Y1 canonicalisation rewrote, because a chart that quietly `UPDATE`d rows
+and deleted orphaned `domain_features` rows in the operator's history would
+leave no record of it. `create` is False, so an absent file raises
+`FileNotFoundError` instead of being created and read back as an empty history
+— "no database yet" and "this keyword never ranked" are different answers.
+`metrics.py`'s three reads use the same helper, because
+`generate_insight_report.py` calls them with no `SerpStorage` constructed
+first. `visualize_volatility.py` used a bare `sqlite3.connect`, and every
+query it makes filters on `serp_results.query_label` and `runs.completed_at` —
+columns a migration added — so against a database written before them the chart
+raised `no such column` rather than reporting an empty rank history (review
+chunk Y6). The helper returns a `contextlib.closing` wrapper, so the handle is
+closed on a raised exit too.
+
 Rows written before the migration hold NULL in all four. NULL means *not
 recorded*, never `0 of 0`: every reader keeps absent and zero apart, and the
 reports print "coverage not recorded for this run" rather than inventing a

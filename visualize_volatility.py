@@ -2,13 +2,15 @@
 visualize_volatility.py
 Visualizes rank history for a specific keyword using matplotlib.
 """
-import sqlite3
 import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 import sys
 
+import os
+
 import metrics
+import storage
 
 DB_PATH = "serp_data.db"
 
@@ -31,6 +33,23 @@ PLOTTABLE_ROWS = """
 """
 
 
+def _no_database() -> bool:
+    """True, with the reason said out loud, when there is no history to read.
+
+    `SerpStorage` creates the file and the whole schema, so opening an absent
+    path through `storage.migrated_connection` would answer every query with
+    "nothing found" and leave a new empty database behind — "no history yet,
+    or the wrong working directory" reported as "this keyword never ranked"
+    (P35, cold review of chunk Y6). `metrics.py` has made the same check
+    since chunk D1.
+    """
+    if os.path.exists(DB_PATH):
+        return False
+    print(f"No history database at {DB_PATH} yet — run the audit once, or "
+          f"check the working directory.")
+    return True
+
+
 def get_keywords():
     """The keywords that have a plottable history.
 
@@ -38,17 +57,19 @@ def get_keywords():
     offer a keyword whose only rows are a pivot query, an aborted run, or a
     rank below the chart's depth (review chunk Y4).
     """
-    conn = sqlite3.connect(DB_PATH)
-    df = pd.read_sql("SELECT DISTINCT s.keyword_text" + PLOTTABLE_ROWS,
-                     conn, params=(PRIMARY_QUERY_LABEL,))
-    excluded = pd.read_sql("""
-        SELECT COUNT(*) AS n
-        FROM serp_results s
-        JOIN runs r ON s.run_id = r.run_id
-        WHERE s.result_type = 'organic'
-          AND (s.rank > 10 OR s.query_label IS NOT ? OR r.completed_at IS NULL)
-    """, conn, params=(PRIMARY_QUERY_LABEL,)).iloc[0]["n"]
-    conn.close()
+    if _no_database():
+        return []
+    with storage.migrated_connection(DB_PATH) as conn:
+        df = pd.read_sql("SELECT DISTINCT s.keyword_text" + PLOTTABLE_ROWS,
+                         conn, params=(PRIMARY_QUERY_LABEL,))
+        excluded = pd.read_sql("""
+            SELECT COUNT(*) AS n
+            FROM serp_results s
+            JOIN runs r ON s.run_id = r.run_id
+            WHERE s.result_type = 'organic'
+              AND (s.rank > 10 OR s.query_label IS NOT ?
+                   OR r.completed_at IS NULL)
+        """, conn, params=(PRIMARY_QUERY_LABEL,)).iloc[0]["n"]
     if excluded:
         # P2 — an empty or short menu is not an empty database.
         print(f"  {int(excluded)} stored organic row(s) are not plottable "
@@ -58,8 +79,6 @@ def get_keywords():
 
 
 def plot_history(keyword):
-    conn = sqlite3.connect(DB_PATH)
-
     # The same two filters `metrics.py` has applied since chunk D1 (D-C-22):
     # a pivot ("P") or AI-alternative ("S") row carries the same keyword text
     # as the primary SERP but measures a different query, and an aborted run
@@ -71,23 +90,25 @@ def plot_history(keyword):
     # run-completion and query-label migrations carry NULL, which means
     # unknown — not "a pivot" and not "an aborted run" — so naming them as
     # either would be an invented cause (P35, cold review of chunk Y4).
-    counts = pd.read_sql("""
-    SELECT
-        COUNT(*) AS stored,
-        SUM(CASE WHEN s.rank > 10 THEN 1 ELSE 0 END) AS deep,
-        SUM(CASE WHEN s.query_label IS NULL
-                   OR r.completed_at IS NULL THEN 1 ELSE 0 END) AS unknown,
-        SUM(CASE WHEN s.query_label IS NOT NULL
-                  AND s.query_label != ? THEN 1 ELSE 0 END) AS other_query,
-        SUM(CASE WHEN s.query_label = ?
-                  AND r.completed_at IS NULL THEN 1 ELSE 0 END) AS aborted
-    FROM serp_results s
-    JOIN runs r ON s.run_id = r.run_id
-    WHERE s.keyword_text = ? AND s.result_type = 'organic'
-    """, conn, params=(PRIMARY_QUERY_LABEL, PRIMARY_QUERY_LABEL,
-                       keyword)).iloc[0]
-    df = pd.read_sql(query, conn, params=(PRIMARY_QUERY_LABEL, keyword))
-    conn.close()
+    if _no_database():
+        return
+    with storage.migrated_connection(DB_PATH) as conn:
+        counts = pd.read_sql("""
+        SELECT
+            COUNT(*) AS stored,
+            SUM(CASE WHEN s.rank > 10 THEN 1 ELSE 0 END) AS deep,
+            SUM(CASE WHEN s.query_label IS NULL
+                       OR r.completed_at IS NULL THEN 1 ELSE 0 END) AS unknown,
+            SUM(CASE WHEN s.query_label IS NOT NULL
+                      AND s.query_label != ? THEN 1 ELSE 0 END) AS other_query,
+            SUM(CASE WHEN s.query_label = ?
+                      AND r.completed_at IS NULL THEN 1 ELSE 0 END) AS aborted
+        FROM serp_results s
+        JOIN runs r ON s.run_id = r.run_id
+        WHERE s.keyword_text = ? AND s.result_type = 'organic'
+        """, conn, params=(PRIMARY_QUERY_LABEL, PRIMARY_QUERY_LABEL,
+                           keyword)).iloc[0]
+        df = pd.read_sql(query, conn, params=(PRIMARY_QUERY_LABEL, keyword))
 
     stored = int(counts["stored"] or 0)
     reasons = []

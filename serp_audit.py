@@ -14,6 +14,7 @@ import jsonschema
 import generate_insight_report
 import generate_content_brief
 import pattern_matching
+import pivot_pass
 import query_variants
 import bing_check
 import handoff_writer
@@ -1428,6 +1429,9 @@ def _run(run_id):
     # Pivot jobs are queued here and processed in a second pass after the main loop
     pending_pivot_jobs: list[tuple[str, str, str]] = []
     all_feasibility: list[dict] = []
+    #: One entry per label-A keyword, filled in the fetch loop and consumed by
+    #: `decide_pivots` after it (review chunk Y6).
+    pending_feasibility: list[dict] = []
 
     # Data Containers
     all_metrics = []
@@ -1646,56 +1650,29 @@ def _run(run_id):
                                 client_da, competitor_das,
                                 directory_types=DIRECTORY_ENTITY_TYPES,
                             )
-                            # Gate the pivot on service intent — informational
-                            # keywords get no neighbourhood variant (B.1.d).
-                            kw_service_like = query_variants.is_service_like(
-                                source_keyword, SERVICE_LIKE_TOKENS, FEASIBILITY_LOCATION)
-                            pivot_result = feasibility_module.generate_hyper_local_pivot(
-                                primary_keyword=source_keyword,
-                                non_profit_location=FEASIBILITY_LOCATION,
-                                feasibility_results={
-                                    "status": feas["feasibility_status"],
-                                    "avg_competitor_da": feas["avg_serp_da"],
-                                },
-                                neighborhoods=FEASIBILITY_NEIGHBORHOODS,
-                                is_service_like=kw_service_like,
-                                pivotable_intents=FEASIBILITY_PIVOTABLE_INTENTS,
-                            )
-
-                            feas_row = {
-                                **feas,
-                                **pivot_result,
-                                "Keyword": source_keyword,
-                                "Query_Label": query_label,
-                                "da_provider": "moz",
+                            # The figures are computed here, where the Moz
+                            # batch is in hand. The PIVOT decision is not: it
+                            # needs the measured SERP intent and entity
+                            # distribution, and `keyword_profiles` does not
+                            # exist until every keyword has been fetched. It
+                            # was decided here with neither, so the token
+                            # guess was the whole gate while the standalone
+                            # `run_feasibility.py` passed the verdict the
+                            # function documents as outranking it (Y6).
+                            # `pivot_pass` decides it after this loop.
+                            pending_feasibility.append({
+                                "keyword": source_keyword,
+                                "feas": feas,
                                 "client_da_source": client_da_source,
-                                "Client_In_Local_Pack": None,
-                            }
-                            all_feasibility.append(feas_row)
-
-                            # The row IS the assessment: one argument, so a
-                            # field added to it cannot be forgotten here (F9).
-                            if ENRICHMENT_ENABLED:
-                                storage.save_feasibility_from_row(
-                                    feas_row, run_id, query_label,
-                                    pivot_variants=pivot_result.get(
-                                        "all_variants", []))
-
-                            status_icon = feasibility_module.status_label(
-                                feas["feasibility_status"], bare_icon=True)
-                            print(f"  [Feasibility] {source_keyword}: "
-                                  f"{status_icon} {feas['feasibility_status']} "
-                                  f"(gap={feas['gap']}, avg_da={feas['avg_serp_da']})")
-
-                            if (feas["feasibility_status"] == "Low Feasibility"
-                                    and FEASIBILITY_PIVOT_FETCH
-                                    and pivot_result.get("suggested_keyword")):
-                                pending_pivot_jobs.append((
-                                    pivot_result["suggested_keyword"],
-                                    source_keyword,
-                                    "P",
-                                ))
-                                print(f"  [Pivot queued] → {pivot_result['suggested_keyword']}")
+                                # Gate the pivot on service intent —
+                                # informational keywords get no neighbourhood
+                                # variant (B.1.d). Still computed per keyword
+                                # here; it is the fallback when no intent was
+                                # measured.
+                                "is_service_like": query_variants.is_service_like(
+                                    source_keyword, SERVICE_LIKE_TOKENS,
+                                    FEASIBILITY_LOCATION),
+                            })
 
         # --- AUTOCOMPLETE ---
         ac_data = fetch_autocomplete(keyword)
@@ -1732,6 +1709,26 @@ def _run(run_id):
     if run_fetch_summary["fetched"] == 0:
         logging.error("No query returned usable SERP data; no output files were written.")
         return pipeline_status.EXIT_FAILED
+
+    # --- PIVOT DECISION PASS ---
+    # Now that every keyword has been fetched, the measured SERP intent and
+    # entity distribution exist, so the pivot is decided on them rather than
+    # on a word-list test over the keyword string (review chunk Y6).
+    _feas_rows, _pivot_jobs = pivot_pass.decide_pivots(
+        pending_feasibility,
+        pivot_pass.build_pivot_profiles(
+            all_metrics, all_organic, all_paa, all_local_pack,
+            all_ai_citations, all_serp_modules, keywords,
+            CONFIG, CLIENT_DOMAIN),
+        location=FEASIBILITY_LOCATION,
+        neighborhoods=FEASIBILITY_NEIGHBORHOODS,
+        pivotable_intents=FEASIBILITY_PIVOTABLE_INTENTS,
+        pivot_fetch=FEASIBILITY_PIVOT_FETCH,
+        storage=storage if ENRICHMENT_ENABLED else None,
+        run_id=run_id,
+    )
+    all_feasibility.extend(_feas_rows)
+    pending_pivot_jobs.extend(_pivot_jobs)
 
     # --- PIVOT KEYWORD FETCH PASS ---
     # Secondary SERP + Maps fetch for Low Feasibility keywords.

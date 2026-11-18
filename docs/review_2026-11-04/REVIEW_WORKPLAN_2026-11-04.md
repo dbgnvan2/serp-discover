@@ -826,7 +826,19 @@ printed the same dash as a citation with no brand and nothing counted them; the
 Y1 guard against hand-stripping `www.` was a source grep that a fourth spelling
 would pass; and four clients each carried their own `REQUEST_TIMEOUT`, so one
 number served an API call, a ranked-page fetch and an LLM answer
-(`docs/review_2026-11-04/PLAN_Y5_an_error_is_not_an_absence.md`). The
+(`docs/review_2026-11-04/PLAN_Y5_an_error_is_not_an_absence.md`). Chunk Y6 is
+the sixth: the pipeline agrees with the standalone run — `serp_audit` decided
+each keyword's neighbourhood pivot inside the SERP fetch loop, before
+`keyword_profiles` existed, so it called `generate_hyper_local_pivot` with
+neither the measured SERP intent nor the measured entity distribution while
+`run_feasibility.py` passed both, and the same SERP produced different pivots
+from the two entry points; `refresh_analysis_outputs.py` was the one config
+loader of five that applied no retry policy; the rank-history chart opened the
+database around `SerpStorage`'s migrations and raised `no such column` against
+a database written before them; and the two sponge helpers named module
+constants as default arguments, so a configured threshold reached `main` and no
+other caller
+(`docs/review_2026-11-04/PLAN_Y6_the_pipeline_agrees_with_the_run.md`). The
 remaining adjacent issues are listed at the end of each chunk's own plan.
 
 ## 7. What was checked and found sound (so it is not re-reviewed)

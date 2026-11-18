@@ -142,7 +142,13 @@ class TestTheHistoryReaderIsAlwaysClosed(unittest.TestCase):
     that used to return without a `close()`."""
 
     def _statuses_leak(self, rows_sql_error=False):
+        # Patched on `storage`, where the connection is now opened: chunk Y6
+        # routed every history read through `storage.migrated_connection` so
+        # a pre-migration schema is brought forward rather than raising
+        # `no such column`. The criterion is unchanged — every handle the
+        # reader opens is closed on every exit.
         import metrics
+        import storage as storage_mod
 
         opened = []
 
@@ -157,7 +163,7 @@ class TestTheHistoryReaderIsAlwaysClosed(unittest.TestCase):
                 return conn
 
             with mock.patch.object(metrics, "DB_PATH", path), \
-                 mock.patch.object(metrics.sqlite3, "connect", _connect):
+                 mock.patch.object(storage_mod.sqlite3, "connect", _connect):
                 if rows_sql_error:
                     with mock.patch.object(
                             metrics.pd, "read_sql",
@@ -185,6 +191,7 @@ class TestTheHistoryReaderIsAlwaysClosed(unittest.TestCase):
         the `except` return, so a failing dominance query held the handle for
         the life of the call (P5)."""
         import metrics
+        import storage as storage_mod
 
         opened = []
 
@@ -199,7 +206,7 @@ class TestTheHistoryReaderIsAlwaysClosed(unittest.TestCase):
                 return conn
 
             with mock.patch.object(metrics, "DB_PATH", path), \
-                 mock.patch.object(metrics.sqlite3, "connect", _connect), \
+                 mock.patch.object(storage_mod.sqlite3, "connect", _connect), \
                  mock.patch.object(
                      metrics.pd, "read_sql",
                      side_effect=sqlite3.OperationalError("no table")):

@@ -253,11 +253,25 @@ class TestRetryPolicyComesFromConfig(unittest.TestCase):
         """A setting that changes one script and silently does nothing in the
         other three is worse than no setting (P5)."""
         import importlib
+        import run_gsc_analysis as _rga
 
+        # This calls the real loaders against the repo's own `config.yml`,
+        # which leaves `run_gsc_analysis`' sponge thresholds set to whatever
+        # that file says for every later test in the process. Latent only
+        # while those five values equal the documented defaults (cold review
+        # of chunk Y6, finding 7).
+        self.addCleanup(_rga.apply_sponge_thresholds, None)
+
+        # `refresh_analysis_outputs` joined the list in chunk Y6: it re-runs
+        # the entity classifier, which fetches, and was the one loader of five
+        # that applied no policy.
         for name in ("run_feasibility", "run_gsc_analysis",
-                     "probe_ai_visibility", "report_llm"):
+                     "probe_ai_visibility", "report_llm",
+                     "refresh_analysis_outputs"):
             module = importlib.import_module(name)
-            loader = getattr(module, "_load_config", None) or module.load_settings
+            loader = (getattr(module, "_load_config", None)
+                      or getattr(module, "load_config", None)
+                      or module.load_settings)
             with mock.patch.object(http_retry, "apply_retry_policy") as spy:
                 loader("config.yml")
             self.assertEqual(spy.call_count, 1, name)

@@ -1099,6 +1099,11 @@ def generate_hyper_local_pivot(
         return {
             "original_keyword": primary_keyword,
             "pivot_status": "Stay the course",
+            # Every branch reports what decided the gate, so a caller can
+            # count the pivots decided on a measured SERP without guessing
+            # from the presence of a `serp_intent` block (cold review of
+            # review chunk Y6, finding 1).
+            "gate_source": gate_source,
             "suggested_keyword": None,
             "all_variants": all_variants,
             "strategy": (
@@ -1114,6 +1119,7 @@ def generate_hyper_local_pivot(
         return {
             "original_keyword": primary_keyword,
             "pivot_status": "Stay the course",
+            "gate_source": gate_source,
             "suggested_keyword": None,
             "all_variants": all_variants,
             "strategy": "Current keyword is feasible. No pivot required.",

@@ -11,6 +11,7 @@ import openpyxl
 import yaml
 
 import brief_data_extraction
+import http_retry
 from classifiers import EntityClassifier
 from generate_domain_override_candidates import (
     collect_candidates,
@@ -21,11 +22,27 @@ from generate_domain_override_candidates import (
 
 
 def load_config(config_path="config.yml"):
-    """config.yml as a dict, or {} when it is absent."""
+    """config.yml as a dict, or {} when it is absent.
+
+    Applies `config.yml http_retry` the way every other entry point does.
+
+    This script makes no outbound call of its own — it re-classifies a
+    finished run's rows and rewrites the JSON and the workbook (the first
+    version of this docstring said the classifier fetches; it does not, and
+    the claim was corrected in the cold review of chunk Y6). The policy is
+    process-wide state, and the GUI calls `refresh_analysis_outputs`
+    in-process, so a loader that set no policy left the process running on
+    whatever the last loader happened to set — or on the import defaults.
+    Every loader of the five now applies the configured policy, and the
+    absent-config branch resets it rather than inheriting one (P5/P25).
+    """
     if not os.path.exists(config_path):
+        http_retry.apply_retry_policy(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
-        return yaml.safe_load(f) or {}
+        config = yaml.safe_load(f) or {}
+    http_retry.apply_retry_policy(config)
+    return config
 
 
 def load_config_paths(config_path="config.yml"):

@@ -25,6 +25,7 @@ from unittest import mock
 import dataforseo_client
 import feasibility
 import moz_client
+import pivot_pass
 import play_routing
 import shared_config
 
@@ -340,9 +341,60 @@ class TestPivotGate(_SourceGuard, unittest.TestCase):
         self.assertIsNone(feas["gap"])
         self.assertEqual(feas["feasibility_status"], "Not Measured")
 
-    def test_d2a8_serp_audit_gates_its_pivot_queue_on_a_verdict(self):
-        self.assertInSource('feas["feasibility_status"] == "Low Feasibility"',
-                            "serp_audit.py")
+    def test_d2a8_the_pipeline_queues_no_pivot_without_a_verdict(self):
+        """The consequence, not the wording.
+
+        The decision moved out of `serp_audit.py` into `pivot_pass.py` in
+        chunk Y6, and this guard asserted the literal text of the gate, so it
+        went red on a move that changed no behaviour. It now runs the pass.
+        """
+        unmeasured = feasibility.compute_feasibility(
+            None, feasibility.DAWindow([], 0, 10, 10))
+        low = feasibility.compute_feasibility(
+            35, feasibility.DAWindow([90] * 8, 8, 0, 8))
+        self.assertEqual(low["feasibility_status"], "Low Feasibility")
+
+        def pending(keyword, feas):
+            return {"keyword": keyword, "feas": feas,
+                    "client_da_source": "moz", "is_service_like": True}
+
+        rows, jobs = pivot_pass.decide_pivots(
+            [pending("counselling vancouver", unmeasured),
+             pending("therapy vancouver", low)],
+            {}, location="North Vancouver, BC",
+            neighborhoods=["Lonsdale"], pivotable_intents=("local",),
+            pivot_fetch=True, storage=None, run_id="r1", log=lambda *_: None)
+
+        self.assertEqual(len(rows), 2)
+        queued = [job[1] for job in jobs]
+        self.assertNotIn("counselling vancouver", queued)
+        self.assertIn("therapy vancouver", queued)
+
+    def test_d2a8_the_queue_asks_for_the_verdict_itself(self):
+        """Defence in depth, asserted on its own.
+
+        `generate_hyper_local_pivot` suggests no keyword without a Low
+        Feasibility verdict, so the pass's own gate is unreachable through it
+        — and a gate nothing can reach is a gate nobody notices going. A
+        pivot suggested beside a Moderate verdict queues no paid fetch.
+        """
+        moderate = feasibility.compute_feasibility(
+            35, feasibility.DAWindow([50] * 6, 6, 0, 6))
+        self.assertEqual(moderate["feasibility_status"],
+                         "Moderate Feasibility")
+        with mock.patch.object(
+                feasibility, "generate_hyper_local_pivot",
+                return_value={"pivot_status": "Pivoting to Hyper-Local",
+                              "suggested_keyword": "therapy lonsdale",
+                              "all_variants": ["therapy lonsdale"]}):
+            _rows, jobs = pivot_pass.decide_pivots(
+                [{"keyword": "therapy vancouver", "feas": moderate,
+                  "client_da_source": "moz", "is_service_like": True}],
+                {}, location="North Vancouver, BC",
+                neighborhoods=["Lonsdale"], pivotable_intents=("local",),
+                pivot_fetch=True, storage=None, run_id="r1",
+                log=lambda *_: None)
+        self.assertEqual(jobs, [])
 
 
 class TestPerKeywordAvailability(_SourceGuard, unittest.TestCase):

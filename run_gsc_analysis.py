@@ -170,6 +170,36 @@ def resolve_sponge_thresholds(cfg: dict | None) -> dict:
     return out
 
 
+#: The thresholds the current process is running with. `_load_config` applies
+#: the config block to it once at startup; the sponge helpers read it when a
+#: caller passes no explicit value.
+_ACTIVE_SPONGE_THRESHOLDS: dict = resolve_sponge_thresholds(None)
+
+
+def apply_sponge_thresholds(cfg: dict | None) -> dict:
+    """Make config `gsc`'s thresholds the ones an omitted argument gets.
+
+    `compute_sponge_effect` and `find_reformat_candidates` named the module
+    constants as default arguments, and a default argument binds at `def`
+    time: a caller that omitted `min_bucket_size` got 3 however `config.yml`
+    read, so the setting worked through `main` and silently did nothing
+    everywhere else (the Y5 default-argument class again, review chunk Y6).
+    """
+    global _ACTIVE_SPONGE_THRESHOLDS
+    _ACTIVE_SPONGE_THRESHOLDS = resolve_sponge_thresholds(cfg)
+    return dict(_ACTIVE_SPONGE_THRESHOLDS)
+
+
+def active_sponge_thresholds() -> dict:
+    """The live thresholds. A function, not a constant read at import, so
+    `apply_sponge_thresholds` reaches every caller (P25).
+
+    A copy: process state a caller can mutate in place is state nobody owns
+    (cold review of chunk Y6, finding 7).
+    """
+    return dict(_ACTIVE_SPONGE_THRESHOLDS)
+
+
 def _resolve_position_bands(raw) -> list[tuple[float, float]]:
     """Validated `[(low, high), ...]` from config, or `[]` to use the default.
 
@@ -250,10 +280,12 @@ def _load_config(config_path: str = "config.yml") -> dict:
     """
     if not os.path.exists(config_path):
         http_retry.apply_retry_policy(None)
+        apply_sponge_thresholds(None)
         return {}
     with open(config_path, "r", encoding="utf-8") as f:
         config = yaml.safe_load(f) or {}
     http_retry.apply_retry_policy(config)
+    apply_sponge_thresholds(config)
     return config
 
 
@@ -334,10 +366,10 @@ def collect_queries(data: dict, max_paa: int = MAX_PAA_QUERIES) -> list[dict]:
 # ---------------------------------------------------------------------------
 
 def compute_sponge_effect(rows: list[dict],
-                          bands: list[tuple[float, float]] = None,
-                          min_bucket_size: int = MIN_BUCKET_SIZE,
+                          bands: list[tuple[float, float]] | None = None,
+                          min_bucket_size: int | None = None,
                           not_reached: int = 0,
-                          min_impressions: int = DEFAULT_MIN_IMPRESSIONS) -> dict:
+                          min_impressions: int | None = None) -> dict:
     """Median CTR at comparable position: AIO-present vs AIO-absent queries.
 
     Only queries with GSC data, a known AIO state, a position AND at least
@@ -359,7 +391,15 @@ def compute_sponge_effect(rows: list[dict],
 
     Spec: seo_geo_deferred_spec_v1.md#G.4; review_2026-11-04 D5.1 (D-M-15).
     """
-    bands = bands or DEFAULT_POSITION_BANDS
+    # Resolved here, not in the signature: a default argument binds at `def`
+    # time, so naming the module constants there made the configured value
+    # unreachable to every caller that omitted the argument (review chunk Y6).
+    _active = active_sponge_thresholds()
+    bands = bands or _active["position_bands"]
+    if min_bucket_size is None:
+        min_bucket_size = _active["min_bucket_size"]
+    if min_impressions is None:
+        min_impressions = _active["min_impressions"]
     with_state = [
         r for r in rows
         if r.get("found") and r.get("has_ai_overview") is not None
@@ -448,9 +488,9 @@ def geo_alert_keywords(data: dict) -> set[str]:
 
 def find_reformat_candidates(rows: list[dict], sponge: dict,
                              geo_alert_kws: set[str],
-                             max_position: float = REFORMAT_MAX_POSITION,
-                             min_impressions: int = DEFAULT_MIN_IMPRESSIONS,
-                             ctr_margin: float = DEFAULT_REFORMAT_CTR_MARGIN) -> list[dict]:
+                             max_position: float | None = None,
+                             min_impressions: int | None = None,
+                             ctr_margin: float | None = None) -> list[dict]:
     """Queries ranking well whose CTR sits a stated margin below the no-AIO
     median for their band, where an AI Overview is actually present.
 
@@ -469,6 +509,15 @@ def find_reformat_candidates(rows: list[dict], sponge: dict,
     Spec: seo_geo_deferred_spec_v1.md#G.4; review_2026-11-04 D5.2 (D-M-15).
     """
     candidates: list[dict] = []
+    # Resolved here, not in the signature (review chunk Y6 — see
+    # `apply_sponge_thresholds`).
+    _active = active_sponge_thresholds()
+    if max_position is None:
+        max_position = _active["reformat_max_position"]
+    if min_impressions is None:
+        min_impressions = _active["min_impressions"]
+    if ctr_margin is None:
+        ctr_margin = _active["reformat_ctr_margin"]
     floor = int(min_impressions or 0)
     margin = float(ctr_margin or 0.0)
     for row in rows:

@@ -129,9 +129,21 @@ class TestD6TheMeanIsNotTheWholeAnswer(unittest.TestCase):
 
     def test_both_producers_and_the_database_carry_the_minima(self):
         """Finding F9 again: the fields reached the report, not the DB."""
-        # serp_audit splats the whole assessment into its row, so a new
-        # field cannot miss it; the other two name the field set.
-        self.assertIn("**feas,", _read("serp_audit.py"))
+        # The pipeline's row carries the whole assessment, so a new field
+        # cannot miss it. Asserted by running the pass that builds the row
+        # (it was a grep for `**feas,` in serp_audit.py until the decision
+        # moved to pivot_pass.py in chunk Y6); the other names the field set.
+        import pivot_pass
+        feas = feasibility.compute_feasibility(
+            35, feasibility.DAWindow([90] * 8, 8, 0, 8))
+        rows, _ = pivot_pass.decide_pivots(
+            [{"keyword": "therapy vancouver", "feas": feas,
+              "client_da_source": "moz", "is_service_like": True}],
+            {}, location="North Vancouver, BC", neighborhoods=["Lonsdale"],
+            pivotable_intents=("local",), pivot_fetch=False, storage=None,
+            run_id="r1", log=lambda *_: None)
+        for key in feasibility.MINIMA_FIELDS:
+            self.assertIn(key, rows[0])
         self.assertIn("MINIMA_FIELDS", _read("storage.py"))
         # Both of the standalone producer's rows — the primary keyword and
         # the pivot keyword — carry the set, not just one of them.
