@@ -317,6 +317,26 @@ fetch_status:
   no_url: "No URL"
   enrichment_disabled: "Enrichment Off"
 
+# Why the SERP-intent column reads as it does, said once at the top of the
+# report instead of ten times as "0 of 10 classified" with no cause (added
+# 2026-11-19 from the first live run: 125 of 221 ranked results came back as a
+# Google redirect that recovered only to a site root, 58 were never fetched,
+# so every one of ten keywords had no intent verdict and the report
+# recommended no page for any of them — with nothing anywhere saying why).
+# `{reasons}` is built from the rows' own Fetch_Status labels above, so the
+# cause named here is the one each row recorded, never a guess.
+classification_coverage:
+  line: >-
+    **Ranked results classified:** {classified} of {total}. SERP intent is read
+    from classified results only, so a keyword with few of them gets no intent
+    verdict and no page recommendation. The rest were not classified because
+    {reasons}.
+  reason_item: "{count} × {label}"
+  none_classified: >-
+    **Ranked results classified:** none of {total}. No keyword can have a SERP
+    intent verdict this run, which is why the table below recommends no page:
+    {reasons}. Re-run once the pages can be read.
+
 # Review chunk Y13 — the words for a cleanup step that failed. A failing
 # `rollback()` or `close()` does not make the run's data wrong (chunk Y11 made
 # sure of that), so this is reported, never raised; but a `close()` that keeps

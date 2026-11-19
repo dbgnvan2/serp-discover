@@ -108,6 +108,70 @@ def status_text(state, **values):
             return str(fallback)
 
 
+#: Content-type cells that record an absence of measurement rather than a
+#: type, lower-cased. Same set as `brief_data_extraction._UNMEASURED_CONTENT_TYPES`
+#: — `"N/A"` is the field's own missing marker and `"Not Measured"` is
+#: `NOT_MEASURED`.
+_UNCLASSIFIED_CONTENT_TYPES = {"n/a", "not measured", ""}
+
+#: Fallback wording for the `classification_coverage` block, on the same terms
+#: as `_DEFAULTS`: a missing or malformed section degrades to English.
+_COVERAGE_DEFAULTS = {
+    "line": ("**Ranked results classified:** {classified} of {total}. SERP "
+             "intent is read from classified results only. The rest were not "
+             "classified because {reasons}."),
+    "reason_item": "{count} × {label}",
+    "none_classified": ("**Ranked results classified:** none of {total}, so "
+                        "no keyword can have a SERP intent verdict this run: "
+                        "{reasons}."),
+}
+
+
+def classification_coverage_line(organic_results):
+    """One line saying how many ranked results were classified, and why not.
+
+    The report stated "0 of 10 URLs could be classified" per keyword and
+    nowhere said what stopped them, so a run whose links came back as Google
+    redirects recovering only to a site root produced ten "Deprioritise"
+    verdicts and no page recommendation, with the cause recorded on every row
+    and reported in no sentence (P2, found by the first live run,
+    2026-11-18).
+
+    The reasons are the rows' OWN `Fetch_Status` words, counted — not a cause
+    inferred here. Returns "" when every result was classified, or when there
+    are no results to speak about.
+    """
+    rows = [r for r in (organic_results or []) if isinstance(r, dict)]
+    if not rows:
+        return ""
+    unclassified = [r for r in rows
+                    if str(r.get("Content_Type") or "").strip().lower()
+                    in _UNCLASSIFIED_CONTENT_TYPES]
+    if not unclassified:
+        return ""
+    vocab = SERP_VOCAB.get("classification_coverage") or {}
+
+    def _words(key):
+        return str(vocab.get(key) or _COVERAGE_DEFAULTS[key])
+
+    counts = {}
+    for row in unclassified:
+        label = str(row.get("Fetch_Status") or "").strip() or "no reason recorded"
+        counts[label] = counts.get(label, 0) + 1
+    item = _words("reason_item")
+    reasons = ", ".join(
+        item.format(count=count, label=label)
+        for label, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
+    classified = len(rows) - len(unclassified)
+    key = "none_classified" if classified == 0 else "line"
+    try:
+        return _words(key).format(classified=classified, total=len(rows),
+                                  reasons=reasons).strip()
+    except (KeyError, IndexError, ValueError, TypeError):
+        return _COVERAGE_DEFAULTS[key].format(
+            classified=classified, total=len(rows), reasons=reasons).strip()
+
+
 def mark_unmeasured(item, state, **values):
     """Record one unmeasured outcome on a row, in both forms.
 

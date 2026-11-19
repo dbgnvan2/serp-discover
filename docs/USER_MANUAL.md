@@ -1156,7 +1156,7 @@ The main report. It opens with what to write and works backwards to the evidence
 
 | Section | What it gives you |
 |---|---|
-| 0. Executive Summary | The single best keyword, and the first thing to write |
+| 0. Executive Summary | The single best keyword, the first thing to write, and how many ranked results could be classified |
 | **1. What To Write** | The ranked content plan — one numbered option per keyword |
 | 1b. Market Overview | Which search-page features appeared, and on how many keywords |
 | 2. The 'Anxiety Loop' | Real questions searchers ask, to use as page headings |
@@ -1168,6 +1168,41 @@ The main report. It opens with what to write and works backwards to the evidence
 
 **How to use:** read Section 1, write the page, and drop into the numbered
 sections when you want the evidence behind a recommendation.
+
+##### "Ranked results classified: N of M" — read this line first
+
+Section 0 states how many of the run's ranked competitor results could be
+classified, and, for the rest, what stopped them, counted by the reason each
+row recorded:
+
+> **Ranked results classified:** 15 of 221. SERP intent is read from
+> classified results only, so a keyword with few of them gets no intent
+> verdict and no page recommendation. The rest were not classified because
+> 125 × Not The Ranked Page, 58 × Not Fetched, 14 × Blocked (403), 9 × No URL.
+
+**Why it matters:** a keyword's SERP intent is read from the content types of
+the pages ranking for it. Where few of them were classified there is no intent
+verdict, the action column reads `❓ Intent unknown`, and the content plan
+recommends no page — not because the keyword is bad, but because the run could
+not see enough of the results page. The line tells you which it is, and what to
+change:
+
+- **Not The Ranked Page** — Google returned a redirect that could only be
+  resolved to the competitor's home page, so the actual ranking page was never
+  read. Nothing to fix locally; re-running usually returns direct links for a
+  different share of results.
+- **Not Fetched** — the result sat past `enrichment.max_urls_per_keyword`, or
+  enrichment was off. Raise the cap or switch it on.
+- **Blocked (NNN)** / **Not Read (network, retry)** — the competitor's site
+  refused or never answered. Nothing to fix; those pages stay unclassified.
+- **No URL** — the result carried no link at all.
+
+When nothing at all was classified the line says so outright ("none of M")
+rather than "0 of M", because no keyword can have an intent verdict on that
+run, and the report's ten "Deprioritise" verdicts are an absence of evidence
+rather than a judgement about the keywords.
+
+The wording lives in `serp_vocab.yml` under `classification_coverage`.
 
 ##### Section 1 — What To Write
 

@@ -151,7 +151,12 @@ Editorial content currently lives in:
   side this one sentence is also the one that degrades: it is said from inside
   an `except` and from an `atexit` hook, where the messages file may itself be
   what is broken, so `db_connect.FALLBACK_CLEANUP_WARNING` carries a built-in
-  wording and the warning says it was used. `fetch_retryable` and
+  wording and the warning says it was used. Also `classification_coverage` —
+  the report's §0 line saying how many ranked results were classified and,
+  from the rows' own `Fetch_Status` words, what stopped the rest. Before it
+  the report stated "0 of 10 URLs could be classified" per keyword and said
+  nowhere what caused it, so the 2026-11-18 run recommended no page for any
+  keyword without naming a reason (added 2026-11-19). `fetch_retryable` and
   `unreachable` are two facts: every attempt failed at the network layer after
   the retries, versus no request could be made at all (added review chunk Y2). The ONLY home for these words; `enrichment.status_text` reads them
   (added review chunk D2c / D-C-20)

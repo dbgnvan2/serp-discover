@@ -52,6 +52,7 @@ import feasibility
 from feasibility import index_feasibility_by_keyword
 import commodity_score
 import demand_dashboard
+import enrichment
 import thresholds_provenance
 from domain_utils import normalize_domain
 
@@ -1353,6 +1354,15 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
         report.append(f"**Best keyword opportunity:** `{best_opportunity_kw}` — {best_opportunity_reason}.\n")
     else:
         report.append(f"**Best keyword opportunity:** cannot be determined — {best_opportunity_reason}\n")
+
+    # Why the Intent column reads as it does, said once rather than left to
+    # be inferred from ten "0 of 10 classified" lines further down (P2, found
+    # by the first live run). Built from the organic rows' own Fetch_Status
+    # words; empty when every ranked result was classified.
+    coverage_line = enrichment.classification_coverage_line(
+        data.get("organic_results"))
+    if coverage_line:
+        report.append(coverage_line + "\n")
 
     # RC.1.2 — Content brief priority. Wires the RC.8 ordering
     # (_order_briefs_by_opportunity) into the Executive Summary: the first

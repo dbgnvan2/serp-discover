@@ -1378,3 +1378,24 @@ gate does not cry on a genuine workbook.
   about SerpAPI page limits.
 - `norm_text`'s nan arm covers `float`/`numpy.float64` but not `pd.NaT` or
   `pd.NA`; neither can reach a key column today.
+
+### C3 — the report never said why nothing could be classified
+
+The 2026-11-18 run recommended no page for any of ten keywords: 15 of 221
+ranked results were classified, so no keyword had a SERP intent verdict, every
+action read `❓ Intent unknown` and every play read "Deprioritise". The cause
+was on every row — 125 `Not The Ranked Page` (a Google redirect that resolved
+only to the competitor's site root), 58 `Not Fetched`, 14 `Blocked (403)`, 9
+`No URL` — and in no sentence anywhere: §0 said only that feasibility was
+missing, and each keyword's section said "0 of 10 URLs could be classified"
+without saying what stopped them, so ten absences of evidence read as ten
+judgements about the keywords (P2). §0 now carries one line counting the
+classified results and naming each cause with its own count, built from the
+rows' own `Fetch_Status` words rather than a cause inferred at render time;
+a run where nothing was classified says "none of M" rather than "0 of M",
+because no keyword can have a verdict at all on such a run. Words in
+`serp_vocab.yml` `classification_coverage`; `docs/USER_MANUAL.md` says what
+each cause means and what to change.
+
+Verified by regenerating the 2026-11-18 report from its own JSON: the line
+reads "15 of 221" and names all four causes.
