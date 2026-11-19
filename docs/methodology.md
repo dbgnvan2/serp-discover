@@ -132,34 +132,49 @@ recovers the host only, the ranked page is never read, and `content_type` stays
 unmeasured — which left every keyword below the five classified results a
 verdict needs.
 
-`intent_mapping.yml` section 1b reaches an intent from the host for the entity
-types whose intent does not vary from page to page: `directory` →
-`commercial_investigation`, `government` → `transactional`, `publisher` →
-`informational`. Three properties keep it honest, each pinned by
+A page is also left with nothing to go on when it *was* read and the
+classifier could not type it (`other`, `unknown`). `intent_mapping.yml`'s
+`unusable_content_types` is the set of both cases, and section 1b gates on it
+— **on the page's type, not on whether the page was fetched**. Gating on the
+fetch instead meant one site was classified two ways: for `childhood emotional
+neglect`, three Pathways BC pages that were read came back `other` and were
+dropped while four that were not read were inferred, so reading a page gave a
+worse answer than not reading it. Widened on the owner's decision,
+2026-11-19.
+
+Section 1b reaches an intent from the host for the entity types whose intent
+does not vary from page to page: `directory` → `commercial_investigation`,
+`government` → `transactional`, `publisher` → `informational`. Three
+properties keep it honest, each pinned by
 `tests/test_host_inferred_intent.py`:
 
-1. The rules fire only on `page_read: "no"`, which `enrichment.page_read_state`
-   derives from the row's fetch state. A page that *was* read and came back
-   untypable keeps its drop — "we looked and it told us nothing" is a different
-   fact from "we never looked". A row from an analysis JSON written before the
-   field existed is `"unknown"` and is unaffected (P1).
-2. `counselling` and `media` are excluded. A practice's own site may rank with
-   a blog post or a services page, so its host settles nothing; `media` mixes
-   social and retail hosts with news, so it carries no single intent.
-3. A host-inferred row is counted in
+1. **A usable content type always wins.** The rules require
+   `content_type_usable: "no"`, so a directory host whose page reads as a
+   `guide` stays `informational` — that is the page's own evidence, and the
+   host does not override it. `intent_verdict._content_type_usable` derives the
+   attribute, case- and whitespace-insensitively, with a built-in fallback set
+   so a malformed mapping file cannot silently make every type usable.
+2. **`counselling` and `media` are excluded.** A practice's own site may rank
+   with a blog post or a services page, so its host settles nothing; `media`
+   mixes social and retail hosts (`reddit.com`, `youtube.com`, `amazon.ca`)
+   with news, so it carries no single intent. The widening changed which page
+   *types* let the host speak, not which *hosts* may speak.
+3. **It never raises coverage.** A host-inferred row is counted in
    `serp_intent.evidence.host_inferred_classified_count` and **excluded** from
    the classification-coverage bucket, which stays a statement about the pages.
    The report's §0 line states the figure, and the "not classified because…"
    causes subtract these rows per fetch state so the causes equal the deficit
-   they explain rather than exceeding it.
+   they explain rather than exceeding it (P2). A keyword can therefore carry a
+   verdict while its coverage reads `low`, which is the honest description of
+   a SERP whose purpose is legible but whose pages were not read.
 
-On the 2026-11-19 run this took classified results from 16 of 100 to 46 of 100
-and keywords with a verdict from 0 of 10 to 7 of 10.
+`page_read` remains a supported match key and `enrichment.page_read_state`
+still derives it, since whether the page was read is a separate fact from
+whether its type was usable; no shipped rule keys on it.
 
-*Known inconsistency, recorded not endorsed: a known-directory host whose page
-WAS read and classified `other` is still dropped, while the same host's unread
-page is inferred. Widening the rule to read-but-unmappable pages is an
-editorial decision for the owner.*
+On the 2026-11-19 run this took classified results from 16 of 100 to 51 of 100
+and keywords with a verdict from 0 of 10 to 7 of 10. The three without one are
+SERPs of job boards and news sites whose hosts classify as `N/A`.
 
 **Classification coverage and intent certainty are two different facts.**
 `confidence` (alias `classification_coverage`) is a count: how many of the ten

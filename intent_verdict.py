@@ -89,6 +89,14 @@ DEFAULT_THRESHOLDS = {
 #: unread (P1 — unknown is not a terminal value).
 PAGE_READ_VALUES = ("yes", "no", "unknown", "any")
 
+#: What a rule may require of `content_type_usable`.
+CONTENT_TYPE_USABLE_VALUES = ("yes", "no", "any")
+
+#: Fallback for `unusable_content_types` when the mapping file does not carry
+#: it. A malformed or old file must not silently make every content type
+#: usable, which would stop section 1b firing at all.
+DEFAULT_UNUSABLE_CONTENT_TYPES = ("unknown", "other", "n/a", "not measured", "")
+
 
 def load_mapping(path: str | None = None) -> dict:
     """Load intent_mapping.yml. Validates schema; raises ValueError on malformed."""
@@ -124,6 +132,14 @@ def load_mapping(path: str | None = None) -> dict:
                 f"rule {i} match has invalid page_read "
                 f"{match['page_read']!r}; must be one of {PAGE_READ_VALUES}"
             )
+        if ("content_type_usable" in match
+                and match["content_type_usable"]
+                not in CONTENT_TYPE_USABLE_VALUES):
+            raise ValueError(
+                f"rule {i} match has invalid content_type_usable "
+                f"{match['content_type_usable']!r}; must be one of "
+                f"{CONTENT_TYPE_USABLE_VALUES}"
+            )
 
     return data
 
@@ -157,6 +173,25 @@ def _page_read_state(row: dict) -> str:
     return "unknown"
 
 
+def _content_type_usable(content_type, mapping: dict) -> str:
+    """"yes" / "no" — whether the page's own type can decide an intent.
+
+    "no" covers both ways a result arrives with nothing to go on: the page was
+    never read, so the type is a marker like "Not Measured", or it was read
+    and the classifier could not type it ("other", "unknown"). The set is
+    `unusable_content_types` at the head of `intent_mapping.yml` — editorial,
+    and the one place the two cases are declared to be the same case.
+    """
+    unusable = mapping.get("unusable_content_types")
+    if not isinstance(unusable, (list, tuple)):
+        unusable = DEFAULT_UNUSABLE_CONTENT_TYPES
+    text = str(content_type or "").strip().lower()
+    for value in unusable:
+        if text == str(value or "").strip().lower():
+            return "no"
+    return "yes"
+
+
 def _matches_rule(rule_match: dict, url_attrs: dict) -> bool:
     """A rule matches if every non-'any' criterion equals the URL's attribute."""
     for key, expected in rule_match.items():
@@ -185,10 +220,17 @@ def _classify_url_with_rule(url_attrs: dict, rules: list):
 
 
 def _is_host_inferred(rule) -> bool:
-    """True when ``rule`` reached its intent without the page being read."""
+    """True when ``rule`` reached its intent from the host, not the page.
+
+    That is any rule requiring the page's own type to be unusable: it decided
+    on the host alone, so the row must not count toward classification
+    coverage, which is a statement about the pages.
+    """
     if not rule:
         return False
-    return (rule.get("match") or {}).get("page_read") == "no"
+    match = rule.get("match") or {}
+    return (match.get("content_type_usable") == "no"
+            or match.get("page_read") == "no")
 
 
 def _classify_url(url_attrs: dict, rules: list) -> str:
@@ -335,6 +377,11 @@ def compute_serp_intent(
             # A row that does not carry the key says nothing about whether
             # the page was read, which is not the same as saying it was not.
             "page_read": _page_read_state(row),
+            # Whether the page's own type can decide an intent. Section 1b
+            # gates on this rather than on the fetch, so a page read as
+            # "other" and a page never read are treated alike.
+            "content_type_usable": _content_type_usable(
+                row.get("content_type"), mapping),
         }
         intent, rule = _classify_url_with_rule(url_attrs, rules)
         intent_counts[intent] += 1

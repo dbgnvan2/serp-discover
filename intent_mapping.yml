@@ -67,6 +67,24 @@
 
 version: 1
 
+# EDITORIAL. The content types this table cannot act on: a page whose type is
+# one of these tells us nothing about what the searcher wanted, whether that
+# is because the page was never read ("Not Measured", from an encrypted Google
+# link) or because it was read and the classifier could not type it ("other",
+# "unknown"). Section 1b fires on exactly this set, so the two are treated
+# alike — the same site used to be classified differently depending on whether
+# its page happened to be fetchable. Matched case-insensitively after trimming.
+#
+# A content type NOT in this list is the page's own evidence and always wins
+# over the host: a directory host whose page reads as a `guide` stays
+# informational.
+unusable_content_types:
+  - unknown
+  - other
+  - "N/A"
+  - "Not Measured"
+  - ""
+
 rules:
 
   # ── 1. Domain role overrides ──────────────────────────────────────────────
@@ -78,41 +96,50 @@ rules:
     intent: navigational
     rationale: named competitor brand — searcher knows the brand
 
-  # ── 1b. The page could not be read, but the SITE is known ────────────────
+  # ── 1b. The page's type is unusable, but the SITE is known ───────────────
   #
-  # EDITORIAL. Google serves most organic links as an encrypted
-  # /goto?url=CAES… wrapper (52 of the 100 results in the verdict window of
-  # the 2026-11-19 run). The destination page is not recoverable from it —
-  # the payload is ciphertext, SerpAPI's about-this-result endpoint errors,
-  # and displayed_link carries a truncated breadcrumb — so the ranked page
-  # cannot be read and `content_type` stays unmeasured. What IS known is the
-  # host, and for some hosts the host settles the question: every page on a
-  # therapist directory is directory content, whatever the path.
+  # EDITORIAL. Two things leave a result with no usable content type. Google
+  # serves most organic links as an encrypted /goto?url=CAES… wrapper (52 of
+  # the 100 results in the verdict window of the 2026-11-19 run) whose
+  # destination is not recoverable — the payload is ciphertext, SerpAPI's
+  # about-this-result endpoint errors, displayed_link carries a truncated
+  # breadcrumb — so the page is never read. Or the page IS read and the
+  # classifier cannot type it ("other", "unknown"). Either way the page tells
+  # us nothing, and `unusable_content_types` at the head of this file is the
+  # set of both.
   #
-  # These rules fire ONLY on `page_read: "no"`. A page that WAS read and came
-  # back untypable is a different fact — we looked and it told us nothing —
-  # and keeps its drop in section 2 below. An older analysis JSON carries
-  # `page_read: "unknown"` and is unaffected.
+  # What IS known is the host, and for some hosts the host settles the
+  # question: every page on a therapist directory is directory content,
+  # whatever the path. These rules therefore fire on the content type, NOT on
+  # whether the page was fetched. Gating them on the fetch instead meant the
+  # same site was classified differently depending on whether its page
+  # happened to be reachable — three Pathways BC pages that were read came
+  # back "other" and were dropped, while four that were not read were
+  # inferred (2026-11-19, widened on the owner's decision).
+  #
+  # A page WITH a usable type always wins: a directory host whose page reads
+  # as a `guide` stays informational, because that is the page's own evidence.
   #
   # Only entity types whose intent does not vary page to page are listed.
   # `counselling` is deliberately absent: a practice's own site may rank with
   # a blog post (informational) or a services page (transactional), so the
-  # host does not settle it. `media` is absent because the type is social
-  # hosts (all 5 in the 2026-11-19 run were facebook.com), not publishers.
+  # host does not settle it. `media` is absent because the type is social and
+  # retail hosts as well as news (reddit, youtube, amazon alongside cbc), so
+  # it carries no one intent.
   #
   # A row classified by one of these rules is counted in
   # serp_intent.evidence.host_inferred_classified_count and is EXCLUDED from
   # the classification-coverage bucket, so inferring intent here never makes
   # the report claim it read a page it did not.
-  - match: { page_read: "no", entity_type: directory, content_type: any, local_pack: "any", domain_role: other }
+  - match: { content_type_usable: "no", entity_type: directory, content_type: any, local_pack: "any", domain_role: other }
     intent: commercial_investigation
     rationale: directory host — a directory exists to support comparison, on every page of it
 
-  - match: { page_read: "no", entity_type: government, content_type: any, local_pack: "any", domain_role: other }
+  - match: { content_type_usable: "no", entity_type: government, content_type: any, local_pack: "any", domain_role: other }
     intent: transactional
     rationale: government service host — a public service page is there to be used
 
-  - match: { page_read: "no", entity_type: publisher, content_type: any, local_pack: "any", domain_role: other }
+  - match: { content_type_usable: "no", entity_type: publisher, content_type: any, local_pack: "any", domain_role: other }
     intent: informational
     rationale: publisher host — reporting and features answer questions
 

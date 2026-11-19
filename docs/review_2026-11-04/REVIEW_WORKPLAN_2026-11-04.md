@@ -1588,13 +1588,42 @@ SerpAPI calls.
 
 ### Backlog (continued)
 
-- A known-directory host whose page WAS read and classified `other` is still
-  dropped, while the same host's unread page is inferred: the same site is
-  treated differently depending on whether its fetch happened to succeed.
-  Widening section 1b to read-but-unmappable pages is an editorial decision.
 - `media_domains` mixes social and retail hosts (`reddit.com`, `youtube.com`,
   `amazon.ca`) with publishers (`cbc.ca`, `vancouversun.com`), so the type
   carries no single intent and is excluded from host inference. Splitting it
   would let news hosts infer `informational`.
 - `globalnews.ca` and `ctvnews.ca` classify as `N/A`, not `publisher` —
   `publisher_domains` lists no Canadian broadcasters.
+
+### 2026-11-19b — section 1b gates on the page's type, not on the fetch
+
+**The defect.** Section 1b fired on `page_read: "no"`, so one site was
+classified two ways: for `childhood emotional neglect`, three Pathways BC pages
+that were read came back `other` and were dropped while four that were not read
+were inferred from the same host. Reading a page therefore produced a worse
+answer than failing to read it, and the split was decided by whether a fetch
+happened to succeed rather than by anything about the SERP.
+
+**The consequence.** A keyword's verdict moved with the run's fetch luck, and
+the rows the classifier had actually looked at were the ones discarded. The
+gate is now `content_type_usable: "no"`, derived by
+`intent_verdict._content_type_usable` from the new editorial
+`unusable_content_types` list at the head of `intent_mapping.yml` — the one
+place the two cases (never read; read and untypable) are declared to be the
+same case. A page WITH a usable type still wins over its host, so a directory
+host whose page reads as a `guide` stays `informational`.
+
+**What it did not change.** Which hosts may speak: `counselling` and `media`
+are still excluded, and a host-inferred row is still excluded from the
+classification-coverage bucket and stated separately in the report's §0 line.
+`page_read` remains a supported match key, since whether the page was read is a
+separate fact from whether its type was usable, but no shipped rule keys on it.
+On the 2026-11-19 data: classified results 46 of 100 → 51 of 100, keywords with
+a verdict 7 of 10, the Pathways inconsistency gone (`childhood emotional
+neglect` now reports `host_inferred_by_fetch_state: {enriched: 3,
+not_destination_page: 4}`).
+
+**Verification.** 2442 passed, 68 skipped, 257 subtests, exit 0. Mutation gate
+over 4 reverts on the widened logic: 4 caught. Re-measured end to end with
+`refresh_analysis_outputs.py` plus a report regeneration and step 1.2 at exit
+0 — no SerpAPI calls.

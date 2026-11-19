@@ -120,10 +120,14 @@ a routing rule), it's editorial. If only a developer would touch it (a
 class structure, a function signature, an algorithm), it's code.
 
 Editorial content currently lives in:
-- `intent_mapping.yml` — SERP intent rule table, including section 1b's
-  `page_read: "no"` rules, which let a known directory / government / publisher
-  host settle the intent where Google's encrypted `/goto` links stopped the
-  ranked page from being read. Excluded by design: `counselling` (a practice's
+- `intent_mapping.yml` — SERP intent rule table, including `unusable_content_types`
+  (the page types this table cannot act on: never read, or read and untypable)
+  and section 1b's `content_type_usable: "no"` rules, which let a known
+  directory / government / publisher host settle the intent when the page's own
+  type could not be established. Gated on the page's TYPE, not on whether it
+  was fetched — gating on the fetch classified one site two ways, since a page
+  read as `other` was dropped while the same site's unread page was inferred.
+  A usable content type always wins over the host. Excluded by design: `counselling` (a practice's
   own site may rank with a blog post or a services page) and `media` (social
   and retail hosts share the type with news). A host-inferred row is counted
   separately in `serp_intent.evidence.host_inferred_classified_count` and never

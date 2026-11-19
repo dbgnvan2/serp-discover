@@ -116,9 +116,9 @@ _COVERAGE_DEFAULTS = {
              "results only. The rest were not classified because {reasons}."),
     "reason_item": "{count} × {label}",
     "host_inferred_clause": ("{count} of those were classified from the site "
-                             "alone, because the ranked page could not be "
-                             "read \u2014 the site's type is known, its page's "
-                             "is not."),
+                             "alone, because the page's own type could not be "
+                             "determined \u2014 the site's type is known, its "
+                             "page's is not."),
     "none_classified": ("**Ranked results classified:** none of {total}, so "
                         "no keyword can have a SERP intent verdict this run: "
                         "{reasons}."),

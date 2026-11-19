@@ -1023,9 +1023,20 @@ assigns an intent from the site alone for three kinds of site — a directory
 (people are comparing providers), a government service (people are using it),
 and a publisher (people are reading up).
 
-This only applies where the page genuinely could not be read. If the tool DID
-open the page and still could not tell what it was, the result is dropped as
-before: "we looked and it told us nothing" is different from "we never looked".
+This applies whenever the tool cannot tell what the page is — whether it never
+managed to open the page, or opened it and could not classify what it found.
+Those two were treated differently at first, and it produced a nonsense: for
+"childhood emotional neglect", three Pathways BC pages the tool DID read came
+back unclassifiable and were thrown away, while four Pathways pages it could
+not read were counted. Same site, opposite treatment, decided by whether a
+fetch happened to succeed. The list at the top of the file,
+`unusable_content_types`, now covers both.
+
+**The page still wins when it can speak.** If the tool reads the page and can
+tell what it is, that answer is used and the site's type is ignored — a
+directory whose page is genuinely a guide counts as someone reading up, not
+someone comparing providers.
+
 Two site types are deliberately left out — a counselling practice's own site,
 because it may rank with a blog post (reading up) or a services page (ready to
 book), and `media`, because that type covers social and shopping sites as well
@@ -1033,7 +1044,10 @@ as news.
 
 **What it changed.** Before this, no keyword on the 2026-11-19 run had an
 intent verdict at all, so the report recommended no page for any of them.
-Afterwards 7 of 10 keywords had one.
+Afterwards 7 of 10 keywords had one, and the results it could judge went from
+16 of 100 to 51 of 100. The three keywords still without a verdict are ones
+whose SERPs are filled with job boards and news sites the tool does not
+recognise.
 
 **How the report stays honest about it.** The "Ranked results classified" line
 at the top of the report states how many of the results were judged from the

@@ -349,10 +349,12 @@ classification_coverage:
   reason_item: "{count} × {label}"
   # Stated whenever any result was classified from its host rather than its
   # page (intent_mapping.yml section 1b). Without it the sentence would report
-  # a classification figure partly made of pages the run never read.
+  # a classification figure partly made of pages whose own type was never
+  # established.
   host_inferred_clause: >-
-    {count} of those were classified from the site alone, because the ranked
-    page could not be read — the site's type is known, its page's is not.
+    {count} of those were classified from the site alone, because the page's own
+    type could not be determined — either the page was never readable or it
+    was read and could not be typed. The site's type is known; its page's is not.
   # A page that WAS read and still has no intent: its content type is one the
   # intent table sends to `uncategorised` ("other", "unknown"). Without this
   # the causes added up to less than the deficit they explain.

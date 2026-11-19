@@ -34,33 +34,83 @@ def _verdict(rows, **kw):
                                   mapping=iv.load_mapping(), **kw)
 
 
-class TestItFiresOnlyWhenThePageWasNotRead(unittest.TestCase):
+class TestItFiresOnAnUnusableContentType(unittest.TestCase):
+    """Section 1b gates on the page's TYPE, not on whether it was fetched.
+
+    Gating on the fetch meant one site was classified two ways: three
+    Pathways BC pages that were read came back "other" and were dropped,
+    while four that were not read were inferred (2026-11-19, widened on the
+    owner's decision).
+    """
 
     def test_an_unread_directory_host_carries_an_intent(self):
         out = _verdict([_row("directory", "no", rank=i) for i in range(1, 7)])
         self.assertEqual(out["primary_intent"], "commercial_investigation")
         self.assertEqual(out["evidence"]["host_inferred_classified_count"], 6)
 
-    def test_a_page_that_was_read_and_came_back_untypable_is_still_dropped(self):
-        # "We looked and it told us nothing" is a different fact from "we never
-        # looked": the first keeps its drop, or reading a page would be worse
-        # than not reading it.
-        out = _verdict([_row("directory", "yes", rank=i, content_type="other")
-                        for i in range(1, 7)])
-        self.assertIsNone(out["primary_intent"])
-        self.assertEqual(out["evidence"]["classified_organic_url_count"], 0)
-        self.assertEqual(out["evidence"]["host_inferred_classified_count"], 0)
+    def test_a_read_but_untypable_directory_host_carries_the_same_intent(self):
+        # The point of the widening: "other" is the classifier failing to type
+        # the page, not evidence about what the searcher wanted.
+        out = _verdict([_row("directory", "yes", rank=i, content_type="other",
+                             fetch_state="enriched") for i in range(1, 7)])
+        self.assertEqual(out["primary_intent"], "commercial_investigation")
+        self.assertEqual(out["evidence"]["host_inferred_classified_count"], 6)
 
-    def test_a_row_that_never_said_is_not_read_as_unread(self):
-        # An analysis JSON written before `page_read` existed carries no such
-        # key. Unknown is not a terminal value (P1): the row keeps exactly the
-        # treatment it had before these rules were written.
+    def test_the_two_are_treated_alike(self):
+        read = _verdict([_row("directory", "yes", rank=i, content_type="other",
+                              fetch_state="enriched") for i in range(1, 7)])
+        unread = _verdict([_row("directory", "no", rank=i)
+                           for i in range(1, 7)])
+        self.assertEqual(read["primary_intent"], unread["primary_intent"])
+
+    def test_every_unusable_type_fires(self):
+        for ct in ("other", "unknown", "N/A", "Not Measured", ""):
+            with self.subTest(content_type=ct):
+                out = _verdict([_row("directory", "yes", rank=i,
+                                     content_type=ct) for i in range(1, 7)])
+                self.assertEqual(out["primary_intent"],
+                                 "commercial_investigation")
+
+    def test_a_row_with_no_page_read_key_still_fires(self):
+        # Firing no longer depends on that key, so an analysis JSON written
+        # before it existed benefits too: the content type is in those files.
         rows = [_row("directory", "no", rank=i) for i in range(1, 7)]
         for row in rows:
             del row["page_read"]
         out = _verdict(rows)
-        self.assertIsNone(out["primary_intent"])
+        self.assertEqual(out["primary_intent"], "commercial_investigation")
+
+
+class TestThePagesOwnTypeAlwaysWins(unittest.TestCase):
+    """A usable content type is the page's own evidence and outranks the host."""
+
+    def test_a_directory_host_reading_as_a_guide_stays_informational(self):
+        out = _verdict([_row("directory", "yes", rank=i, content_type="guide",
+                             fetch_state="enriched") for i in range(1, 7)])
+        self.assertEqual(out["primary_intent"], "informational")
         self.assertEqual(out["evidence"]["host_inferred_classified_count"], 0)
+
+    def test_a_page_classified_from_its_own_type_is_page_evidence(self):
+        out = _verdict([_row("directory", "yes", rank=i,
+                             content_type="directory", fetch_state="enriched")
+                        for i in range(1, 7)])
+        self.assertEqual(out["primary_intent"], "commercial_investigation")
+        self.assertEqual(out["evidence"]["page_evidence_classified_count"], 6)
+        self.assertEqual(out["evidence"]["host_inferred_classified_count"], 0)
+
+    def test_the_usable_test_is_case_and_space_insensitive(self):
+        mapping = iv.load_mapping()
+        for value in ("OTHER", "  other  ", "Not Measured", "not measured"):
+            with self.subTest(value=value):
+                self.assertEqual(
+                    iv._content_type_usable(value, mapping), "no")
+        self.assertEqual(iv._content_type_usable("guide", mapping), "yes")
+
+    def test_a_mapping_without_the_list_still_recognises_the_markers(self):
+        # A malformed or older mapping file must not make every type usable,
+        # which would stop section 1b firing at all.
+        self.assertEqual(iv._content_type_usable("Not Measured", {}), "no")
+        self.assertEqual(iv._content_type_usable("guide", {}), "yes")
 
 
 class TestThePageReadStateReadsTheFetchState(unittest.TestCase):
@@ -204,7 +254,8 @@ class TestTheRuleTableIsValidated(unittest.TestCase):
     def test_the_shipped_table_loads(self):
         rules = iv.load_mapping()["rules"]
         inferring = [r for r in rules
-                     if (r.get("match") or {}).get("page_read") == "no"]
+                     if (r.get("match") or {}).get("content_type_usable")
+                     == "no"]
         self.assertTrue(inferring, "section 1b should be present")
         for rule in inferring:
             self.assertIn(rule["match"]["entity_type"],
@@ -213,17 +264,34 @@ class TestTheRuleTableIsValidated(unittest.TestCase):
 
 class TestWhatThisDoesNotCover(unittest.TestCase):
 
-    def test_a_read_page_on_a_known_directory_host_is_still_dropped(self):
-        # Recorded, not endorsed: the same site classifies differently
-        # depending on whether its page happened to be fetchable. Widening the
-        # host rule to read-but-unmappable pages is the owner's editorial call
-        # (2026-11-19 measurement, adjacent finding).
-        read = _verdict([_row("directory", "yes", rank=i, content_type="other")
-                         for i in range(1, 7)])
-        unread = _verdict([_row("directory", "no", rank=i)
-                           for i in range(1, 7)])
-        self.assertIsNone(read["primary_intent"])
-        self.assertEqual(unread["primary_intent"], "commercial_investigation")
+    def test_an_unusable_type_on_an_unlisted_host_is_still_dropped(self):
+        # The widening is about WHICH page types let the host speak, not about
+        # which hosts may speak. counselling and media still may not.
+        for entity in ("counselling", "media", "N/A", "legal"):
+            with self.subTest(entity=entity):
+                out = _verdict([_row(entity, "yes", rank=i,
+                                     content_type="other")
+                                for i in range(1, 7)])
+                self.assertIsNone(out["primary_intent"])
+
+    def test_an_invalid_content_type_usable_value_is_refused(self):
+        import tempfile
+        import yaml
+        mapping = {"version": 1, "rules": [
+            {"match": {"content_type": "any", "entity_type": "any",
+                       "local_pack": "any", "domain_role": "any",
+                       "content_type_usable": "maybe"},
+             "intent": "informational"}]}
+        with tempfile.NamedTemporaryFile("w", suffix=".yml",
+                                         delete=False) as fh:
+            yaml.safe_dump(mapping, fh)
+            path = fh.name
+        try:
+            with self.assertRaises(ValueError) as caught:
+                iv.load_mapping(path)
+            self.assertIn("content_type_usable", str(caught.exception))
+        finally:
+            os.unlink(path)
 
 
 if __name__ == "__main__":
