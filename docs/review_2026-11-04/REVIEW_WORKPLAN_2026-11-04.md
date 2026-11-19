@@ -1421,3 +1421,27 @@ and losing every other tab's edits with it.
 Verified against the real `config.yml` in a live tkinter instance: the
 `known_brands` box round-trips the list, and opening the tab reports no
 unsaved changes — a round trip that reformatted would mark every open dirty.
+
+### Checked and left alone
+
+Two items carried on the correctness list turned out to be already handled;
+they are recorded here so the list does not grow a change that nothing needs.
+
+- **Top-competitor tie-break.** `probe_ai_visibility.py:1209` sorts the tied
+  brands, picks the first, logs how many tied on what count, and carries
+  `tied_top_competitors` into the sidecar, where `answer_sentiment` renders
+  it. The pick is deterministic across runs and the tie is stated, which is
+  what D-M-14 and its cold review asked for. No change.
+- **`_rank_keywords` sorting feasibility first.** The order is deliberate
+  (finding F7: "Not Measured" sits below the three verdicts but above a
+  keyword with no row, because last means "cannot be ranked on DA", not
+  "ranked worst"), and the one place the order becomes a recommendation —
+  `_get_best_opportunity_keyword` — requires a feasibility VERDICT and a
+  matching intent, and says which gate stopped the rest. No change.
+
+### Backlog (continued)
+
+- City aliases ("North Van", "NVan") have no home: `client_profiles.yml`
+  carries `primary_city` / `secondary_cities`, which only expand probe query
+  templates, so the aliases people actually type are never probed. A feature,
+  not a defect — nothing is wrong today.
