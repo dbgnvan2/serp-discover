@@ -255,6 +255,90 @@ def index_records(records: List[Dict[str, Any]], key_cols: Tuple[str, ...], text
         idx[key] = rr
     return idx
 
+#: What a cell may differ by and still be the same number. A workbook stores
+#: every number as a float, so an integer written as 9 is read back as 9.0 and
+#: a ratio written as 0.1 can come back a few bits away from it.
+NUMERIC_TOLERANCE = 1e-9
+
+
+def values_agree(a: Any, b: Any) -> bool:
+    """Whether two cells hold the same value across the Excel round trip.
+
+    Not `==`: the workbook is a lossy carrier. Both sides are collapsed to
+    `None` for every form of absence, numbers compare within
+    `NUMERIC_TOLERANCE` (a sheet stores 9 as 9.0), a number compares equal to
+    its own decimal spelling (a column of mixed types reads back as text),
+    and text compares after `norm_text`'s line-ending and whitespace
+    collapse.
+    """
+    a = blank_to_none(a)
+    b = blank_to_none(b)
+    if a is None or b is None:
+        return a is None and b is None
+    a_num = isinstance(a, (int, float)) and not isinstance(a, bool)
+    b_num = isinstance(b, (int, float)) and not isinstance(b, bool)
+    if a_num and b_num:
+        if pd.isna(a) or pd.isna(b):
+            return bool(pd.isna(a) and pd.isna(b))
+        return abs(float(a) - float(b)) <= NUMERIC_TOLERANCE * max(
+            1.0, abs(float(a)), abs(float(b)))
+    if a_num != b_num:
+        number, text = (a, b) if a_num else (b, a)
+        if not isinstance(text, str):
+            return False
+        try:
+            return abs(float(number) - float(text.strip())) <= (
+                NUMERIC_TOLERANCE * max(1.0, abs(float(number))))
+        except ValueError:
+            return False
+    if isinstance(a, str) and isinstance(b, str):
+        return norm_text(a) == norm_text(b)
+    return bool(a == b)
+
+
+def compared_columns(spec: SheetSpec, left: Dict[str, Any],
+                     right: Dict[str, Any]) -> Tuple[Tuple[str, ...],
+                                                     Tuple[str, ...]]:
+    """`(compared, not_compared)` for one sheet's rows.
+
+    The declared contract — `required_cols` plus `normalize_text_cols`, minus
+    the key, which matching the row already proved — is what is compared.
+    Anything else the two files carry is returned as NOT compared and said so
+    in the report, rather than being counted as checked (P2).
+    """
+    present = set(left) | set(right)
+    declared = (set(spec.required_cols) | set(spec.normalize_text_cols)
+                ) - set(spec.key_cols)
+    compared = tuple(sorted(declared & present))
+    return compared, tuple(sorted(present - declared - set(spec.key_cols)))
+
+
+def field_mismatches(spec: SheetSpec,
+                     x_idx: Dict[Tuple[Any, ...], Dict[str, Any]],
+                     j_idx: Dict[Tuple[Any, ...], Dict[str, Any]],
+                     ) -> Tuple[List[Dict[str, Any]], Tuple[str, ...]]:
+    """Every disagreement in a NON-key field, for the rows both files hold.
+
+    Until 2026-11-19 this did not exist: the step compared row counts and key
+    tuples only, `normalize_text_cols` was computed into a record that was
+    then discarded and `required_cols` was never read at all, so a workbook
+    whose `Title`, `Snippet`, `Word_Count` or `Content_Type` disagreed with
+    the JSON passed a gate the pipeline labels "Data Validation" (P33 —
+    complete along one axis, presented as a full cross-check).
+    """
+    mismatches: List[Dict[str, Any]] = []
+    not_compared: Tuple[str, ...] = ()
+    for key in sorted(x_idx.keys() & j_idx.keys(), key=repr):
+        x_row, j_row = x_idx[key], j_idx[key]
+        cols, not_compared = compared_columns(spec, x_row, j_row)
+        for col in cols:
+            if not values_agree(x_row.get(col), j_row.get(col)):
+                mismatches.append({"key": str(key), "column": col,
+                                   "xlsx": repr(x_row.get(col)),
+                                   "json": repr(j_row.get(col))})
+    return mismatches, not_compared
+
+
 # ----------------------------
 # Main validation
 # ----------------------------
@@ -278,8 +362,12 @@ def main() -> int:
         # Load Excel
         xl = pd.ExcelFile(xlsx_path)
 
-        diff: Dict[str, Any] = {"matches": True,
-                                "errors": [], "sheet_diffs": {}}
+        # `columns_not_compared` names, per sheet, the columns present in the
+        # files that no spec declares — what this gate does NOT check, stated
+        # rather than left for a reader to infer from the absence of a
+        # complaint.
+        diff: Dict[str, Any] = {"matches": True, "errors": [],
+                                "sheet_diffs": {}, "columns_not_compared": {}}
 
         for spec in SPECS:
             # 1. Check Sheet Existence
@@ -325,6 +413,15 @@ def main() -> int:
                 diff["matches"] = False
                 diff["sheet_diffs"].setdefault(spec.sheet_name, {})[
                     "missing_in_json_sample"] = missing_in_json[:10]
+
+            # 5. Compare the rows both files hold, field by field.
+            mismatches, not_compared = field_mismatches(spec, x_idx, j_idx)
+            diff["columns_not_compared"][spec.sheet_name] = list(not_compared)
+            if mismatches:
+                diff["matches"] = False
+                entry = diff["sheet_diffs"].setdefault(spec.sheet_name, {})
+                entry["field_mismatch_count"] = len(mismatches)
+                entry["field_mismatch_sample"] = mismatches[:10]
 
         out_path.write_text(json.dumps(
             diff, indent=2, ensure_ascii=False), encoding="utf-8")

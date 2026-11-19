@@ -266,7 +266,10 @@ sheet** in the `.xlsx`, built from its `columns:` block, and the standalone
 `python3 generate_insight_report.py --glossary-out docs/glossary.md` and checked
 by a test that fails when it goes stale. Workbook headers are deliberately **not**
 renamed — the JSON and the workbook share one field vocabulary that
-`validate_xlsx_vs_json.py` checks column by column. The workbook's "Help" sheet
+`validate_xlsx_vs_json.py` checks. That check is row counts, key tuples, and
+the VALUES of each sheet's declared columns for the rows both files hold
+(2026-11-19); the columns no spec declares are listed in the report's
+`columns_not_compared`, because they are not checked. The workbook's "Help" sheet
 text also lives in `glossary.yml`, under `sheet_guidance`.
 
 None of this involves an LLM: the glossary is a dictionary lookup and costs

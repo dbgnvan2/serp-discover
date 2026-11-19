@@ -1345,3 +1345,36 @@ page logs at INFO and continues, and `MAX_PAGES = 200` bounds an API that
 never empties by returning the rows with `complete=False` rather than looping
 forever. Cost: one extra request per fetch, the empty page that confirms the
 end. Mutation-checked: restoring the short-page exit fails 6 tests.
+
+### C2 — step 1.2 compared keys only, while calling itself validation
+
+`validate_xlsx_vs_json.py` compared row counts and key tuples:
+`normalize_text_cols` was computed into a record that was then discarded and
+`required_cols` was never read at all. A workbook whose `Title`, `Snippet`,
+`Word_Count` or `Content_Type` disagreed with the JSON passed the gate the
+pipeline labels "Data Validation", so the one check that exists to prove the
+two deliverables say the same thing could only see a row appear or disappear
+(P33 — complete along one axis, presented as a full cross-check). The rows
+both files hold are now compared field by field over each sheet's declared
+columns through `values_agree`, which tolerates what the Excel round trip
+genuinely changes (an integer stored as a float, a number against its own
+decimal spelling, line endings, blank against empty string) and nothing else;
+`columns_not_compared` names, per sheet, every column the files carry that no
+spec declares, so what the gate does not check is stated rather than inferred
+from silence (P2).
+
+Checked against the real 2026-11-18 run outputs: exit 0, no mismatch — the
+gate does not cry on a genuine workbook.
+
+### Backlog (found sideways, one line each — rule 11)
+
+- The Overview sheet writes the string `"null"` for an unmeasured
+  `Primary_Intent` and carried `Intent_Confidence: "low"` where the JSON held
+  `null`, for one row of the 2026-11-18 run (`serp_audit.py:2042`).
+- `values_agree` cannot yet compare a list/dict column against the `str()` the
+  workbook stores for it, which is what blocks widening the comparison from
+  each sheet's declared columns to every column both files carry.
+- `config_manager.py` carries an unprovenanced "max 3 for free tier" claim
+  about SerpAPI page limits.
+- `norm_text`'s nan arm covers `float`/`numpy.float64` but not `pd.NaT` or
+  `pd.NA`; neither can reach a key column today.
