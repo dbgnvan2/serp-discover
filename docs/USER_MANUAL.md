@@ -1635,7 +1635,11 @@ the report now says how many of that engine's citations carry no brand — by
 citation count, not by row, because one untracked domain can be cited a dozen
 times — and where to put them: `config.yml → known_brands`, with the
 candidates the run already surfaced in
-`brand_mentions_candidates_<topic>_<timestamp>.md`. Where *nothing* could be
+`brand_mentions_candidates_<topic>_<timestamp>.md`. Edit the list in the GUI's
+**Configuration Settings** tab, under `known_brands`, as YAML — one `- brand`
+per line. Clearing the box records "nothing here" (`null`) rather than "there
+are no brands" (`[]`), which are two different statements and the report reads
+them differently. Where *nothing* could be
 attributed the line says so in its own words, because that is the case where
 the leaderboard above holds no competitor at all and would otherwise read as
 "no competitor is cited".

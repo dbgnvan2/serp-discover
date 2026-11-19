@@ -1399,3 +1399,25 @@ each cause means and what to change.
 
 Verified by regenerating the 2026-11-18 report from its own JSON: the line
 reads "15 of 221" and names all four causes.
+
+### C4 — the config editor could not edit config.yml's editorial lists
+
+`ConfigSettingsTab` rendered a widget per field of each top-level MAPPING, so
+a top-level value that is not a mapping printed as a read-only label and a
+field whose loaded value was `None` or an empty mapping got no widget at all
+— `get_edited_data`'s own docstring recorded them as "kept exactly as
+loaded". `known_brands` is a top-level list, so the competitor-brand
+gazetteer that CLAUDE.md names as editorial and that the Y.7 brand pass and
+Y.8 citation attribution both read could only be changed by hand-editing the
+file, as could any blank `thresholds_provenance` family — the very keys whose
+blankness the report asks the operator to fill in. Both now render as an
+editable YAML box (`SECTION_VALUE` for a whole section, the `yaml` field type
+for a field), an emptied box saves `null` rather than `[]` because "nothing
+recorded" and "there are none" are two different statements, broken YAML is
+reported and keeps the loaded value, and a field edit arriving for a
+non-mapping section is reported rather than raising a `TypeError` inside Save
+and losing every other tab's edits with it.
+
+Verified against the real `config.yml` in a live tkinter instance: the
+`known_brands` box round-trips the list, and opening the tab reports no
+unsaved changes — a round trip that reformatted would mark every open dirty.

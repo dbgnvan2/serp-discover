@@ -191,7 +191,22 @@ def save_changed_tabs(tabs):
 
 # --- config.yml: overlay edits on the loaded data (A3, A4) -------------------
 
+#: The field name a whole top-level section is registered under when that
+#: section is not a mapping. `config.yml` holds editorial LISTS at the top
+#: level — `known_brands`, the competitor-brand gazetteer the Y.7 brand pass
+#: and the Y.8 citation attribution both read — and `_render_section` could
+#: only print those as a static label, so the one list a non-developer is
+#: most likely to want to extend was the one thing the config editor could
+#: not edit (added 2026-11-19).
+SECTION_VALUE = "__section_value__"
+
+
 def _parse_field(raw, field_type):
+    if field_type == "yaml":
+        # Any YAML value, `None` included: used where the loaded value says
+        # nothing about the type the operator should type (an empty mapping,
+        # a null, a top-level list).
+        return yaml.safe_load(raw) if isinstance(raw, str) else raw
     if field_type == "bool":
         return bool(raw)
     if field_type == "str":
@@ -227,7 +242,23 @@ def merge_settings_edits(current, raw_values):
     for section, fields in raw_values.items():
         if not fields:
             continue
+        if SECTION_VALUE in fields:
+            # The whole section is one value, not a mapping of fields.
+            raw, field_type = fields[SECTION_VALUE]
+            try:
+                data[section] = _parse_field(raw, field_type)
+            except (ValueError, TypeError, yaml.YAMLError) as e:
+                errors.append(f"{section}: not valid YAML ({e})")
+            continue
         target = data.setdefault(section, {})
+        if not isinstance(target, dict):
+            # A section that is not a mapping cannot take field edits. It
+            # reaches here only if a widget was registered for a field of it,
+            # which would be a bug in the renderer; say so rather than raise
+            # inside a Save.
+            errors.append(f"{section}: holds a single value, not fields — "
+                          "its edits were not applied")
+            continue
         for field, (raw, field_type) in fields.items():
             try:
                 parsed = _parse_field(raw, field_type)

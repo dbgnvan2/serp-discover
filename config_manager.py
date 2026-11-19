@@ -12,7 +12,7 @@ from config_tab_models import (
     TabFileState, RowModel, save_changed_tabs, merge_settings_edits,
     update_record, apply_rule_row, restore_hidden, positive_only_fields,
     EDITORIAL_SOURCE_FILES, parse_source, write_source, editorial_file_path,
-    structural_errors_for_text,
+    structural_errors_for_text, SECTION_VALUE,
 )
 
 try:
@@ -1818,12 +1818,50 @@ class ConfigSettingsTab(BaseConfigTab):
         self.section_widgets[section_name] = {}
         self.section_frames[section_name] = section_frame
 
-        if isinstance(section_data, dict):
+        if isinstance(section_data, dict) and section_data:
             for key, value in section_data.items():
                 self._render_field(section_frame, section_name, key, value)
         else:
-            # Non-dict value in top level (rare, but handle gracefully)
-            ttk.Label(section_frame, text=f"Value: {section_data}").pack()
+            # A top-level value that is not a mapping of fields — a list, a
+            # scalar, a null, or an empty mapping. It used to print as a
+            # read-only label, which made `known_brands` (the competitor-brand
+            # gazetteer the Y.7 brand pass and Y.8 citation attribution both
+            # read) the one editorial list in config.yml that the config
+            # editor could not edit.
+            self._render_yaml_value(section_frame, section_name, SECTION_VALUE,
+                                    section_data)
+
+    def _render_yaml_value(self, parent, section_name, field_name, value,
+                           with_label=True):
+        """An editable YAML box for a value whose own type says nothing.
+
+        A `None`, an empty list and an empty mapping all carry no example of
+        what belongs in them, and a widget chosen by type would be a
+        Checkbutton for one and nothing at all for the others. The operator
+        types YAML and it is parsed as YAML, `null` included.
+        """
+        if not TKINTER_AVAILABLE:
+            return
+        if with_label:
+            frame = ttk.Frame(parent)
+            frame.pack(fill="x", pady=5)
+            label = field_name if field_name != SECTION_VALUE else "value"
+            ttk.Label(frame, text=f"{label}:", width=25, anchor="w").pack(
+                side="left", padx=(0, 10))
+        else:
+            # The caller already drew this field's label and help button.
+            frame = parent
+        text = tk.Text(frame, height=4, width=40)
+        if value is None:
+            # "" rather than "null": an empty box reads as "nothing here yet",
+            # and parses back to None.
+            rendered = ""
+        else:
+            rendered = yaml.safe_dump(
+                value, default_flow_style=False, sort_keys=False).rstrip()
+        text.insert("1.0", rendered)
+        text.pack(side="left", fill="both", expand=True)
+        self.section_widgets[section_name][field_name] = (text, "yaml")
 
     def _render_field(self, parent, section_name, field_name, value):
         """Render a single field with type-aware widget."""
@@ -1921,6 +1959,16 @@ class ConfigSettingsTab(BaseConfigTab):
             text.insert("1.0", yaml.safe_dump(value, default_flow_style=False).rstrip())
             text.pack(side="left", fill="both", expand=True)
             self.section_widgets[section_name][field_name] = (text, "dict")
+
+        else:
+            # `None` and an empty mapping. Both used to fall through with no
+            # widget at all, so a key the operator is meant to fill in — a
+            # blank `thresholds_provenance` family, which the report prints as
+            # "editorial, uncalibrated" until somebody records a source —
+            # could only be filled in by hand-editing the file. The field
+            # frame is already packed, so the box goes in it.
+            self._render_yaml_value(field_frame, section_name, field_name,
+                                    value, with_label=False)
 
     def _raw_values(self):
         """Widget contents as {section: {field: (raw, type)}}, unparsed."""
