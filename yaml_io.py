@@ -43,8 +43,19 @@ def _merge_into_commented(dst, src):
     ``src``'s keys/values, preserving comments + order on keys that survive: keys
     absent from ``src`` are deleted and new ones added, so the DATA outcome equals
     the old ``yaml.safe_dump(src)`` while block/inline comments on retained keys are
-    kept. Nested mappings recurse; a replaced list value keeps its mapping-key
-    comment above it but not inner-item comments."""
+    kept. Nested mappings recurse; so do lists, in place.
+
+    A list is merged item-by-item into the loaded ``CommentedSeq`` rather than
+    replaced by ``src``'s plain list. ruamel attaches a comment that FOLLOWS the
+    last item of a list to the sequence itself, so assigning a plain list over
+    it deleted that comment — which in ``config.yml`` is the block above the
+    next key. Three documented comment blocks had already been lost that way
+    (the ``ai_visibility.timeout_seconds`` rationale and the
+    ``negative_terms`` explanation among them), silently, on ordinary runs,
+    while this module's whole purpose and ``tests/test_yaml_io.py`` said
+    comments survive. Found 2026-11-18 by reading an unrelated ``config.yml``
+    diff; the guard that missed it tested a comment above a scalar.
+    """
     if not isinstance(dst, dict) or not isinstance(src, dict):
         return src
     for key in list(dst.keys()):
@@ -53,8 +64,38 @@ def _merge_into_commented(dst, src):
     for key, value in src.items():
         if key in dst and isinstance(dst[key], dict) and isinstance(value, dict):
             _merge_into_commented(dst[key], value)
+        elif (key in dst and isinstance(dst[key], list)
+              and isinstance(value, list) and not isinstance(value, str)):
+            _merge_into_commented_seq(dst[key], value)
         else:
             dst[key] = value
+    return dst
+
+
+def _merge_into_commented_seq(dst, src):
+    """Make ``dst`` (a loaded ``CommentedSeq``) hold exactly ``src``'s items,
+    in place, so the sequence object — and the comments ruamel hangs on it —
+    survives.
+
+    Per-item comments inside the list are keyed by item index, so they follow
+    the position rather than the value: they are kept where the list is the
+    same length or longer, and a shortened list drops the comments on the
+    items that went. That is the same trade this module already makes for a
+    deleted mapping key, and it is stated rather than silent.
+    """
+    for index, value in enumerate(src):
+        if (index < len(dst) and isinstance(dst[index], dict)
+                and isinstance(value, dict)):
+            _merge_into_commented(dst[index], value)
+        elif (index < len(dst) and isinstance(dst[index], list)
+              and isinstance(value, list) and not isinstance(value, str)):
+            _merge_into_commented_seq(dst[index], value)
+        elif index < len(dst):
+            dst[index] = value
+        else:
+            dst.append(value)
+    while len(dst) > len(src):
+        dst.pop()
     return dst
 
 

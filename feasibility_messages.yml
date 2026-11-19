@@ -167,7 +167,8 @@ no_data_section:
   # (a list, then two paragraphs) and folding them away runs the paragraphs
   # into the list.
   body: |-
-    Domain Authority scoring requires at least one of:
+    Domain Authority scoring requires credentials, or more quota on the
+    account behind them. One of:
 
     - `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` in `.env` (pay-per-use, primary)
     - `MOZ_TOKEN` in `.env` (fallback; the row allowance is read from the
@@ -175,6 +176,11 @@ no_data_section:
 
     Without DA data, keyword ranking is based on intent alignment only (see
     Section 0).
+
+    A run that answered for only a few of the ranking URLs, or none, is
+    usually quota rather than configuration — the provider says so in the
+    `run_feasibility.py` log, and a 403 `insufficient-quota` from Moz means
+    the period's rows are spent, not that the token is wrong.
 
     Credentials alone do not produce this section: DA is fetched by
     `run_feasibility.py`, which `run_pipeline.py` does not run. Run it against
