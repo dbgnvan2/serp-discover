@@ -1512,3 +1512,35 @@ revalidate at exit 0 and their report regenerates with the corrected line.
 - `gsc_client.MAX_PAGES` is a hardcoded operational bound in a repo that moved
   `http_retry.attempts` and `database.lock_timeout_seconds` into `config.yml`
   (P4). Defensible as a pure safety rail; nobody should need to tune it.
+
+## Measurement 2026-11-19 — why no keyword gets an intent verdict
+
+**The cap.** `enrichment.max_urls_per_keyword: 5` stopped the page fetch before
+rank 6, so half of every keyword's verdict window could be classified only
+where `url_pattern_rules.yml` matched. Raised to 10: that cause went from 18 of
+the 90 unclassified results to 0, and classification coverage rose from 10 of
+100 to 16 of 100. Still no keyword reached the five classified results
+`intent_verdict` requires, so the raise alone does not produce a verdict.
+
+**The binding constraint is upstream.** 52 of the 100 ranked results in the
+verdict window arrive as `https://www.google.com/goto?url=CAES…`, which
+SerpAPI passes through verbatim; measured live on 2026-11-19 at 5–6 of every
+9 organic results on this client's keywords, at `num=10` and `num=100` alike,
+so it is not a function of the request. Three recovery routes were tested and
+none returns the destination: the `url=` payload base64url-decodes to a
+protobuf whose 142-byte field is ciphertext with no URL in it, SerpAPI's
+`google_about_this_result` endpoint answers with an `error`, and
+`displayed_link` carries a truncated breadcrumb rather than a path.
+`link_recovery.recover_row` already extracts the host, which is the maximum
+available, and marks the row `link_is_destination_page: False` — the module is
+correct and there is nothing to fix in it.
+
+**What this leaves as a decision, not a defect.** A host-only result has a
+known `entity_type` (psychologytoday.com is a directory) but
+`content_type: unknown`, and `intent_mapping.yml`'s rule 2 drops it with the
+rationale "classifier could not read the page; do not guess". That rule was
+written when unreadable pages were rare; at a 52% wrapper rate it means no
+keyword in this topic set can ever carry a verdict. Whether a decisive entity
+type on its own counts as evidence of intent is an editorial judgement for the
+owner, and changing it would also inflate the classification-coverage figure,
+so it is recorded here rather than changed.
