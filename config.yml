@@ -26,9 +26,9 @@ serpapi:
   related_questions_ai_max_calls: 5
 files:
   input_csv: keywords_family-of-origin-seo-phrases.csv
-  output_xlsx: output/market_analysis_family-of-origin-seo-phrases_20261118_1738.xlsx
-  output_json: output/market_analysis_family-of-origin-seo-phrases_20261118_1738.json
-  output_md: output/market_analysis_family-of-origin-seo-phrases_20261118_1738.md
+  output_xlsx: output/market_analysis_family-of-origin-seo-phrases_20261119_1442.xlsx
+  output_json: output/market_analysis_family-of-origin-seo-phrases_20261119_1442.json
+  output_md: output/market_analysis_family-of-origin-seo-phrases_20261119_1442.md
   domain_overrides: domain_overrides.yml
   # What a header row's first cell can be called, lowercased before
   # comparison. A keyword CSV may or may not have a header — six of this
@@ -49,7 +49,7 @@ files:
   - search_term
 enrichment:
   enabled: true
-  max_urls_per_keyword: 5
+  max_urls_per_keyword: 10
   timeout_seconds: 10
   user_agent: MarketIntelligenceBot/1.0
   enable_domain_age: false
