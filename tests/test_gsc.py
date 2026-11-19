@@ -72,17 +72,25 @@ class TestGscClientAuthAndBatching(unittest.TestCase):
         self.assertEqual(result.stats["family counselling"]["clicks"], 10)
 
     @patch("gsc_client.requests.post")
-    def test_pagination_batches_until_short_page(self, mock_post):
+    def test_pagination_batches_until_an_empty_page(self, mock_post):
+        """A SHORT page is not the end of the data (changed 2026-11-19).
+
+        GSC can serve fewer rows than asked for part-way through a set, so the
+        third page here — one row where two were asked for — is followed by
+        another request, and it is the EMPTY page that ends the loop.
+        """
         with patch.object(gsc_client, "ROW_LIMIT", 2):
             mock_post.side_effect = [
                 _gsc_response([_api_row("q one"), _api_row("q two")]),
                 _gsc_response([_api_row("q three")]),
+                _gsc_response([]),
             ]
             result = self.client.get_query_stats(
                 ["q one", "q two", "q three"], "2026-04-01", "2026-07-01")
-        self.assertEqual(mock_post.call_count, 2)
+        self.assertEqual(mock_post.call_count, 3)
         self.assertEqual(mock_post.call_args_list[0].kwargs["json"]["startRow"], 0)
         self.assertEqual(mock_post.call_args_list[1].kwargs["json"]["startRow"], 2)
+        self.assertEqual(mock_post.call_args_list[2].kwargs["json"]["startRow"], 3)
         self.assertEqual(len(result.stats), 3)
         self.assertTrue(result.complete)
 
@@ -173,10 +181,14 @@ class TestGscClientCache(unittest.TestCase):
                 "impressions, ctr, position, found, fetched_at) "
                 "VALUES (?,?,?,?,?,?,?,?,?)",
                 ("family counselling", self.START, self.END, 1, 10, 0.1, 5.0, 1, old))
-        mock_post.return_value = _gsc_response([_api_row("family counselling", clicks=7)])
+        # Two calls: the page, and the empty page that confirms it was the
+        # last (a short page is no longer the end — see _fetch_all_rows).
+        mock_post.side_effect = [
+            _gsc_response([_api_row("family counselling", clicks=7)]),
+            _gsc_response([])]
         result = self.client.get_query_stats(
             ["family counselling"], self.START, self.END)
-        mock_post.assert_called_once()
+        self.assertEqual(mock_post.call_count, 2)
         self.assertEqual(result.stats["family counselling"]["clicks"], 7)
 
     @patch("gsc_client.requests.post")
@@ -184,9 +196,10 @@ class TestGscClientCache(unittest.TestCase):
         self.client._cache_store(
             {"q": {"clicks": 5, "impressions": 50, "ctr": 0.1, "position": 4.0}},
             self.START, self.END)
-        mock_post.return_value = _gsc_response([_api_row("q", clicks=9)])
+        mock_post.side_effect = [_gsc_response([_api_row("q", clicks=9)]),
+                                 _gsc_response([])]
         result = self.client.get_query_stats(["q"], "2026-01-01", "2026-03-31")
-        mock_post.assert_called_once()
+        self.assertEqual(mock_post.call_count, 2)
         self.assertEqual(result.stats["q"]["clicks"], 9)
 
     @patch("gsc_client.requests.post")
@@ -208,10 +221,11 @@ class TestGscClientCache(unittest.TestCase):
         self.client._cache_store(
             {"cached q": {"clicks": 5, "impressions": 50, "ctr": 0.1, "position": 4.0}},
             self.START, self.END)
-        mock_post.return_value = _gsc_response([_api_row("fresh q")])
+        mock_post.side_effect = [_gsc_response([_api_row("fresh q")]),
+                                 _gsc_response([])]
         result = self.client.get_query_stats(
             ["cached q", "fresh q"], self.START, self.END)
-        mock_post.assert_called_once()
+        self.assertEqual(mock_post.call_count, 2)
         self.assertIn("cached q", result.stats)
         self.assertIn("fresh q", result.stats)
         # And the freshly fetched row is now cached for next time.

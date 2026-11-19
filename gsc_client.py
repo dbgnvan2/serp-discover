@@ -78,6 +78,12 @@ GSC_ENDPOINT_TEMPLATE = (
 #: Rows requested per Search Analytics page (API maximum).
 ROW_LIMIT: int = 25000
 
+#: How many pages one fetch may request before it gives up and reports the
+#: rows as INCOMPLETE. At ROW_LIMIT rows a page this is 5,000,000 queries, far
+#: past any real property; it exists so that an API which never serves an
+#: empty page cannot loop forever.
+MAX_PAGES: int = 200
+
 #: Documented default only. The live value is editorial, in `config.yml`
 #: under `http_retry.timeout_seconds`, and reaches this call through
 #: `http_retry` itself — one setting, every call site (P4/P25, review chunk
@@ -369,7 +375,7 @@ class GscClient:
         """Pull every query row for the property, paginated.
 
         Returns ``(rows, complete)``. ``complete`` is True only when the loop
-        ended because the API served a short page — that is, when the whole
+        ended because the API served an EMPTY page — that is, when the whole
         property was covered. Any network failure, non-OK status or
         unparseable body ends the loop with ``complete=False`` and the rows
         reached so far.
@@ -380,11 +386,13 @@ class GscClient:
         no rows" and cached every query as a measured absence for the TTL
         (D-C-02). A failure part-way through pagination is the same fault in
         miniature: pages 1-2 arrive, and every query on pages 3+ is recorded
-        as having no impressions.
+        as having no impressions. A short page part-way through a set did
+        exactly that until 2026-11-19; the loop ends on an empty page now.
         """
         url = GSC_ENDPOINT_TEMPLATE.format(site=quote(self._property, safe=""))
         results: dict[str, dict] = {}
         start_row = 0
+        pages = 0
         while True:
             payload = {
                 "startDate": start_date,
@@ -442,12 +450,32 @@ class GscClient:
                     "ctr": float(row.get("ctr") or 0.0),
                     "position": float(row.get("position") or 0.0),
                 }
-            if len(rows) < ROW_LIMIT:
-                # A short page is the API saying "that is all". It is not a
-                # count check — see the plan's "adjacent issues" note on
-                # sampling — so `complete` means "the API said it was done".
+            if not rows:
+                # An EMPTY page is the end of the data. A SHORT one is not:
+                # GSC can serve fewer rows than asked for part-way through a
+                # set under sampling, and treating that as the end recorded
+                # every query after it as having no impressions, cached for
+                # the TTL — the D-C-02 fault in miniature, which this
+                # function's own docstring described and its loop then
+                # committed. The cost of the distinction is one extra request
+                # per fetch, the empty page that confirms the end.
                 return results, True
+            if len(rows) < ROW_LIMIT:
+                logger.info(
+                    "GSC served a short page at rows %d+ (%d of %d); "
+                    "continuing, because a short page is not the end of the "
+                    "data.", start_row, len(rows), ROW_LIMIT)
             start_row += len(rows)
+            pages += 1
+            if pages >= MAX_PAGES:
+                # Bounded, and INCOMPLETE rather than silently truncated: an
+                # API that never serves an empty page would otherwise loop
+                # until the process was killed.
+                logger.warning(
+                    "GSC paging stopped at %d pages (%d row(s)) without an "
+                    "empty page — returning them as INCOMPLETE.",
+                    pages, len(results))
+                return results, False
 
     # ------------------------------------------------------------------
     # Internal: cache (DA-client pattern)

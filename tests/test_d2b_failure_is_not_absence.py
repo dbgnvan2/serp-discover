@@ -84,8 +84,14 @@ class TestGscFetchReportsCompleteness(unittest.TestCase):
         os.unlink(self.tmp.name)
 
     def _fetch(self, response):
+        """One page, then the empty page that ends the loop.
+
+        An empty page is the end-of-data signal (changed 2026-11-19); a short
+        page is not, so a fixture that serves one page forever would page
+        until the cap.
+        """
         with patch.object(gsc_client, "_post_with_transient_retry",
-                          return_value=response):
+                          side_effect=[response, _response(payload=_rows())]):
             return self.client._fetch_all_rows(self.START, self.END)
 
     def test_network_failure_is_incomplete(self):
@@ -104,10 +110,45 @@ class TestGscFetchReportsCompleteness(unittest.TestCase):
         rows, complete = self._fetch(bad)
         self.assertFalse(complete)
 
-    def test_short_page_is_complete(self):
+    def test_an_empty_page_ends_the_fetch_as_complete(self):
         rows, complete = self._fetch(_response(payload=_rows("a", "b")))
         self.assertTrue(complete)
         self.assertEqual(set(rows), {"a", "b"})
+
+    def test_a_short_page_mid_set_is_not_the_end_of_the_data(self):
+        """The fix. GSC can serve fewer rows than asked for part-way through
+        a set under sampling, and ending there recorded every query after it
+        as having no impressions, cached for the TTL."""
+        with patch.object(gsc_client, "ROW_LIMIT", 3):
+            with patch.object(
+                    gsc_client, "_post_with_transient_retry",
+                    side_effect=[_response(payload=_rows("a")),
+                                 _response(payload=_rows("b", "c")),
+                                 _response(payload=_rows())]):
+                rows, complete = self.client._fetch_all_rows(
+                    self.START, self.END)
+        self.assertEqual({"a", "b", "c"}, set(rows))
+        self.assertTrue(complete)
+
+    def test_an_api_that_never_empties_is_bounded_and_incomplete(self):
+        """Not an infinite loop, and not a silent truncation either."""
+        page = _response(payload=_rows("a", "b"))
+        with patch.object(gsc_client, "ROW_LIMIT", 2), \
+                patch.object(gsc_client, "MAX_PAGES", 3):
+            with patch.object(gsc_client, "_post_with_transient_retry",
+                              return_value=page):
+                rows, complete = self.client._fetch_all_rows(
+                    self.START, self.END)
+        self.assertFalse(complete)
+        self.assertEqual({"a", "b"}, set(rows))
+
+    def test_a_property_with_no_queries_is_complete_and_empty(self):
+        """An empty FIRST page is a real answer, not a failure."""
+        with patch.object(gsc_client, "_post_with_transient_retry",
+                          return_value=_response(payload=_rows())):
+            rows, complete = self.client._fetch_all_rows(self.START, self.END)
+        self.assertEqual({}, rows)
+        self.assertTrue(complete)
 
     def test_mid_pagination_failure_keeps_rows_and_says_incomplete(self):
         """A failure on page 2 returns page 1 — and does not claim to be done."""
@@ -154,10 +195,13 @@ class TestIncompleteFetchIsNotCachedAsAbsence(unittest.TestCase):
         # The whole point of D-C-02: the retry inside the TTL must make a
         # request. Before D2b this was 0.
         with patch.object(gsc_client, "_post_with_transient_retry",
-                          return_value=_response(
-                              payload=_rows("couples counselling"))) as post:
+                          side_effect=[_response(
+                              payload=_rows("couples counselling")),
+                              _response(payload=_rows())]) as post:
             second = self.client.get_query_stats(self.QUERIES, self.START, self.END)
-        self.assertEqual(post.call_count, 1)
+        # Two: the page, and the empty page that confirms it was the last one
+        # (changed 2026-11-19 — a short page is no longer the end of data).
+        self.assertEqual(post.call_count, 2)
         self.assertTrue(second.complete)
         self.assertIn("couples counselling", second.stats)
         self.assertEqual(second.measured_absent, ["family therapy"])
@@ -166,8 +210,9 @@ class TestIncompleteFetchIsNotCachedAsAbsence(unittest.TestCase):
     def test_a_real_absence_is_still_cached(self):
         """The ``found=0`` sentinel stays: only its provenance changed."""
         with patch.object(gsc_client, "_post_with_transient_retry",
-                          return_value=_response(
-                              payload=_rows("couples counselling"))):
+                          side_effect=[_response(
+                              payload=_rows("couples counselling")),
+                              _response(payload=_rows())]):
             self.client.get_query_stats(self.QUERIES, self.START, self.END)
         self.assertEqual(sorted(self._cache_rows()),
                          [("couples counselling", 1), ("family therapy", 0)])

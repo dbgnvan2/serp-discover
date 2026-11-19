@@ -1325,3 +1325,23 @@ cross-check). `config_manager.py` carries an unprovenanced "max 3 for free
 tier" claim about SerpAPI page limits. `norm_text`'s nan arm covers
 `float`/`numpy.float64` but not `pd.NaT` or `pd.NA`; neither can reach a key
 column today.
+
+---
+
+## 9. Correctness fixes after the live run (2026-11-19)
+
+Recorded at three sentences per finding — the defect, the consequence, the fix
+(`~/.claude/standards/effort-budget.md` §9a).
+
+### C1 — `gsc_client._fetch_all_rows` treated a short page as end-of-data
+
+The loop ended when a page carried fewer than `ROW_LIMIT` rows, and GSC can
+serve a short page part-way through a set under sampling. Every query after
+that page was recorded as having no impressions and cached for the TTL, which
+is the D-C-02 fault — a fetch that did not finish reported as a measured
+absence — in miniature, described by this function's own docstring and then
+contradicted by its loop. The loop now ends only on an EMPTY page, a short
+page logs at INFO and continues, and `MAX_PAGES = 200` bounds an API that
+never empties by returning the rows with `complete=False` rather than looping
+forever. Cost: one extra request per fetch, the empty page that confirms the
+end. Mutation-checked: restoring the short-page exit fails 6 tests.
