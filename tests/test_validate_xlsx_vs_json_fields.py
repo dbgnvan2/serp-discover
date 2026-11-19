@@ -161,3 +161,107 @@ class TestValuesAgree(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestWhatTheGateDoesNotCover(unittest.TestCase):
+    """The cold review of the field comparison: three ways the report
+    claimed more coverage than it had (findings 3, 4 and 5)."""
+
+    def test_a_declared_column_neither_file_carries_fails(self):
+        """Finding 3. `Word_Count` is in Organic_Results' `required_cols`. A
+        writer that stops emitting it on both sides fell out of `compared`
+        and never entered `not_compared`, so the report showed no mismatch
+        and an empty uncompared list — full coverage of a contract column
+        that no longer exists."""
+        row = _organic()
+        row.pop("Word_Count")
+        code, diff = _run([row], [dict(row)])
+        entry = diff["sheet_diffs"].get("Organic_Results", {})
+        self.assertIn("Word_Count", entry.get("declared_columns_missing", []),
+                      diff)
+        self.assertEqual(1, code)
+
+    def test_a_column_only_some_rows_carry_is_still_listed(self):
+        """Finding 4. `not_compared` was reassigned every iteration, so it
+        described whichever key sorted last by `repr`.
+
+        The asymmetry has to be on the JSON side: the workbook is read as a
+        DataFrame, which gives every row every column, so a column one sheet
+        row lacks still appears in its record as `None`. Here only the
+        FIRST-sorting key carries the extra column, which is the case the
+        overwrite dropped.
+        """
+        first = _organic(Rank=1)
+        second = _organic(Rank=2)
+        _code, diff = _run(
+            [first, second],
+            [dict(first, Extra_Column="a"), dict(second)])
+        self.assertIn("Extra_Column",
+                      diff["columns_not_compared"]["Organic_Results"], diff)
+
+    def test_the_report_says_how_many_rows_were_field_compared(self):
+        """Finding 4, second half: an empty mismatch list read the same
+        whether every row agreed or no row was compared at all."""
+        _code, diff = _run([_organic(Rank=1), _organic(Rank=2)],
+                           [_organic(Rank=1), _organic(Rank=2)])
+        self.assertEqual(2, diff["rows_field_compared"]["Organic_Results"])
+
+    def test_no_shared_rows_reports_zero_compared(self):
+        _code, diff = _run([_organic(Rank=1)], [_organic(Rank=9)])
+        self.assertEqual(0, diff["rows_field_compared"]["Organic_Results"])
+
+    def test_rows_hidden_by_a_repeated_key_are_counted(self):
+        """Finding 5. The index keeps one row per key, so of a repeated pair
+        only the survivor is field-compared. Several sheets repeat a key
+        legitimately, so this is reported as coverage, not failure."""
+        rows = [_organic(), _organic(Title="the row the index drops")]
+        _code, diff = _run(rows, [dict(r) for r in rows])
+        self.assertEqual(
+            1, diff["rows_not_individually_compared"]["Organic_Results"], diff)
+        # The fixture writes one sheet, so the overall verdict is False for
+        # the others; the claim under test is that THIS sheet is not faulted.
+        self.assertNotIn("Organic_Results", diff["sheet_diffs"], diff)
+
+    def test_a_key_repeated_a_different_number_of_times_fails(self):
+        """The real disagreement: one file holds two rows for a key and the
+        other holds three."""
+        row = _organic()
+        code, diff = _run([dict(row), dict(row)],
+                          [dict(row), dict(row), dict(row)])
+        self.assertEqual(1, code)
+        self.assertIn("duplicate_count_mismatch",
+                      diff["sheet_diffs"]["Organic_Results"], diff)
+
+
+class TestTheKeyIdentifiesARow(unittest.TestCase):
+    """Found while fixing finding 5, in the real 2026-11-18 outputs: every
+    keyword of a run shares one `Run_ID`, so `Overview`'s key of `("Run_ID",)`
+    collapsed all ten keywords' rows into one and the gate compared ONE of
+    them. The collisions were invisible before the field comparison existed,
+    because both files collapsed identically."""
+
+    def test_overview_keys_on_the_keyword_too(self):
+        import validate_xlsx_vs_json as v
+        for spec in v.SPECS:
+            if spec.sheet_name == "Overview":
+                self.assertIn("Source_Keyword", spec.key_cols)
+                return
+        self.fail("Overview spec not found")
+
+    def test_two_keywords_of_one_run_are_both_compared(self):
+        a = _organic(Source_Keyword="keyword one")
+        b = _organic(Source_Keyword="keyword two", Title="a different page")
+        _code, diff = _run([a, b], [dict(a), dict(b)])
+        self.assertEqual(2, diff["rows_field_compared"]["Organic_Results"])
+        self.assertNotIn("Organic_Results", diff["sheet_diffs"], diff)
+
+    def test_a_divergence_in_the_second_keywords_row_is_caught(self):
+        """The failure the collision hid: rank 3 for keyword two disagreed
+        between the files and rank 3 for keyword one did not."""
+        a = _organic(Source_Keyword="keyword one")
+        b = _organic(Source_Keyword="keyword two")
+        code, diff = _run([a, b],
+                          [dict(a), dict(b, Title="DIFFERENT")])
+        self.assertEqual(1, code)
+        self.assertIn("field_mismatch_sample",
+                      diff["sheet_diffs"]["Organic_Results"], diff)

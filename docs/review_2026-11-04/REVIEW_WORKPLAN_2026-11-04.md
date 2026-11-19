@@ -1445,3 +1445,70 @@ they are recorded here so the list does not grow a change that nothing needs.
   carries `primary_city` / `secondary_cities`, which only expand probe query
   templates, so the aliases people actually type are never probed. A feature,
   not a defect — nothing is wrong today.
+
+### The cold review of C1-C3: six findings, all fixed
+
+**1 (high) — the §0 line counted a different thing from the figure it
+explains.** It counted rows whose `Content_Type` was an unmeasured marker;
+the per-keyword sections count `serp_intent.evidence`, over the top-10 window
+the verdict was computed on. The two disagree in both directions — a client
+or known-competitor row classifies with no content type at all, and a page
+read as `other` has a content type but no intent — so the 2026-11-18 report
+would have said "15 of 221" where §5b says "6 of 100", and on a SERP where
+every readable page types as `other` the line would have vanished exactly
+when it was needed. It now sums the keywords' own evidence, counts the causes
+from their own `fetch_coverage.by_state` over the same window, and names the
+remainder — pages that were read and whose type maps to no intent — so the
+causes add up to the shortfall.
+
+**2 (high) — a mistyped placeholder in `reason_item` aborted the report.**
+The reason join ran before the `try` that was supposed to degrade the wording
+to English, and `serp_vocab.yml` is the file users are told to edit. Both the
+sentence and the join are now inside one guard.
+
+**3 — a declared column neither file carries was reported as covered.**
+`compared` is `declared & present` and `not_compared` is `present - declared`,
+so a `required_cols` entry the writers have stopped emitting fell out of both
+and the gate showed full coverage of a contract column that no longer exists.
+Reported as `declared_columns_missing` and fails.
+
+**4 — `columns_not_compared` was the last row's value.** It was reassigned
+each iteration, so it described whichever key sorted last, and it was `()`
+when no row was compared at all — which reads as "nothing was left
+unchecked". It is a union now, and `rows_field_compared` says per sheet how
+many rows the comparison ran over.
+
+**5 — a repeated key hid rows from the comparison, and the keys did not
+identify a row.** The index keeps one row per key, so of a repeat only the
+survivor was compared. Fixing it surfaced the larger fault: every keyword of
+a run shares one `Run_ID`, and `Overview`'s key was `("Run_ID",)`, so ten
+keywords' rows collapsed to one and step 1.2 compared ONE of them — invisible
+until now, because both files collapsed identically. `Source_Keyword` is part
+of the key of every per-keyword sheet; on the 2026-11-18 outputs the gate now
+compares 10 Overview rows instead of 1 and 221 organic rows instead of 212.
+Three sheets still repeat a key legitimately (the same related search
+harvested twice, with no field telling the rows apart); those 13 rows are
+reported as `rows_not_individually_compared`, and only a DIFFERENCE in how
+often a key repeats between the two files fails.
+
+**6 — no no-progress stop in the GSC loop.** A backend that ignores
+`startRow` re-serves the same page, and `MAX_PAGES` alone meant 199 further
+25k-row requests that learn nothing. A page adding no query the fetch had not
+already seen now stops it, as INCOMPLETE.
+
+**Also taken from the review's reading.** The unread-state phrases ("the link
+resolved to the site root, not the ranked page") were a Python dict in
+`brief_data_extraction._UNREAD_FETCH_STATES` — a second home for the same
+facts as `serp_vocab.yml` `fetch_status`. They are in that file now under
+`fetch_status.reasons`, read through `enrichment.reason_text`, and the brief's
+dict is derived from `enrichment.UNREAD_STATES` rather than listed.
+
+**Verification.** 2415 passed, 68 skipped, 233 subtests, exit 0. Mutation gate
+over 8 reverts, one per fix: 8 caught, 0 vacuous. The 2026-11-18 outputs
+revalidate at exit 0 and their report regenerates with the corrected line.
+
+### Backlog (continued)
+
+- `gsc_client.MAX_PAGES` is a hardcoded operational bound in a repo that moved
+  `http_retry.attempts` and `database.lock_timeout_seconds` into `config.yml`
+  (P4). Defensible as a pure safety rail; nobody should need to tune it.

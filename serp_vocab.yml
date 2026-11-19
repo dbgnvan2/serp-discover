@@ -316,6 +316,20 @@ fetch_status:
     rather than zero
   no_url: "No URL"
   enrichment_disabled: "Enrichment Off"
+  # The same states as a PHRASE rather than a cell label, for the sentences
+  # that say why a page was not read ("4 because the link resolved to the site
+  # root"). These were a Python dict in `brief_data_extraction.py`
+  # (`_UNREAD_FETCH_STATES`) — a second home for the words above, which is
+  # what this file exists to prevent; moved here 2026-11-19. A state missing
+  # from here falls back to its cell label.
+  reasons:
+    blocked: "the site returned an error status"
+    fetch_retryable: "every attempt failed at the network layer"
+    unreachable: "the page could not be reached"
+    not_attempted: "the per-run page budget stopped before this rank"
+    not_destination_page: "the link resolved to the site root, not the ranked page"
+    no_url: "the row carried no URL"
+    enrichment_disabled: "page enrichment was switched off for this run"
 
 # Why the SERP-intent column reads as it does, said once at the top of the
 # report instead of ten times as "0 of 10 classified" with no cause (added
@@ -329,9 +343,14 @@ classification_coverage:
   line: >-
     **Ranked results classified:** {classified} of {total}. SERP intent is read
     from classified results only, so a keyword with few of them gets no intent
-    verdict and no page recommendation. The rest were not classified because
-    {reasons}.
+    verdict and no page recommendation. The figure is the top-10 window each
+    keyword's verdict is read from, the same one the per-keyword sections
+    report. The rest were not classified because {reasons}.
   reason_item: "{count} × {label}"
+  # A page that WAS read and still has no intent: its content type is one the
+  # intent table sends to `uncategorised` ("other", "unknown"). Without this
+  # the causes added up to less than the deficit they explain.
+  unmapped_type: "their page type does not map to a search intent"
   none_classified: >-
     **Ranked results classified:** none of {total}. No keyword can have a SERP
     intent verdict this run, which is why the table below recommends no page:

@@ -108,12 +108,6 @@ def status_text(state, **values):
             return str(fallback)
 
 
-#: Content-type cells that record an absence of measurement rather than a
-#: type, lower-cased. Same set as `brief_data_extraction._UNMEASURED_CONTENT_TYPES`
-#: — `"N/A"` is the field's own missing marker and `"Not Measured"` is
-#: `NOT_MEASURED`.
-_UNCLASSIFIED_CONTENT_TYPES = {"n/a", "not measured", ""}
-
 #: Fallback wording for the `classification_coverage` block, on the same terms
 #: as `_DEFAULTS`: a missing or malformed section degrades to English.
 _COVERAGE_DEFAULTS = {
@@ -124,10 +118,73 @@ _COVERAGE_DEFAULTS = {
     "none_classified": ("**Ranked results classified:** none of {total}, so "
                         "no keyword can have a SERP intent verdict this run: "
                         "{reasons}."),
+    "unmapped_type": "their page type does not map to a search intent",
 }
 
 
-def classification_coverage_line(organic_results):
+def _intent_window_counts(keyword_profiles):
+    """`(classified, total)` summed over the keywords' own intent evidence.
+
+    This is the SAME measurement the per-keyword sections print as "only N of
+    M URLs could be classified": `serp_intent.evidence`, counted over the
+    top-10 window `compute_serp_intent` was given. The first version of this
+    line counted rows whose `Content_Type` was an unmeasured marker instead,
+    which is a different measurement in both directions — a client or
+    known-competitor row classifies without a content type at all, and a page
+    read as `other` or `unknown` has a content type but no intent — and on the
+    2026-11-18 run the two gave "15 of 221" and "6 of 100" in one report under
+    one word (cold review of this fix, finding 1). Returns `(None, None)` when
+    no keyword recorded any evidence.
+    """
+    if not isinstance(keyword_profiles, dict):
+        return None, None
+    classified = total = 0
+    seen = False
+    for profile in keyword_profiles.values():
+        if not isinstance(profile, dict):
+            continue
+        evidence = ((profile.get("serp_intent") or {}).get("evidence") or {})
+        if not isinstance(evidence, dict):
+            continue
+        rows = evidence.get("organic_url_count")
+        if not isinstance(rows, int):
+            continue
+        seen = True
+        total += rows
+        hit = evidence.get("classified_organic_url_count")
+        classified += hit if isinstance(hit, int) else 0
+    return (classified, total) if seen else (None, None)
+
+
+def _unread_states_in_window(keyword_profiles):
+    """`{state: count}` over the same top-10 windows, from `fetch_coverage`.
+
+    `brief_data_extraction._build_fetch_coverage` already counts the unread
+    states per keyword over `kw_rows[:10]` — the very window the intent
+    verdict uses — so the causes are counted against the same denominator as
+    the figure they explain. Reading the raw rows instead pooled every rank
+    and produced cause counts larger than their own total.
+    """
+    counts = {}
+    if not isinstance(keyword_profiles, dict):
+        return counts
+    for profile in keyword_profiles.values():
+        if not isinstance(profile, dict):
+            continue
+        for block in profile.values():
+            if not isinstance(block, dict):
+                continue
+            coverage = block.get("fetch_coverage")
+            if not isinstance(coverage, dict):
+                continue
+            for state, count in (coverage.get("by_state") or {}).items():
+                if isinstance(count, int):
+                    counts[str(state)] = counts.get(str(state), 0) + count
+            break  # one coverage block per keyword; they are the same object
+    return counts
+
+
+def classification_coverage_line(keyword_profiles):
     """One line saying how many ranked results were classified, and why not.
 
     The report stated "0 of 10 URLs could be classified" per keyword and
@@ -137,39 +194,87 @@ def classification_coverage_line(organic_results):
     and reported in no sentence (P2, found by the first live run,
     2026-11-18).
 
-    The reasons are the rows' OWN `Fetch_Status` words, counted — not a cause
-    inferred here. Returns "" when every result was classified, or when there
-    are no results to speak about.
+    Both numbers come from the keywords' own `serp_intent.evidence` and
+    `fetch_coverage` blocks, so the figure and its causes are the same
+    measurement the per-keyword sections print, over the same top-10 window.
+    A deficit the unread states do not account for is named as what it is —
+    pages that were read and whose type does not map to a search intent —
+    rather than left as the difference between two numbers.
+
+    Returns "" when every result in the window was classified, or when no
+    keyword recorded any evidence to speak about.
     """
-    rows = [r for r in (organic_results or []) if isinstance(r, dict)]
-    if not rows:
-        return ""
-    unclassified = [r for r in rows
-                    if str(r.get("Content_Type") or "").strip().lower()
-                    in _UNCLASSIFIED_CONTENT_TYPES]
-    if not unclassified:
+    classified, total = _intent_window_counts(keyword_profiles)
+    if not total or classified is None or classified >= total:
         return ""
     vocab = SERP_VOCAB.get("classification_coverage") or {}
 
     def _words(key):
         return str(vocab.get(key) or _COVERAGE_DEFAULTS[key])
 
-    counts = {}
-    for row in unclassified:
-        label = str(row.get("Fetch_Status") or "").strip() or "no reason recorded"
-        counts[label] = counts.get(label, 0) + 1
-    item = _words("reason_item")
-    reasons = ", ".join(
-        item.format(count=count, label=label)
-        for label, count in sorted(counts.items(), key=lambda kv: (-kv[1], kv[0])))
-    classified = len(rows) - len(unclassified)
+    def _join(template):
+        parts = []
+        unread = _unread_states_in_window(keyword_profiles)
+        accounted = 0
+        for state, count in sorted(unread.items(),
+                                   key=lambda kv: (-kv[1], kv[0])):
+            if count <= 0:
+                continue
+            accounted += count
+            parts.append(template.format(count=count,
+                                         label=reason_text(state)))
+        remainder = (total - classified) - accounted
+        if remainder > 0:
+            # Read, and still not classified. Saying nothing here would make
+            # the causes add up to less than the deficit they explain, which
+            # is how a reader concludes the rest is unexplained (P2).
+            parts.append(template.format(count=remainder,
+                                         label=_words("unmapped_type")))
+        return ", ".join(parts)
+
     key = "none_classified" if classified == 0 else "line"
-    try:
-        return _words(key).format(classified=classified, total=len(rows),
-                                  reasons=reasons).strip()
-    except (KeyError, IndexError, ValueError, TypeError):
-        return _COVERAGE_DEFAULTS[key].format(
-            classified=classified, total=len(rows), reasons=reasons).strip()
+    for words, template in ((_words(key), _words("reason_item")),
+                            (_COVERAGE_DEFAULTS[key],
+                             _COVERAGE_DEFAULTS["reason_item"])):
+        # The reason join is inside the guard with the sentence: a mistyped
+        # placeholder in `reason_item` raised before the fallback could run,
+        # and `serp_vocab.yml` is the file users are told to edit (cold review
+        # of this fix, finding 2).
+        try:
+            return words.format(classified=classified, total=total,
+                                reasons=_join(template)).strip()
+        except (KeyError, IndexError, ValueError, TypeError):
+            continue
+    return ""
+
+
+#: Phrase fallbacks for `reason_text`, mirroring `_DEFAULTS`.
+_REASON_DEFAULTS = {
+    BLOCKED: "the site returned an error status",
+    FETCH_RETRYABLE: "every attempt failed at the network layer",
+    UNREACHABLE: "the page could not be reached",
+    NOT_ATTEMPTED: "the per-run page budget stopped before this rank",
+    NOT_DESTINATION_PAGE: "the link resolved to the site root, not the "
+                          "ranked page",
+    NO_URL: "the row carried no URL",
+    DISABLED: "page enrichment was switched off for this run",
+}
+
+
+def reason_text(state):
+    """One unread outcome as a PHRASE, for a sentence rather than a cell.
+
+    "4 because the link resolved to the site root" needs different words from
+    the `Fetch_Status` cell's "Not The Ranked Page", and the phrases were a
+    Python dict in `brief_data_extraction._UNREAD_FETCH_STATES` — a second
+    home for the same facts as `fetch_status` above, which is what moving
+    those words out of Python was for. They live in `serp_vocab.yml` under
+    `fetch_status.reasons`; a state with no phrase falls back to its cell
+    label, so a new state is readable before anyone writes its sentence.
+    """
+    reasons = ((SERP_VOCAB.get("fetch_status") or {}).get("reasons") or {})
+    phrase = reasons.get(state) or _REASON_DEFAULTS.get(state)
+    return str(phrase) if phrase else status_text(state, status="an error")
 
 
 def mark_unmeasured(item, state, **values):

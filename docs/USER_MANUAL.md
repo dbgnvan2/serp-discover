@@ -1175,10 +1175,20 @@ Section 0 states how many of the run's ranked competitor results could be
 classified, and, for the rest, what stopped them, counted by the reason each
 row recorded:
 
-> **Ranked results classified:** 15 of 221. SERP intent is read from
+> **Ranked results classified:** 6 of 100. SERP intent is read from
 > classified results only, so a keyword with few of them gets no intent
-> verdict and no page recommendation. The rest were not classified because
-> 125 × Not The Ranked Page, 58 × Not Fetched, 14 × Blocked (403), 9 × No URL.
+> verdict and no page recommendation. The figure is the top-10 window each
+> keyword's verdict is read from, the same one the per-keyword sections
+> report. The rest were not classified because 55 × the link resolved to the
+> site root, not the ranked page, 15 × the per-run page budget stopped before
+> this rank, 14 × the site returned an error status, 1 × the row carried no
+> URL, 9 × their page type does not map to a search intent.
+
+The denominator is the **top-10 window** each keyword's intent verdict is read
+from — ten keywords, 100 results — not every result the run collected. It is
+the same figure the per-keyword sections print as "only N of M URLs could be
+classified", and the causes are counted over the same window, so they add up
+to the shortfall exactly.
 
 **Why it matters:** a keyword's SERP intent is read from the content types of
 the pages ranking for it. Where few of them were classified there is no intent
@@ -1187,15 +1197,21 @@ recommends no page — not because the keyword is bad, but because the run could
 not see enough of the results page. The line tells you which it is, and what to
 change:
 
-- **Not The Ranked Page** — Google returned a redirect that could only be
-  resolved to the competitor's home page, so the actual ranking page was never
-  read. Nothing to fix locally; re-running usually returns direct links for a
-  different share of results.
-- **Not Fetched** — the result sat past `enrichment.max_urls_per_keyword`, or
-  enrichment was off. Raise the cap or switch it on.
-- **Blocked (NNN)** / **Not Read (network, retry)** — the competitor's site
-  refused or never answered. Nothing to fix; those pages stay unclassified.
-- **No URL** — the result carried no link at all.
+- **the link resolved to the site root, not the ranked page** — Google
+  returned a redirect that could only be resolved to the competitor's home
+  page, so the actual ranking page was never read. Nothing to fix locally;
+  re-running usually returns direct links for a different share of results.
+- **the per-run page budget stopped before this rank** — the result sat past
+  `enrichment.max_urls_per_keyword`. Raise the cap to read more of each top
+  ten.
+- **the site returned an error status** / **every attempt failed at the
+  network layer** — the competitor's site refused or never answered. Nothing
+  to fix; those pages stay unclassified.
+- **the row carried no URL** — the result carried no link at all.
+- **their page type does not map to a search intent** — the page *was* read,
+  and its content type is one the intent table does not route (a forum thread,
+  an aggregator, anything typed `other`). Add a rule to `intent_mapping.yml`
+  if that type should count.
 
 When nothing at all was classified the line says so outright ("none of M")
 rather than "0 of M", because no keyword can have an intent verdict on that

@@ -28,6 +28,7 @@ import yaml
 
 from intent_verdict import compute_serp_intent, load_mapping as load_intent_mapping
 import keyword_demand
+import enrichment
 from title_patterns import compute_title_patterns, resolve_thresholds as _title_thresholds
 from classifiers import classify_url_from_patterns, EntityClassifier
 from play_routing import compute_recommended_play, load_play_routing
@@ -584,25 +585,17 @@ def _classify_paa_intent(paa_rows):
 
 
 #: Fetch states meaning "we never read this page's body", with the
-#: plain-English reason each one is. Keyed by enrichment.py's states.
-#: Every `enrichment` state that means "this page was not read", with the
-#: reason in the words the brief prints. A state missing from here falls to
-#: the `elif state: read += 1` branch below and is counted as a page that WAS
-#: read, so the brief is told its signals were measured over more pages than
-#: they were. `fetch_retryable` (added with the state in review chunk Y2) and
-#: `not_destination_page` were both missing. A guard now asserts this dict
-#: holds every unread state `enrichment` defines, so the next one cannot be
-#: added in one place only.
-_UNREAD_FETCH_STATES = {
-    "blocked": "the site returned an error status",
-    "fetch_retryable": "every attempt failed at the network layer",
-    "unreachable": "the page could not be reached",
-    "not_attempted": "the per-run page budget stopped before this rank",
-    "not_destination_page": "the link resolved to the site root, not the "
-                            "ranked page",
-    "no_url": "the row carried no URL",
-    "enrichment_disabled": "page enrichment was switched off for this run",
-}
+#: plain-English reason each one is. A state missing from here falls to the
+#: `elif state: read += 1` branch below and is counted as a page that WAS
+#: read, so the brief would be told its signals were measured over more pages
+#: than they were; `fetch_retryable` and `not_destination_page` were both
+#: missing once, so the set is DERIVED from `enrichment.UNREAD_STATES` rather
+#: than listed and a new state cannot be added in one place only. The words
+#: come from `serp_vocab.yml` (`fetch_status.reasons`) through
+#: `enrichment.reason_text`, which is their one home — this dict carried its
+#: own copy of them until 2026-11-19.
+_UNREAD_FETCH_STATES = {state: enrichment.reason_text(state)
+                        for state in enrichment.UNREAD_STATES}
 
 
 def _build_fetch_coverage(kw_rows):

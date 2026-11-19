@@ -152,8 +152,12 @@ Editorial content currently lives in:
   an `except` and from an `atexit` hook, where the messages file may itself be
   what is broken, so `db_connect.FALLBACK_CLEANUP_WARNING` carries a built-in
   wording and the warning says it was used. Also `classification_coverage` —
-  the report's §0 line saying how many ranked results were classified and,
-  from the rows' own `Fetch_Status` words, what stopped the rest. Before it
+  the report's §0 line saying how many ranked results were classified and
+  what stopped the rest. Both numbers come from the keywords' own
+  `serp_intent.evidence` and `fetch_coverage` blocks, so the figure is the one
+  the per-keyword sections print, over the same top-10 window. Also
+  `fetch_status.reasons` — the same states as a PHRASE for those sentences,
+  which were a second Python copy in `brief_data_extraction`. Before it
   the report stated "0 of 10 URLs could be classified" per keyword and said
   nowhere what caused it, so the 2026-11-18 run recommended no page for any
   keyword without naming a reason (added 2026-11-19). `fetch_retryable` and

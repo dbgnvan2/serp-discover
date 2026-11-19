@@ -39,14 +39,14 @@ SPECS: List[SheetSpec] = [
     SheetSpec(
         sheet_name="Overview",
         json_key="overview",
-        key_cols=("Run_ID",),
+        key_cols=("Run_ID", "Source_Keyword"),
         normalize_text_cols=("Search_Query_Used",),
         required_cols=("Run_ID", "Search_Query_Used", "Total_Results"),
     ),
     SheetSpec(
         sheet_name="Organic_Results",
         json_key="organic_results",
-        key_cols=("Run_ID", "Rank", "Link"),
+        key_cols=("Run_ID", "Source_Keyword", "Rank", "Link"),
         normalize_text_cols=("Title", "Snippet", "Source",
                              "Content_Type", "Entity_Type", "Word_Count", "Rank_Delta"),
         required_cols=("Run_ID", "Rank", "Title", "Link",
@@ -55,63 +55,63 @@ SPECS: List[SheetSpec] = [
     SheetSpec(
         sheet_name="PAA_Questions",
         json_key="paa_questions",
-        key_cols=("Run_ID", "Rank", "Question"),
+        key_cols=("Run_ID", "Source_Keyword", "Rank", "Question"),
         normalize_text_cols=("Question", "Snippet"),
         required_cols=("Run_ID", "Rank", "Question"),
     ),
     SheetSpec(
         sheet_name="Related_Searches",
         json_key="related_searches",
-        key_cols=("Run_ID", "Type", "Term"),
+        key_cols=("Run_ID", "Source_Keyword", "Type", "Term"),
         normalize_text_cols=("Term",),
         required_cols=("Run_ID", "Type", "Term"),
     ),
     SheetSpec(
         sheet_name="Derived_Expansions",
         json_key="derived_expansions",
-        key_cols=("Run_ID", "Type", "Term"),
+        key_cols=("Run_ID", "Source_Keyword", "Type", "Term"),
         normalize_text_cols=("Term",),
         required_cols=("Run_ID", "Type", "Term"),
     ),
     SheetSpec(
         sheet_name="Competitors_Ads",
         json_key="competitors_ads",
-        key_cols=("Run_ID", "Type", "Name", "Link"),
+        key_cols=("Run_ID", "Source_Keyword", "Type", "Name", "Link"),
         normalize_text_cols=("Name", "Snippet"),
         required_cols=("Run_ID", "Type", "Name"),
     ),
     SheetSpec(
         sheet_name="Local_Pack_and_Maps",
         json_key="local_pack_and_maps",
-        key_cols=("Run_ID", "Source", "Rank", "Name"),
+        key_cols=("Run_ID", "Source_Keyword", "Source", "Rank", "Name"),
         normalize_text_cols=("Name", "Category", "Address"),
         required_cols=("Run_ID", "Source", "Rank", "Name"),
     ),
     SheetSpec(
         sheet_name="AI_Overview_Citations",
         json_key="ai_overview_citations",
-        key_cols=("Run_ID", "Link"),
+        key_cols=("Run_ID", "Source_Keyword", "Link"),
         normalize_text_cols=("Title", "Source"),
         required_cols=("Run_ID", "Link"),
     ),
     SheetSpec(
         sheet_name="SERP_Modules",
         json_key="serp_modules",
-        key_cols=("Run_ID", "Module"),
+        key_cols=("Run_ID", "Source_Keyword", "Module"),
         normalize_text_cols=("Module",),
         required_cols=("Run_ID", "Module"),
     ),
     SheetSpec(
         sheet_name="Rich_Features",
         json_key="rich_features",
-        key_cols=("Run_ID", "Feature", "Details"),
+        key_cols=("Run_ID", "Source_Keyword", "Feature", "Details"),
         normalize_text_cols=("Feature", "Details"),
         required_cols=("Run_ID", "Feature"),
     ),
     SheetSpec(
         sheet_name="Parsing_Warnings",
         json_key="parsing_warnings",
-        key_cols=("Run_ID", "Module", "Message"),
+        key_cols=("Run_ID", "Source_Keyword", "Module", "Message"),
         normalize_text_cols=("Message",),
         required_cols=("Run_ID", "Module", "Message"),
     ),
@@ -221,8 +221,21 @@ def df_to_records(df: pd.DataFrame) -> List[Dict[str, Any]]:
     return out
 
 
-def index_records(records: List[Dict[str, Any]], key_cols: Tuple[str, ...], text_cols: Tuple[str, ...]) -> Dict[Tuple[Any, ...], Dict[str, Any]]:
+def index_records(records: List[Dict[str, Any]], key_cols: Tuple[str, ...], text_cols: Tuple[str, ...]):
+    """``(index, counts)`` for one record set.
+
+    ``counts`` maps every key to how many rows carried it. The index keeps the
+    last of them, as it always has — which is why the counts are needed: of a
+    repeated key only the survivor is field-compared, so the rest pass the
+    gate unchecked while row counts and key sets still agree. Some sheets
+    repeat a key legitimately (the same related search harvested twice for one
+    keyword, with no field that tells the two rows apart), so a repeat is
+    reported as a gap in coverage and only a DIFFERENCE in the repeat counts
+    between the two files is a disagreement (cold review of the
+    field-comparison fix, finding 5).
+    """
     idx: Dict[Tuple[Any, ...], Dict[str, Any]] = {}
+    counts: Dict[Tuple[Any, ...], int] = {}
     for r in records:
         rr = dict(r)
         for c in text_cols:
@@ -246,14 +259,16 @@ def index_records(records: List[Dict[str, Any]], key_cols: Tuple[str, ...], text
         key = tuple(key_parts)
 
         if key in idx:
-            # Duplicate key found. In a real scenario, we might want to log this.
-            # For now, we overwrite or raise. Let's raise to be strict.
-            # Exception: Bad_Advice_Patterns might have duplicates if not aggregated correctly,
-            # but the script aggregates them.
-            # print(f"Warning: Duplicate key found for {key_cols}: {key}")
-            pass
+            # A duplicate key overwrites, which it has always done. What is
+            # new is that the field comparison now rests on this index: of a
+            # duplicate pair only the survivor is compared, so the other row
+            # passes the gate unchecked while counts and key sets still
+            # agree. Counted and reported rather than dropped (P2, cold
+            # review of the field-comparison fix, finding 5).
+            pass  # the index keeps the last; `counts` records the rest
+        counts[key] = counts.get(key, 0) + 1
         idx[key] = rr
-    return idx
+    return idx, counts
 
 #: What a cell may differ by and still be the same number. A workbook stores
 #: every number as a float, so an integer written as 9 is read back as 9.0 and
@@ -297,9 +312,8 @@ def values_agree(a: Any, b: Any) -> bool:
 
 
 def compared_columns(spec: SheetSpec, left: Dict[str, Any],
-                     right: Dict[str, Any]) -> Tuple[Tuple[str, ...],
-                                                     Tuple[str, ...]]:
-    """`(compared, not_compared)` for one sheet's rows.
+                     right: Dict[str, Any]):
+    """`(compared, not_compared, missing_declared)` for one sheet's rows.
 
     The declared contract — `required_cols` plus `normalize_text_cols`, minus
     the key, which matching the row already proved — is what is compared.
@@ -310,14 +324,23 @@ def compared_columns(spec: SheetSpec, left: Dict[str, Any],
     declared = (set(spec.required_cols) | set(spec.normalize_text_cols)
                 ) - set(spec.key_cols)
     compared = tuple(sorted(declared & present))
-    return compared, tuple(sorted(present - declared - set(spec.key_cols)))
+    return (compared,
+            tuple(sorted(present - declared - set(spec.key_cols))),
+            # A declared column neither file carries any more fell out of
+            # `compared` and never entered `not_compared`, so the gate
+            # reported full coverage of a contract column that no longer
+            # exists (P3, cold review of this fix, finding 3).
+            tuple(sorted(declared - present)))
 
 
 def field_mismatches(spec: SheetSpec,
                      x_idx: Dict[Tuple[Any, ...], Dict[str, Any]],
                      j_idx: Dict[Tuple[Any, ...], Dict[str, Any]],
-                     ) -> Tuple[List[Dict[str, Any]], Tuple[str, ...]]:
-    """Every disagreement in a NON-key field, for the rows both files hold.
+                     ) -> Dict[str, Any]:
+    """What the field comparison found, and what it covered.
+
+    Returns ``{"mismatches", "rows_compared", "not_compared",
+    "missing_declared"}``.
 
     Until 2026-11-19 this did not exist: the step compared row counts and key
     tuples only, `normalize_text_cols` was computed into a record that was
@@ -327,16 +350,29 @@ def field_mismatches(spec: SheetSpec,
     complete along one axis, presented as a full cross-check).
     """
     mismatches: List[Dict[str, Any]] = []
-    not_compared: Tuple[str, ...] = ()
-    for key in sorted(x_idx.keys() & j_idx.keys(), key=repr):
+    # Accumulated across every row, not overwritten by the last one: a column
+    # only some rows carry was reported as unchecked or not depending on which
+    # key happened to sort last (cold review of this fix, finding 4).
+    not_compared: set = set()
+    missing_declared: set = set()
+    shared = sorted(x_idx.keys() & j_idx.keys(), key=repr)
+    for key in shared:
         x_row, j_row = x_idx[key], j_idx[key]
-        cols, not_compared = compared_columns(spec, x_row, j_row)
+        cols, uncompared, missing = compared_columns(spec, x_row, j_row)
+        not_compared.update(uncompared)
+        missing_declared.update(missing)
         for col in cols:
             if not values_agree(x_row.get(col), j_row.get(col)):
                 mismatches.append({"key": str(key), "column": col,
                                    "xlsx": repr(x_row.get(col)),
                                    "json": repr(j_row.get(col))})
-    return mismatches, not_compared
+    return {"mismatches": mismatches,
+            # How many rows this comparison actually ran over. Without it an
+            # empty mismatch list reads the same whether every row agreed or
+            # no row was compared at all.
+            "rows_compared": len(shared),
+            "not_compared": tuple(sorted(not_compared)),
+            "missing_declared": tuple(sorted(missing_declared))}
 
 
 # ----------------------------
@@ -367,7 +403,16 @@ def main() -> int:
         # rather than left for a reader to infer from the absence of a
         # complaint.
         diff: Dict[str, Any] = {"matches": True, "errors": [],
-                                "sheet_diffs": {}, "columns_not_compared": {}}
+                                "sheet_diffs": {},
+                                "columns_not_compared": {},
+                                # How many rows the field comparison ran over
+                                # per sheet. An empty mismatch list otherwise
+                                # reads the same whether every row agreed or
+                                # no row was compared at all.
+                                "rows_field_compared": {},
+                                # Rows a repeated key hid from the field
+                                # comparison: the index keeps one row per key.
+                                "rows_not_individually_compared": {}}
 
         for spec in SPECS:
             # 1. Check Sheet Existence
@@ -392,9 +437,9 @@ def main() -> int:
 
             # 4. Index and Compare Keys
             try:
-                x_idx = index_records(
+                x_idx, x_counts = index_records(
                     xlsx_recs, spec.key_cols, spec.normalize_text_cols)
-                j_idx = index_records(
+                j_idx, j_counts = index_records(
                     json_recs, spec.key_cols, spec.normalize_text_cols)
             except Exception as e:
                 diff["matches"] = False
@@ -415,13 +460,46 @@ def main() -> int:
                     "missing_in_json_sample"] = missing_in_json[:10]
 
             # 5. Compare the rows both files hold, field by field.
-            mismatches, not_compared = field_mismatches(spec, x_idx, j_idx)
-            diff["columns_not_compared"][spec.sheet_name] = list(not_compared)
-            if mismatches:
+            found = field_mismatches(spec, x_idx, j_idx)
+            diff["columns_not_compared"][spec.sheet_name] = list(
+                found["not_compared"])
+            diff["rows_field_compared"][spec.sheet_name] = found[
+                "rows_compared"]
+            if found["mismatches"]:
                 diff["matches"] = False
                 entry = diff["sheet_diffs"].setdefault(spec.sheet_name, {})
-                entry["field_mismatch_count"] = len(mismatches)
-                entry["field_mismatch_sample"] = mismatches[:10]
+                entry["field_mismatch_count"] = len(found["mismatches"])
+                entry["field_mismatch_sample"] = found["mismatches"][:10]
+            if found["missing_declared"]:
+                # A column this sheet's spec declares that NEITHER file
+                # carries. The spec is the contract; a contract column that
+                # has silently stopped being written is a failure of the gate
+                # the spec exists for, not a detail of one row.
+                diff["matches"] = False
+                diff["sheet_diffs"].setdefault(spec.sheet_name, {})[
+                    "declared_columns_missing"] = list(
+                        found["missing_declared"])
+            # A key carried by more than one row: only the survivor was
+            # field-compared. Reported as coverage, because several sheets
+            # repeat a key legitimately; a DIFFERENCE in how often a key
+            # repeats is a real disagreement and fails.
+            repeated = sorted((set(x_counts) | set(j_counts)), key=repr)
+            uncompared_rows = sum(
+                max(x_counts.get(k, 0), j_counts.get(k, 0)) - 1
+                for k in repeated
+                if max(x_counts.get(k, 0), j_counts.get(k, 0)) > 1)
+            if uncompared_rows:
+                diff["rows_not_individually_compared"][
+                    spec.sheet_name] = uncompared_rows
+            differing = [k for k in repeated
+                         if k in x_counts and k in j_counts
+                         and x_counts[k] != j_counts[k]]
+            if differing:
+                diff["matches"] = False
+                diff["sheet_diffs"].setdefault(spec.sheet_name, {})[
+                    "duplicate_count_mismatch"] = [
+                        {"key": str(k), "xlsx": x_counts[k],
+                         "json": j_counts[k]} for k in differing[:10]]
 
         out_path.write_text(json.dumps(
             diff, indent=2, ensure_ascii=False), encoding="utf-8")

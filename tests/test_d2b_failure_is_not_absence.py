@@ -130,6 +130,21 @@ class TestGscFetchReportsCompleteness(unittest.TestCase):
         self.assertEqual({"a", "b", "c"}, set(rows))
         self.assertTrue(complete)
 
+    def test_a_page_that_adds_no_new_query_stops_the_fetch(self):
+        """A backend ignoring `startRow` re-serves the same page. MAX_PAGES
+        bounds it, but at 199 further 25k-row requests that learn nothing;
+        and the rows past that point were never served, so the result is
+        INCOMPLETE (cold review of this fix, finding 6)."""
+        page = _response(payload=_rows("couples counselling"))
+        with patch.object(gsc_client, "ROW_LIMIT", 1), \
+                patch.object(gsc_client, "_post_with_transient_retry",
+                             return_value=page) as post:
+            stats, complete = self.client._fetch_all_rows(
+                self.START, self.END)
+        self.assertEqual(post.call_count, 2)
+        self.assertFalse(complete)
+        self.assertIn("couples counselling", stats)
+
     def test_an_api_that_never_empties_is_bounded_and_incomplete(self):
         """Not an infinite loop, and not a silent truncation either."""
         page = _response(payload=_rows("a", "b"))

@@ -1359,8 +1359,7 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
     # be inferred from ten "0 of 10 classified" lines further down (P2, found
     # by the first live run). Built from the organic rows' own Fetch_Status
     # words; empty when every ranked result was classified.
-    coverage_line = enrichment.classification_coverage_line(
-        data.get("organic_results"))
+    coverage_line = enrichment.classification_coverage_line(keyword_profiles)
     if coverage_line:
         report.append(coverage_line + "\n")
 

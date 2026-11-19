@@ -439,6 +439,7 @@ class GscClient:
                 return results, False
 
             rows = data.get("rows") or []
+            before = len(results)
             for row in rows:
                 keys = row.get("keys") or []
                 if not keys:
@@ -465,6 +466,20 @@ class GscClient:
                     "GSC served a short page at rows %d+ (%d of %d); "
                     "continuing, because a short page is not the end of the "
                     "data.", start_row, len(rows), ROW_LIMIT)
+            if len(results) == before:
+                # A page of rows that added no query this fetch had not
+                # already seen. A backend ignoring `startRow` re-serves the
+                # same page, and the only other stop is MAX_PAGES, so without
+                # this the run spends 199 further 25k-row requests to learn
+                # nothing. INCOMPLETE, not complete: the rows beyond this
+                # point were never served, so they are not an absence (P1,
+                # cold review of this fix, finding 6).
+                logger.warning(
+                    "GSC served %d row(s) at rows %d+ and none of them was a "
+                    "query this fetch had not already seen; stopping with "
+                    "%d row(s) as INCOMPLETE.",
+                    len(rows), start_row, len(results))
+                return results, False
             start_row += len(rows)
             pages += 1
             if pages >= MAX_PAGES:
