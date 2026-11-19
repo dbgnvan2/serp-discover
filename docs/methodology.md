@@ -172,9 +172,15 @@ properties keep it honest, each pinned by
 still derives it, since whether the page was read is a separate fact from
 whether its type was usable; no shipped rule keys on it.
 
-On the 2026-11-19 run this took classified results from 16 of 100 to 51 of 100
-and keywords with a verdict from 0 of 10 to 7 of 10. The three without one are
-SERPs of job boards and news sites whose hosts classify as `N/A`.
+On the 2026-11-19 run this took classified results from 16 of 100 to 56 of 100
+and keywords with a verdict from 0 of 10 to 8 of 10. News hosts were moved from
+`media` into `publisher` to get there: `media` held `cbc.ca` and
+`vancouversun.com` beside `reddit.com`, `youtube.com` and `amazon.ca`, so it
+carried no single intent and is excluded from section 1b, while news reporting
+answers questions. Three hosts were pinned to `media` by `domain_overrides.yml`
+and an override beats the pattern lists, so both had to change together. The
+two keywords still without a verdict rank job boards and other unrecognised
+hosts; job boards have no entity type.
 
 **Classification coverage and intent certainty are two different facts.**
 `confidence` (alias `classification_coverage`) is a count: how many of the ten

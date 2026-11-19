@@ -1588,12 +1588,6 @@ SerpAPI calls.
 
 ### Backlog (continued)
 
-- `media_domains` mixes social and retail hosts (`reddit.com`, `youtube.com`,
-  `amazon.ca`) with publishers (`cbc.ca`, `vancouversun.com`), so the type
-  carries no single intent and is excluded from host inference. Splitting it
-  would let news hosts infer `informational`.
-- `globalnews.ca` and `ctvnews.ca` classify as `N/A`, not `publisher` —
-  `publisher_domains` lists no Canadian broadcasters.
 
 ### 2026-11-19b — section 1b gates on the page's type, not on the fetch
 
@@ -1627,3 +1621,51 @@ not_destination_page: 4}`).
 over 4 reverts on the widened logic: 4 caught. Re-measured end to end with
 `refresh_analysis_outputs.py` plus a report regeneration and step 1.2 at exit
 0 — no SerpAPI calls.
+
+### 2026-11-19c — news is a publisher, not `media`
+
+**The defect.** `publisher_domains` listed no Canadian news host, so the four
+that ranked on the 2026-11-19 run — globalnews.ca, ctvnews.ca, sootoday.com,
+rmoutlook.com — classified as `N/A` and carried nothing. Three more (cbc.ca,
+vancouversun.com, canadianaffairs.news) were pinned to `media` by
+`domain_overrides.yml`, the type that also holds reddit.com, youtube.com and
+amazon.ca.
+
+**The consequence.** `media` mixed reporting with social and retail, so it
+carried no single intent and had to be excluded from the host inference in
+`intent_mapping.yml` section 1b — which meant a news-dominated SERP produced no
+verdict even though news reporting answers questions, i.e. `informational`. The
+three overridden hosts are now `publisher` in `domain_overrides.yml` (an
+override beats the pattern lists, so moving the list entry alone would have
+changed nothing), the same three are out of `media_domains`, and
+`publisher_domains` gained 21 Canadian national, BC and North Shore news hosts.
+`media_domains` is now `reddit.com`, `youtube.com`, `amazon.ca` — social and
+retail only, still excluded from section 1b.
+
+**Result on the 2026-11-19 data.** Classified results 51 of 100 → 56 of 100,
+keywords with a verdict 7 of 10 → 8 of 10. `my parents and siblings` came out
+`informational` at 83% agreement — the first keyword in the set whose verdict
+matches `client.preferred_intents`, so the first whose action is not
+"Mismatched intent".
+
+**Verification.** 2451 passed, 68 skipped, 271 subtests, exit 0. Tests:
+`tests/test_news_is_a_publisher.py`, including a guard that the two lists stay
+disjoint (the classifier checks `publisher_domains` first, so an overlap would
+be a silently dead `media` entry rather than an error). Re-measured with
+`refresh_analysis_outputs.py`, a report regeneration and step 1.2 at exit 0 —
+no SerpAPI calls.
+
+### Backlog (continued)
+
+- `family roles` ranks ten job boards (glassdoor.ca, simplyhired.ca, bebee.com,
+  jobboom.com, jobrapido.com) and `family dynamics` six unrecognised hosts;
+  both still have no verdict. Job boards have no entity type at all. Adding one
+  would give those SERPs a verdict and, more usefully, show that Google reads
+  `family roles` as a jobs query — a keyword-selection finding the current
+  "intent unknown" hides.
+- `publisher_domains` contains `psychologytoday.com/us/blog`, a path. The
+  classifier matches hosts only, and checks `directory_domains` first anyway,
+  so the entry can never fire — it is dead, and the path distinction it was
+  reaching for is not expressible in these lists.
+- `media_domains` holds `amazon.ca`, a retailer, under a name meaning media.
+  The type is excluded from host inference, so nothing reads it wrongly today.

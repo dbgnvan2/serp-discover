@@ -1037,17 +1037,29 @@ tell what it is, that answer is used and the site's type is ignored — a
 directory whose page is genuinely a guide counts as someone reading up, not
 someone comparing providers.
 
-Two site types are deliberately left out — a counselling practice's own site,
+**News sites count as publishers.** Canadian news hosts had no entry at all
+(Global News, CTV, and two local papers ranked on the 2026-11-19 run and were
+simply unrecognised), and CBC and the Vancouver Sun had been filed under
+`media` — the same label as Reddit, YouTube and Amazon. That label cannot mean
+one thing, so it is not allowed to decide intent. News is now `publisher`, and
+`media` holds only social and shopping sites. On the 2026-11-19 run this gave
+"my parents and siblings" a verdict of **informational** — the first keyword in
+the set whose intent matches the kind of content this practice publishes.
+
+One site type is deliberately left out — a counselling practice's own site,
 because it may rank with a blog post (reading up) or a services page (ready to
-book), and `media`, because that type covers social and shopping sites as well
-as news.
+book), so the site cannot settle it. `media` is also excluded, but it now
+covers only social and shopping sites, which genuinely say nothing about why
+somebody searched.
 
 **What it changed.** Before this, no keyword on the 2026-11-19 run had an
 intent verdict at all, so the report recommended no page for any of them.
-Afterwards 7 of 10 keywords had one, and the results it could judge went from
-16 of 100 to 51 of 100. The three keywords still without a verdict are ones
-whose SERPs are filled with job boards and news sites the tool does not
-recognise.
+Afterwards 8 of 10 keywords had one, and the results it could judge went from
+16 of 100 to 56 of 100. The two still without a verdict are "family dynamics"
+and "family roles" — the latter ranks ten job boards, which the tool does not
+yet recognise as a site type, and which is itself worth knowing: Google reads
+"family roles" as a jobs query, so it is a poor keyword for this practice
+whatever its intent turns out to be.
 
 **How the report stays honest about it.** The "Ranked results classified" line
 at the top of the report states how many of the results were judged from the

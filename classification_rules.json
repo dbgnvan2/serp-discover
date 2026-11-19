@@ -62,10 +62,7 @@
     "media_domains": [
       "reddit.com",
       "youtube.com",
-      "amazon.ca",
-      "cbc.ca",
-      "vancouversun.com",
-      "canadianaffairs.news"
+      "amazon.ca"
     ],
     "publisher_domains": [
       "nytimes.com",
@@ -75,7 +72,27 @@
       "medium.com",
       "theconversation.com",
       "healthline.com",
-      "verywellmind.com"
+      "verywellmind.com",
+      "cbc.ca",
+      "ctvnews.ca",
+      "globalnews.ca",
+      "citynews.ca",
+      "nationalpost.com",
+      "thestar.com",
+      "vancouversun.com",
+      "theprovince.com",
+      "northshorenews.com",
+      "vancouverisawesome.com",
+      "timescolonist.com",
+      "burnabynow.com",
+      "richmond-news.com",
+      "tricitynews.com",
+      "squamishchief.com",
+      "piquenewsmagazine.com",
+      "coastreporter.net",
+      "sootoday.com",
+      "rmoutlook.com",
+      "canadianaffairs.news"
     ],
     "legal_terms": [
       "law",
