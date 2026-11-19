@@ -40,7 +40,23 @@ READ_OPTIONS = {
 }
 
 
-def load_keywords(input_file, single_keyword_override=""):
+#: The first cell of a header row, lowercased. Editorial: a non-developer
+#: maintaining keyword files is who decides what a header column is called,
+#: and `config.yml` `files.keyword_csv_header_tokens` overrides this default.
+#:
+#: Why it exists: `keywords_family-of-origin-seo-phrases.csv` is a three-column
+#: file with the header `keyword,intent,why_it_matters`, and the other six
+#: keyword files in the repo have no header at all. Read with `header=None`,
+#: which is right for the six, the word "keyword" became the run's first
+#: search term — a paid SerpAPI call, a row in every output sheet, and a
+#: keyword in the market report that no human typed. Found on 2026-11-18 while
+#: checking that file before a real run.
+DEFAULT_HEADER_TOKENS = ("keyword", "keywords", "term", "terms", "query",
+                         "queries", "phrase", "phrases", "search term",
+                         "search_term")
+
+
+def load_keywords(input_file, single_keyword_override="", header_tokens=None):
     """The keywords to search, or `None` if the file could not be read.
 
     `None` and `[]` are different answers: no readable input is an operator
@@ -69,4 +85,18 @@ def load_keywords(input_file, single_keyword_override=""):
         logging.warning(
             "%d of %d line(s) in %s were blank and were not searched.",
             dropped, len(raw), input_file)
+
+    tokens = tuple(t.lower() for t in (header_tokens
+                                       or DEFAULT_HEADER_TOKENS))
+    if keywords and keywords[0].lower() in tokens:
+        # Said out loud, not dropped quietly: a file whose first row is being
+        # skipped has a shape the operator may not have intended, and a run
+        # that silently searches one keyword fewer than the file lists is the
+        # same class of defect as one that silently searches one more (P2).
+        logging.warning(
+            "%s begins with the header row %r; it was not searched. "
+            "%d keyword(s) remain.",
+            input_file, keywords[0], len(keywords) - 1)
+        keywords = keywords[1:]
+
     return keywords

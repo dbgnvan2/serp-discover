@@ -1339,7 +1339,10 @@ def load_keywords(input_file):
     CSV read would have pushed this module past its own line cap, and raising
     a cap to fit a fix is how the cap came to be needed.
     """
-    return keyword_input.load_keywords(input_file, SINGLE_KEYWORD_OVERRIDE)
+    return keyword_input.load_keywords(
+        input_file, SINGLE_KEYWORD_OVERRIDE,
+        header_tokens=(CONFIG.get("files") or {}).get(
+            "keyword_csv_header_tokens"))
 
 
 def main():
