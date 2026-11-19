@@ -1544,3 +1544,57 @@ keyword in this topic set can ever carry a verdict. Whether a decisive entity
 type on its own counts as evidence of intent is an editorial judgement for the
 owner, and changing it would also inflate the classification-coverage figure,
 so it is recorded here rather than changed.
+
+### 2026-11-19 — the host settles the intent where the page cannot be read
+
+**The defect.** Every keyword in the 2026-11-19 run carried no intent verdict
+and no page recommendation, because 52 of the 100 results in the verdict window
+arrived as encrypted Google `/goto` wrappers whose page could not be read, and
+an unreadable page was dropped outright. The rule that dropped it —
+`intent_mapping.yml` rule 2, "classifier could not read the page; do not
+guess" — was written when unreadable pages were rare; at a 52% wrapper rate it
+meant no keyword in the topic set could ever carry a verdict, however much the
+operator enriched. Section 1b now reaches an intent from the host for the three
+entity types whose intent does not vary page to page (directory →
+commercial_investigation, government → transactional, publisher →
+informational), gated on a new optional `page_read` match key that
+`enrichment.page_read_state` derives from the row's fetch state.
+
+**The consequence of getting it wrong, and what stops it.** Inferring from the
+host could have overstated what the run knew, so three properties are pinned by
+tests: the rules fire only on `page_read: "no"`, so a page that was read and
+came back untypable keeps its drop and a pre-existing JSON reads `"unknown"`
+and is unaffected (P1); `counselling` and `media` are excluded because neither
+host type carries one intent; and a host-inferred row is counted in
+`serp_intent.evidence.host_inferred_classified_count`, excluded from the
+classification-coverage bucket, stated in the report's §0 line, and subtracted
+per fetch state from that line's causes so they equal the deficit they explain
+rather than exceeding it (P2).
+
+**One hop inside the fix.** `pathwaysbc.ca` — one health-services directory
+served per region — classified three ways at once: `bc.` as a directory,
+`vancouver.` and `qathet.` as government, and three further regions as nothing,
+from per-host entries in `domain_overrides.yml`. Host inference would have
+given one site three different intents, so it is now listed once at the
+registrable domain in `classification_rules.json` `directory_domains` and the
+three contradictory overrides are gone. Result on the 2026-11-19 data:
+classified results 16 of 100 → 46 of 100, keywords with a verdict 0 of 10 →
+7 of 10.
+
+**Verification.** 2435 passed, 68 skipped, 244 subtests, exit 0. Mutation gate
+over 6 reverts: 6 caught, 0 vacuous. Re-measured end to end by
+`refresh_analysis_outputs.py` plus a report regeneration on the real run — no
+SerpAPI calls.
+
+### Backlog (continued)
+
+- A known-directory host whose page WAS read and classified `other` is still
+  dropped, while the same host's unread page is inferred: the same site is
+  treated differently depending on whether its fetch happened to succeed.
+  Widening section 1b to read-but-unmappable pages is an editorial decision.
+- `media_domains` mixes social and retail hosts (`reddit.com`, `youtube.com`,
+  `amazon.ca`) with publishers (`cbc.ca`, `vancouversun.com`), so the type
+  carries no single intent and is excluded from host inference. Splitting it
+  would let news hosts infer `informational`.
+- `globalnews.ca` and `ctvnews.ca` classify as `N/A`, not `publisher` —
+  `publisher_domains` lists no Canadian broadcasters.

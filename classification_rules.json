@@ -22,24 +22,109 @@
     "education": "Universities, colleges, and research institutions."
   },
   "content_patterns": {
-    "directory_url": ["/directory/", "/list/", "/find-", "/best-", "-near-me"],
-    "service_signals": ["book appointment", "schedule consultation", "our services", "pricing", "contact us"],
-    "guide_titles": ["how to", "guide", "what is"]
+    "directory_url": [
+      "/directory/",
+      "/list/",
+      "/find-",
+      "/best-",
+      "-near-me"
+    ],
+    "service_signals": [
+      "book appointment",
+      "schedule consultation",
+      "our services",
+      "pricing",
+      "contact us"
+    ],
+    "guide_titles": [
+      "how to",
+      "guide",
+      "what is"
+    ]
   },
   "entity_patterns": {
     "directory_domains": [
-      "yelp.ca", "yellowpages.ca", "psychologytoday.com", "healthgrades.com",
-      "counsellingbc.com", "therapytribe.com", "theravive.com", "firstsession.com",
-      "luminohealth.sunlife.ca", "ratemds.com"
+      "yelp.ca",
+      "yellowpages.ca",
+      "psychologytoday.com",
+      "healthgrades.com",
+      "counsellingbc.com",
+      "therapytribe.com",
+      "theravive.com",
+      "firstsession.com",
+      "luminohealth.sunlife.ca",
+      "ratemds.com",
+      "pathwaysbc.ca"
     ],
-    "professional_association_domains": ["bcacc.ca"],
-    "media_domains": ["reddit.com", "youtube.com", "amazon.ca", "cbc.ca", "vancouversun.com", "canadianaffairs.news"],
-    "publisher_domains": ["nytimes.com", "theglobeandmail.com", "psychologytoday.com/us/blog", "wikipedia.org", "medium.com", "theconversation.com", "healthline.com", "verywellmind.com"],
-    "legal_terms": ["law", "legal", "lawyer", "lawyers", "attorney", "attorneys", "estate", "litigation"],
-    "counselling_terms": ["counselling", "counseling", "therapy", "therapist", "psychology", "psychotherapy", "mentalhealth", "wellness"],
-    "nonprofit_keywords": ["registered charity", "non-profit organization", "donate", "volunteer"],
-    "association_keywords": ["professional association", "regulatory body", "college of", "registered clinical counsellors association", "licensing body"],
-    "legal_keywords": ["lawyer", "law firm", "family law", "legal advice", "custody", "estate planning"],
-    "counselling_keywords": ["counselling", "counseling", "therapy", "psychotherapy", "book appointment", "registered clinical counsellor"]
+    "professional_association_domains": [
+      "bcacc.ca"
+    ],
+    "media_domains": [
+      "reddit.com",
+      "youtube.com",
+      "amazon.ca",
+      "cbc.ca",
+      "vancouversun.com",
+      "canadianaffairs.news"
+    ],
+    "publisher_domains": [
+      "nytimes.com",
+      "theglobeandmail.com",
+      "psychologytoday.com/us/blog",
+      "wikipedia.org",
+      "medium.com",
+      "theconversation.com",
+      "healthline.com",
+      "verywellmind.com"
+    ],
+    "legal_terms": [
+      "law",
+      "legal",
+      "lawyer",
+      "lawyers",
+      "attorney",
+      "attorneys",
+      "estate",
+      "litigation"
+    ],
+    "counselling_terms": [
+      "counselling",
+      "counseling",
+      "therapy",
+      "therapist",
+      "psychology",
+      "psychotherapy",
+      "mentalhealth",
+      "wellness"
+    ],
+    "nonprofit_keywords": [
+      "registered charity",
+      "non-profit organization",
+      "donate",
+      "volunteer"
+    ],
+    "association_keywords": [
+      "professional association",
+      "regulatory body",
+      "college of",
+      "registered clinical counsellors association",
+      "licensing body"
+    ],
+    "legal_keywords": [
+      "lawyer",
+      "law firm",
+      "family law",
+      "legal advice",
+      "custody",
+      "estate planning"
+    ],
+    "counselling_keywords": [
+      "counselling",
+      "counseling",
+      "therapy",
+      "psychotherapy",
+      "book appointment",
+      "registered clinical counsellor"
+    ]
   }
 }

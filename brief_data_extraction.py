@@ -1572,6 +1572,10 @@ def extract_analysis_data_from_json(
                 "source": src,
                 "entity_type": entity,
                 "content_type": effective_ct,
+                # Whether the ranked page itself was read. `intent_mapping.yml`
+                # infers intent from the host only where this says "no", so a
+                # page that was read and came back untypable keeps its drop.
+                "page_read": enrichment.page_read_state(row.get("Fetch_State")),
                 # D-M-04: every row carries its host, not only the rows that
                 # happened to be extractability-enriched. The schema signals
                 # need it to tell the client's own page from a competitor's.

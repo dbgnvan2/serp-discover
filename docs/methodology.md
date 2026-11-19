@@ -121,6 +121,46 @@ re-run. Finding D-C-01 / D-M-01, review of 2026-11-04.*
 
 **Intent verdict:** `intent_verdict.py` applies rules from `intent_mapping.yml` (first-match-wins) to assign a `primary_intent`, `is_mixed` flag, distribution, and two separate figures to each keyword.
 
+**Where the ranked page cannot be read, the host may settle the intent.**
+Google serves most organic links as an encrypted `/goto?url=CAES…` wrapper,
+which SerpAPI passes through verbatim; measured on 2026-11-19 at 52 of the 100
+results in the verdict window, and at 5–6 of every 9 organic results live, the
+same at `num=10` and `num=100`. The destination is not recoverable: the payload
+is ciphertext, SerpAPI's `google_about_this_result` endpoint errors, and
+`displayed_link` carries a truncated breadcrumb. `link_recovery` therefore
+recovers the host only, the ranked page is never read, and `content_type` stays
+unmeasured — which left every keyword below the five classified results a
+verdict needs.
+
+`intent_mapping.yml` section 1b reaches an intent from the host for the entity
+types whose intent does not vary from page to page: `directory` →
+`commercial_investigation`, `government` → `transactional`, `publisher` →
+`informational`. Three properties keep it honest, each pinned by
+`tests/test_host_inferred_intent.py`:
+
+1. The rules fire only on `page_read: "no"`, which `enrichment.page_read_state`
+   derives from the row's fetch state. A page that *was* read and came back
+   untypable keeps its drop — "we looked and it told us nothing" is a different
+   fact from "we never looked". A row from an analysis JSON written before the
+   field existed is `"unknown"` and is unaffected (P1).
+2. `counselling` and `media` are excluded. A practice's own site may rank with
+   a blog post or a services page, so its host settles nothing; `media` mixes
+   social and retail hosts with news, so it carries no single intent.
+3. A host-inferred row is counted in
+   `serp_intent.evidence.host_inferred_classified_count` and **excluded** from
+   the classification-coverage bucket, which stays a statement about the pages.
+   The report's §0 line states the figure, and the "not classified because…"
+   causes subtract these rows per fetch state so the causes equal the deficit
+   they explain rather than exceeding it.
+
+On the 2026-11-19 run this took classified results from 16 of 100 to 46 of 100
+and keywords with a verdict from 0 of 10 to 7 of 10.
+
+*Known inconsistency, recorded not endorsed: a known-directory host whose page
+WAS read and classified `other` is still dropped, while the same host's unread
+page is inferred. Widening the rule to read-but-unmappable pages is an
+editorial decision for the owner.*
+
 **Classification coverage and intent certainty are two different facts.**
 `confidence` (alias `classification_coverage`) is a count: how many of the ten
 ranking URLs could be classified at all. It is capped by

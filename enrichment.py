@@ -111,10 +111,14 @@ def status_text(state, **values):
 #: Fallback wording for the `classification_coverage` block, on the same terms
 #: as `_DEFAULTS`: a missing or malformed section degrades to English.
 _COVERAGE_DEFAULTS = {
-    "line": ("**Ranked results classified:** {classified} of {total}. SERP "
-             "intent is read from classified results only. The rest were not "
-             "classified because {reasons}."),
+    "line": ("**Ranked results classified:** {classified} of {total}."
+             "{host_inferred_clause} SERP intent is read from classified "
+             "results only. The rest were not classified because {reasons}."),
     "reason_item": "{count} × {label}",
+    "host_inferred_clause": ("{count} of those were classified from the site "
+                             "alone, because the ranked page could not be "
+                             "read \u2014 the site's type is known, its page's "
+                             "is not."),
     "none_classified": ("**Ranked results classified:** none of {total}, so "
                         "no keyword can have a SERP intent verdict this run: "
                         "{reasons}."),
@@ -123,7 +127,12 @@ _COVERAGE_DEFAULTS = {
 
 
 def _intent_window_counts(keyword_profiles):
-    """`(classified, total)` summed over the keywords' own intent evidence.
+    """`(classified, total, host_inferred)` from the keywords' intent evidence.
+
+    `host_inferred` is how many of `classified` were reached from the host
+    alone because the ranked page could not be read. It is reported beside the
+    figure rather than folded into it: the sentence would otherwise say the
+    run classified results it never read.
 
     This is the SAME measurement the per-keyword sections print as "only N of
     M URLs could be classified": `serp_intent.evidence`, counted over the
@@ -137,8 +146,8 @@ def _intent_window_counts(keyword_profiles):
     no keyword recorded any evidence.
     """
     if not isinstance(keyword_profiles, dict):
-        return None, None
-    classified = total = 0
+        return None, None, 0
+    classified = total = host_inferred = 0
     seen = False
     for profile in keyword_profiles.values():
         if not isinstance(profile, dict):
@@ -153,7 +162,9 @@ def _intent_window_counts(keyword_profiles):
         total += rows
         hit = evidence.get("classified_organic_url_count")
         classified += hit if isinstance(hit, int) else 0
-    return (classified, total) if seen else (None, None)
+        inferred = evidence.get("host_inferred_classified_count")
+        host_inferred += inferred if isinstance(inferred, int) else 0
+    return (classified, total, host_inferred) if seen else (None, None, 0)
 
 
 def _unread_states_in_window(keyword_profiles):
@@ -184,6 +195,32 @@ def _unread_states_in_window(keyword_profiles):
     return counts
 
 
+def _host_inferred_by_state_in_window(keyword_profiles):
+    """`{fetch_state: count}` of rows classified from the host, not the page.
+
+    These rows sit on both sides of the coverage sentence's arithmetic: they
+    count as classified, and their fetch state also appears among the unread
+    states. Subtracting them per state is what keeps the causes equal to the
+    deficit they explain instead of exceeding it (P2).
+    """
+    counts = {}
+    if not isinstance(keyword_profiles, dict):
+        return counts
+    for profile in keyword_profiles.values():
+        if not isinstance(profile, dict):
+            continue
+        evidence = ((profile.get("serp_intent") or {}).get("evidence") or {})
+        if not isinstance(evidence, dict):
+            continue
+        by_state = evidence.get("host_inferred_by_fetch_state")
+        if not isinstance(by_state, dict):
+            continue
+        for state, count in by_state.items():
+            if isinstance(count, int) and count > 0:
+                counts[str(state)] = counts.get(str(state), 0) + count
+    return counts
+
+
 def classification_coverage_line(keyword_profiles):
     """One line saying how many ranked results were classified, and why not.
 
@@ -204,7 +241,7 @@ def classification_coverage_line(keyword_profiles):
     Returns "" when every result in the window was classified, or when no
     keyword recorded any evidence to speak about.
     """
-    classified, total = _intent_window_counts(keyword_profiles)
+    classified, total, host_inferred = _intent_window_counts(keyword_profiles)
     if not total or classified is None or classified >= total:
         return ""
     vocab = SERP_VOCAB.get("classification_coverage") or {}
@@ -212,12 +249,30 @@ def classification_coverage_line(keyword_profiles):
     def _words(key):
         return str(vocab.get(key) or _COVERAGE_DEFAULTS[key])
 
+    def _host_clause(count):
+        """The "N of these came from the site, not the page" clause, or ""."""
+        if count <= 0:
+            return ""
+        for words in (vocab.get("host_inferred_clause"),
+                      _COVERAGE_DEFAULTS["host_inferred_clause"]):
+            try:
+                text = str(words).format(count=count).strip()
+            except (KeyError, IndexError, ValueError, TypeError, AttributeError):
+                continue
+            if text:
+                return " " + text
+        return ""
+
     def _join(template):
         parts = []
         unread = _unread_states_in_window(keyword_profiles)
+        inferred_by_state = _host_inferred_by_state_in_window(keyword_profiles)
         accounted = 0
-        for state, count in sorted(unread.items(),
-                                   key=lambda kv: (-kv[1], kv[0])):
+        for state, raw_count in sorted(unread.items(),
+                                       key=lambda kv: (-kv[1], kv[0])):
+            # A row that was unread AND classified from its host is not part
+            # of the deficit, so it is not one of its causes either.
+            count = raw_count - inferred_by_state.get(state, 0)
             if count <= 0:
                 continue
             accounted += count
@@ -242,6 +297,8 @@ def classification_coverage_line(keyword_profiles):
         # of this fix, finding 2).
         try:
             return words.format(classified=classified, total=total,
+                                host_inferred=host_inferred,
+                                host_inferred_clause=_host_clause(host_inferred),
                                 reasons=_join(template)).strip()
         except (KeyError, IndexError, ValueError, TypeError):
             continue
@@ -259,6 +316,23 @@ _REASON_DEFAULTS = {
     NO_URL: "the row carried no URL",
     DISABLED: "page enrichment was switched off for this run",
 }
+
+
+def page_read_state(fetch_state) -> str:
+    """Whether the ranked page itself was read: "yes" / "no" / "unknown".
+
+    `intent_mapping.yml` keys its host-inference rules on this, so the three
+    states have to stay distinct: ENRICHED is the only state in which the
+    page's own evidence exists, every UNREAD_STATES member means it does not,
+    and anything else — including a row from an analysis JSON written before
+    the field existed — is "unknown" and must not be read as "no" (P1).
+    """
+    state = str(fetch_state or "").strip().lower()
+    if state == ENRICHED:
+        return "yes"
+    if state in UNREAD_STATES:
+        return "no"
+    return "unknown"
 
 
 def reason_text(state):

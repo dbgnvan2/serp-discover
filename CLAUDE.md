@@ -120,7 +120,14 @@ a routing rule), it's editorial. If only a developer would touch it (a
 class structure, a function signature, an algorithm), it's code.
 
 Editorial content currently lives in:
-- `intent_mapping.yml` — SERP intent rule table
+- `intent_mapping.yml` — SERP intent rule table, including section 1b's
+  `page_read: "no"` rules, which let a known directory / government / publisher
+  host settle the intent where Google's encrypted `/goto` links stopped the
+  ranked page from being read. Excluded by design: `counselling` (a practice's
+  own site may rank with a blog post or a services page) and `media` (social
+  and retail hosts share the type with news). A host-inferred row is counted
+  separately in `serp_intent.evidence.host_inferred_classified_count` and never
+  raises the classification-coverage bucket
 - `strategic_patterns.yml` — Bowen patterns (triggers, status quo, reframes)
 - `url_pattern_rules.yml` — URL pattern fallbacks for content classifier
 - `domain_overrides.yml` — manual entity-type overrides

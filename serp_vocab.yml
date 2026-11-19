@@ -341,12 +341,18 @@ fetch_status:
 # cause named here is the one each row recorded, never a guess.
 classification_coverage:
   line: >-
-    **Ranked results classified:** {classified} of {total}. SERP intent is read
-    from classified results only, so a keyword with few of them gets no intent
-    verdict and no page recommendation. The figure is the top-10 window each
+    **Ranked results classified:** {classified} of {total}.{host_inferred_clause}
+    SERP intent is read from classified results only, so a keyword with few of
+    them gets no intent verdict and no page recommendation. The figure is the top-10 window each
     keyword's verdict is read from, the same one the per-keyword sections
     report. The rest were not classified because {reasons}.
   reason_item: "{count} × {label}"
+  # Stated whenever any result was classified from its host rather than its
+  # page (intent_mapping.yml section 1b). Without it the sentence would report
+  # a classification figure partly made of pages the run never read.
+  host_inferred_clause: >-
+    {count} of those were classified from the site alone, because the ranked
+    page could not be read — the site's type is known, its page's is not.
   # A page that WAS read and still has no intent: its content type is one the
   # intent table sends to `uncategorised` ("other", "unknown"). Without this
   # the causes added up to less than the deficit they explain.

@@ -88,7 +88,7 @@ Serp-Discover answers these questions by:
   - **Local:** Google Maps, business directories, location-specific content
   - **Navigational:** Brand names, branded searches, domain-specific content
 
-- Uses `intent_mapping.yml` rules: `(content_type, entity_type, local_pack, domain_role) → intent verdict`
+- Uses `intent_mapping.yml` rules: `(content_type, entity_type, local_pack, domain_role) → intent verdict`, plus the optional `page_read` key that lets a known directory, government or publisher host settle the intent when Google's encrypted links stopped the page itself from being read
 - Calculates confidence: `high` (≥8 classified), `medium` (≥5), `low` (<5)
 - Flags mixed-intent SERPs (e.g., "couples counselling" returns both local services AND educational content)
 
@@ -1012,6 +1012,36 @@ The full key list is in `docs/config_reference.md` ("Shared config").
 ### **intent_mapping.yml** — SERP Intent Rules
 
 Defines how `(content_type, entity_type, local_pack, domain_role)` maps to intent. First-match-wins — order matters.
+
+**Why some results are judged by their website instead of their page.** Google
+now hands over most organic links as an encrypted redirect rather than a real
+address, so the tool cannot open the page that ranked — on the 2026-11-19 run
+that was 52 of the 100 results it judges each keyword on. It still knows which
+*site* ranked, and for some sites that is enough: every page on a therapist
+directory is directory content, whoever wrote it. So section `1b` of this file
+assigns an intent from the site alone for three kinds of site — a directory
+(people are comparing providers), a government service (people are using it),
+and a publisher (people are reading up).
+
+This only applies where the page genuinely could not be read. If the tool DID
+open the page and still could not tell what it was, the result is dropped as
+before: "we looked and it told us nothing" is different from "we never looked".
+Two site types are deliberately left out — a counselling practice's own site,
+because it may rank with a blog post (reading up) or a services page (ready to
+book), and `media`, because that type covers social and shopping sites as well
+as news.
+
+**What it changed.** Before this, no keyword on the 2026-11-19 run had an
+intent verdict at all, so the report recommended no page for any of them.
+Afterwards 7 of 10 keywords had one.
+
+**How the report stays honest about it.** The "Ranked results classified" line
+at the top of the report states how many of the results were judged from the
+site rather than the page, and the classification-coverage rating ("low" /
+"medium" / "high") still counts only pages actually read. So a keyword can
+carry a verdict while its coverage reads "low" — that combination means "we
+can tell what this SERP is for, but we did not read many of its pages", which
+is exactly the situation.
 
 ```yaml
 rules:

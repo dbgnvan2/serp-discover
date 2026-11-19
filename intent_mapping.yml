@@ -14,6 +14,10 @@
 #                        media | professional_association | education | any
 #   match.local_pack:    "yes" | "no" | "any"   (does the SERP have a local 3-pack?)
 #   match.domain_role:   client | known_competitor | other | any
+#   match.page_read:     "yes" | "no" | "unknown" | "any"   (was the RANKED
+#                          PAGE itself read? optional — a rule that omits it
+#                          matches any state, which is what every rule
+#                          written before the key existed means)
 #                          client = matches client.client_name_patterns
 #                          known_competitor = listed in known_brands or domain_overrides
 #   intent:  informational | commercial_investigation | transactional |
@@ -73,6 +77,44 @@ rules:
   - match: { domain_role: known_competitor, content_type: any, entity_type: any, local_pack: "any" }
     intent: navigational
     rationale: named competitor brand — searcher knows the brand
+
+  # ── 1b. The page could not be read, but the SITE is known ────────────────
+  #
+  # EDITORIAL. Google serves most organic links as an encrypted
+  # /goto?url=CAES… wrapper (52 of the 100 results in the verdict window of
+  # the 2026-11-19 run). The destination page is not recoverable from it —
+  # the payload is ciphertext, SerpAPI's about-this-result endpoint errors,
+  # and displayed_link carries a truncated breadcrumb — so the ranked page
+  # cannot be read and `content_type` stays unmeasured. What IS known is the
+  # host, and for some hosts the host settles the question: every page on a
+  # therapist directory is directory content, whatever the path.
+  #
+  # These rules fire ONLY on `page_read: "no"`. A page that WAS read and came
+  # back untypable is a different fact — we looked and it told us nothing —
+  # and keeps its drop in section 2 below. An older analysis JSON carries
+  # `page_read: "unknown"` and is unaffected.
+  #
+  # Only entity types whose intent does not vary page to page are listed.
+  # `counselling` is deliberately absent: a practice's own site may rank with
+  # a blog post (informational) or a services page (transactional), so the
+  # host does not settle it. `media` is absent because the type is social
+  # hosts (all 5 in the 2026-11-19 run were facebook.com), not publishers.
+  #
+  # A row classified by one of these rules is counted in
+  # serp_intent.evidence.host_inferred_classified_count and is EXCLUDED from
+  # the classification-coverage bucket, so inferring intent here never makes
+  # the report claim it read a page it did not.
+  - match: { page_read: "no", entity_type: directory, content_type: any, local_pack: "any", domain_role: other }
+    intent: commercial_investigation
+    rationale: directory host — a directory exists to support comparison, on every page of it
+
+  - match: { page_read: "no", entity_type: government, content_type: any, local_pack: "any", domain_role: other }
+    intent: transactional
+    rationale: government service host — a public service page is there to be used
+
+  - match: { page_read: "no", entity_type: publisher, content_type: any, local_pack: "any", domain_role: other }
+    intent: informational
+    rationale: publisher host — reporting and features answer questions
 
   # ── 2. Drop unclassified content ──────────────────────────────────────────
   - match: { content_type: unknown, entity_type: any, local_pack: "any", domain_role: any }

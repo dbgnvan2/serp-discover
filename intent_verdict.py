@@ -82,6 +82,14 @@ DEFAULT_THRESHOLDS = {
 }
 
 
+#: What a rule may require of `page_read`. "unknown" is a real state, not a
+#: synonym for "no": an analysis JSON written before this key existed says
+#: nothing about whether the page was read, and a rule that infers intent
+#: from the host alone must not fire on a row that never claimed the page was
+#: unread (P1 — unknown is not a terminal value).
+PAGE_READ_VALUES = ("yes", "no", "unknown", "any")
+
+
 def load_mapping(path: str | None = None) -> dict:
     """Load intent_mapping.yml. Validates schema; raises ValueError on malformed."""
     path = path or DEFAULT_MAPPING_PATH
@@ -107,6 +115,15 @@ def load_mapping(path: str | None = None) -> dict:
         for key in ("content_type", "entity_type", "local_pack", "domain_role"):
             if key not in match:
                 raise ValueError(f"rule {i} match missing key {key!r}")
+        # `page_read` is optional: a rule that omits it matches whether or not
+        # the ranked page was read, which is what every rule written before
+        # it existed means. Where it IS given it must be one of the three
+        # states, so a typo cannot silently become a rule that never fires.
+        if "page_read" in match and match["page_read"] not in PAGE_READ_VALUES:
+            raise ValueError(
+                f"rule {i} match has invalid page_read "
+                f"{match['page_read']!r}; must be one of {PAGE_READ_VALUES}"
+            )
 
     return data
 
@@ -126,6 +143,20 @@ def _domain_role_for_url(
     return "other"
 
 
+def _page_read_state(row: dict) -> str:
+    """Whether the ranked page itself was read, as one of PAGE_READ_VALUES.
+
+    The caller sets ``page_read`` on the row. An analysis JSON written before
+    the key existed has neither it nor a way to recover the answer, so the
+    state is "unknown" and a rule keyed on "no" does not fire — the row keeps
+    the treatment it had before this key existed.
+    """
+    value = row.get("page_read")
+    if value in ("yes", "no"):
+        return value
+    return "unknown"
+
+
 def _matches_rule(rule_match: dict, url_attrs: dict) -> bool:
     """A rule matches if every non-'any' criterion equals the URL's attribute."""
     for key, expected in rule_match.items():
@@ -137,13 +168,32 @@ def _matches_rule(rule_match: dict, url_attrs: dict) -> bool:
     return True
 
 
-def _classify_url(url_attrs: dict, rules: list) -> str:
-    """Walk rules top-to-bottom; first match wins. Returns intent string."""
+def _classify_url_with_rule(url_attrs: dict, rules: list):
+    """Walk rules top-to-bottom; first match wins.
+
+    Returns ``(intent, rule)`` — the rule so the caller can tell WHY the row
+    was classified. A rule that required ``page_read: "no"`` reached its
+    intent from the host alone, without the ranked page's own evidence, and
+    that difference has to survive into the coverage figures rather than be
+    averaged into them.
+    """
     for rule in rules:
         if _matches_rule(rule["match"], url_attrs):
-            return rule["intent"]
+            return rule["intent"], rule
     # Belt-and-suspenders: well-formed YAML always has a catch-all rule.
-    return "uncategorised"
+    return "uncategorised", None
+
+
+def _is_host_inferred(rule) -> bool:
+    """True when ``rule`` reached its intent without the page being read."""
+    if not rule:
+        return False
+    return (rule.get("match") or {}).get("page_read") == "no"
+
+
+def _classify_url(url_attrs: dict, rules: list) -> str:
+    """Walk rules top-to-bottom; first match wins. Returns intent string."""
+    return _classify_url_with_rule(url_attrs, rules)[0]
 
 
 def _bucket_coverage(classified_count: int, organic_count: int) -> str:
@@ -269,6 +319,8 @@ def compute_serp_intent(
 
     intent_counts = {intent: 0 for intent in VALID_INTENTS}
     organic_count = 0
+    host_inferred_count = 0
+    host_inferred_by_state: dict[str, int] = {}
 
     for row in organic_rows or []:
         organic_count += 1
@@ -280,9 +332,22 @@ def compute_serp_intent(
             "domain_role": _domain_role_for_url(
                 link_or_source, client_domain, known_brand_domains
             ),
+            # A row that does not carry the key says nothing about whether
+            # the page was read, which is not the same as saying it was not.
+            "page_read": _page_read_state(row),
         }
-        intent = _classify_url(url_attrs, rules)
+        intent, rule = _classify_url_with_rule(url_attrs, rules)
         intent_counts[intent] += 1
+        if intent != "uncategorised" and _is_host_inferred(rule):
+            host_inferred_count += 1
+            # Which unread state this row had, so the report's "the rest were
+            # not classified because…" causes can subtract exactly the rows
+            # that were unread AND still classified, instead of counting them
+            # on both sides of its own arithmetic.
+            state = str(row.get("fetch_state") or "").strip().lower()
+            if state:
+                host_inferred_by_state[state] = (
+                    host_inferred_by_state.get(state, 0) + 1)
 
     classified_total = sum(
         v for k, v in intent_counts.items() if k != "uncategorised"
@@ -313,7 +378,12 @@ def compute_serp_intent(
     else:
         mixed_components = []
 
-    coverage = _bucket_coverage(classified_total, organic_count)
+    # Coverage stays a statement about the PAGES, so a host-inferred intent
+    # does not raise it. The verdict above may rest on host inference; the
+    # coverage figure beside it must still say how much of the result page
+    # was actually read, or the report would claim evidence it never had.
+    page_evidence_classified = classified_total - host_inferred_count
+    coverage = _bucket_coverage(page_evidence_classified, organic_count)
 
     # The leading intent's share of the classified URLs. `primary_intent` is
     # None below five classified, and "mixed" when no intent clears the
@@ -351,6 +421,13 @@ def compute_serp_intent(
             "organic_url_count": organic_count,
             "classified_organic_url_count": classified_total,
             "uncategorised_organic_url_count": uncategorised_count,
+            # Of the classified, how many carried the ranked page's own
+            # evidence and how many were reached from the host alone because
+            # the page could not be read. The two always sum to
+            # classified_organic_url_count.
+            "page_evidence_classified_count": page_evidence_classified,
+            "host_inferred_classified_count": host_inferred_count,
+            "host_inferred_by_fetch_state": dict(host_inferred_by_state),
             "local_pack_present": has_local_pack,
             "local_pack_member_count": local_pack_member_count,
         },
