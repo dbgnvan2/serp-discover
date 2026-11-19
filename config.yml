@@ -25,11 +25,28 @@ serpapi:
   related_questions_ai_followup: true
   related_questions_ai_max_calls: 5
 files:
-  input_csv: new.csv
-  output_xlsx: output/market_analysis_couples_counselling_20261114_1554.xlsx
-  output_json: new.json
-  output_md: output/market_analysis_couples_counselling_20261114_1554.md
+  input_csv: keywords_family-of-origin-seo-phrases.csv
+  output_xlsx: output/market_analysis_family-of-origin-seo-phrases_20261118_1738.xlsx
+  output_json: output/market_analysis_family-of-origin-seo-phrases_20261118_1738.json
+  output_md: output/market_analysis_family-of-origin-seo-phrases_20261118_1738.md
   domain_overrides: domain_overrides.yml
+  # What a header row's first cell can be called, lowercased before
+  # comparison. A keyword CSV may or may not have a header — six of this
+  # repo's seven have none, and keywords_family-of-origin-seo-phrases.csv is
+  # headed `keyword,intent,why_it_matters` — so the word "keyword" was being
+  # searched as a keyword. Only the first row is tested. Optional: the
+  # shipped default is keyword_input.DEFAULT_HEADER_TOKENS.
+  keyword_csv_header_tokens:
+  - keyword
+  - keywords
+  - term
+  - terms
+  - query
+  - queries
+  - phrase
+  - phrases
+  - search term
+  - search_term
 enrichment:
   enabled: true
   max_urls_per_keyword: 5
