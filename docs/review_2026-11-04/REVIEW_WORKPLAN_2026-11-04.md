@@ -1695,6 +1695,15 @@ creates — `serp-me.py`'s `DOMAIN_REVIEW_TAG_STYLES` colour and
 `config_validators._LITERAL_ENTITY_TYPES` — both filled. Re-measured with
 `refresh_analysis_outputs.py` plus a report regeneration: no SerpAPI calls.
 
+**`family roles` dropped from the keyword set, 2026-11-19, on the owner's
+decision.** Ten of its ten ranked results were job boards and none was a
+counselling result, so the phrase competes in the employment market and no
+content change wins it. Removed from `keywords_family-of-origin-seo-phrases.csv`
+(now 9 keywords); recorded here because that file is untracked, like the other
+recent client keyword sets, so git holds no history of the edit and this is its
+only durable record. The measurement that produced the decision is the
+`🚫 Off-topic SERP` action above.
+
 ### Backlog (continued)
 
 - `docs/USER_MANUAL.md`'s worked example of the "Ranked results classified"
