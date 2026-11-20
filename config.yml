@@ -183,6 +183,32 @@ bing_check:
   enabled: false
   num: 20
 ai_visibility:
+  # Which key-registry provider (`~/.config/llm/keys.json`) supplies each
+  # engine's API key when the environment does not carry one. The environment
+  # always wins: a key placed in `.env` for this tool is never overridden.
+  #
+  # Editorial: the registry holds eleven providers and WHICH of them this tool
+  # may spend is the owner's decision, not the code's. Before this map the
+  # four engines read environment variables only while the content brief read
+  # the registry, so on a machine whose keys live in the registry the brief
+  # was written and all four engines skipped with "KEY is not set" — the key
+  # existed and the probe could not see it.
+  #
+  # A provider named here must be one whose key works against the engine's OWN
+  # endpoint. The probes call Anthropic, Gemini, OpenAI and Perplexity direct
+  # and ignore a registry `base_url`, so a proxy provider's key would
+  # authenticate nowhere.
+  #
+  # Blank means no provider is configured for that engine, which is a
+  # different fact from a provider that failed: the registry holds no
+  # Perplexity key on this machine, so that engine needs
+  # `PERPLEXITY_API_KEY` in `.env` or it is skipped and reported as not
+  # measured. Listed blank rather than omitted so the gap is visible here.
+  key_registry_providers:
+    ANTHROPIC_API_KEY: anthropic
+    OPENAI_API_KEY: openai-serp
+    GEMINI_API_KEY: gemini-serp
+    PERPLEXITY_API_KEY: ""
   # Y5 cold review — the classifier categories in which a cited domain
   # carrying no `known_brands` entry is a rival the gazetteer is missing. A
   # directory or a publisher has no brand by design, so the whole-table count

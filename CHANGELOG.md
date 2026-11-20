@@ -9,6 +9,22 @@ number and the record of what changed in it move together. `serp-compete`
 `competitor_handoff_*.json` and a review that changes one side of that
 contract changes both.
 
+## [Unreleased]
+
+### Fixed
+
+- The AI-visibility engines could not see keys the machine already had.
+  Each of the four read an environment variable while content-brief
+  generation read the shared key registry (`~/.config/llm/keys.json`), so on
+  a machine whose keys live in the registry the brief was written and all
+  four engines skipped with "KEY is not set". The probe now fills any key
+  the environment does not carry from the registry, mapped per engine by the
+  new editorial `ai_visibility.key_registry_providers`. The environment still
+  wins, no key value reaches a log or a record, and an engine with no key
+  anywhere is still skipped and reported as not measured rather than zeroed.
+  This also covers a run that inherits no shell export — a GUI launched from
+  Finder, or a scheduled run.
+
 ## [1.5.0] — 2026-11-19
 
 The first numbered release. The minor digit carries the 2026-11-04

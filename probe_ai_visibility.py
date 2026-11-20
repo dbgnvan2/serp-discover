@@ -61,6 +61,7 @@ import engine_transfer as engine_transfer_mod
 import foundational_score as foundational_mod
 import http_retry
 import process_config
+import report_llm
 from http_retry import post_with_transient_retry
 from pattern_matching import load_serp_vocab
 from profile_questions import generate as generate_profile_questions
@@ -167,6 +168,116 @@ def _load_env() -> None:
                 if line and not line.startswith("#") and "=" in line:
                     k, _, v = line.partition("=")
                     os.environ.setdefault(k.strip(), v.strip())
+
+
+#: Which key-registry provider supplies each engine's key when the
+#: environment carries none. Overridable from `config.yml`
+#: `ai_visibility.key_registry_providers` — WHICH of the registry's providers
+#: this tool may spend is the owner's decision, not the code's.
+DEFAULT_KEY_REGISTRY_PROVIDERS = {
+    "ANTHROPIC_API_KEY": "anthropic",
+    "OPENAI_API_KEY": "openai-serp",
+    "GEMINI_API_KEY": "gemini-serp",
+}
+
+#: One record per engine variable: where its key came from, or why there is
+#: none. `source` is "environment", "key_registry" or "absent".
+KEY_SOURCE_ENVIRONMENT = "environment"
+KEY_SOURCE_REGISTRY = "key_registry"
+KEY_SOURCE_ABSENT = "absent"
+
+
+def fill_keys_from_registry(av_config: dict, env=None) -> list[dict]:
+    """Fill engine keys the environment does not carry from the shared registry.
+
+    The four engines each read an environment variable, while content-brief
+    generation reads the shared key registry (`~/.config/llm/keys.json`)
+    through `report_llm`. On a machine where the registry holds a usable key
+    and `.env` does not, the brief was written and every engine skipped with
+    "KEY is not set" — the key existed and this tool could not see it. The
+    registry is the one home for a key, so the probe reads it too rather than
+    the owner keeping a second copy in `.env` that can go stale.
+
+    **The environment always wins.** A key deliberately placed in `.env` for
+    this tool is never overridden by a registry default.
+
+    A provider named here must be one whose key works against the engine's
+    OWN endpoint: the probes call Anthropic, Gemini, OpenAI and Perplexity
+    directly and ignore a registry `base_url`, so a proxy provider's key
+    would authenticate nowhere. That is why the map is config and not a
+    guess from the dialect.
+
+    Returns one record per variable rather than logging and moving on, so the
+    caller can report how many engines got a key and name the reason for each
+    that did not (P2 — the count and the cause, not the remainder as the
+    whole). No record contains a key.
+    """
+    env = os.environ if env is None else env
+    mapping = av_config.get("key_registry_providers")
+    if not isinstance(mapping, dict) or not mapping:
+        mapping = DEFAULT_KEY_REGISTRY_PROVIDERS
+    records: list[dict] = []
+    registry = None
+    registry_failure: str | None = None
+    for var, provider_name in mapping.items():
+        var = str(var).strip()
+        if not var:
+            continue
+        if (env.get(var) or "").strip():
+            records.append({"env_var": var, "provider": None,
+                            "source": KEY_SOURCE_ENVIRONMENT, "reason": None})
+            continue
+        name = str(provider_name or "").strip()
+        if not name:
+            records.append({
+                "env_var": var, "provider": None, "source": KEY_SOURCE_ABSENT,
+                "reason": ("no key-registry provider is configured for it in "
+                           "ai_visibility.key_registry_providers")})
+            continue
+        if registry is None and registry_failure is None:
+            registry = report_llm.load_registry()
+            if registry is None:
+                registry_failure = ("the shared key registry "
+                                    "(global-api-config) was not found")
+        if registry is None:
+            records.append({"env_var": var, "provider": name,
+                            "source": KEY_SOURCE_ABSENT,
+                            "reason": registry_failure})
+            continue
+        try:
+            provider = registry.get_provider(name)
+            key = str(getattr(provider, "api_key", "") or "").strip()
+        except Exception as exc:        # noqa: BLE001 - reported, never raised
+            records.append({"env_var": var, "provider": name,
+                            "source": KEY_SOURCE_ABSENT,
+                            "reason": f"{type(exc).__name__}: {exc}"})
+            continue
+        if not key:
+            records.append({
+                "env_var": var, "provider": name, "source": KEY_SOURCE_ABSENT,
+                "reason": f"registry provider '{name}' has no api_key"})
+            continue
+        env[var] = key
+        records.append({"env_var": var, "provider": name,
+                        "source": KEY_SOURCE_REGISTRY, "reason": None})
+    return records
+
+
+def log_key_sources(records: list[dict]) -> None:
+    """Say which engines got a key and name the reason for each that did not."""
+    filled = [r for r in records if r["source"] == KEY_SOURCE_REGISTRY]
+    absent = [r for r in records if r["source"] == KEY_SOURCE_ABSENT]
+    for rec in filled:
+        logger.info("%s supplied by key-registry provider '%s'.",
+                    rec["env_var"], rec["provider"])
+    for rec in absent:
+        logger.warning("%s is not set and could not be filled: %s",
+                       rec["env_var"], rec["reason"])
+    if absent:
+        logger.warning(
+            "%d of %d engine key(s) unavailable — those engines will be "
+            "skipped and reported as not measured, not as a zero.",
+            len(absent), len(records))
 
 
 def _load_config(config_path: str | None = None) -> dict:
@@ -1734,6 +1845,9 @@ def main(argv: list[str] | None = None) -> int:
     # After the loader, so `database.path` is in force (review chunk Y12).
     db_path = args.db if args.db else db_connect.database_path()
     av_config = config.get("ai_visibility", {}) or {}
+    # After the config, because the provider map lives in it, and before
+    # build_probes, because each engine reads its variable at construction.
+    log_key_sources(fill_keys_from_registry(av_config))
     engines = resolve_engines(args.engines, av_config)
 
     json_path = args.json or _latest_analysis_json(config)

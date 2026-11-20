@@ -237,6 +237,43 @@ malformed file degrades to the bare status key and never aborts a report.
 | `statuses` | per status (`measured` / `measured_absent` / `not_reached`): `label`, `cell` (the per-query table cell) and `coverage` (the phrase beside a count). Keys must match the `gsc_client.STATUS_*` constants — a test asserts every state has all three |
 | `lines` | the report and log sentences: `coverage_measured_absent`, `coverage_not_reached`, `fetch_complete`, `fetch_incomplete`, `partial_warning`, `band_short_of_rows`. `{...}` placeholders are filled by `run_gsc_analysis`; an unknown placeholder falls back to the built-in wording rather than raising |
 
+### `ai_visibility.key_registry_providers` (editorial)
+
+Which shared-key-registry provider (`~/.config/llm/keys.json`) supplies each
+engine's API key when the environment carries none:
+
+```yaml
+ai_visibility:
+  key_registry_providers:
+    ANTHROPIC_API_KEY: anthropic
+    OPENAI_API_KEY: openai-serp
+    GEMINI_API_KEY: gemini-serp
+    PERPLEXITY_API_KEY: ""
+```
+
+**The environment always wins.** A key placed in `.env` for this tool is
+never overridden by a registry default.
+
+Editorial because the registry holds eleven providers and which of them this
+tool may spend is the owner's decision, not the code's. A provider named here
+must be one whose key authenticates against the engine's *own* endpoint: the
+probes call Anthropic, Gemini, OpenAI and Perplexity direct and ignore a
+registry `base_url`, so a proxy provider's key would authenticate nowhere.
+
+Blank means no provider is configured for that engine, which is a different
+fact from a provider that failed. Every engine variable is listed even when
+blank, so "the registry holds no Perplexity key on this machine" is visible
+beside the three that are filled. An engine with no key anywhere is skipped
+and reported as not measured, never as a zero.
+
+Before this map the four engines read environment variables only while
+content-brief generation read the registry, so on a machine whose keys live
+in the registry the brief was written and all four engines skipped with
+"KEY is not set" — the key existed and the probe could not see it. The run
+log now names where each key came from, and the reason for each that has
+none ("N of M engine key(s) unavailable"). No key value reaches a log or a
+record.
+
 ### `ai_visibility.generic_source_stoplist` / `ai_visibility.negative_terms` (editorial)
 
 Two word lists in `config.yml`, added by review chunk D3b (finding D-M-14).

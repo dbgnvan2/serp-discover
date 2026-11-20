@@ -71,6 +71,14 @@ keyword feasibility via Domain Authority gap analysis.
 - `GEMINI_API_KEY` — **optional**; enables the Gemini engine in
   `probe_ai_visibility.py` (G.1). Missing key = engine skipped with a
   warning, never an abort.
+- `OPENAI_API_KEY` / `PERPLEXITY_API_KEY` — **optional**; the ChatGPT and
+  Perplexity engines, same rule.
+- The four engine keys above do not have to be in `.env`. Any one the
+  environment does not carry is filled from the shared key registry
+  (`~/.config/llm/keys.json`) using the provider named in
+  `ai_visibility.key_registry_providers`; the environment wins where both
+  have one. An engine with no key anywhere is skipped and reported as not
+  measured, never as a zero.
 - `GSC_CREDENTIALS_PATH` — **optional**; path to the Google Search Console
   service-account JSON key used by `run_gsc_analysis.py` (G.4).
 
@@ -295,6 +303,20 @@ Editorial content currently lives in:
   (`request_timeout()` / `page_fetch_timeout()` / `llm_timeout()`), never as a
   default argument, which binds at import. They were per-module Python
   constants in four clients (added review chunk Y5)
+- `config.yml` `ai_visibility.key_registry_providers` — which shared-key-registry
+  provider (`~/.config/llm/keys.json`) supplies each engine's API key when the
+  environment carries none. Editorial: the registry holds eleven providers and
+  which of them this tool may spend is the owner's decision. The environment
+  always wins, so a key placed in `.env` for this tool is never overridden. A
+  provider named here must be one whose key authenticates against the engine's
+  OWN endpoint — the probes call Anthropic, Gemini, OpenAI and Perplexity
+  direct and ignore a registry `base_url`. Blank means no provider is
+  configured, which is a different fact from one that failed: every engine
+  variable is listed even when blank, so "no key on this machine"
+  (Perplexity) is visible beside the others. Before this map the four engines
+  read environment variables only while the brief read the registry, so on a
+  machine whose keys live in the registry the brief was written and all four
+  engines skipped with "KEY is not set" (added 2026-11-19)
 - `config.yml` `ai_visibility.brand_relevant_categories` — the classifier
   categories in which a cited domain carrying no `known_brands` entry is a
   rival the gazetteer is missing. Editorial: which categories hold this

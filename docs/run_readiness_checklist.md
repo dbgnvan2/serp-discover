@@ -19,20 +19,26 @@ holes in it, not a wrong one.
 | ☑ | `SERPAPI_KEY` | present | nothing — SERP fetching works |
 | ☐ | `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | **absent** | Domain Authority, so the whole feasibility score and the DA-gap ranking. This is the primary pay-per-use provider and the single highest-value box on this list |
 | ☐ | `MOZ_TOKEN` | present, **rows spent** | the fallback DA provider and all keyword demand (monthly volume). Authenticates fine; returns HTTP 403 `insufficient-quota` |
-| ☐ | `ANTHROPIC_API_KEY` | absent | the Claude engine in `probe_ai_visibility.py` |
-| ☐ | `OPENAI_API_KEY` | absent | the ChatGPT engine |
-| ☐ | `PERPLEXITY_API_KEY` | absent | the Perplexity engine |
-| ☐ | `GEMINI_API_KEY` | absent | the Gemini engine |
+| ☑ | `ANTHROPIC_API_KEY` | exported in the shell, and in the key registry | nothing — the Claude engine runs |
+| ☑ | `OPENAI_API_KEY` | not in `.env`; filled from the key registry | nothing — the ChatGPT engine runs |
+| ☑ | `GEMINI_API_KEY` | not in `.env`; filled from the key registry | nothing — the Gemini engine runs |
+| ☐ | `PERPLEXITY_API_KEY` | **absent everywhere** | the Perplexity engine. The registry holds no Perplexity key, so this one needs `.env` |
 | ☐ | `GSC_CREDENTIALS_PATH` | absent | `run_gsc_analysis.py` entirely — real clicks, the CTR gap, the reformat shortlist |
 
-All four AI-visibility engines are absent, so that family currently produces
-nothing at all rather than a partial picture.
+Three of the four AI-visibility engines now run. The probe reads the shared
+key registry (`~/.config/llm/keys.json`) for any key the environment does not
+carry, mapped per engine by `ai_visibility.key_registry_providers` in
+`config.yml`. The environment still wins, so a key placed in `.env` for this
+tool is never overridden.
 
-**Worth knowing:** keys for Anthropic, OpenAI and Gemini already exist in
-`~/.config/llm/keys.json`. `probe_ai_visibility.py` reads environment
-variables only, so it cannot see them, while content-brief generation reads
-the registry. Copying them into `.env` is the quick route; teaching the probe
-to read the registry is the durable one and is on the review backlog.
+**Two corrections to what an earlier reading of this file said.**
+`ANTHROPIC_API_KEY` is not in `.env`, but it is exported in the shell
+environment — so the Claude engine was working all along when the tool was
+run from a terminal, and is now also covered from the registry when it is
+not (a GUI launched from Finder, or a scheduled run, inherits no shell
+export). And the registry's key for a provider is only usable if it
+authenticates against the engine's own endpoint; all eleven providers in the
+registry pass a connection test as of 2026-11-19.
 
 ## B. `config.yml` switches
 
@@ -68,7 +74,7 @@ order:
 | ☐ | Feasibility | `run_feasibility.py` | GUI step 7. Cached, so free to re-run. Needs §A's DA provider |
 | ☐ | Domain override review | GUI step 6 | new hosts appear every run; unreviewed hosts classify as `N/A` and drop out of the intent verdict |
 | ☐ | Content brief | `generate_content_brief.py` | GUI step 3. Run after feasibility, so the brief can speak about the DA gap |
-| ☐ | AI visibility | `probe_ai_visibility.py` | needs §A's four engine keys |
+| ☐ | AI visibility | `probe_ai_visibility.py` | three of four engines run; Perplexity is skipped and reported as not measured |
 | ☐ | GSC analysis | `run_gsc_analysis.py` | needs §A and §B |
 | ☐ | Tool 2 | `serp-compete` on the `competitor_handoff_*.json` | the handoff is written by the run; Tool 2 is a separate invocation |
 
