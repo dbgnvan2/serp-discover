@@ -1704,6 +1704,53 @@ recent client keyword sets, so git holds no history of the edit and this is its
 only durable record. The measurement that produced the decision is the
 `🚫 Off-topic SERP` action above.
 
+## 2026-11-19e — `total_results` is a page size, not a market
+
+**Defect.** SerpAPI's `search_information.total_results` returned 98-100 for
+all ten queries of the 2026-11-19 run, which asked for `serpapi.num: 100`.
+Google has largely stopped publishing the "About N results" estimate; what
+comes back is the count of results on the page that was fetched. Nothing
+checked the figure against the request, so `total_results_measured` was `True`
+for all ten.
+
+**Consequence.** The brief printed the figure in every keyword heading as that
+keyword's scale, was told it could call it "estimated market scale", summed it
+across PAA clusters, broke every content-priority tie on the difference
+between 98 and 100, had its restatement of it checked for faithfulness by
+`brief_validation`, and ran the prompt's "note if `total_results < 500`" on
+every keyword of every run. D-M-12 had removed the demand *conclusion* from
+this field but left the figure in the brief's prose.
+
+**Fix.** `serp_audit.py` records `Results_Requested` on each overview row, so
+the figure is judged against the run's own request rather than a config file
+that may have changed since (P6).
+`brief_data_extraction._total_results_is_credible` requires
+`Total_Results > Results_Requested`, falls back to the configured `serpapi.num`
+for a run written before the field existed, and withholds the figure when
+neither is known — a market size nobody can check is one the brief must not
+state. `total_results_basis` records which of the three it was. Downstream,
+absent now means absent: the prompt payload omits the field (the rule the Moz
+metrics already followed), the tie-break falls back to the action group,
+`combined_total_results` sums only credible figures and publishes
+`combined_total_results_keywords` beside it (P2), and the prompts drop both the
+unconditional heading and "estimated market scale" as a gloss.
+
+**Result on the 2026-11-19 data.** All ten keywords now read
+`total_results_measured: false`, basis `serpapi_num_from_config`. The brief's
+scale sentence reads "Google reported no result-count estimate" in place of
+"100 total results". The markdown report never printed the figure, so it is
+unchanged; `report_clarity_spec.md`'s instruction to start printing it is
+marked superseded.
+
+**Verification.** Tests: `tests/test_total_results_is_not_a_market.py` (26
+tests, 44 subtests), including a guard on the premise — that the run's raw
+figures really are page-sized — so the suite cannot pass for the wrong reason.
+Mutation gate 10 of 10 caught. `serp_audit.py`'s 2200-line ceiling guard
+forced the new comment to be shortened rather than the ceiling raised.
+Re-measured with `refresh_analysis_outputs.py` plus a report regeneration,
+step 1.2 at exit 0 — no SerpAPI calls.
+
+
 ### Backlog (continued)
 
 - `docs/USER_MANUAL.md`'s worked example of the "Ranked results classified"
@@ -1713,16 +1760,6 @@ only durable record. The measurement that produced the decision is the
   `generate_insight_report.py`. They are editorial words with no config home,
   the same class of debt the vocabulary files were created to hold. Adjacent,
   not fixed: externalising all seven is its own chunk.
-- `total_results` is not a market size. SerpAPI's
-  `search_information.total_results` came back 98–100 for all ten queries on
-  the 2026-11-19 run (`num=100`), i.e. the results on the fetched page, not
-  Google's index estimate, which Google has largely stopped surfacing — yet
-  `total_results_measured` is `True`, `brief_data_extraction` prints
-  "N total results" as the scale evidence for an `enter` action, the
-  `content_priorities` tie-break sorts on it, and `brief_validation_rules.yml`
-  validates the model's restatement of it. D-M-12 removed the demand
-  *conclusion* from this field but left the figure in the brief's prose.
-  Found while answering whether `my parents and siblings` is worth targeting.
 - `my parents and siblings` carries an `informational` verdict at 83% but 5 of
   its 6 classified rows are host-inferred and only 1 is the page's own
   evidence, and its real top 10 is Canadian news about bereavement (harm

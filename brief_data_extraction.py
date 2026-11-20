@@ -497,6 +497,7 @@ def _compute_strategic_flags(
 
         opportunity_scale[kw] = {
             "total_results": total_results,
+            "total_results_measured": bool(profile.get("total_results_measured")),
             # Whether the demand question was answered at all, and on what.
             # "enter" used to be indistinguishable from "demand never
             # assessed" (D4b cold review, finding 4).
@@ -525,10 +526,18 @@ def _compute_strategic_flags(
             "action": opp["action"],
             "keyword": kw,
             "total_results": opp["total_results"],
+            "total_results_measured": opp["total_results_measured"],
             "reason": opp["reason"],
         })
 
-    priorities.sort(key=lambda x: (priority_order.get(x["action"], 99), -x["total_results"]))
+    # The tie-break uses the figure only when it is an index estimate. It was
+    # breaking ties on 98 versus 100 — the size of the page each request asked
+    # for — which ordered the content plan by an artifact of the fetch
+    # (2026-11-19). With no estimate the order falls back to the action group,
+    # then to the keyword order the caller gave.
+    priorities.sort(key=lambda x: (
+        priority_order.get(x["action"], 99),
+        -(x["total_results"] if x["total_results_measured"] else 0)))
     flags["content_priorities"] = priorities
 
     cross = paa_analysis.get("cross_cluster", [])
@@ -538,6 +547,10 @@ def _compute_strategic_flags(
             "question": top_cross["question"],
             "cluster_count": top_cross["cluster_count"],
             "combined_total_results": top_cross["combined_total_results"],
+            # How many of its keywords contributed an index estimate. 0 means
+            # the total is not a market size and must not be stated as one.
+            "combined_total_results_keywords": top_cross.get(
+                "combined_total_results_keywords", 0),
         }
     else:
         flags["top_cross_cluster_paa"] = None
@@ -1338,6 +1351,47 @@ def _build_moz_intent(serp_intent, moz_block, mapping):
     return crosscheck_intent(repo_intent, moz_block, mapping)
 
 
+#: What `Total_Results` means when nothing records what the request asked for.
+#: Judging the figure needs the page size, and a run written before
+#: `Results_Requested` existed carries no record of it. The configured
+#: `serpapi.num` is the caller's best evidence; with neither, the figure cannot
+#: be judged at all, and a market scale that cannot be checked is one the brief
+#: must not state.
+TOTAL_RESULTS_BASIS_RECORDED = "results_requested_recorded"
+TOTAL_RESULTS_BASIS_CONFIG = "serpapi_num_from_config"
+TOTAL_RESULTS_BASIS_UNKNOWN = "request_size_unknown"
+
+
+def _total_results_is_credible(overview_row, results_requested_default=None):
+    """Whether this row's `Total_Results` can be an index estimate at all.
+
+    Google has largely stopped publishing the "About N results" estimate. What
+    comes back instead is the count of results on the page that was fetched —
+    98 to 100 for all ten queries of the 2026-11-19 run, which asked for 100.
+    A figure no larger than the request therefore says nothing about the size
+    of a market, and this one was being printed as each keyword's scale.
+
+    Returns ``(credible, basis)``. ``basis`` names what the judgement rested
+    on, so a consumer can tell a figure checked against the run's own recorded
+    request from one checked against a config file that may have changed since.
+    """
+    requested = _safe_int((overview_row or {}).get("Results_Requested"), None)
+    basis = TOTAL_RESULTS_BASIS_RECORDED
+    if requested is None:
+        requested = _safe_int(results_requested_default, None)
+        basis = TOTAL_RESULTS_BASIS_CONFIG
+    if requested is None or requested <= 0:
+        # Nothing says how big the page was, so nothing can vouch for the
+        # figure. Withholding it is not a claim that the market is small; it
+        # is the absence of a claim, which is what the brief had wrong.
+        return False, TOTAL_RESULTS_BASIS_UNKNOWN
+
+    value = _safe_int((overview_row or {}).get("Total_Results"), None)
+    if value is None:
+        return False, basis
+    return value > requested, basis
+
+
 def extract_analysis_data_from_json(
     data,
     client_domain,
@@ -1355,6 +1409,7 @@ def extract_analysis_data_from_json(
     moz_intent_mapping=None,
     min_volume_for_investment=None,
     title_pattern_thresholds=None,
+    results_requested_default=None,
 ):
     """Build a compact, pre-verified analysis object from market_analysis_v2.json.
 
@@ -1435,6 +1490,7 @@ def extract_analysis_data_from_json(
 
     total_results_by_kw = {}
     total_results_measured = {}
+    total_results_basis = {}
     queries = []
     overview_by_kw = defaultdict(list)
     for r in overview:
@@ -1454,8 +1510,20 @@ def extract_analysis_data_from_json(
             # become 0 in the map, so `is not None` let the report print
             # "0 total results" as a fact (D4b cold review, finding 6).
             _sentinel = object()
-            total_results_measured[source_kw] = (
-                _safe_int(r.get("Total_Results"), _sentinel) is not _sentinel)
+            _parsed = _safe_int(r.get("Total_Results"), _sentinel) is not _sentinel
+            # …and it has to be an INDEX ESTIMATE, not the count of the page we
+            # asked for. Google has largely stopped publishing the "About N
+            # results" estimate: on the 2026-11-19 run, with num=100, it
+            # returned 98-100 for every one of the ten queries. A figure no
+            # larger than the request cannot describe a market, and this one
+            # was being printed in every keyword heading as its scale, was
+            # summed across clusters, broke the tie in content priority
+            # ordering, and made the prompt's "note if total_results < 500"
+            # fire for every keyword on every run (2026-11-19).
+            credible, basis = _total_results_is_credible(
+                r, results_requested_default)
+            total_results_measured[source_kw] = _parsed and credible
+            total_results_basis[source_kw] = basis
         aio_text = str(r.get("AI_Overview") or "")
         client_mentioned = any(_contains_phrase(aio_text, phrase) for phrase in client_phrase_patterns)
         queries.append({
@@ -1463,6 +1531,10 @@ def extract_analysis_data_from_json(
             "query_label": r.get("Query_Label"),
             "executed_query": r.get("Executed_Query"),
             "total_results": _safe_int(r.get("Total_Results"), 0),
+            # Judged on this row, since each query made its own request.
+            "total_results_measured": (
+                _safe_int(r.get("Total_Results"), None) is not None
+                and _total_results_is_credible(r, results_requested_default)[0]),
             "serp_features": r.get("SERP_Features"),
             "has_ai_overview": bool(r.get("Has_Main_AI_Overview")),
             # An overview only the un-located fallback probe returned is not
@@ -1751,7 +1823,15 @@ def extract_analysis_data_from_json(
             "question": question,
             "source_keywords": kws,
             "cluster_count": len(kws),
-            "combined_total_results": sum(total_results_by_kw.get(kw, 0) for kw in kws),
+            # Summed over the keywords whose figure is an index estimate,
+            # with the count of contributors beside it: adding page-size
+            # numbers produced a total that looked like a market and ordered
+            # these questions by it (P2 — say what was excluded).
+            "combined_total_results": sum(
+                total_results_by_kw.get(kw, 0) for kw in kws
+                if total_results_measured.get(kw)),
+            "combined_total_results_keywords": sum(
+                1 for kw in kws if total_results_measured.get(kw)),
             "category": info.get("category"),
         }
         if len(kws) >= 2:
@@ -2060,7 +2140,13 @@ def extract_analysis_data_from_json(
                 serp_intent, (moz_intent_metrics or {}).get(kw), moz_intent_mapping
             ),
             "total_results": total_results_by_kw.get(kw, 0),
+            # False when Google returned no estimate, when what it returned
+            # did not parse, or when the figure was no larger than the page
+            # the request asked for — in which case it is that page's own
+            # result count and not a market size (2026-11-19). `_basis` names
+            # what the size judgement rested on.
             "total_results_measured": total_results_measured.get(kw, False),
+            "total_results_basis": total_results_basis.get(kw),
             "serp_modules": modules_list,
             "has_ai_overview": aio_analysis.get(kw, {}).get("has_aio", False),
             "has_local_pack": kw_has_local_pack,
@@ -2287,6 +2373,8 @@ def build_keyword_profiles(data, config, client_domain=None):
         min_volume_for_investment=(
             (cfg.get("moz", {}) or {}).get("keyword_metrics", {})
             .get("min_volume_for_investment")),
+        # Only used for runs written before `Results_Requested` was recorded.
+        results_requested_default=(cfg.get("serpapi", {}) or {}).get("num"),
         title_pattern_thresholds=_title_thresholds(cfg),
     )
     return extracted.get("keyword_profiles", {}) or {}

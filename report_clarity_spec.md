@@ -195,6 +195,13 @@ Add a footnote line immediately after:
 > *Result count is Google's estimated index size for these queries, not a
 > search frequency metric. It cannot be used to compare keyword popularity.*
 
+**Superseded, 2026-11-19.** The markdown report prints no result count, and
+must not start: Google has largely stopped publishing the estimate, and what
+comes back is the size of the page that was fetched (98-100 for all ten
+queries of the 2026-11-19 run, which asked for 100). Do not implement this
+item. The figure now reaches the LLM brief only when it exceeds the request —
+see `docs/methodology.md`, "`total_results` is a page count".
+
 Alternatively, if the value adds no information that is not already present
 in Section 5b, remove the result count entirely and replace with:
 

@@ -211,7 +211,12 @@ Editorial content currently lives in:
   `market_size_phrases`, the market-size wording that requires a measured monthly
   volume — that keyword's own, inside its section. The ONLY home for these — `client_rank` and
   `avg_serp_da` appeared nowhere in the validator, so a figure the model restated
-  wrongly was written out as fact (added review chunk D4c)
+  wrongly was written out as fact (added review chunk D4c). `total_results`
+  counts as unmeasured unless it exceeds the results the run asked for
+  (`Results_Requested`, else `serpapi.num`): Google has largely stopped
+  publishing its index estimate and returns the fetched page's own result
+  count, 98-100 for all ten queries of the 2026-11-19 run, so the brief was
+  stating a page size as each keyword's market scale (2026-11-19)
 - `intent_classifier_triggers.yml` — PAA External Locus / Systemic vocabularies (added I.2)
 - `schema_recommendations.yml` — schema.org markup recommendations for the brief (added seo_geo_review G.2)
 - `serp_vocab.yml` — SERP audit vocabulary: stop words, PAA category triggers, service tokens, AI-alternative query templates (added seo_geo_review C.4); `eeat_signals` credential tokens and review markers (added seo_geo_deferred G.3); `situational_templates` probe query templates — persona-keyed map `{persona_label: [templates...]}` supporting an optional `{service}` placeholder (added seo_geo_deferred T.5; restructured to persona-keyed by yoast_geo_upgrade Y.4)

@@ -15,10 +15,15 @@ METADATA:
 - metadata: run_id, created_at, google_url_sample
 - root_keywords: the distinct root keywords searched
 - queries: one entry per query with source_keyword, query_label,
-  total_results, SERP features, top-3 organic source names, and
-  client AIO text mention flag. total_results is Google's estimated
-  indexed page count — NOT monthly search volume. Use phrases like
-  "total indexed results" or "estimated market scale." Never say
+  SERP features, top-3 organic source names, and client AIO text
+  mention flag. total_results is Google's estimated indexed page
+  count — NOT monthly search volume — and is PRESENT ONLY when the
+  figure is genuinely an estimate. Google has largely stopped
+  publishing it: when what came back was merely the size of the page
+  that was fetched, the field is absent, and you must then say
+  nothing about the market's size for that keyword. Never infer a
+  scale from the number of results listed. Where it IS present, call
+  it "total indexed results." Never say
   "monthly searches."
 
 QUERY LABELS:
@@ -32,7 +37,8 @@ QUERY LABELS:
 
 PER-KEYWORD PROFILES (primary data source for Section 2):
 - keyword_profiles: one pre-joined profile per root keyword
-  containing total_results, SERP modules, AI Overview presence,
+  containing total_results (present only when it is a real index
+  estimate — see above), SERP modules, AI Overview presence,
   local pack presence, entity distribution, dominant entity type,
   entity_label, top-5 organic results, AIO citation count + top
   sources, PAA questions, autocomplete, related searches, local
@@ -283,7 +289,10 @@ FAQ / ANSWER-EXTRACTION DATA (primary data source for Section 5b):
 PAA ANALYSIS (primary data source for Section 5):
 - paa_analysis: pre-computed cross-cluster analysis.
   - cross_cluster: questions appearing for 2+ keywords with exact
-    cluster_count and combined_total_results
+    cluster_count and combined_total_results. The latter sums only
+    the keywords whose total_results is a real estimate, and
+    combined_total_results_keywords says how many that was — when it
+    is 0 the sum is not a quantity and must not be stated
   - single_cluster: questions for 1 keyword only
   - summary: counts
   These lists are exhaustive. If a question is not in cross_cluster,
@@ -399,10 +408,19 @@ Example: legal 12, counselling 5 out of 24 classified -> legal
 plurality (12 of 24, 50%) with counselling secondary at 5. NOT
 "dominated by legal."
 
-RULE 10: TOTAL RESULTS IS NOT SEARCH VOLUME.
+RULE 10: TOTAL RESULTS IS NOT SEARCH VOLUME, AND IS OFTEN ABSENT.
 Never describe total_results as "monthly searches," "search
-volume," or "demand." Use "total indexed results," "estimated
-market scale," or "Google's result count estimate."
+volume," or "demand." Do not call it "estimated market scale"
+either: it counts pages Google has indexed, which is a fact about
+supply, not about how many people search or how big the opportunity
+is. Say "total indexed results" or "Google's result count
+estimate."
+
+When the field is absent, Google published no estimate for that
+keyword. State nothing about that keyword's scale — no figure, no
+"small market", no "niche", no inference from how many results the
+SERP listed. An absent figure is the absence of a measurement, not
+a small number.
 
 RULE 11: DO NOT OVERRIDE PRE-COMPUTED FLAGS.
 If a pre-computed field (has_ai_overview, has_local_pack,
@@ -455,7 +473,9 @@ unclassified rate, missing data).
 
 For EACH root keyword, produce a subsection:
 
-**[keyword] ([total_results] total results)**
+**[keyword]** — append " ([total_results] total indexed results)"
+ONLY when the profile carries total_results; with the field absent,
+the heading is the keyword alone.
 State the entity_distribution counts and describe the entity mix
 using entity_label. Name the top 3 organic sources with entity
 types. State the SERP intent verdict from serp_intent: name the
@@ -467,8 +487,9 @@ single title pattern dominates." State AIO status exactly from
 has_ai_overview and aio_citation_count, even if the values look
 unusual. State whether the client is visible, at what rank, and
 with what stability. List SERP modules present. List PAA questions
-for this keyword (or state none were captured). Note if
-total_results < 500. Where freshness.data_available is true, you may
+for this keyword (or state none were captured). Where total_results
+is present and below 500, note that few pages are indexed for this
+query; say nothing on the point when the field is absent. Where freshness.data_available is true, you may
 state the median page age (median_age_days over dated_page_count
 dated pages) and the client page's age when client_page is present;
 if dated_page_count is low, say most ranking pages are undated
@@ -537,7 +558,8 @@ data cannot show.
 
 ### Section 5: Content Gap Analysis
 Report from paa_analysis. List cross_cluster questions first with
-exact cluster_count and combined_total_results. Then note
+exact cluster_count, and combined_total_results only when
+combined_total_results_keywords is 1 or more. Then note
 significant single_cluster questions. For each gap, state whether
 the client's framework addresses it differently from current
 results — but base this on what keyword_profiles.top5_organic

@@ -767,6 +767,8 @@ def parse_data(keyword, results, query_metadata):
     metrics = {**common_fields,
                "Search_Query_Used": primary_results.get("search_parameters", {}).get("q"),
                "Total_Results": primary_results.get("search_information", {}).get("total_results"),
+               # Lets brief_data_extraction._total_results_is_credible judge Total_Results against this run's own request.
+               "Results_Requested": (primary_results.get("search_parameters", {}).get("num") or GOOGLE_NUM),
                }
 
     # --- SERP TERRAIN ANALYSIS (What features exist?) ---

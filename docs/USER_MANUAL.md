@@ -463,6 +463,31 @@ go stale and mislead you.
 
 ## Key Concepts
 
+### "Total results" is not demand, and usually is not even a total
+
+**What:** the number Google used to print as "About 4,300,000 results". The
+tool stores it per keyword as `total_results`.
+
+**Why it matters:** it was never a demand figure — it counts pages Google has
+indexed, which says how much has been *written*, not how many people search.
+Worse, Google has largely stopped publishing it. What comes back now is the
+number of results on the page the tool fetched: on the 2026-11-19 run, which
+asked for 100 results per query, Google returned 98 to 100 for every one of
+the ten keywords. "dysfunctional family" does not have 98 pages about it.
+
+So from 2026-11-19 the figure is used **only when it is larger than the number
+of results the run asked for** — the one case in which it cannot be the
+fetched page's own count. Otherwise it is treated as absent: the content brief
+is sent no figure for that keyword, says nothing about its market size, and no
+longer prints "(100 total results)" beside the keyword's name. The
+content-plan ordering no longer breaks ties on it either, which it had been
+doing on the difference between 98 and 100.
+
+**What you should take from an absent figure:** nothing. It is a missing
+measurement, not a small market. Monthly search volume is the figure that
+answers the demand question, and it comes from Moz (`moz.keyword_metrics`),
+not from here.
+
 ### Domain Authority (DA)
 
 **What:** Moz's metric (0–100) predicting how well a domain will rank in Google. Higher DA = more "authority votes" from backlinks.

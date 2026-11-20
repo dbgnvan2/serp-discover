@@ -708,11 +708,38 @@ review_2026-11-04 D4.11 (D-C-07), 2026-11-17.*
 
 `brief_validation.py::validate_llm_report` checks each figure the brief quotes
 for a keyword against the measured value on that keyword's profile:
-`client_rank`, `total_results` (only when `total_results_measured`),
+`client_rank`, `total_results` (only when `total_results_measured` — see
+below),
 `avg_serp_da` and `gap` (from the keyword's primary `keyword_feasibility` row —
 a `Query_Label` of `"P"` measures the pivot keyword and is skipped). A figure
 outside the field's tolerance is an issue; a field that was never measured has
 no number to disagree with and is left to the gates that already cover it.
+
+**`total_results` is a page count, and usually not even that.** Google has
+largely stopped publishing the "About N results" estimate. What SerpAPI's
+`search_information.total_results` returns instead is the number of results on
+the page that was fetched: 98 to 100 for all ten queries of the 2026-11-19 run,
+which asked for `serpapi.num: 100`. A figure no larger than the request cannot
+describe a market, so `brief_data_extraction._total_results_is_credible`
+requires `Total_Results > Results_Requested` before `total_results_measured` is
+true, and records in `total_results_basis` what the judgement rested on: the
+run's own recorded request (`Results_Requested`, written by `serp_audit.py`
+from 2026-11-19), the configured `serpapi.num` for a run written before that,
+or neither — in which case the figure is withheld, since a market size nobody
+can check is one the brief must not state.
+
+Everything downstream now treats an uncredible figure as absent rather than as
+a number: the prompt payload omits the field (the rule the Moz metrics already
+followed, where an absent record carries no fields at all), the content-plan
+tie-break falls back to the action group, `combined_total_results` sums only
+the keywords whose figure is an estimate and states how many contributed in
+`combined_total_results_keywords`, and the keyword heading drops its
+parenthetical. Before this the figure was printed as every keyword's scale,
+summed across PAA clusters, used to break every tie, and the prompt's "note if
+total_results < 500" fired on every keyword of every run. The prompt no longer
+offers "estimated market scale" as a gloss either: the field counts pages
+Google has indexed, which is a fact about supply, not demand. Pinned by
+`tests/test_total_results_is_not_a_market.py`. *2026-11-19.*
 
 A fifth field, `volume`, is checked against the keyword's Moz volume. The rank
 patterns are anchored on the word "client", because a keyword's own section also

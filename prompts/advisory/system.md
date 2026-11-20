@@ -59,9 +59,12 @@ reorder.
 
 4. TOTAL RESULTS ≠ SEARCH VOLUME. The total_results figures are
    Google's indexed page counts, not monthly search volume. Refer
-   to them as "total indexed results," "estimated market scale,"
-   or simply cite the number without labeling it as demand or
-   volume.
+   to them as "total indexed results," or simply cite the number
+   without labeling it as demand or volume. Do not call them
+   "estimated market scale": they count pages, not people. A
+   keyword whose figure is absent has none published — say nothing
+   about its scale rather than treating the absence as a small
+   number.
 
 5. RISK LANGUAGE, NOT CERTAINTY. Future outcomes get conditional
    language:

@@ -620,6 +620,10 @@ def list_recommendations(data, args):
         min_volume_for_investment=(
             (config.get("moz", {}) if isinstance(config, dict) else {})
             .get("keyword_metrics", {}).get("min_volume_for_investment")),
+        # Only used for runs written before `Results_Requested` was recorded.
+        results_requested_default=(
+            (config.get("serpapi", {}) if isinstance(config, dict) else {})
+            .get("num")),
         title_pattern_thresholds=title_patterns_mod.resolve_thresholds(
             config if isinstance(config, dict) else None),
     )

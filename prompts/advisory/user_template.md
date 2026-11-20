@@ -23,7 +23,7 @@ not hypotheses. Use them as given.
 - Keywords with action = "skip" appear only in "What to Stop
   Thinking About."
 - total_results values are indexed page counts, not monthly
-  search volume.
+  search volume, and are absent where Google published no estimate.
 
 <strategic_flags>
 {strategic_flags_json}

@@ -125,7 +125,13 @@ def build_main_report_payload(extracted_data):
     keyword_profiles = {}
     for keyword, profile in (extracted_data.get("keyword_profiles", {}) or {}).items():
         keyword_profiles[keyword] = {
-            "total_results": profile.get("total_results"),
+            # Sent ONLY when it is an index estimate. An unmeasured figure is
+            # omitted rather than passed as a number the model would restate
+            # as the keyword's market scale — the same rule the Moz metrics
+            # follow, where an absent record carries no fields at all
+            # (2026-11-19).
+            **({"total_results": profile.get("total_results")}
+               if profile.get("total_results_measured") else {}),
             "serp_modules": profile.get("serp_modules", [])[:8],
             "has_ai_overview": profile.get("has_ai_overview"),
             "has_local_pack": profile.get("has_local_pack"),
@@ -184,7 +190,8 @@ def build_main_report_payload(extracted_data):
             {
                 "source_keyword": item.get("source_keyword"),
                 "query_label": item.get("query_label"),
-                "total_results": item.get("total_results"),
+                **({"total_results": item.get("total_results")}
+                   if item.get("total_results_measured") else {}),
                 "serp_features": item.get("serp_features", []),
                 "has_ai_overview": item.get("has_ai_overview"),
                 "client_mentioned_in_aio_text": item.get("client_mentioned_in_aio_text"),
