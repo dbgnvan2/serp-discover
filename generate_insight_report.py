@@ -42,6 +42,7 @@ from datetime import datetime
 
 import yaml
 
+from _version import __version__
 import pattern_matching
 import db_connect
 import process_config
@@ -1602,7 +1603,10 @@ def generate_report(data, db_path=None, run_ts=None):
     ).isoformat()) if overview else datetime.now().isoformat()
 
     report.append(f"# Market Intelligence Report")
-    report.append(f"**Run ID:** {run_id} | **Date:** {date}\n")
+    # The build, not only the run: several figures changed meaning in the
+    # 2026-11-04 review, so a reader comparing two reports needs to know
+    # whether the same rules produced both. Version lives in `_version.py`.
+    report.append(f"**Run ID:** {run_id} | **Date:** {date} | **Tool version:** v{__version__}\n")
 
     # 0. Executive Summary (RC.1)
     config = _load_config()

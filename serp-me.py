@@ -11,6 +11,7 @@ import time
 from datetime import datetime
 from ruamel.yaml import YAML
 
+from _version import __version__
 from yaml_io import save_yaml_preserving_comments
 
 from apply_domain_override_candidates import merge_overrides, write_overrides
@@ -89,7 +90,7 @@ class SerpLauncherApp:
             self.root.createcommand("::tk::mac::Quit", self.on_close)   # Cmd-Q on macOS
         except tk.TclError:
             pass
-        self.root.title("SERP Intelligence Launcher")
+        self.root.title(f"SERP Intelligence Launcher v{__version__}")
         self.root.geometry("800x650")
         self.domain_review_window = None
         self.domain_review_rows = []

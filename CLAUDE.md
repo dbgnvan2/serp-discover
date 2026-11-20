@@ -399,6 +399,17 @@ for `keyword_profiles.<field>` references and asserts each has a
 corresponding rule in `validate_llm_report`. Run it after adding any new
 pre-computed field to a keyword profile to catch missed validators early.
 
+## Version number
+
+`_version.py` holds `__version__` and is the only place the number is
+written. The GUI title and the market report's header read it. Bumping it
+means three things in one commit: edit `_version.py`, add the matching
+`## [x.y.z]` section to `CHANGELOG.md`, and tag `vx.y.z` in BOTH repos —
+`serp-compete` carries the same number on purpose, because the two exchange
+a `competitor_handoff_*.json` and a review that changes one side of that
+contract changes both. `tests/test_version_is_stamped.py` fails the build
+when the changelog's newest entry and `_version.py` disagree.
+
 ## Methodology doc is a contract
 
 When modifying any file referenced in `docs/methodology.md`, update that doc

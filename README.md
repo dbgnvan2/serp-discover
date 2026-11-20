@@ -1,5 +1,7 @@
 # SERP Intelligence Tool
 
+**v1.5.0** — see [CHANGELOG.md](CHANGELOG.md). The version is written in `_version.py` and nowhere else; the GUI title and every market report's header carry it, so a report says which build produced it.
+
 Market intelligence for [Living Systems Counselling](https://livingsystems.ca) — a Bowen Family Systems Theory nonprofit in North Vancouver, BC.
 
 The tool scrapes Google search results (SERPs) for a keyword set, enriches and classifies every competitor URL, scores how feasible it is for Living Systems to rank, and uses an Anthropic LLM to write a strategic content brief that maps what people are actually searching for to content Living Systems can realistically create.
