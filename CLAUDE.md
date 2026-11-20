@@ -379,6 +379,9 @@ For details, read these as needed (do not preload):
 - `docs/intent_classification.md` — PAA External Locus / Systemic / General
   tagging.
 - `docs/config_reference.md` — `config.yml` keys.
+- `docs/run_readiness_checklist.md` — what must be in place for a run in
+  which nothing is skipped for want of a credential or a switch, and the
+  three ceilings no configuration removes.
 
 ## LLM validation policy
 
