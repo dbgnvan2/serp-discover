@@ -62,6 +62,7 @@ _LITERAL_ENTITY_TYPES = {
     "publisher",
     "professional_association",
     "education",
+    "job_board",
 }
 try:
     from classifiers import ENTITY_TYPES as _ENTITY_TYPES

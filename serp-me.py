@@ -68,6 +68,7 @@ class SerpLauncherApp:
         "publisher": {"background": "#ede7f6"},
         "professional_association": {"background": "#e0f7fa"},
         "education": {"background": "#f1f8e9"},
+        "job_board": {"background": "#fbe9e7"},
         "unknown": {"background": "#f5f5f5"},
     }
     def __init__(self, root):

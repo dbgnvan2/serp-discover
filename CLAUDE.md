@@ -131,11 +131,18 @@ Editorial content currently lives in:
   own site may rank with a blog post or a services page) and `media` (social
   and retail hosts share the type with news). A host-inferred row is counted
   separately in `serp_intent.evidence.host_inferred_classified_count` and never
-  raises the classification-coverage bucket
+  raises the classification-coverage bucket. Also `off_topic_entity_types` +
+  `off_topic_min_share` — the entity types that sit outside this client's
+  market and how much of a result page they must hold before a keyword with no
+  verdict reports `🚫 Off-topic SERP` instead of `❓ Intent unknown`. Section
+  1a gives `job_board` no intent at all, read page or not: a job listing holds
+  no counselling-search intent, and giving it one would file an employment SERP
+  under `commercial_investigation` beside the therapist directories (added
+  2026-11-19)
 - `strategic_patterns.yml` — Bowen patterns (triggers, status quo, reframes)
 - `url_pattern_rules.yml` — URL pattern fallbacks for content classifier
 - `domain_overrides.yml` — manual entity-type overrides
-- `classification_rules.json` — content type and entity type pattern lists (includes the `publisher` entity type + `publisher_domains` list added for the yoast_geo_upgrade Y.8 citation table; the Y.8 citation category is sourced from this file via the existing classifier, never a parallel list)
+- `classification_rules.json` — content type and entity type pattern lists (includes the `publisher` entity type + `publisher_domains` list added for the yoast_geo_upgrade Y.8 citation table; the Y.8 citation category is sourced from this file via the existing classifier, never a parallel list; and `job_board_domains`, checked BEFORE `directory_domains` so an employment SERP is never filed beside a page of therapist directories. A new entity type also needs a `DOMAIN_REVIEW_TAG_STYLES` colour in `serp-me.py` and an entry in `config_validators._LITERAL_ENTITY_TYPES` — both are guarded by tests, which is how the omission was caught)
 - `clinical_dictionary.json` — Bowen vs medical vocabulary tiers (in `serp-compete`, not here)
 - `feasibility_messages.yml` — feasibility vocabulary: status labels + icons, the
   per-keyword "why there is no verdict" sentences, the coverage phrases printed

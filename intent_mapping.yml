@@ -85,6 +85,21 @@ unusable_content_types:
   - "Not Measured"
   - ""
 
+# EDITORIAL. The entity types that put a result outside this client's market
+# altogether, rather than at some stage of its searcher's journey. A job board
+# is not a competitor: its presence means Google read the query as an
+# employment search. Results of these types are counted in
+# serp_intent.evidence.off_topic_organic_url_count, and when they hold at
+# least `off_topic_min_share` of the ranked results the report's action column
+# says the keyword is off topic instead of unmeasured.
+off_topic_entity_types:
+  - job_board
+
+# How much of the result page these types must hold before the keyword is
+# reported as off topic. A judgement: half the page is where the SERP stops
+# being about this market at all.
+off_topic_min_share: 0.5
+
 rules:
 
   # ── 1. Domain role overrides ──────────────────────────────────────────────
@@ -95,6 +110,28 @@ rules:
   - match: { domain_role: known_competitor, content_type: any, entity_type: any, local_pack: "any" }
     intent: navigational
     rationale: named competitor brand — searcher knows the brand
+
+  # ── 1a. Job boards measure a different market ─────────────────────────────
+  #
+  # EDITORIAL. A job board ranking on a counselling topic is not a competitor
+  # and not a stage of this client's searcher's journey — it means Google read
+  # the query as an employment search. `family roles` returned ten job boards
+  # and no counselling result in the 2026-11-19 run.
+  #
+  # So the intent is `uncategorised`, deliberately, and for BOTH a page that
+  # was read and one that was not: there is no counselling-search intent in a
+  # job listing to infer, and forcing one would file an employment SERP beside
+  # a therapist directory under `commercial_investigation`, where no reader
+  # could tell the two apart. Dropping it is the honest answer (see edge case
+  # 5 at the head of this file).
+  #
+  # What the finding instead rests on is the entity type itself: the result
+  # rows read `job_board`, and the keyword's action reads "Off-topic SERP"
+  # rather than "Intent unknown", so the report states the keyword is a
+  # keyword-selection problem instead of looking like a measurement gap.
+  - match: { entity_type: job_board, content_type: any, local_pack: "any", domain_role: any }
+    intent: uncategorised
+    rationale: job board — Google read the query as an employment search; no counselling-search intent to classify
 
   # ── 1b. The page's type is unusable, but the SITE is known ───────────────
   #

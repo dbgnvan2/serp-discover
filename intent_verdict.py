@@ -24,6 +24,10 @@ Output (stored at keyword_profiles[kw]["serp_intent"]):
             "organic_url_count": int,
             "classified_organic_url_count": int,
             "uncategorised_organic_url_count": int,
+            "page_evidence_classified_count": int,
+            "host_inferred_classified_count": int,
+            "host_inferred_by_fetch_state": dict,
+            "off_topic_organic_url_count": int,
             "local_pack_present": bool,
             "local_pack_member_count": int,
         },
@@ -97,6 +101,15 @@ CONTENT_TYPE_USABLE_VALUES = ("yes", "no", "any")
 #: usable, which would stop section 1b firing at all.
 DEFAULT_UNUSABLE_CONTENT_TYPES = ("unknown", "other", "n/a", "not measured", "")
 
+#: Fallback for `off_topic_entity_types` / `off_topic_min_share` when the
+#: mapping file does not carry them. These name the entity types that put a
+#: result outside this client's market altogether — a job board is not a
+#: competitor at any stage of the searcher's journey — and how much of the
+#: result page has to be theirs before the keyword is reported as off topic
+#: rather than unmeasured.
+DEFAULT_OFF_TOPIC_ENTITY_TYPES = ("job_board",)
+DEFAULT_OFF_TOPIC_MIN_SHARE = 0.5
+
 
 def load_mapping(path: str | None = None) -> dict:
     """Load intent_mapping.yml. Validates schema; raises ValueError on malformed."""
@@ -141,7 +154,49 @@ def load_mapping(path: str | None = None) -> dict:
                 f"{CONTENT_TYPE_USABLE_VALUES}"
             )
 
+    off_topic = data.get("off_topic_entity_types")
+    if off_topic is not None and not isinstance(off_topic, list):
+        raise ValueError(
+            f"intent_mapping.yml 'off_topic_entity_types' must be a list: "
+            f"{path}"
+        )
+    share = data.get("off_topic_min_share")
+    if share is not None and not (
+            isinstance(share, (int, float))
+            and not isinstance(share, bool)
+            and 0 < float(share) <= 1):
+        raise ValueError(
+            f"intent_mapping.yml 'off_topic_min_share' must be a number in "
+            f"(0, 1]: {share!r}"
+        )
+
     return data
+
+
+def _off_topic_entity_types(mapping: dict) -> frozenset[str]:
+    """The entity types that put a result outside the client's market.
+
+    Read from the mapping file so the judgement stays editorial. A missing or
+    malformed key falls back to the built-in set rather than silently making
+    every entity type on topic.
+    """
+    values = (mapping or {}).get("off_topic_entity_types")
+    if not isinstance(values, list) or not values:
+        values = DEFAULT_OFF_TOPIC_ENTITY_TYPES
+    return frozenset(
+        str(v or "").strip().lower() for v in values if str(v or "").strip()
+    )
+
+
+def off_topic_min_share(mapping: dict | None = None) -> float:
+    """How much of the result page must be off topic before the report says so."""
+    if mapping is None:
+        mapping = load_mapping()
+    share = mapping.get("off_topic_min_share")
+    if (isinstance(share, (int, float)) and not isinstance(share, bool)
+            and 0 < float(share) <= 1):
+        return float(share)
+    return DEFAULT_OFF_TOPIC_MIN_SHARE
 
 
 def _domain_role_for_url(
@@ -363,6 +418,8 @@ def compute_serp_intent(
     organic_count = 0
     host_inferred_count = 0
     host_inferred_by_state: dict[str, int] = {}
+    off_topic_types = _off_topic_entity_types(mapping)
+    off_topic_count = 0
 
     for row in organic_rows or []:
         organic_count += 1
@@ -383,6 +440,8 @@ def compute_serp_intent(
             "content_type_usable": _content_type_usable(
                 row.get("content_type"), mapping),
         }
+        if str(url_attrs["entity_type"]).strip().lower() in off_topic_types:
+            off_topic_count += 1
         intent, rule = _classify_url_with_rule(url_attrs, rules)
         intent_counts[intent] += 1
         if intent != "uncategorised" and _is_host_inferred(rule):
@@ -475,6 +534,12 @@ def compute_serp_intent(
             "page_evidence_classified_count": page_evidence_classified,
             "host_inferred_classified_count": host_inferred_count,
             "host_inferred_by_fetch_state": dict(host_inferred_by_state),
+            # How many ranked results are outside this client's market
+            # altogether (a job board, not a competitor at any stage). These
+            # are `uncategorised`, so they lower the classified count like any
+            # other unclassified row; counting them separately is what lets
+            # the report say the keyword is off topic rather than unmeasured.
+            "off_topic_organic_url_count": off_topic_count,
             "local_pack_present": has_local_pack,
             "local_pack_member_count": local_pack_member_count,
         },

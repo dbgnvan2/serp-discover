@@ -147,13 +147,18 @@ The `Action` column values are drawn from a fixed vocabulary:
 - `⛔ Mismatched intent` — intent does not appear in `preferred_intents`
   regardless of feasibility
 - `❓ Intent unknown` — no SERP intent verdict (too few results classified).
+- `🚫 Off-topic SERP` — no SERP intent verdict, and at least
+  `intent_mapping.yml`'s `off_topic_min_share` of the ranked results carry an
+  entity type in `off_topic_entity_types` (a job board). Distinguishes a
+  keyword Google answered as another market's query from one the run failed to
+  measure. Added 2026-11-19.
   Not a pass, and not `📊 Unranked`, which means no DA. Added by the D4a cold
   review: the gate read `if intent and not intent_matches`, so these keywords
   printed `✅ Pursue` below a Section 0 saying no keyword passes the intent
   gate.
 
 The table appears in the order: Pursue → Pursue with effort → Unranked →
-Pivot or skip → Intent unknown → Mismatched intent. Within each group,
+Pivot or skip → Intent unknown → Mismatched intent → Off-topic SERP. Within each group,
 alphabetical.
 
 **Acceptance criteria:**

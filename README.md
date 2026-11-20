@@ -300,7 +300,7 @@ The market analysis markdown report now includes a comprehensive Executive Summa
 
 **Section 0 — Executive Summary**
 - **Best Opportunity Keyword** — Ranked by: (1) Domain Authority gap (High > Moderate > Low), (2) SERP intent alignment with client capabilities, (3) Confidence score
-- **Keyword Action Table** — Every keyword receives one of 6 actions: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked, 🔴 Pivot or skip, ❓ Intent unknown, ⛔ Mismatched intent
+- **Keyword Action Table** — Every keyword receives one of 7 actions: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked, 🔴 Pivot or skip, ❓ Intent unknown, ⛔ Mismatched intent, 🚫 Off-topic SERP (no verdict, and at least half the ranked results are outside this market — a job board, not a competitor)
 - **Content Brief Priority** — Identifies which content brief to write first based on best opportunity keyword
 
 **Section 2 — PAA (Questions)**

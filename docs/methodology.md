@@ -178,9 +178,41 @@ and keywords with a verdict from 0 of 10 to 8 of 10. News hosts were moved from
 `vancouversun.com` beside `reddit.com`, `youtube.com` and `amazon.ca`, so it
 carried no single intent and is excluded from section 1b, while news reporting
 answers questions. Three hosts were pinned to `media` by `domain_overrides.yml`
-and an override beats the pattern lists, so both had to change together. The
-two keywords still without a verdict rank job boards and other unrecognised
-hosts; job boards have no entity type.
+and an override beats the pattern lists, so both had to change together.
+
+**A job board is outside the market, and that is a finding about the keyword.**
+`family roles` returned ten job boards and no counselling result on the
+2026-11-19 run (Glassdoor four times, SimplyHired, bebee, Jobboom, Jobrapido):
+Google read the query as an employment search. Those hosts had no entity type
+at all, so each result fell through to `N/A` and the keyword reported
+`❓ Intent unknown` — indistinguishable from a keyword the tool had failed to
+measure.
+
+`job_board` is now an entity type (`classification_rules.json`
+`job_board_domains`), **checked before `directory_domains`** so an employment
+SERP is never filed beside a page of therapist directories. Its intent is
+`uncategorised` by rule 1a of `intent_mapping.yml`, deliberately and for a
+page that was read as much as one that was not: there is no counselling-search
+intent inside a job listing to infer, and forcing one would put an employment
+SERP under `commercial_investigation` where no reader could tell it from a
+SERP full of therapist directories.
+
+What carries the finding instead is the count. Rows whose entity type is in
+`intent_mapping.yml`'s `off_topic_entity_types` are counted in
+`serp_intent.evidence.off_topic_organic_url_count`, and when they hold at least
+`off_topic_min_share` of the ranked results (0.5) a keyword with no verdict
+reports `🚫 Off-topic SERP` rather than `❓ Intent unknown` — the tool measured
+the SERP correctly and the keyword is the problem. Both keys are editorial and
+validated by `load_mapping`; a missing or malformed value falls back to the
+built-in default rather than silently counting nothing. Pinned by
+`tests/test_job_boards_are_off_topic.py`.
+
+Classified results went from 56 of 100 to **54 of 100** in the process, which
+is the correction: two Glassdoor job-listing pages were being read as
+`informational` evidence for a counselling keyword. Keywords with a verdict
+stayed at 8 of 10 — `family roles` had none before and has none now, but the
+report now says why. `family dynamics`, whose ten results are six unrecognised
+small sites, remains `❓ Intent unknown`, which is the honest reading.
 
 **Classification coverage and intent certainty are two different facts.**
 `confidence` (alias `classification_coverage`) is a count: how many of the ten

@@ -1655,14 +1655,58 @@ be a silently dead `media` entry rather than an error). Re-measured with
 `refresh_analysis_outputs.py`, a report regeneration and step 1.2 at exit 0 —
 no SerpAPI calls.
 
+## 2026-11-19d — a job board is off topic, not unmeasured
+
+**Defect.** `family roles` ranked ten job boards and no counselling result —
+Google read the query as an employment search — and job boards had no entity
+type at all, so every row fell through to `N/A`.
+
+**Consequence.** The keyword reported `❓ Intent unknown`, which reads as a
+measurement failure in the tool, hiding the one finding that matters about that
+keyword: it belongs to another market and should be dropped. Worse, two
+Glassdoor job-listing pages that *were* read came back `guide` and were counted
+as `informational` evidence for a counselling keyword.
+
+**Fix.** `job_board` is a new entity type (`classification_rules.json`
+`job_board_domains`, 14 hosts), checked **before** `directory_domains` so an
+employment SERP is never filed beside a page of therapist directories. Rule 1a
+of `intent_mapping.yml` gives it `uncategorised` deliberately, for a read page
+as much as an unread one: a job listing holds no counselling-search intent to
+infer, and forcing one would put an employment SERP under
+`commercial_investigation` where no reader could separate it from a SERP full
+of directories. The finding is carried instead by
+`serp_intent.evidence.off_topic_organic_url_count` and the new
+`🚫 Off-topic SERP` action, which fires when a keyword has no verdict and
+off-topic rows hold at least `off_topic_min_share` of its ranked results. Both
+keys are editorial, in `intent_mapping.yml`, and validated by `load_mapping`.
+
+**Result on the 2026-11-19 data.** `family roles` now reads
+`🚫 Off-topic SERP`; all 14 of its job-board rows type as `job_board` and no
+other row changed type. Classified results 56 of 100 → **54 of 100** — the
+correction, not a loss: the two lost rows are the Glassdoor listings that had
+been counted as informational. Keywords with a verdict stayed 8 of 10.
+`family dynamics` remains `❓ Intent unknown`, correctly: six of its ten hosts
+are unrecognised small sites, which is a measurement gap.
+
+**Verification.** 2483 passed, 68 skipped, 325 subtests, exit 0. Tests:
+`tests/test_job_boards_are_off_topic.py` (32 tests, 54 subtests). Mutation gate
+8 of 8 caught. Two standing guards caught real omissions a new entity type
+creates — `serp-me.py`'s `DOMAIN_REVIEW_TAG_STYLES` colour and
+`config_validators._LITERAL_ENTITY_TYPES` — both filled. Re-measured with
+`refresh_analysis_outputs.py` plus a report regeneration: no SerpAPI calls.
+
 ### Backlog (continued)
 
-- `family roles` ranks ten job boards (glassdoor.ca, simplyhired.ca, bebee.com,
-  jobboom.com, jobrapido.com) and `family dynamics` six unrecognised hosts;
-  both still have no verdict. Job boards have no entity type at all. Adding one
-  would give those SERPs a verdict and, more usefully, show that Google reads
-  `family roles` as a jobs query — a keyword-selection finding the current
-  "intent unknown" hides.
+- `docs/USER_MANUAL.md`'s worked example of the "Ranked results classified"
+  line still quotes a pre-2026-11-19 run and omits the host-inferred clause the
+  line now carries. Adjacent, found while documenting this chunk, not fixed.
+- `_get_keyword_action`'s seven action labels are Python literals in
+  `generate_insight_report.py`. They are editorial words with no config home,
+  the same class of debt the vocabulary files were created to hold. Adjacent,
+  not fixed: externalising all seven is its own chunk.
+- `family dynamics` ranks six unrecognised small hosts and still has no
+  verdict. Unlike `family roles` this is a genuine measurement gap, not a
+  keyword problem.
 - `publisher_domains` contains `psychologytoday.com/us/blog`, a path. The
   classifier matches hosts only, and checks `directory_domains` first anyway,
   so the entry can never fire — it is dead, and the path distinction it was

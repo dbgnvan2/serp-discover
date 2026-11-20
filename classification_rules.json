@@ -8,7 +8,8 @@
     "media",
     "publisher",
     "professional_association",
-    "education"
+    "education",
+    "job_board"
   ],
   "entity_type_descriptions": {
     "counselling": "Direct counselling or therapy service providers.",
@@ -19,7 +20,8 @@
     "media": "Editorial, social, video, book, or news/media platforms.",
     "publisher": "Editorial publishers and reference sites that syndicate or host authored articles (news outlets, magazines, encyclopedic references) — the AI-citation 'Publisher' category.",
     "professional_association": "Associations, colleges, and regulatory bodies.",
-    "education": "Universities, colleges, and research institutions."
+    "education": "Universities, colleges, and research institutions.",
+    "job_board": "Employment listing platforms (job boards and recruitment aggregators). A job board ranking on a counselling topic means Google read the query as an employment search, not a search for a service."
   },
   "content_patterns": {
     "directory_url": [
@@ -43,6 +45,22 @@
     ]
   },
   "entity_patterns": {
+    "job_board_domains": [
+      "glassdoor.ca",
+      "glassdoor.com",
+      "glassdoor.co.in",
+      "simplyhired.ca",
+      "simplyhired.com",
+      "indeed.ca",
+      "indeed.com",
+      "jobboom.com",
+      "jobrapido.com",
+      "bebee.com",
+      "ziprecruiter.com",
+      "workopolis.com",
+      "monster.ca",
+      "talent.com"
+    ],
     "directory_domains": [
       "yelp.ca",
       "yellowpages.ca",

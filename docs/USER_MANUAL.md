@@ -88,7 +88,7 @@ Serp-Discover answers these questions by:
   - **Local:** Google Maps, business directories, location-specific content
   - **Navigational:** Brand names, branded searches, domain-specific content
 
-- Uses `intent_mapping.yml` rules: `(content_type, entity_type, local_pack, domain_role) → intent verdict`, plus the optional `page_read` key that lets a known directory, government or publisher host settle the intent when Google's encrypted links stopped the page itself from being read
+- Uses `intent_mapping.yml` rules: `(content_type, entity_type, local_pack, domain_role) → intent verdict`, plus the optional `page_read` key that lets a known directory, government or publisher host settle the intent when Google's encrypted links stopped the page itself from being read. Job boards are dropped from the verdict and counted separately, so a SERP Google answered as an employment search reads `🚫 Off-topic SERP` rather than as a measurement gap
 - Calculates confidence: `high` (≥8 classified), `medium` (≥5), `low` (<5)
 - Flags mixed-intent SERPs (e.g., "couples counselling" returns both local services AND educational content)
 
@@ -1052,14 +1052,24 @@ book), so the site cannot settle it. `media` is also excluded, but it now
 covers only social and shopping sites, which genuinely say nothing about why
 somebody searched.
 
+**Job boards are dropped on purpose.** A job board is not a competitor at any
+stage of this practice's searcher's journey — it means Google read the query as
+an employment search. Section `1a` therefore gives `job_board` no intent at
+all, for a page that was read as much as one that was not, because there is no
+counselling-search intent inside a job listing to find. Two keys at the top of
+the file turn that silence into a statement: `off_topic_entity_types` names the
+types that sit outside your market, and `off_topic_min_share` is how much of
+the page they must hold (half, by default) before a keyword with no verdict
+reads `🚫 Off-topic SERP` instead of `❓ Intent unknown`.
+
 **What it changed.** Before this, no keyword on the 2026-11-19 run had an
 intent verdict at all, so the report recommended no page for any of them.
 Afterwards 8 of 10 keywords had one, and the results it could judge went from
-16 of 100 to 56 of 100. The two still without a verdict are "family dynamics"
-and "family roles" — the latter ranks ten job boards, which the tool does not
-yet recognise as a site type, and which is itself worth knowing: Google reads
-"family roles" as a jobs query, so it is a poor keyword for this practice
-whatever its intent turns out to be.
+16 of 100 to 54 of 100. "family roles" still has no verdict — ten job boards
+carry no counselling intent to read — but its action now says `🚫 Off-topic
+SERP`, which is the useful finding: drop the keyword. "family dynamics" has no
+verdict either, and there the honest answer really is that the tool could not
+judge the page: six of its ten results are small sites it does not recognise.
 
 **How the report stays honest about it.** The "Ranked results classified" line
 at the top of the report states how many of the results were judged from the
@@ -1273,6 +1283,40 @@ When nothing at all was classified the line says so outright ("none of M")
 rather than "0 of M", because no keyword can have an intent verdict on that
 run, and the report's ten "Deprioritise" verdicts are an absence of evidence
 rather than a judgement about the keywords.
+
+### `🚫 Off-topic SERP` — the keyword is the problem, not the measurement
+
+One action is not a measurement gap at all. When a keyword has no intent
+verdict **and** at least half its ranked results are job boards, the action
+column reads `🚫 Off-topic SERP` instead of `❓ Intent unknown`.
+
+**What it means:** Google answered a different question than you asked. On the
+2026-11-19 run `family roles` returned ten job boards and not one counselling
+result — Glassdoor four times, plus SimplyHired, bebee, Jobboom and Jobrapido.
+Google reads "family roles" as an employment search, probably the HR sense of
+the phrase.
+
+**Why it matters:** no amount of better content wins a SERP that is about
+another market, so the right response is to drop the keyword, not to work on
+it. Before this action existed the keyword read `❓ Intent unknown`, which
+looks like the tool failed to read the pages — so the single most useful
+finding about that keyword was the one the report hid. The job boards are also
+named in the keyword's own competitor table, where their `Entity_Type` reads
+`job_board`.
+
+**What you can change:** both halves are editorial, in `intent_mapping.yml`.
+`off_topic_entity_types` lists the entity types that put a result outside your
+market (`job_board` by default) and `off_topic_min_share` is how much of the
+page they must hold (`0.5`). Add a host to `job_board_domains` in
+`classification_rules.json` when a board the tool does not recognise turns up.
+
+Note that a job board is never given an intent, even when its page *was* read.
+A job listing contains no counselling-search intent to classify, and treating
+one as `commercial_investigation` would file an employment SERP beside a page
+full of therapist directories, where you could no longer tell them apart. This
+is why the 2026-11-19 figures moved from 56 of 100 classified to 54: two
+Glassdoor job-listing pages had been counted as `informational` evidence for a
+counselling keyword.
 
 The wording lives in `serp_vocab.yml` under `classification_coverage`.
 

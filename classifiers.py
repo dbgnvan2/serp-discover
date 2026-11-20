@@ -184,6 +184,14 @@ class EntityClassifier:
         if domain_l.endswith('.org'):
             evidence.append("tld_org")  # Weak signal, need more
 
+        # 2. Job boards, checked BEFORE directories. A job board is a
+        # listing site like a directory, and calling one a directory would
+        # put an employment SERP in the same bucket as a therapist directory
+        # — the report could then no longer tell "ten clinics to compare"
+        # from "Google read this as a jobs query" (2026-11-19).
+        if any(d in domain_l for d in patterns.get("job_board_domains", [])):
+            return 'job_board', 0.9, ["known_job_board_domain"]
+
         # 2. Directory Signals (Domain level)
         if any(d in domain_l for d in patterns.get("directory_domains", [])):
             return 'directory', 0.9, ["known_directory_domain"]

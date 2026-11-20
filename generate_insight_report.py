@@ -32,6 +32,7 @@ Usage
     python generate_insight_report.py --json market_analysis_v2.json --out report.md
 """
 import argparse
+import functools
 import json
 import logging
 import os
@@ -53,6 +54,7 @@ from feasibility import index_feasibility_by_keyword
 import commodity_score
 import demand_dashboard
 import enrichment
+import intent_verdict
 import thresholds_provenance
 from domain_utils import normalize_domain
 
@@ -1279,6 +1281,12 @@ def _get_best_opportunity_keyword(keyword_profiles: dict, keyword_feasibility: l
     return best_kw, reason
 
 
+@functools.lru_cache(maxsize=1)
+def _off_topic_min_share() -> float:
+    """intent_mapping.yml's off-topic share, read once per report run."""
+    return intent_verdict.off_topic_min_share()
+
+
 def _get_keyword_action(keyword: str, profile: dict, feas_record: dict, preferred_intents: list):
     """
     Purpose: Determine the action value for a keyword.
@@ -1286,7 +1294,15 @@ def _get_keyword_action(keyword: str, profile: dict, feas_record: dict, preferre
     Tests:   tests/test_report_clarity.py::test_rc1_action_*
 
     Returns one of: ✅ Pursue, ⚠️ Pursue with effort, 📊 Unranked,
-    🔴 Pivot or skip, ⛔ Mismatched intent, ❓ Intent unknown.
+    🔴 Pivot or skip, ⛔ Mismatched intent, 🚫 Off-topic SERP,
+    ❓ Intent unknown.
+
+    `🚫 Off-topic SERP` was added 2026-11-19. A keyword whose results are
+    mostly job boards has no intent verdict, and reporting that as "Intent
+    unknown" read as a measurement gap in the tool when it is a finding about
+    the keyword: Google answered an employment search. Which entity types
+    count and how much of the page they must hold are editorial, in
+    intent_mapping.yml.
 
     `❓ Intent unknown` was added by the D4.1 cold review (finding 3). The
     intent gate read `if intent and not intent_matches`, so a keyword with no
@@ -1311,6 +1327,14 @@ def _get_keyword_action(keyword: str, profile: dict, feas_record: dict, preferre
     has_verdict = bool(intent) and (
         not is_mixed or bool(serp_intent.get("mixed_components")))
     if not has_verdict:
+        # No verdict, but say WHY when the cause is the keyword rather than
+        # the measurement: results outside this market cannot carry an intent
+        # to classify, so a page mostly made of them is off topic, not unread.
+        evidence = serp_intent.get("evidence", {}) or {}
+        organic = evidence.get("organic_url_count") or 0
+        off_topic = evidence.get("off_topic_organic_url_count") or 0
+        if organic and off_topic / organic >= _off_topic_min_share():
+            return "🚫 Off-topic SERP"
         return "❓ Intent unknown"
 
     if not intent_matches:
@@ -1406,14 +1430,16 @@ def _render_executive_summary(data: dict, best_opportunity_kw: str, best_opportu
         action = _get_keyword_action(kw, profile, feas_record, preferred_intents)
 
         # Sort priority: Pursue > Pursue with effort > Unranked >
-        # Pivot or skip > Intent unknown > Mismatched intent
+        # Pivot or skip > Intent unknown > Mismatched intent >
+        # Off-topic SERP (last: the keyword itself is the problem)
         action_priority = (
             0 if action.startswith("✅") else
             1 if action.startswith("⚠️") else
             2 if action.startswith("📊") else
             3 if action.startswith("🔴") else
             4 if action.startswith("❓") else
-            5
+            5 if action.startswith("⛔") else
+            6
         )
         rows.append((action_priority, kw, intent, confidence, certainty,
                      feas_status, action))
