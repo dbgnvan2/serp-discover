@@ -1777,3 +1777,12 @@ step 1.2 at exit 0 — no SerpAPI calls.
   reaching for is not expressible in these lists.
 - `media_domains` holds `amazon.ca`, a retailer, under a name meaning media.
   The type is excluded from host inference, so nothing reads it wrongly today.
+- Every keyword of the 2026-11-19 run recorded `moz: {"data_available": false,
+  "status": "not_fetched"}`, and the account's rows for the period are spent —
+  Moz authenticates and answers, it returned HTTP 403 `insufficient-quota`.
+  `not_fetched` collapses that into the same state as a call never attempted,
+  so the report cannot say whether the demand figures are missing until a
+  reset date or missing until somebody changes the config. The states want
+  separating the way `fetch_retryable` and `unreachable` were in chunk Y2,
+  with the words in a vocabulary file rather than Python. Adjacent, found
+  while checking demand, not fixed.
