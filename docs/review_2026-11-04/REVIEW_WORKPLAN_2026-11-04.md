@@ -1713,6 +1713,24 @@ only durable record. The measurement that produced the decision is the
   `generate_insight_report.py`. They are editorial words with no config home,
   the same class of debt the vocabulary files were created to hold. Adjacent,
   not fixed: externalising all seven is its own chunk.
+- `total_results` is not a market size. SerpAPI's
+  `search_information.total_results` came back 98–100 for all ten queries on
+  the 2026-11-19 run (`num=100`), i.e. the results on the fetched page, not
+  Google's index estimate, which Google has largely stopped surfacing — yet
+  `total_results_measured` is `True`, `brief_data_extraction` prints
+  "N total results" as the scale evidence for an `enter` action, the
+  `content_priorities` tie-break sorts on it, and `brief_validation_rules.yml`
+  validates the model's restatement of it. D-M-12 removed the demand
+  *conclusion* from this field but left the figure in the brief's prose.
+  Found while answering whether `my parents and siblings` is worth targeting.
+- `my parents and siblings` carries an `informational` verdict at 83% but 5 of
+  its 6 classified rows are host-inferred and only 1 is the page's own
+  evidence, and its real top 10 is Canadian news about bereavement (harm
+  reduction deaths, missing and murdered women, Portapique) with no
+  counselling site at all. Intent classification says nothing about topical
+  fit; nothing in the report pairs the verdict with the host-inferred share
+  beside it, so a verdict resting almost entirely on inference reads like any
+  other.
 - `family dynamics` ranks six unrecognised small hosts and still has no
   verdict. Unlike `family roles` this is a genuine measurement gap, not a
   keyword problem.
