@@ -1820,8 +1820,8 @@ Two checks that came back clean, recorded so they are not re-investigated:
   `profile_questions._NEAR_ME` treats "near me" as a local marker when
   generating AI-visibility questions — so one fact is implemented in one
   module and contradicted in another, and it suppresses the lever the report
-  itself calls "the equalizer for non-profits". Found by running feasibility,
-  not fixed.
+  itself calls "the equalizer for non-profits". Found by running feasibility.
+  **Fixed 2026-11-21** — see below.
 - Report §5c's "Weakest (non-dir)" cell renders as `{min_competitor_da}
   ({min_non_directory_da}?)`, which prints `0 (0?)` and `0 (61?)` — a bare
   trailing question mark with nothing saying what is being asked. On
@@ -1834,3 +1834,28 @@ Two checks that came back clean, recorded so they are not re-investigated:
   while a measurement exists, because the run prefers the measurement and
   says so, but it is the value used when no provider answers, and a
   three-point error there moves every gap. Adjacent, not fixed.
+
+## 2026-11-21 — the pivot gate reads the keyword's own words
+
+- The neighbourhood-pivot gate read the SERP's classified intent and never the
+  keyword text, so `family of origin therapist near me` was refused a pivot as
+  `commercial_investigation`. The report then explained to the owner that
+  proximity substitutes for authority "only when the searcher wants a service
+  in a place" — about a query that says near me — suppressing the one lever
+  the report calls the equalizer for non-profits. `_pivot_gate` now checks the
+  keyword against the editorial `local_intent.markers` list in
+  `serp_vocab.yml` first; a marker permits the pivot whatever the SERP was
+  classified as, never refuses one, and `gate_source` records which marker
+  decided (`keyword local marker (near me)`).
+- The phrase "near me" had two homes: `profile_questions._NEAR_ME` used it to
+  generate a question variant while the gate that decides whether such a
+  keyword pivots at all knew nothing about it. One fact implemented in one
+  module and contradicted in another is how the defect above survived.
+  `serp_vocab.yml local_intent.near_me_phrase` is now the single home, read by
+  `profile_questions`, and a test fails the build when the phrase is not among
+  the markers or when a second copy of it appears in Python as data.
+- Verified on the run that found it: the gate answers
+  `(True, 'keyword local marker (near me)')` for the live keyword and its
+  measured `commercial_investigation` block. 19 tests + 11 subtests in
+  `tests/test_pivot_gate_reads_the_keyword.py`; both mutations of the decisive
+  line (never matching, and matching inverted) fail the suite.

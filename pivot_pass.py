@@ -89,7 +89,7 @@ def build_pivot_profiles(all_metrics, all_organic, all_paa, all_local_pack,
 
 def decide_pivots(pending, profiles, *, location, neighborhoods,
                   pivotable_intents, pivot_fetch, storage, run_id,
-                  log=print):
+                  log=print, local_intent_markers=None):
     """``(feasibility rows, pivot fetch jobs)`` for one run's label-A keywords.
 
     *pending* is one entry per keyword from the fetch loop, carrying the
@@ -99,6 +99,12 @@ def decide_pivots(pending, profiles, *, location, neighborhoods,
     existed, on the token guess alone, which the refusal text already names.
 
     *storage* is `None` when enrichment is off, so nothing is written.
+
+    *local_intent_markers* are the editorial phrases that state local intent
+    in the keyword's own words (`serp_vocab.yml local_intent.markers`). It
+    defaults to `None` so a caller that injects none gets the documented
+    default inside `feasibility` rather than a signature error; the audit
+    passes the resolved list, which a test checks.
     """
     rows: list[dict] = []
     jobs: list[tuple[str, str, str]] = []
@@ -122,6 +128,7 @@ def decide_pivots(pending, profiles, *, location, neighborhoods,
             serp_intent=serp_intent,
             entity_distribution=profile.get("entity_distribution"),
             pivotable_intents=pivotable_intents,
+            local_intent_markers=local_intent_markers,
         )
         # Counted off the basis the gate reported, not off the presence of
         # a `serp_intent` block: `compute_serp_intent` always returns a dict,

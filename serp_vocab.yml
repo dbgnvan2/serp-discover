@@ -112,6 +112,34 @@ service_like_tokens:
   - psychologist
   - mental health
 
+# Keyword text that states local intent outright, and the phrase used to
+# generate a "near me" variant of a city template. Both are EDITORIAL.
+#
+# Why the markers exist: the neighbourhood-pivot gate used to read the SERP's
+# classified intent alone, so "family of origin therapist near me" was refused
+# a pivot as commercial_investigation and the report explained that proximity
+# matters "only when the searcher wants a service in a place" — about a query
+# that says near me. The classified intent describes what Google served; these
+# phrases are what the searcher asked for. A marker therefore PERMITS a pivot
+# and never refuses one.
+#
+# Substring match on the lower-cased keyword, so keep each entry a phrase that
+# cannot appear inside an unrelated word. A bare "local" is left out for that
+# reason, not because it is wrong — add it if this client's keywords warrant it.
+#
+# near_me_phrase must be one of markers; a test fails the build otherwise.
+local_intent:
+  near_me_phrase: "near me"
+  markers:
+    - near me
+    - nearby
+    - near my
+    - close to me
+    - closest
+    - in my area
+    - around me
+    - walking distance
+
 # E-E-A-T author-signal vocabulary (Spec: seo_geo_deferred_spec_v1.md#G.3).
 # Therapy is YMYL content: visible author credentials on ranking pages are
 # a signal both Google and AI answer engines weight.

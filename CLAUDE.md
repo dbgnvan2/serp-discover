@@ -164,6 +164,15 @@ Editorial content currently lives in:
   all — it names no Moz plan figure, and it names `run_feasibility.py`,
   because `run_pipeline.py` does not run feasibility and credentials alone
   therefore do not fill the section in (added 2026-11-18 from a live run)
+- `serp_vocab.yml` `local_intent` — `markers`, the phrases that state local
+  intent in a keyword's own words, and `near_me_phrase`, the same word used to
+  generate a "near me" question variant. The markers permit a neighbourhood
+  pivot whatever the SERP was classified as, and never refuse one: `family of
+  origin therapist near me` was refused a pivot as `commercial_investigation`
+  while the report explained that proximity applies "only when the searcher
+  wants a service in a place". `near_me_phrase` must be one of `markers` and a
+  test enforces it; it was a Python literal in `profile_questions` while the
+  gate knew nothing about it (added 2026-11-21)
 - `serp_vocab.yml` `fetch_status` — the words a row's `Fetch_Status` can
   carry (`enriched`, `blocked` with `{status}`, `fetch_retryable`,
   `unreachable`, `not_attempted`, `not_destination_page`) plus

@@ -565,6 +565,20 @@ A refusal names the intent that decided it: the status read
 Consumers test the prefix through `feasibility.is_no_pivot`, never by equality
 against one phrasing.
 
+**The keyword's own words are checked first (2026-11-21).** A keyword carrying
+one of the editorial local-intent markers in `serp_vocab.yml`
+`local_intent.markers` ("near me", "nearby", "in my area"...) is pivotable
+whatever its SERP was classified as, and `gate_source` records which marker
+decided. The classified intent describes the page Google served; the marker is
+what the searcher asked for, and they are different facts. Found by running
+feasibility: `family of origin therapist near me` was refused a pivot as
+`commercial_investigation`, and the report explained to the owner that
+proximity substitutes for authority "only when the searcher wants a service in
+a place" — about a query that says near me. A marker only ever **permits** a
+pivot, so a keyword carrying none is gated exactly as before.
+`local_intent.near_me_phrase` is the same word's one home for question
+generation (`profile_questions`), which held its own copy of it.
+
 `feasibility.py` scores each keyword by the Domain Authority gap (avg competitor DA − client DA) into High / Moderate / Low Feasibility (thresholds in `docs/feasibility.md`). For **Low Feasibility** keywords `generate_hyper_local_pivot` may suggest a neighbourhood variant — but only when the keyword is **service-intent**. Whether a keyword is service-like is decided by the shared `query_variants.is_service_like` predicate, which matches the editorial `service_like_tokens` list in `serp_vocab.yml` against the de-localised keyword. Informational keywords (e.g. "how does birth order affect personality") get **no** pivot and **no** neighbourhood variants: a geographic variant is meaningless for them, and their play is content extractability, not proximity (the report flags them for the extraction play instead).
 
 D-M-19 / D4.10 changed which signal decides that. `is_service_like` is a token guess from the keyword *string*; by the time the pivot runs the SERP itself has been classified, so `generate_hyper_local_pivot` takes `serp_intent` and gates on the measured verdict (`feasibility.PIVOTABLE_INTENTS` — `local` or `transactional`, or a mixed SERP with one of them among its components). The token guess is the fallback for a keyword with no verdict, and the returned `gate_source` says which basis decided. Both branches of `run_feasibility` use the same gate; the unmeasured branch used to build neighbourhood variants from the guess alone.

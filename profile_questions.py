@@ -42,7 +42,33 @@ _CLIENT_PROFILES_PATH = os.path.join(
 
 # The optional {service} placeholder is filled from the profile's
 # service_description (Y.4 also supports it in situational templates).
-_NEAR_ME = "near me"
+
+
+#: Fallback only; the editorial home is serp_vocab.yml local_intent.
+_NEAR_ME_DEFAULT = "near me"
+
+
+def _near_me_phrase() -> str:
+    """The "near me" phrase, read from its one editorial home.
+
+    ``serp_vocab.yml local_intent.near_me_phrase`` is the single home for this
+    word (2026-11-21). It was a literal here while the pivot gate, which
+    decides whether a near-me keyword gets a neighbourhood pivot at all, knew
+    nothing about it — one fact implemented in one module and contradicted in
+    another. A broken or missing vocabulary file degrades to the default
+    rather than stopping question generation.
+    """
+    try:
+        import pattern_matching
+        phrase = ((pattern_matching.SERP_VOCAB.get("local_intent") or {})
+                  .get("near_me_phrase"))
+        if isinstance(phrase, str) and phrase.strip():
+            return phrase.strip()
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Could not read local_intent.near_me_phrase (%s) — "
+                       "using %r.", exc, _NEAR_ME_DEFAULT)
+    return _NEAR_ME_DEFAULT
+
 
 
 def load_client_profiles(path: str = _CLIENT_PROFILES_PATH) -> dict:
@@ -144,7 +170,7 @@ def _expand_templates(templates, cities, service, is_local):
                 break
         if is_local and has_city:
             # "near me" variant.
-            near = _fill(template, _NEAR_ME, service)
+            near = _fill(template, _near_me_phrase(), service)
             if near:
                 out.append(near)
             # De-localised copy: strip the city from the first city fill.

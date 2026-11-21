@@ -174,6 +174,7 @@ quietly treated as a bad keyword, and not treated as a good one either:
   asks again sooner rather than reporting "Not measured" for a month after
   the figure became available
 - For low-feasibility **service** keywords, suggests neighbourhood pivots (e.g., "Couples Counselling" → "Couples Counselling Lonsdale")
+- A keyword that says where it wants the service — "near me", "nearby", "in my area" — always gets the neighbourhood pivot, whatever the result page was classified as. Those words are what the searcher asked for; the classification describes what Google chose to serve. The phrases are editorial and live in `serp_vocab.yml` under `local_intent.markers`, so you can add the ones your clients type. Before 2026-11-21 the tool read the classification alone, so "family of origin therapist near me" was told a neighbourhood pivot "does not apply".
 - Informational keywords (e.g. "how does birth order affect personality") get **no** neighbourhood pivot — a geographic variant is meaningless for a question nobody searches with a neighbourhood. They are listed separately for the content extraction play instead.
 - If a pivot's validation SERP fetch fails, the tool says **"not measured"** rather than falsely reporting the client as absent from the local pack.
 - Whether a keyword counts as a service keyword is decided by the **measured

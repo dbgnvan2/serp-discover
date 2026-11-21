@@ -195,6 +195,8 @@ STOP_WORDS = set(SHARED_CONFIG.get("stop_words") or SERP_VOCAB["stop_words"])
 pattern_matching.STOP_WORDS = STOP_WORDS  # sync config-driven stop words
 PAA_CATEGORY_TRIGGERS = SERP_VOCAB["paa_category_triggers"]
 SERVICE_LIKE_TOKENS = tuple(SERP_VOCAB["service_like_tokens"])
+FEASIBILITY_LOCAL_INTENT_MARKERS = feasibility_module.resolve_local_intent_markers(
+    SERP_VOCAB)
 AI_ALTERNATIVE_TEMPLATES = SERP_VOCAB["ai_alternative_templates"]
 SITUATIONAL_TEMPLATES = query_variants.flatten_situational_templates(SERP_VOCAB["situational_templates"])  # persona-keyed map (Y.4); no profile in audit -> all blocks
 
@@ -1712,6 +1714,7 @@ def _run(run_id):
         location=FEASIBILITY_LOCATION,
         neighborhoods=FEASIBILITY_NEIGHBORHOODS,
         pivotable_intents=FEASIBILITY_PIVOTABLE_INTENTS,
+        local_intent_markers=FEASIBILITY_LOCAL_INTENT_MARKERS,
         pivot_fetch=FEASIBILITY_PIVOT_FETCH,
         storage=storage if ENRICHMENT_ENABLED else None,
         run_id=run_id,

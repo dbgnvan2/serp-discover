@@ -862,19 +862,74 @@ def resolve_pivotable_intents(cfg: dict | None) -> tuple[str, ...]:
     return tuple(str(v).strip().lower() for v in raw if str(v).strip())
 
 
+#: Fallback only. The list is EDITORIAL and lives in ``serp_vocab.yml``
+#: ``local_intent.markers``; this is the documented default used when a caller
+#: supplies none (2026-11-21, found by running feasibility).
+DEFAULT_LOCAL_INTENT_MARKERS = (
+    "near me", "nearby", "near my", "close to me", "closest",
+    "in my area", "around me", "walking distance",
+)
+
+
+def resolve_local_intent_markers(vocab: dict | None) -> tuple[str, ...]:
+    """Resolve ``serp_vocab.yml local_intent.markers``; default + warning."""
+    raw = ((vocab or {}).get("local_intent") or {}).get("markers")
+    if raw is None:
+        return DEFAULT_LOCAL_INTENT_MARKERS
+    if not isinstance(raw, (list, tuple)) or not raw:
+        logging.warning(
+            "serp_vocab.yml local_intent.markers is not a non-empty list — "
+            "using %s.", list(DEFAULT_LOCAL_INTENT_MARKERS))
+        return DEFAULT_LOCAL_INTENT_MARKERS
+    return tuple(str(v).strip().lower() for v in raw if str(v).strip())
+
+
+def keyword_local_marker(keyword: str,
+                         markers: tuple[str, ...] | None = None) -> str:
+    """The local-intent phrase the keyword itself carries, or ``""``.
+
+    Substring match on the lower-cased keyword. Returns the marker rather than
+    a bool so the gate can record which phrase decided.
+    """
+    text = (keyword or "").strip().lower()
+    if not text:
+        return ""
+    for marker in (markers or DEFAULT_LOCAL_INTENT_MARKERS):
+        if marker and marker in text:
+            return marker
+    return ""
+
+
 def _pivot_gate(serp_intent: dict | None,
                 is_service_like: bool,
-                pivotable_intents: tuple[str, ...] | None = None) -> tuple[bool, str]:
+                pivotable_intents: tuple[str, ...] | None = None,
+                *,
+                keyword: str = "",
+                local_intent_markers: tuple[str, ...] | None = None,
+                ) -> tuple[bool, str]:
     """Is a neighbourhood pivot meaningful for this keyword, and on what basis?
 
-    Spec: review_2026-11-04 D4.10 (D-M-19)
+    Spec: review_2026-11-04 D4.10 (D-M-19); keyword markers 2026-11-21.
 
     The gate was ``is_service_like`` alone — a token-list guess made from the
     keyword STRING by ``query_variants.is_service_like``. By the time this
     runs, the SERP itself has been classified, so the measured verdict decides
     and the guess is only the fallback for a keyword with no verdict. Returns
     (pivotable, which basis decided), so the caller can record it.
+
+    A keyword that states local intent in its own words ("near me") is
+    checked FIRST and permits the pivot whatever the SERP was classified as.
+    The classified intent describes the page Google served; the marker is what
+    the searcher asked for, and the two are different facts. Before this,
+    "family of origin therapist near me" was refused a pivot as
+    ``commercial_investigation`` and the report explained to the owner that
+    proximity matters "only when the searcher wants a service in a place" —
+    about a query that says near me. A marker only ever PERMITS a pivot, so a
+    keyword with no marker is gated exactly as it was.
     """
+    marker = keyword_local_marker(keyword, local_intent_markers)
+    if marker:
+        return True, f"keyword local marker ({marker})"
     pivotable = pivotable_intents or DEFAULT_PIVOTABLE_INTENTS
     si = serp_intent if isinstance(serp_intent, dict) else {}
     primary = si.get("primary_intent")
@@ -956,6 +1011,7 @@ def generate_hyper_local_pivot(
     serp_intent: dict | None = None,
     entity_distribution: dict | None = None,
     pivotable_intents: tuple[str, ...] | None = None,
+    local_intent_markers: tuple[str, ...] | None = None,
 ) -> dict:
     """Suggest a hyper-local neighbourhood variant for a Low Feasibility keyword.
 
@@ -1002,6 +1058,13 @@ def generate_hyper_local_pivot(
         overrule it (D-M-19 / D4.10). An intent in
         ``PIVOTABLE_INTENTS`` — or a mixed SERP with one of them among its
         components — is pivotable.
+    local_intent_markers:
+        The editorial phrases that state local intent in the keyword's own
+        words (``serp_vocab.yml local_intent.markers``, resolved by
+        ``resolve_local_intent_markers``). One of them in ``primary_keyword``
+        permits the pivot whatever the SERP was classified as; a keyword
+        carrying none is gated exactly as before. Defaults to
+        ``DEFAULT_LOCAL_INTENT_MARKERS`` so existing callers keep working.
     entity_distribution:
         ``{entity_type: count}`` for the keyword's SERP, used to decide
         whether the explanation may say the page is directory-dominated. The
@@ -1061,8 +1124,9 @@ def generate_hyper_local_pivot(
     # SERVICE-intent keywords. Informational keywords ("how does birth order
     # affect personality") must NOT get a pivot or neighbourhood variants —
     # ranking is not the game for them (B.1.b). No variants are built here.
-    pivotable, gate_source = _pivot_gate(serp_intent, is_service_like,
-                                         pivotable_intents)
+    pivotable, gate_source = _pivot_gate(
+        serp_intent, is_service_like, pivotable_intents,
+        keyword=primary_keyword, local_intent_markers=local_intent_markers)
     if not pivotable:
         # The refusal names what decided it. It said "informational"
         # unconditionally, so a SERP measured `commercial_investigation` or

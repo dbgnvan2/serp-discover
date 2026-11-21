@@ -87,9 +87,11 @@ try:
     from query_variants import is_service_like as _is_service_like
     from pattern_matching import SERP_VOCAB as _SERP_VOCAB
     SERVICE_LIKE_TOKENS = _SERP_VOCAB.get("service_like_tokens", [])
+    _LOCAL_INTENT_VOCAB = _SERP_VOCAB
     SERVICE_GATE_AVAILABLE = True
 except Exception as _exc:  # pragma: no cover - defensive import guard
     SERVICE_LIKE_TOKENS = []
+    _LOCAL_INTENT_VOCAB = None
     SERVICE_GATE_AVAILABLE = False
     logger.warning("Service-intent gate unavailable (%s) — pivots ungated.", _exc)
 
@@ -330,6 +332,9 @@ def run_feasibility_analysis(
     neighborhoods = feasibility_cfg.get("neighborhoods", ["Lonsdale"])
     location = feasibility_cfg.get("non_profit_location", "North Vancouver")
     pivotable_intents = feasibility_module.resolve_pivotable_intents(config)
+    # The keyword's own words. Resolved once per run, beside the intents.
+    local_intent_markers = feasibility_module.resolve_local_intent_markers(
+        _LOCAL_INTENT_VOCAB)
     client_domain = (config.get("analysis_report", {}).get("client_domain") or "").lower()
     # D-M-19 / D4.10: the pivot gate reads the MEASURED SERP intent, and the
     # pivot explanation reads the SERP's own entity distribution. serp_audit
@@ -474,7 +479,8 @@ def run_feasibility_analysis(
         _pivot_profile = kw_profiles_for_pivot.get(kw) or {}
         kw_pivotable, kw_gate_source = feasibility_module._pivot_gate(
             _pivot_profile.get("serp_intent"), kw_service_like,
-            pivotable_intents)
+            pivotable_intents, keyword=kw,
+            local_intent_markers=local_intent_markers)
 
         # Availability is decided per keyword, not per run. `bool(da_metrics)`
         # made one measured keyword score every unmeasured one, and one
@@ -519,6 +525,7 @@ def run_feasibility_analysis(
                 serp_intent=_pivot_profile.get("serp_intent"),
                 entity_distribution=_pivot_profile.get("entity_distribution"),
                 pivotable_intents=pivotable_intents,
+                local_intent_markers=local_intent_markers,
             )
 
         row: dict = {

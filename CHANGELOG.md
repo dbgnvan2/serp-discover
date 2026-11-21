@@ -13,6 +13,19 @@ contract changes both.
 
 ### Fixed
 
+- A keyword that says where it wants the service was refused its
+  neighbourhood pivot. The gate read the SERP's classified intent alone, so
+  `family of origin therapist near me` was refused as
+  `commercial_investigation` and the report told the owner that proximity
+  substitutes for authority "only when the searcher wants a service in a
+  place" — about a query that says near me. The keyword text is now checked
+  first against the editorial `local_intent.markers` list in
+  `serp_vocab.yml`; a marker permits the pivot whatever the SERP classified
+  as and never refuses one, and `gate_source` names the marker that decided.
+  "near me" also had two homes — `profile_questions` held its own copy while
+  the gate knew nothing about it — and `local_intent.near_me_phrase` is now
+  the only one.
+
 - The AI-visibility engines could not see keys the machine already had.
   Each of the four read an environment variable while content-brief
   generation read the shared key registry (`~/.config/llm/keys.json`), so on
