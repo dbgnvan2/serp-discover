@@ -1786,3 +1786,51 @@ step 1.2 at exit 0 — no SerpAPI calls.
   separating the way `fetch_retryable` and `unreachable` were in chunk Y2,
   with the words in a vocabulary file rather than Python. Adjacent, found
   while checking demand, not fixed.
+
+## 2026-11-21 — the first run with real Domain Authority
+
+DataForSEO credentials were added and `run_feasibility.py` ran against the
+2026-11-19 JSON: 72 of 72 URLs answered, 69 carrying a rank, 3 with no rank
+record, and the client's own DA measured at 32. Ten keywords scored — 0 High,
+3 Moderate, 7 Low — and `recommended_play` re-routed for 3 of them now that
+the DA data exists. Nothing in the run failed.
+
+Two checks that came back clean, recorded so they are not re-investigated:
+
+* **DA 0 is real, not a null coerced to zero.** Eight of ten keywords report a
+  weakest competitor of 0, which has the shape of the H2 defect. It is not:
+  `da_cache` holds 2 genuinely NULL rows beside 15 zeros, so the two states are
+  still distinct, and today's zeros are small local sites
+  (`heirloomtherapy.com`, `norgate.sd44.ca`, `familydynamics.business`) for
+  which a DataForSEO rank of 0 is plausible.
+* **The client DA measurement beat the config value.** `feasibility.client_da`
+  says 35; DataForSEO measured 32; the run used 32 and said in the log that the
+  config value was not used because it may be on another provider's scale.
+
+### Backlog (continued)
+
+- The neighbourhood-pivot gate never reads the keyword's own text, so
+  `family of origin therapist near me` is refused a pivot on the grounds that
+  it is `commercial_investigation` — the report tells the owner that
+  "proximity substitutes for authority only when the searcher wants a service
+  in a place" about a query that says "near me". `pivot_gate_source` is
+  `serp_intent.primary_intent` alone and `feasibility.pivotable_intents` is
+  `[local, transactional]`, so the single strongest local-intent signal in
+  search is invisible to the gate. The repo already knows this —
+  `profile_questions._NEAR_ME` treats "near me" as a local marker when
+  generating AI-visibility questions — so one fact is implemented in one
+  module and contradicted in another, and it suppresses the lever the report
+  itself calls "the equalizer for non-profits". Found by running feasibility,
+  not fixed.
+- Report §5c's "Weakest (non-dir)" cell renders as `{min_competitor_da}
+  ({min_non_directory_da}?)`, which prints `0 (0?)` and `0 (61?)` — a bare
+  trailing question mark with nothing saying what is being asked. On
+  `how my childhood affects my relationships` that cell is `0 (0?)`, which is
+  the run's strongest piece of evidence in the client's favour: a DA-0
+  non-directory page holds a top-10 slot, so authority is not the barrier on
+  that keyword. The verdict is right (Moderate, rank play) and the evidence
+  for it is illegible. Adjacent, not fixed.
+- `feasibility.client_da: 35` is stale — measured 32 on 2026-11-21. Harmless
+  while a measurement exists, because the run prefers the measurement and
+  says so, but it is the value used when no provider answers, and a
+  three-point error there moves every gap. Adjacent, not fixed.
