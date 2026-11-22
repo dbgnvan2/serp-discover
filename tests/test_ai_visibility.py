@@ -64,8 +64,10 @@ class TestConfigDefaults(unittest.TestCase):
         self.assertIn("ai_visibility", cfg)
         av = cfg["ai_visibility"]
         # Gate Y-D9 (user-approved) engine defaults for this client:
-        # gemini + openai + perplexity ON; claude available-but-not-default.
-        self.assertEqual(av["engines"], ["gemini", "openai", "perplexity"])
+        # The owner's choice on 2026-11-22: gemini + claude + perplexity, and no
+        # OpenAI model. Gate Y-D9 had gemini + openai + perplexity.
+        self.assertEqual(av["engines"], ["gemini", "claude", "perplexity"])
+        self.assertNotIn("openai", av["engines"])
         self.assertEqual(av["max_questions"], 20)
         self.assertFalse(av["assume_yes"])
         # Model ids come from config, never hardcoded in call sites.

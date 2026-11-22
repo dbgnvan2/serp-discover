@@ -335,14 +335,18 @@ The system executes in 7 optional steps (accessed via GUI launcher):
 
 ```yaml
 report_llm:
-  provider: gemini-serp        # entry name in ~/.config/llm/keys.json
-  main_model: gemini-4-hydrogen
-  advisory_model: gemini-4-hydrogen
+  provider: anthropic-2        # entry name in ~/.config/llm/keys.json
+  main_model: claude-opus-5-5
+  advisory_model: claude-sonnet-5-5
 ```
+
+This is the setting since 2026-11-22: Opus writes the report, Sonnet the
+advisory briefing. `brand_mentions.llm_model` and `sentiment.llm_model` go to
+the same provider, so they are Claude IDs too.
 
 Any provider with the `anthropic` or `openai` dialect works. Google models are reached through Google's OpenAI-compatible endpoint, so a Google entry has `"dialect": "openai"`. The API key lives in the key file only, never in `config.yml`.
 
-**Why it matters.** The models must belong to the provider. To go back to Claude, change `provider` to an Anthropic entry and both models to Claude model IDs; nothing else changes. The launcher's two dropdowns list that provider's live models (filtered by `model_include` / `model_exclude` so image, speech and embedding models are left out), with the two configured models first.
+**Why it matters.** The models must belong to the provider. To switch to Google, change `provider` to a Google entry (such as `gemini-serp`) and both models to Gemini model IDs; nothing else changes. The launcher's two dropdowns list that provider's live models (filtered by `model_include` / `model_exclude` so image, speech and embedding models are left out), with the two configured models first.
 
 **Token limits.** `report_llm.main_max_tokens` and `advisory_max_tokens` cap the length of each answer. Some models, Hydrogen among them, reason before they answer, and that reasoning counts against the cap: on a 9-keyword run Hydrogen used about 19,000 tokens to produce a 10,000-token report. If you see "the answer was cut off at the N-token limit", raise the number. The run prints the token usage of every call so you can see how close it came.
 

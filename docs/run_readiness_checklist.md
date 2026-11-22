@@ -19,9 +19,9 @@ holes in it, not a wrong one.
 | ☑ | `SERPAPI_KEY` | present | nothing — SERP fetching works |
 | ☑ | `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | present since 2026-11-21; answered 72 of 72 URLs that day | nothing — Domain Authority, the feasibility score and the DA-gap ranking all work. The primary pay-per-use provider |
 | ☐ | `MOZ_TOKEN` | present, **rows spent** (2026-11-21: 750 allotted, 769 used) | the fallback DA provider and all keyword demand (monthly volume). Authenticates fine; returns HTTP 403 `insufficient-quota` until the period resets |
-| ☑ | `ANTHROPIC_API_KEY` | exported in the shell, and in the key registry | nothing — the Claude engine runs |
-| ☑ | `OPENAI_API_KEY` | not in `.env`; filled from the key registry | nothing — the ChatGPT engine runs |
-| ☑ | `GEMINI_API_KEY` | not in `.env`; filled from the key registry | nothing — the Gemini engine runs |
+| ☑ | `ANTHROPIC_API_KEY` | exported in the shell; the registry fallback is `anthropic-2` (the `anthropic` entry answered HTTP 401 on 2026-11-22) | nothing — the Claude engine and the report run. Replace the dead `anthropic` key in `~/.config/llm/keys.json`: other tools may still read it |
+| — | `OPENAI_API_KEY` | not used: ChatGPT is off (2026-11-22, the owner uses no OpenAI model) | nothing |
+| ☐ | `GEMINI_API_KEY` | not in `.env`; filled from the registry's `gemini-serp`, which is on Google's **free tier** | the Gemini engine. On 2026-11-22 `gemini-4-neon` answered HTTP 429 (free-tier per-day and per-minute limits) and still did after a minute's wait. Enable billing on the Google project behind that key, or name a paid key in `ai_visibility.key_registry_providers` |
 | ☐ | `PERPLEXITY_API_KEY` | **absent everywhere** | the Perplexity engine. The registry holds no Perplexity key, so this one needs `.env` |
 | ☐ | `GSC_CREDENTIALS_PATH` | absent | `run_gsc_analysis.py` entirely — real clicks, the CTR gap, the reformat shortlist |
 
@@ -46,16 +46,19 @@ registry pass a connection test as of 2026-11-19.
 |---|---|---|---|
 | ☐ | `gsc.enabled` | `false` | GSC is off by config as well as by credentials — both must change |
 | ☐ | `gsc.feed_strategic_flags` | `false` | GSC findings do not reach the strategic sections even once GSC runs |
-| ☐ | `feasibility.client_da` | `35` | measure it, do not inherit it. Every DA gap in the report is relative to this number |
+| ☑ | `feasibility.client_da` | `32`, `client_da_source: dataforseo 2026-11-21` | nothing while a DA provider answers — a measurement wins. When a run measures a different figure on the same provider it says the fallback is stale and prints the value to set |
 | ☐ | `thresholds_provenance` | partly blank | any family left blank prints as "editorial, uncalibrated" in report §A, which is honest but tells the reader the band was nobody's measurement |
 | ☐ | `enrichment.enable_domain_age` | `false` | optional signal, off by choice |
 
 ## C. Model IDs rot — verify before each run
 
-Checked 2026-11-19: `report_llm.main_model` (`gemini-4-hydrogen`) **is** live.
-`ai_visibility.claude_model` (`claude-sonnet-4-6`), `openai_model` (`gpt-4o`)
-and `gemini_model` (`gemini-2.5-flash`) are unverified here because those
-engines have no keys. A retired ID returns 404 at call time.
+Checked 2026-11-22 with one live call each, through the tool's own code:
+`report_llm.main_model` `claude-opus-5-5` and `advisory_model`
+`claude-sonnet-5-5` on `anthropic-2` answer; `ai_visibility.claude_model`
+`claude-sonnet-5-5` answers with web search and returned 10 sources;
+`ai_visibility.gemini_model` `gemini-4-neon` is in the live model list but
+answered HTTP 429 (free-tier quota, see section A). `openai_model` is not used.
+A retired ID returns 404 at call time.
 
 ```bash
 cd ~/ProjectsLocal/serp-discover && source venv/bin/activate && PYTHONPATH=~/ProjectsLocal/global-api-config python3 -c "import llm_providers as lp; print('\n'.join(lp.list_models(lp.get_provider('gemini-serp'))))"

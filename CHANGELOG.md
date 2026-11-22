@@ -95,8 +95,25 @@ contract changes both.
   `serp_vocab.yml ads_shortlist`. `--locale` is gone: the locale is
   `moz.keyword_metrics.locale`, as it is for a run.
 
+- Models, the owner's choice: the report is written by `claude-opus-5-5` and
+  the advisory briefing by `claude-sonnet-5-5`, on the registry's
+  `anthropic-2` entry (brand extraction and sentiment, both off, use Sonnet
+  because they go to the same provider). The AI-visibility engines are
+  Gemini (`gemini-4-neon`), Claude (`claude-sonnet-5-5`, now on) and
+  Perplexity; ChatGPT is off and its registry key mapping is blank, because
+  the owner uses no OpenAI model. The `ANTHROPIC_API_KEY` registry fallback
+  moves from `anthropic`, which answered HTTP 401, to `anthropic-2`, so a GUI
+  opened from the Dock (no shell key) reaches Claude. Each model was checked
+  with one live call: both Claude report models and the Claude engine (10
+  web sources) answer.
+
 ### Known
 
+- The Gemini engine cannot answer today: `gemini-serp` is a free-tier key
+  and `gemini-4-neon` returned HTTP 429 on its per-day and per-minute limits,
+  still after a minute's wait. Billing on that Google project, or a paid key
+  in `ai_visibility.key_registry_providers`, is the fix; the engine reports
+  itself not measured meanwhile.
 - `keyword_enrich.py` has no cap on SerpAPI autocomplete calls and does not
   report how many it made; the Moz cap does not bound it for intent rows
   already in the cache. It also reads the Moz quota when `moz.enabled` is
