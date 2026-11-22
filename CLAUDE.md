@@ -353,6 +353,16 @@ Editorial content currently lives in:
   Editorial: Moz has no `local` label, and `null` means "not comparable"
   rather than "disagrees". Cross-check only — `intent_mapping.yml` stays the
   verdict (added moz_api_upgrade_spec_v1.md T.3)
+- `config.yml` `feasibility.client_da` + `client_da_source` — the client's own
+  Domain Authority as a FALLBACK (a live measurement always wins), and who
+  measured it and when. Editorial: the figure is only meaningful on one
+  provider's scale, and which provider measured it is what decides whether a
+  different measurement means the value is stale or simply on another scale.
+  It was `35` with no provenance while DataForSEO measured 32, so a run with
+  no provider reachable scored every keyword three points wrong and nothing
+  asked for it to be fixed. Both producers resolve the pair through
+  `feasibility.resolve_client_da_config`, and `shared_config`'s `client.da` /
+  `client.da_source` win over it (added 2026-11-21)
 - `config.yml` `serpapi.maps_zoom` — the zoom sent with a Maps query pinned by
   NAME. SerpAPI requires `z` (or `m`) with `location` and answers 400 without
   it, so every pivot local-pack check had always failed; the audit passed

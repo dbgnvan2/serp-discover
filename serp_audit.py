@@ -172,7 +172,7 @@ MAX_URLS_TO_ENRICH = CONFIG.get(
 # --- FEASIBILITY / MOZ ---
 _feas_cfg = CONFIG.get("feasibility", {})
 FEASIBILITY_ENABLED      = _feas_cfg.get("enabled", False)
-FEASIBILITY_CLIENT_DA    = int(SHARED_CONFIG.get("client", {}).get("da", _feas_cfg.get("client_da", 0)))
+FEASIBILITY_CLIENT_DA, CLIENT_DA_SOURCE_CFG = feasibility_module.resolve_client_da_config(_feas_cfg, SHARED_CONFIG.get("client"))
 FEASIBILITY_LOCATION     = SHARED_CONFIG.get("client", {}).get("location", _feas_cfg.get("non_profit_location", ""))
 FEASIBILITY_PIVOT_FETCH  = _feas_cfg.get("pivot_serp_fetch", True)
 FEASIBILITY_NEIGHBORHOODS = _feas_cfg.get("neighborhoods", [])
@@ -1595,7 +1595,7 @@ def _run(run_id):
                             feasibility_module.client_da_from_batch(
                                 moz_results, CLIENT_DOMAIN, "moz",
                                 FEASIBILITY_CLIENT_DA, None,
-                                logging.info, logging.warning)
+                                logging.info, logging.warning, CLIENT_DA_SOURCE_CFG)
 
                         # Entity type per ranking URL for the non-directory
                         # minimum (D6.1). The enrichment loop above classified
@@ -1770,7 +1770,7 @@ def _run(run_id):
                     feasibility_module.client_da_from_batch(
                         pivot_moz, CLIENT_DOMAIN, "moz",
                         FEASIBILITY_CLIENT_DA, None,
-                        logging.info, logging.warning)
+                        logging.info, logging.warning, CLIENT_DA_SOURCE_CFG)
                 # The same window as the primary pass (D-C-19).
                 pivot_das = feasibility_module.competitor_da_window(
                     pivot_urls,

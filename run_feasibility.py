@@ -336,7 +336,10 @@ def run_feasibility_analysis(
     generate_insight_report.py Section 5b.
     """
     feasibility_cfg = config.get("feasibility", {})
-    config_client_da = feasibility_cfg.get("client_da", 35)
+    # The fallback and the provenance that makes it readable, resolved where
+    # the audit resolves them so one precedence serves both (2026-11-21).
+    config_client_da, config_client_da_source = (
+        feasibility_module.resolve_client_da_config(feasibility_cfg))
     neighborhoods = feasibility_cfg.get("neighborhoods", ["Lonsdale"])
     location = feasibility_cfg.get("non_profit_location", "North Vancouver")
     pivotable_intents = feasibility_module.resolve_pivotable_intents(config)
@@ -453,7 +456,7 @@ def run_feasibility_analysis(
         client_domain,
         lambda d: (domain_to_da.get(d) or {}),
         da_source, config_client_da, client_da_override, logger.info,
-        logger.warning)
+        logger.warning, config_client_da_source)
 
     keywords = sorted(urls_by_kw.keys())
     _directory_types = feasibility_module.resolve_directory_entity_types(config)
@@ -710,8 +713,11 @@ def generate_feasibility_report(
         except Exception:
             keyword_profiles = {}
     client_name = config.get("analysis_report", {}).get("client_name", "Client")
+    # The row's measured figure, else the configured fallback — resolved by
+    # the one function that owns that precedence, not a second literal 35.
     client_da = (feasibility_rows[0].get("client_da") if feasibility_rows else
-                 config.get("feasibility", {}).get("client_da", 35))
+                 feasibility_module.resolve_client_da_config(
+                     config.get("feasibility") or {})[0])
 
     lines.append("# Feasibility & Pivot Analysis")
     lines.append(f"**Client:** {client_name} | **Client DA:** {client_da} | **Generated:** {now}")

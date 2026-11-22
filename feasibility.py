@@ -526,9 +526,34 @@ def no_measurement_text(provider, da_window) -> str:
                    minimum=MIN_DA_FOR_VERDICT)
 
 
+def resolve_client_da_config(feas_cfg, shared_client=None) -> tuple:
+    """``(client_da, client_da_source)`` as configured — the fallback pair.
+
+    The number is only meaningful on one provider's scale, so it travels with
+    the provenance that says who measured it and when. Both producers resolve
+    it here for the reason they resolve the window here: the audit read the
+    shared config's ``client.da`` with ``feasibility.client_da`` behind it
+    while the standalone pass read only the latter, and a precedence written
+    twice is a precedence that drifts. The shared config wins where it carries
+    a value (2026-11-21).
+    """
+    feas = feas_cfg or {}
+    shared = shared_client or {}
+    raw_da = shared.get("da", feas.get("client_da"))
+    try:
+        da = int(raw_da) if raw_da is not None else None
+    except (TypeError, ValueError):
+        logging.warning(
+            "client_da %r is not a number — treating the fallback as absent.",
+            raw_da)
+        da = None
+    source = shared.get("da_source", feas.get("client_da_source", "")) or ""
+    return da, str(source)
+
+
 def resolve_client_da(client_domain, metrics_for_domain, provider,
                       config_value=None, override=None,
-                      log_info=None, log_warning=None):
+                      log_info=None, log_warning=None, config_source=""):
     """``(client_da, source)`` — where the client's own DA came from.
 
     Both sides of the gap must come off one scale. DataForSEO's backlink rank
@@ -551,6 +576,15 @@ def resolve_client_da(client_domain, metrics_for_domain, provider,
     *metrics_for_domain* maps a bare domain to that domain's metrics dict, so
     this function does no I/O; *provider* is its name, or "none".
 
+    *config_source* is ``config.yml feasibility.client_da_source`` — who
+    measured the fallback and when. Without it the fallback is a number from
+    nobody: 35 sat there while DataForSEO measured 32, and no reader could
+    tell whether the difference was staleness or two providers' scales. When
+    the provider measuring now is the one named there, a different figure
+    means the fallback is STALE and the run says so; when it is a different
+    provider, the two numbers are not comparable and the run says that
+    instead (2026-11-21).
+
     Spec: docs/review_2026-11-04/PLAN_D2_null_is_not_zero.md#D2a.12-D2a.15
     Tests: tests/test_d2_null_is_not_zero.py::TestClientProvenance
     """
@@ -567,9 +601,22 @@ def resolve_client_da(client_domain, metrics_for_domain, provider,
     if da is not None:
         fetched = str((measured or {}).get("fetched_at") or "")[:10]
         if config_value is not None and config_value != da:
-            info("Client DA: %s measured by %s%s — the config value %s is not "
-                 "used (it may be on another provider's scale)",
-                 da, provider, f" on {fetched}" if fetched else "", config_value)
+            same_provider = bool(provider) and provider.lower() in str(
+                config_source).lower()
+            when = f" on {fetched}" if fetched else ""
+            if same_provider:
+                info("Client DA: %s measured by %s%s — the config fallback "
+                     "says %s (%s), the same provider, so it is STALE: set "
+                     "feasibility.client_da to %s and client_da_source to "
+                     "'%s%s'.",
+                     da, provider, when, config_value, config_source, da,
+                     provider, f" {fetched}" if fetched else "")
+            else:
+                info("Client DA: %s measured by %s%s — the config value %s "
+                     "(%s) is not used; it is on another provider's scale and "
+                     "the two are not comparable.",
+                     da, provider, when, config_value,
+                     config_source or "source unrecorded")
         return da, f"{provider}@{fetched}" if fetched else provider
 
     if not provider or provider == "none":
@@ -579,10 +626,29 @@ def resolve_client_da(client_domain, metrics_for_domain, provider,
              config_value)
         return None, "not measured (no provider)"
 
-    warn("Client DA: %s returned no record for '%s'; falling back to the "
-         "config value %s, whose scale against %s is unverified. Rows carry "
-         "client_da_source so the gap is not read as like-for-like.",
-         provider, client_domain, config_value, provider)
+    # Two different fallbacks: one the SAME provider measured on an older
+    # date, which is on the right scale and may simply be out of date, and one
+    # from another provider or from nobody, which cannot be subtracted from
+    # this provider's competitor figures at all. Saying "scale unverified" for
+    # both told the reader the wrong thing in one of the two cases.
+    if config_source and provider and provider.lower() in config_source.lower():
+        warn("Client DA: %s returned no record for '%s'; falling back to the "
+             "config value %s, which %s measured — the same provider, so the "
+             "scale holds, but the figure is as old as '%s'.",
+             provider, client_domain, config_value, provider, config_source)
+    else:
+        warn("Client DA: %s returned no record for '%s'; falling back to the "
+             "config value %s (%s), whose scale against %s is unverified. "
+             "Rows carry client_da_source so the gap is not read as "
+             "like-for-like.",
+             provider, client_domain, config_value,
+             config_source or "source unrecorded", provider)
+    # The fallback names its own provenance, so a row scored against it says
+    # who measured the client and when rather than only that it came from a
+    # file (2026-11-21).
+    if config_source:
+        return config_value, (f"config fallback ({config_source}, "
+                              f"unverified against {provider})")
     return config_value, f"config fallback (unmeasured, {provider})"
 
 
@@ -645,13 +711,14 @@ def with_client_url(urls, client_url):
 
 def client_da_from_batch(metrics_by_url, client_domain, provider,
                          config_value=None, override=None,
-                         log_info=None, log_warning=None):
+                         log_info=None, log_warning=None, config_source=""):
     """:func:`resolve_client_da` against a batch of metrics keyed by URL."""
     return resolve_client_da(
         client_domain,
         lambda d: next((m for u, m in (metrics_by_url or {}).items()
                         if domain_of(u) == d), {}),
-        provider, config_value, override, log_info, log_warning)
+        provider, config_value, override, log_info, log_warning,
+        config_source)
 
 
 def index_feasibility_by_keyword(feasibility_rows) -> dict:

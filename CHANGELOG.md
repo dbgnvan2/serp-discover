@@ -55,6 +55,20 @@ contract changes both.
   the five states are editorial in `feasibility_messages.yml minima_cell`
   rather than f-strings in Python.
 
+- The client-DA fallback says who measured it and when. `feasibility.client_da`
+  was `35` from nobody and no date while DataForSEO measured 32, so a run with
+  no provider reachable scored every keyword against a figure three points
+  wrong and nothing said so. It is now `32` beside
+  `client_da_source: dataforseo 2026-11-21`; a run that measures a different
+  figure with that same provider reports the fallback as STALE and prints the
+  value to set, and a run on another provider says the scales are not
+  comparable. When the fallback is used, the row's `client_da_source` names
+  the provenance, and a same-provider figure is reported as old rather than
+  unscaled. Both producers resolve the pair through
+  `feasibility.resolve_client_da_config` — the audit read the shared config
+  with `feasibility.client_da` behind it while the standalone pass read only
+  the latter, and `35` was a literal in two more places.
+
 ### Known
 
 - `serp_audit.py` sat one line over its 2200-line ceiling after the gate fix

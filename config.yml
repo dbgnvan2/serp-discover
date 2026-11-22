@@ -573,7 +573,18 @@ feasibility:
   # the documented default (directory) plus a warning.
   directory_entity_types:
   - directory
-  client_da: 35
+  # The client's own Domain Authority, used ONLY when no provider answers for
+  # the client's domain: a live measurement always wins and the row says which
+  # it used. It was 35, from nobody and no date, while DataForSEO measured 32 —
+  # a three-point error in every gap on a run where the provider is down.
+  # `client_da_source` records who measured it and when, because the number is
+  # only meaningful on one provider's scale: DataForSEO's backlink rank and
+  # Moz's Domain Authority are both 0-100 and are not the same number. When a
+  # run measures a DIFFERENT figure with the provider named here, it says so
+  # and asks for this value to be updated; when the provider differs it says
+  # the two scales cannot be compared.
+  client_da: 32
+  client_da_source: dataforseo 2026-11-21
   non_profit_location: North Vancouver
   pivot_serp_fetch: true
   neighborhoods:

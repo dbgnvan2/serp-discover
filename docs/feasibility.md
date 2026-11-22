@@ -176,11 +176,17 @@ So the client's own domain is fetched **in the same batch as the competitors**
 1. `--client-da` on the command line — an explicit operator override.
 2. The active provider's live figure for the client's domain, which is what
    the gap uses. The run logs the value, the provider and the date.
-3. `config.yml → feasibility.client_da`, a fallback whose scale against the
-   active provider is **unverified**. Rows carry
-   `client_da_source: "config fallback (unmeasured, <provider>)"` and both
-   reports print the cell as `35 (config, not measured by moz)` so the gap is
-   not read as like-for-like.
+3. `config.yml → feasibility.client_da`, a fallback that travels with
+   `feasibility.client_da_source` — who measured it and when. Rows carry
+   `client_da_source: "config fallback (dataforseo 2026-11-21, unverified
+   against moz)"` and both reports print the cell as
+   `32 (config, not measured by moz)` so the gap is not read as like-for-like.
+   Where the fallback was measured by the provider now running, its scale
+   holds and only its date is old, and the run says that rather than
+   "unverified"; where a provider measures a **different** figure from the one
+   named in the provenance, the run reports the fallback as STALE and prints
+   the value to set. The fallback was `35` from nobody and no date while
+   DataForSEO measured 32 (2026-11-21).
 
 With no provider reachable the client DA is `None` and every keyword reads
 "Not measured" — live competitors are never scored against a constant. Every

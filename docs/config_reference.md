@@ -195,11 +195,24 @@ order:
 2. The active provider's live figure. The run logs the value, the provider and
    the date, and says it is not using the config value.
 3. The config value, labelled on every row as
-   `client_da_source: "config fallback (unmeasured, <provider>)"` and rendered
-   as `35 (config, not measured by moz)`.
+   `client_da_source: "config fallback (<provenance>, unverified against
+   <provider>)"` and rendered as `32 (config, not measured by moz)`.
 
 With no provider reachable the client DA is `None`, every keyword reads "Not
 measured", and nothing is scored against the constant.
+
+`feasibility.client_da_source` — **editorial**: who measured the fallback and
+when, e.g. `dataforseo 2026-11-21`. The fallback was `35` with no provenance
+at all while DataForSEO measured 32, so a reader could not tell whether the
+difference was staleness or two vendors' scales — and nothing asked for it to
+be corrected. With the provenance recorded, a run that measures a different
+figure **with the provider named there** reports the fallback as STALE and
+prints the value to set; a run whose provider differs says the two scales are
+not comparable. When the fallback is used, a same-provider figure is reported
+as old but correctly scaled, and any other as unverified. `shared_config`'s
+`client.da_source` wins over this key, as `client.da` does over `client_da`;
+both are resolved by `feasibility.resolve_client_da_config`, so one precedence
+serves the audit and the standalone pass (2026-11-21).
 
 ### `feasibility_messages.yml` — the feasibility vocabulary (editorial)
 

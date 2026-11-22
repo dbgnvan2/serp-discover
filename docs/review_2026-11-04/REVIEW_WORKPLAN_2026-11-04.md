@@ -1922,3 +1922,32 @@ same batch (rule 11).
   `tests/test_weakest_cell_is_legible.py`, two mutations gated; the five
   assertions in `test_d6_hygiene_provenance_docs.py` that pinned the old
   wording were updated. Full suite 2585 passed, 68 skipped, exit 0.
+
+## 2026-11-21 (last) — the client-DA fallback stops being a number from nobody
+
+- `feasibility.client_da` was `35` with no provenance while DataForSEO
+  measured 32. A live measurement always wins, so it was harmless on a run
+  where a provider answered and silently three points wrong in every gap on a
+  run where none did. It is now `32` beside
+  `client_da_source: dataforseo 2026-11-21`.
+- The provenance is what makes a difference readable. A run that measures a
+  different figure WITH THE PROVIDER NAMED THERE reports the fallback as STALE
+  and prints the value to set; a run whose provider differs says the two
+  scales are not comparable. When the fallback is used, a same-provider figure
+  is reported as correctly scaled but old, and any other as unverified —
+  "scale unverified" had been said for both, which is wrong in one of the two
+  cases. The row's `client_da_source` now carries the provenance too.
+- The precedence was written twice: the audit read `shared_config client.da`
+  with `feasibility.client_da` behind it while the standalone pass read only
+  the latter, and `35` appeared as a literal default in two further places.
+  `feasibility.resolve_client_da_config` is now the one definition, which also
+  kept `serp_audit.py` at its 2200-line ceiling instead of over it.
+- Verified: the live run's "Client DA" line is now silent, which is the
+  designed signal that the configured fallback agrees with the measurement.
+  16 tests + 2 subtests in `tests/test_client_da_fallback_has_provenance.py`,
+  two mutations gated (same-provider detection, and blanking the provenance).
+  Full suite 2601 passed, 68 skipped, exit 0.
+- Adjacent, not fixed: the client-DA log sentences are Python literals in
+  `feasibility.resolve_client_da` while `feasibility_messages.yml` owns the
+  Client DA cell's wording — half the vocabulary for one fact in each place.
+  Left consistent rather than half-migrated.
