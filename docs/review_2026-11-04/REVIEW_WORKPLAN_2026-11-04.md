@@ -1951,3 +1951,23 @@ same batch (rule 11).
   `feasibility.resolve_client_da` while `feasibility_messages.yml` owns the
   Client DA cell's wording — half the vocabulary for one fact in each place.
   Left consistent rather than half-migrated.
+
+## 2026-11-21 (last) — the Moz allowance was read again
+
+- `moz.rows_per_month` held `3000` from a live `quota.lookup` on 2026-08-27.
+  The same call on 2026-11-21 reads `allotted 750, used 769, remaining 0`: the
+  allowance is a quarter of the recorded figure and the period's rows are
+  spent, 19 over, which is why the 2026-11-19 run carried no demand figures.
+- A budget computed against the stale copy believed it had four times the rows
+  the account holds, and the spec's ~500-rows-per-run estimate is most of a
+  750-row month rather than a sixth of one. The key is now `750` with its
+  date, and `config_reference.md`, `feasibility.md`, `USER_MANUAL.md`, the
+  spec's quota section and this file's guard-test docstring all say the figure
+  moves and is to be re-probed, not trusted.
+- `moz.keyword_metrics.max_keywords` and `moz.search_intent.max_keywords` go
+  from 50 to 25 while the tool is under test: at 4 rows per keyword a full
+  keyword-metrics pass was 200 rows against a 750-row month, and is now 100.
+  Raise them for a run whose figures are to be used.
+- Not fixed: nothing re-probes the allowance on its own, so the recorded copy
+  can go stale again between runs. Noted rather than built — the probe is one
+  call and the decision of when to spend it is the owner's.

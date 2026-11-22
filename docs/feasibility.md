@@ -155,8 +155,9 @@ while the play router kept the `A` row. Every consumer indexes the rows with
 2. **Moz** (`MOZ_TOKEN`) — Moz Data API `data.site.metrics.fetch.multiple` over
    `https://api.moz.com/jsonrpc`, up to `moz.site_metrics.batch_size` targets/call (default 50).
    The account is the Starter Medium API plan; the monthly row allowance is read at runtime via
-   `quota.lookup` and recorded as `moz.rows_per_month` in `config.yml` (3,000 rows/month as of
-   2026-08-27, 1 row per target). Alongside DA/PA this returns **Spam Score** and **link counts**
+   `quota.lookup` and recorded as `moz.rows_per_month` in `config.yml` (750 rows/month as of
+   2026-11-21, 1 row per target; it read 3,000 on 2026-08-27, so re-probe rather than
+   trusting the recorded copy). Alongside DA/PA this returns **Spam Score** and **link counts**
    (`moz.site_metrics.link_count_fields`), stored as additive fields — they do not affect
    `avg_serp_da` scoring. Both DA providers key their results by the caller's input URL
 

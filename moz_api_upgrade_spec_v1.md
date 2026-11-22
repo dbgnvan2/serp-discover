@@ -218,7 +218,7 @@ the closing status report.
   capped.
 - Documented in `docs/USER_MANUAL.md` as optional signals.
 
-## Quota budget (Starter Medium ≈ 3,000 rows/mo; verify at T.0)
+## Quota budget (verified at T.0: 3,000 rows/mo on 2026-08-27, **750** on 2026-11-21)
 
 Rule of thumb (Moz docs): **1 row ≈ 1 object in the response**; some list
 methods are "weighted" (consume >1 row/object — confirm per method). With the
@@ -233,7 +233,11 @@ methods are "weighted" (consume >1 row/object — confirm per method). With the
 | Anchor text (3 domains) | ~30 | ~30 |
 | Brand Authority (1 + 3 competitors) | 4 | 4 |
 
-≈ **~500 rows/run** at ~1 run/week — within 3,000/mo **iff cache TTLs hold**.
+≈ **~500 rows/run** at ~1 run/week — within the 3,000/mo measured on
+2026-08-27 **iff cache TTLs hold**, but the 2026-11-21 probe read 750, which
+the same estimate exhausts in one and a half runs. The budget below is the
+method shape, not a standing allowance: re-probe `quota.lookup` before
+planning a run.
 The run log must print rows consumed per method; when `rows_per_month` would be
 exceeded, skip and log which method was skipped — never silently over-spend.
 

@@ -2316,8 +2316,11 @@ before any keyword is fetched.
 - Results are cached for 30 days; try Step 7 (Feasibility) again tomorrow
 - If DA remains unavailable, use the Moz fallback. The account is the Starter Medium
   API plan, not the free tier; the real monthly row allowance is read at runtime via
-  `quota.lookup` and recorded as `moz.rows_per_month` in `config.yml` (3,000 rows as
-  of 2026-08-27, 1 row per URL looked up)
+  `quota.lookup` and recorded as `moz.rows_per_month` in `config.yml` (750 rows as
+  of 2026-11-21, 1 row per URL looked up; it read 3,000 on 2026-08-27, so the
+  allowance moves and the recorded figure can be stale — re-probe before
+  budgeting a run). A 403 `insufficient-quota` means the period's rows are
+  spent, not that the token is wrong
 - Mark the domain as "unknown feasibility" and manually estimate
 
 ### "Intent classification confidence is low"

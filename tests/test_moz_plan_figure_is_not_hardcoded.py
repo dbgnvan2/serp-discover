@@ -8,7 +8,8 @@ fetched no Domain Authority, so `generate_insight_report.py` rendered its
     - `MOZ_TOKEN` in `.env` (free tier, 50 rows/month)
 
 Two defects in one sentence. The figure is wrong — this account is on the
-Starter Medium plan, and `config.yml` records `moz.rows_per_month: 3000` — and
+Starter Medium plan, and `config.yml` records the allowance read from the
+account at runtime (`moz.rows_per_month`, 750 on 2026-11-21) — and
 it is hardcoded, which `CLAUDE.md` forbids for exactly this value because the
 real allowance is read from the account at runtime via `quota.lookup`. A
 report that prints a stale plan figure as an instruction sends the reader to

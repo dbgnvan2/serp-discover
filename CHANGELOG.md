@@ -69,6 +69,17 @@ contract changes both.
   with `feasibility.client_da` behind it while the standalone pass read only
   the latter, and `35` was a literal in two more places.
 
+- The Moz row allowance is the account's, read again. `moz.rows_per_month` held
+  `3000`, recorded from a live `quota.lookup` on 2026-08-27; the same call on
+  2026-11-21 reads `allotted 750, used 769, remaining 0` — the period's rows
+  are spent and 19 over, which is why the 2026-11-19 run carried no demand
+  figures. The key is now `750` with that date, and the five documents that
+  quoted 3,000 say the figure moves and is to be re-probed rather than
+  trusted. `moz.keyword_metrics.max_keywords` and
+  `moz.search_intent.max_keywords` drop from 50 to 25 while the tool is being
+  tested: at 4 rows per keyword a full keyword-metrics pass was 200 rows, two
+  thirds of a 750-row month, and is now 100.
+
 ### Known
 
 - `serp_audit.py` sat one line over its 2200-line ceiling after the gate fix
