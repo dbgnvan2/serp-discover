@@ -1899,3 +1899,26 @@ same batch (rule 11).
 - `serp_audit.py` was one line over its 2200-line ceiling after the first
   commit of the day, which was reviewed without the full suite on the user's
   instruction. The guard passes again; the module is at 2200.
+
+## 2026-11-21 (later still) — the §5c cell says what its figures mean
+
+- The "Weakest (non-dir)" cell was built from Python f-strings and rendered
+  `0 (0?)` and `0 (61?)`: a bare figure in brackets and a trailing question
+  mark with nothing naming what was being asked. On
+  `how my childhood affects my relationships` that cell carried the run's
+  strongest evidence in the client's favour — a DA-0 non-directory page holds
+  a top-10 slot, so authority is not the barrier on that keyword — and the
+  verdict beside it (Moderate, rank play) was right while the evidence for it
+  was illegible. The cell now names each figure and states how many
+  competitors had a type to judge by: `0 · non-dir 0 (9 of 10 typed)`.
+- The five states were five f-strings in `feasibility.minima_cell` while the
+  five SENTENCES for the same states were already editorial in
+  `feasibility_messages.yml`. The cell wording now lives beside them under
+  `minima_cell`, and both forms read the same keys, so the table and the prose
+  cannot report different states.
+- Verified on the live run: `non-dir not measured`, `all directories` and
+  `all typed are directories (N of M typed)` are three distinct cells where
+  the old rendering gave `(?)` and `(none)`. 15 tests + 18 subtests in
+  `tests/test_weakest_cell_is_legible.py`, two mutations gated; the five
+  assertions in `test_d6_hygiene_provenance_docs.py` that pinned the old
+  wording were updated. Full suite 2585 passed, 68 skipped, exit 0.

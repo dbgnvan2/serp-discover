@@ -140,6 +140,30 @@ minima:
     competitors. None of them carries an entity type this run, so the
     directory split is not measured.
 
+# The same five states as a TABLE CELL, under the "Weakest (non-dir)" column.
+#
+# Why it is here: the cell was built from Python f-strings and rendered
+# "0 (0?)" and "0 (61?)" — a bare figure in brackets and a trailing question
+# mark with nothing saying what was being asked. On one keyword of the
+# 2026-11-19 run that cell carried the run's strongest evidence in the
+# client's favour (a DA-0 non-directory page holding a top-10 slot, so
+# authority is not the barrier there) and no reader could have told.
+#
+# Keep these SHORT — they sit in a Markdown table — and never use a "|".
+# Placeholders are the same as `minima` above, plus {known} and {n} for the
+# "N of M typed" count. "typed" means the competitor's entity type was
+# resolved, which is what decides whether the non-directory figure can be
+# quoted over the whole window.
+minima_cell:
+  no_da: "—"
+  with_non_directory: "{min_da} · non-dir {min_non_directory_da}"
+  with_non_directory_partial: >-
+    {min_da} · non-dir {min_non_directory_da} ({known} of {n} typed)
+  all_directory: "{min_da} · all directories"
+  all_classified_directory: >-
+    {min_da} · all typed are directories ({known} of {n} typed)
+  entities_unknown: "{min_da} · non-dir not measured"
+
 # What the report says in place of the feasibility section when no DA was
 # measured at all. The reader of that section is being told to do something,
 # so it names the two providers and the step that fetches the data.

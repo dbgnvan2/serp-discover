@@ -228,7 +228,11 @@ columns:
       measured — it does not mean no directory ranks here. `entities_known` says
       how many of the scored pages were classified at all: where that is fewer
       than all of them, the non-directory figure stands over those pages only,
-      and in the report the cell carries a `?`.
+      and the report's cell says so — "0 · non-dir 61 (7 of 10 typed)" means the
+      weakest page of any kind scores 0, the weakest that is not a directory
+      scores 61, and 7 of the 10 scored pages had a type to judge by. A cell
+      reading "non-dir not measured" is the unmeasured split; "all directories"
+      is the measured fact that every scored competitor is one.
   - column: pivot_status / suggested_keyword / all_variants
     sheet: Keyword_Feasibility
     definition: >-

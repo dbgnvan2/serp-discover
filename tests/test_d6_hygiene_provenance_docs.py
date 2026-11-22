@@ -63,7 +63,8 @@ class TestD6TheMeanIsNotTheWholeAnswer(unittest.TestCase):
         self.assertIsNone(row["min_non_directory_da"])
         self.assertEqual(row["entities_known"], 0)
         self.assertIn("not measured", feasibility.minima_phrase(row))
-        self.assertEqual(feasibility.minima_cell(row), "12 (?)")
+        self.assertEqual(feasibility.minima_cell(row),
+                         "12 · non-dir not measured")
 
         # Partial classification: the weakest page is the unclassified one.
         # It is not evidence that a non-directory page that weak ranks here,
@@ -94,7 +95,8 @@ class TestD6TheMeanIsNotTheWholeAnswer(unittest.TestCase):
         self.assertIn("1 of 10", phrase)
         self.assertNotIn("Every one of the 10", phrase)
         self.assertIn("9", phrase)          # the unclassified remainder
-        self.assertEqual(feasibility.minima_cell(row), "12 (none?)")
+        self.assertEqual(feasibility.minima_cell(row),
+                         "12 · all typed are directories (1 of 10 typed)")
         # One classified, and it is not a directory: 90 is the STRONGEST page,
         # so the sentence may not offer it as what a small site must beat
         # without saying how little it rests on.
@@ -106,13 +108,14 @@ class TestD6TheMeanIsNotTheWholeAnswer(unittest.TestCase):
         self.assertEqual(row["min_non_directory_da"], 90)
         self.assertIn("1 of 10", phrase)
         self.assertIn("not classified", phrase)
-        self.assertEqual(feasibility.minima_cell(row), "12 (90?)")
+        self.assertEqual(feasibility.minima_cell(row),
+                         "12 · non-dir 90 (1 of 10 typed)")
         # A fully classified window carries no qualifier.
         window = feasibility.DAWindow(
             das=[40, 12], measured=2, missing=0, window=2,
             entities=["publisher", "directory"])
         full = feasibility.compute_feasibility(35, window)
-        self.assertEqual(feasibility.minima_cell(full), "12 (40)")
+        self.assertEqual(feasibility.minima_cell(full), "12 · non-dir 40")
         self.assertNotIn("not classified", feasibility.minima_phrase(full))
 
     def test_a_failing_classifier_is_counted_not_swallowed(self):
@@ -193,7 +196,7 @@ class TestD6TheMeanIsNotTheWholeAnswer(unittest.TestCase):
         self.assertEqual(row["entities_known"], 2)
         phrase = feasibility.minima_phrase(row)
         self.assertIn("no evidence either way", phrase)
-        self.assertEqual(feasibility.minima_cell(row), "70 (none)")
+        self.assertEqual(feasibility.minima_cell(row), "70 · all directories")
 
     def test_directory_types_are_editorial_config(self):
         self.assertEqual(

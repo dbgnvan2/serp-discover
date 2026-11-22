@@ -45,6 +45,16 @@ contract changes both.
   local intent to the local pivot play; it keeps `is_service_like`, so a
   marker on a question still routes to extraction.
 
+- The §5c "Weakest (non-dir)" cell says what its figures mean. It rendered
+  `0 (0?)` and `0 (61?)`: a bare figure in brackets and a trailing question
+  mark with nothing naming what was asked. On
+  `how my childhood affects my relationships` that cell carried the run's
+  strongest evidence in the client's favour — a DA-0 non-directory page
+  holding a top-10 slot, so authority is not the barrier there — and no
+  reader could have told. It now reads `0 · non-dir 0 (9 of 10 typed)`, and
+  the five states are editorial in `feasibility_messages.yml minima_cell`
+  rather than f-strings in Python.
+
 ### Known
 
 - `serp_audit.py` sat one line over its 2200-line ceiling after the gate fix

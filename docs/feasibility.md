@@ -194,6 +194,8 @@ missing or malformed file degrades to the bare status string; it never aborts a
 report. There is one label per status: the old second label, "No DA Data",
 is retired.
 
+**Reading the "Weakest (non-dir)" cell.** `0 · non-dir 61 (7 of 10 typed)` means: the weakest page holding a top-10 slot scores 0, the weakest that is not a directory scores 61, and 7 of the 10 scored competitors had an entity type to judge by — so the non-directory figure stands over those 7, not the window. `0 · all directories` means every scored competitor is one, which is evidence of nothing either way about a site your size. `0 · non-dir not measured` means no page carried a type this run, a different fact again. The words are editorial (`feasibility_messages.yml minima_cell`); the cell used to render `0 (0?)` and say none of this.
+
 **Pivot logic:** Low Feasibility keywords get a neighbourhood variant suggestion (e.g. "Couples Counselling" → "Couples Counselling Lonsdale"). If `feasibility.pivot_serp_fetch: true`, a secondary SerpAPI Maps call checks whether the client appears in the local 3-pack for the pivot keyword.
 
 **Pivots are gated on service intent.** A neighbourhood variant only makes sense for **service-intent** keywords, where physical proximity can substitute for domain authority. Informational keywords (e.g. "how does birth order affect personality") get **no** pivot and **no** neighbourhood variants — nobody searches an informational question with a neighbourhood, and ranking is not the game for them. Service intent is determined by the shared `query_variants.is_service_like` predicate reading the editorial `service_like_tokens` list in `serp_vocab.yml`.

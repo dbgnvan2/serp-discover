@@ -160,6 +160,11 @@ Editorial content currently lives in:
   "Not Measured") in different outputs. The minimum itself is a threshold, not
   wording, so it lives in config as `technical.min_da_for_verdict` and
   `feasibility.MIN_DA_FOR_VERDICT` reads it (added review chunk D2a). Also
+  `minima_cell`, the §5c "Weakest (non-dir)" table cell for each of the five
+  states — it was f-strings in Python and rendered `0 (0?)`, a bare figure in
+  brackets and a question mark naming nothing, which on one keyword hid the
+  run's strongest pro-client evidence; the five SENTENCES for the same states
+  were already here (added 2026-11-21). Also
   `no_data_section`, what report section 5c says when no DA was measured at
   all — it names no Moz plan figure, and it names `run_feasibility.py`,
   because `run_pipeline.py` does not run feasibility and credentials alone

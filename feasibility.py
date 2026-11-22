@@ -378,30 +378,44 @@ def coverage_phrase(da_count, da_missing, short=False) -> str:
 
 
 def minima_cell(feas_record: dict) -> str:
-    """The same two figures in a table cell: "12 (18)", or "—" / "12 (?)".
+    """The same five states as a table cell, from ``minima_cell`` wording.
 
-    ``?`` is the directory split being unmeasured, which is not the same as
-    there being no non-directory competitor. The sentence form is
-    :func:`minima_phrase`; both read the same keys so the table and the prose
-    cannot disagree.
+    The cell used to be built here as f-strings and read "0 (0?)" — a bare
+    figure in brackets and a trailing question mark with nothing saying what
+    was being asked. On one keyword of the 2026-11-19 run that cell held the
+    run's strongest evidence in the client's favour and no reader could have
+    told. The words are editorial and live in ``feasibility_messages.yml``
+    (2026-11-21); the sentence form is :func:`minima_phrase`, and both read
+    the same keys so the table and the prose cannot disagree.
     """
+    cells = load_messages().get("minima_cell") or {}
     min_da = feas_record.get("min_competitor_da")
     if min_da is None:
-        return "—"
+        return _render(cells.get("no_da"), "—")
     non_dir = feas_record.get("min_non_directory_da")
     n = _as_count(feas_record.get("da_count")) or 0
     known = _as_count(feas_record.get("entities_known")) or 0
-    # A trailing "?" on the second figure means only some of the scored
-    # competitors had a resolved entity type, so the figure stands over those
-    # and not over the window. Partial classification is the normal outcome —
-    # a domain-only classification returns "N/A" for anything that matches no
-    # pattern — so reporting it as complete would overstate the evidence.
-    partial = "?" if known and n and known < n else ""
+    # Only some of the scored competitors had a resolved entity type, so the
+    # non-directory figure stands over those and not over the window. Partial
+    # classification is the normal outcome — a domain-only classification
+    # returns "N/A" for anything matching no pattern — so the cell says how
+    # many were typed rather than implying the figure covers all ten.
+    partial = bool(known) and bool(n) and known < n
+    values = dict(min_da=min_da, min_non_directory_da=non_dir,
+                  known=known, n=n, unknown=max(n - known, 0))
     if non_dir is not None:
-        return f"{min_da} ({non_dir}{partial})"
-    if known:
-        return f"{min_da} (none{partial})"
-    return f"{min_da} (?)"
+        key = "with_non_directory_partial" if partial else "with_non_directory"
+        fallback = (f"{min_da} · non-dir {non_dir} ({known} of {n} typed)"
+                    if partial else f"{min_da} · non-dir {non_dir}")
+    elif known:
+        key = "all_classified_directory" if partial else "all_directory"
+        fallback = (f"{min_da} · all typed are directories "
+                    f"({known} of {n} typed)" if partial
+                    else f"{min_da} · all directories")
+    else:
+        key = "entities_unknown"
+        fallback = f"{min_da} · non-dir not measured"
+    return _render(cells.get(key), fallback, **values)
 
 
 def minima_phrase(feas_record: dict, directory_types=None) -> str:
