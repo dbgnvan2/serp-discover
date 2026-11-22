@@ -25,6 +25,31 @@ contract changes both.
   "near me" also had two homes — `profile_questions` held its own copy while
   the gate knew nothing about it — and `local_intent.near_me_phrase` is now
   the only one.
+- The pivot a "near me" keyword now gets is a phrase somebody would search.
+  The neighbourhood was appended to the whole keyword, so the first pivot
+  produced was `family of origin therapist near me West Vancouver`. It is now
+  built on the keyword with its trailing marker removed
+  (`pivot_base_keyword`), and the pivot reports both that base and the marker
+  it dropped.
+- Every pivot local-pack check had always failed. SerpAPI requires `z` (or
+  `m`) on a Maps query that pins its location by name and answers 400 without
+  it; the audit passed `z=14` while the standalone feasibility pass passed
+  nothing, so the pivot row read "local pack not measured (validation fetch
+  failed)". The zoom is now `config.yml serpapi.maps_zoom` and both callers
+  read it. The failure was invisible until the gate fix produced a pivot to
+  check.
+- The report contradicted itself on one row. The play table keyed local
+  routing on the classified intent alone, so `family of origin therapist near
+  me` was routed to the extraction play beside a recommendation to pivot it to
+  West Vancouver. `play_routing.yml` rule 3b routes a keyword that states
+  local intent to the local pivot play; it keeps `is_service_like`, so a
+  marker on a question still routes to extraction.
+
+### Known
+
+- `serp_audit.py` sat one line over its 2200-line ceiling after the gate fix
+  was pushed, because that commit was reviewed without the full suite. The
+  module is back at 2200 and the guard passes.
 
 - The AI-visibility engines could not see keys the machine already had.
   Each of the four read an environment variable while content-brief

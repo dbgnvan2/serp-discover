@@ -15,13 +15,17 @@ import ast
 import os
 import sys
 import unittest
+import unittest.mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import yaml
 
+import brief_data_extraction
 import feasibility
+import play_routing
 import profile_questions
+import run_feasibility
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VOCAB_PATH = os.path.join(REPO, "serp_vocab.yml")
@@ -35,7 +39,7 @@ def _DEFAULT_LINE(src: str) -> int:
     return -1
 
 MARKERS = ("near me", "nearby", "in my area")
-LOW = {"status": "🔴 Low Feasibility", "avg_competitor_da": 79}
+LOW = {"status": "Low Feasibility", "avg_competitor_da": 79}
 
 
 def _pivot(keyword, serp_intent, **kw):
@@ -194,6 +198,76 @@ class TestTheMarkersAreEditorialAndInConfig(unittest.TestCase):
                          f"second home for the phrase at line(s) {used_as_data}")
 
 
+class TestTheNeighbourhoodReplacesTheMarker(unittest.TestCase):
+    """The variant is built on the keyword WITHOUT its "near me".
+
+    The first run after the gate shipped produced "family of origin therapist
+    near me West Vancouver" — a phrase nobody searches, which SerpAPI's Maps
+    engine refused with a 400. The neighbourhood names the place the marker
+    left unnamed, so it replaces it.
+    """
+
+    def test_the_live_keyword_pivots_to_a_searchable_phrase(self):
+        pivot = _pivot("family of origin therapist near me",
+                       {"primary_intent": "commercial_investigation"})
+        self.assertEqual(pivot["suggested_keyword"],
+                         "family of origin therapist Lonsdale")
+        self.assertEqual(pivot["all_variants"],
+                         ["family of origin therapist Lonsdale"])
+        for variant in pivot["all_variants"] + [pivot["suggested_keyword"]]:
+            self.assertNotIn("near me", variant.lower())
+
+    def test_the_output_records_the_base_and_the_marker_removed(self):
+        pivot = _pivot("family of origin therapist near me",
+                       {"primary_intent": "commercial_investigation"})
+        self.assertEqual(pivot["pivot_base_keyword"],
+                         "family of origin therapist")
+        self.assertEqual(pivot["stripped_local_marker"], "near me")
+
+    def test_the_keyword_itself_is_still_reported_unchanged(self):
+        pivot = _pivot("family of origin therapist near me",
+                       {"primary_intent": "commercial_investigation"})
+        self.assertEqual(pivot["original_keyword"],
+                         "family of origin therapist near me")
+
+    def test_a_keyword_with_no_marker_is_untouched(self):
+        base, marker = feasibility.pivot_base_keyword(
+            "family of origin therapist", MARKERS)
+        self.assertEqual(base, "family of origin therapist")
+        self.assertEqual(marker, "")
+
+    def test_only_a_trailing_marker_is_stripped(self):
+        # Removing a marker from the middle would change what is left, so
+        # the keyword is returned whole and the caller can see no strip.
+        base, marker = feasibility.pivot_base_keyword(
+            "therapist near my house", ("near my",))
+        self.assertEqual(base, "therapist near my house")
+        self.assertEqual(marker, "")
+
+    def test_a_keyword_that_is_only_a_marker_is_not_emptied(self):
+        base, marker = feasibility.pivot_base_keyword("near me", MARKERS)
+        self.assertEqual(base, "near me")
+        self.assertEqual(marker, "")
+
+    def test_every_shipped_marker_strips_cleanly(self):
+        markers = feasibility.resolve_local_intent_markers(
+            yaml.safe_load(open(VOCAB_PATH, encoding="utf-8")))
+        for marker in markers:
+            with self.subTest(marker=marker):
+                base, got = feasibility.pivot_base_keyword(
+                    f"family therapist {marker}", markers)
+                self.assertEqual(base, "family therapist")
+                self.assertEqual(got, marker)
+
+    def test_the_unmeasured_branch_uses_the_same_base(self):
+        # run_feasibility builds its own variant list for an unmeasured
+        # keyword; it used to build it from the raw keyword.
+        src = open(os.path.join(REPO, "run_feasibility.py"),
+                   encoding="utf-8").read()
+        self.assertIn('f"{_pivot_base} {nb}"', src)
+        self.assertNotIn('f"{kw} {nb}"', src)
+
+
 class TestEveryPipelineInjectsTheConfiguredList(unittest.TestCase):
     """A default that silently applies would leave the config list dead.
 
@@ -214,14 +288,141 @@ class TestEveryPipelineInjectsTheConfiguredList(unittest.TestCase):
 
     def test_the_audit_resolves_and_injects(self):
         src = self._src("serp_audit.py")
-        self.assertIn("FEASIBILITY_LOCAL_INTENT_MARKERS = "
-                      "feasibility_module.resolve_local_intent_markers", src)
-        self.assertIn("local_intent_markers=FEASIBILITY_LOCAL_INTENT_MARKERS",
-                      src)
+        self.assertIn("local_intent_markers=feasibility_module."
+                      "resolve_local_intent_markers(SERP_VOCAB)", src)
 
     def test_the_pass_hands_what_it_was_given_to_the_generator(self):
         src = self._src("pivot_pass.py")
         self.assertIn("local_intent_markers=local_intent_markers", src)
+
+
+class TestTheReportDoesNotContradictItself(unittest.TestCase):
+    """The play table reads the marker too.
+
+    It keyed local routing on the classified intent alone, so
+    "family of origin therapist near me" was routed to the extraction play
+    while the feasibility pass recommended a neighbourhood pivot for the same
+    keyword — both printed on one row of the same report.
+    """
+
+    PROFILE = {"serp_intent": {"primary_intent": "commercial_investigation"},
+               "has_ai_overview": True, "has_local_pack": False}
+    ROW = {"feasibility_status": "Low Feasibility"}
+
+    def _play(self, keyword, markers=MARKERS):
+        return play_routing.compute_recommended_play(
+            self.PROFILE, feasibility_row=self.ROW, keyword=keyword,
+            service_like_tokens=("therapist",),
+            local_intent_markers=markers)["play"]
+
+    def test_a_near_me_keyword_routes_to_the_local_pivot(self):
+        self.assertEqual(self._play("family of origin therapist near me"),
+                         "local_pivot_play")
+
+    def test_the_same_keyword_without_the_marker_is_unchanged(self):
+        self.assertEqual(self._play("family of origin therapist"),
+                         "extraction_play")
+
+    def test_a_marker_without_a_service_does_not_route_to_a_pivot(self):
+        # Rule 3b keeps `is_service_like`: a neighbourhood is meaningless
+        # for a question, marker or not.
+        play = play_routing.compute_recommended_play(
+            self.PROFILE, feasibility_row=self.ROW,
+            keyword="how my childhood affects my relationships near me",
+            service_like_tokens=("therapist",),
+            local_intent_markers=MARKERS)["play"]
+        self.assertEqual(play, "extraction_play")
+
+    def test_the_signal_is_declared_matchable(self):
+        self.assertIn("has_local_intent_marker", play_routing.MATCHABLE_FIELDS)
+
+    def test_the_brief_path_loads_the_markers_itself(self):
+        # attach_recommended_plays is the one definition of "route the plays";
+        # a caller that passes no markers must still get them.
+        profiles = {"family of origin therapist near me": dict(self.PROFILE)}
+        rows = [{"Keyword": "family of origin therapist near me",
+                 "Query_Label": "A", "feasibility_status": "Low Feasibility"}]
+        brief_data_extraction.attach_recommended_plays(
+            profiles, rows, service_like_tokens=("therapist",))
+        play = (profiles["family of origin therapist near me"]
+                ["recommended_play"]["play"])
+        self.assertEqual(play, "local_pivot_play")
+
+    def test_the_shipped_markers_are_what_it_loads(self):
+        self.assertEqual(brief_data_extraction.load_local_intent_markers(),
+                         feasibility.resolve_local_intent_markers(
+                             yaml.safe_load(open(VOCAB_PATH,
+                                                 encoding="utf-8"))))
+
+
+class TestThePivotLocalPackCanActuallyBeMeasured(unittest.TestCase):
+    """SerpAPI requires `z` with `location`, and this pass sent none.
+
+    Every pivot Maps call answered 400 "Missing `z` or `m` parameter", so the
+    local-pack check could never succeed. It was invisible until the gate fix
+    produced a pivot to check. The audit had passed z=14 as a literal all
+    along — the same fact in one module and missing from the other.
+    """
+
+    def test_the_fetch_sends_the_zoom_with_the_location(self):
+        captured = {}
+
+        class _Resp:
+            status_code = 200
+
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"local_results": [{"title": "x"}]}
+
+        def _get(url, params=None, timeout=None):
+            captured.update(params or {})
+            return _Resp()
+
+        with unittest.mock.patch.object(run_feasibility, "_requests") as req:
+            req.get = _get
+            with unittest.mock.patch.dict(os.environ,
+                                          {"SERPAPI_KEY": "k"}, clear=False):
+                rows, ok = run_feasibility._fetch_pivot_local_pack(
+                    "family of origin therapist Lonsdale",
+                    {"serpapi": {"location": "North Vancouver", "maps_zoom": 12}})
+        self.assertTrue(ok)
+        self.assertEqual(captured.get("z"), "12")
+        self.assertIn("location", captured)
+
+    def test_the_zoom_defaults_when_config_omits_it(self):
+        captured = {}
+
+        class _Resp:
+            def raise_for_status(self):
+                pass
+
+            def json(self):
+                return {"local_results": []}
+
+        def _get(url, params=None, timeout=None):
+            captured.update(params or {})
+            return _Resp()
+
+        with unittest.mock.patch.object(run_feasibility, "_requests") as req:
+            req.get = _get
+            with unittest.mock.patch.dict(os.environ,
+                                          {"SERPAPI_KEY": "k"}, clear=False):
+                run_feasibility._fetch_pivot_local_pack("x", {"serpapi": {}})
+        self.assertEqual(captured.get("z"),
+                         str(run_feasibility.DEFAULT_MAPS_ZOOM))
+
+    def test_the_zoom_is_editorial_and_in_config(self):
+        cfg = yaml.safe_load(open(os.path.join(REPO, "config.yml"),
+                                  encoding="utf-8"))
+        self.assertIn("maps_zoom", cfg.get("serpapi", {}))
+
+    def test_both_maps_callers_read_the_same_key(self):
+        audit = open(os.path.join(REPO, "serp_audit.py"), encoding="utf-8").read()
+        self.assertIn('CONFIG.get("serpapi", {}).get("maps_zoom"', audit)
+        self.assertIn('maps_params["z"] = MAPS_ZOOM', audit)
+        self.assertNotIn('maps_params["z"] = "14"', audit)
 
 
 if __name__ == "__main__":

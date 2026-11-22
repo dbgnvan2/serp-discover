@@ -348,6 +348,17 @@ Editorial content currently lives in:
   Editorial: Moz has no `local` label, and `null` means "not comparable"
   rather than "disagrees". Cross-check only — `intent_mapping.yml` stays the
   verdict (added moz_api_upgrade_spec_v1.md T.3)
+- `config.yml` `serpapi.maps_zoom` — the zoom sent with a Maps query pinned by
+  NAME. SerpAPI requires `z` (or `m`) with `location` and answers 400 without
+  it, so every pivot local-pack check had always failed; the audit passed
+  `z=14` as a Python literal and the standalone feasibility pass passed
+  nothing. Editorial: the zoom decides how wide the local pack is (added
+  2026-11-21)
+- `play_routing.yml` rule 3b / signal `has_local_intent_marker` — a keyword
+  carrying a `local_intent.markers` phrase routes to the local pivot play.
+  Without it the table keyed local routing on the classified intent alone and
+  the same report printed the extraction play beside a neighbourhood-pivot
+  recommendation for one keyword, on one row (added 2026-11-21)
 - `config.yml` `feasibility.pivotable_intents` — the SERP intents for which a
   neighbourhood pivot is meaningful (default local + transactional). Editorial:
   a client serving a different market widens it. It was a Python tuple beside

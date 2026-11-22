@@ -36,6 +36,8 @@ from typing import Any, Iterable
 
 import yaml
 
+import feasibility
+
 
 VALID_PLAYS = (
     "rank_play",
@@ -55,6 +57,12 @@ MATCHABLE_FIELDS = (
     "client_ranks_but_not_cited",
     "is_service_like",
     "has_local_pack",
+    # The keyword's own words. Added 2026-11-21: the table keyed local routing
+    # on the SERP's classified intent alone, so a keyword saying "near me" was
+    # routed to the extraction play while the feasibility pass recommended a
+    # neighbourhood pivot for it — the same report contradicting itself on one
+    # row.
+    "has_local_intent_marker",
 )
 
 DEFAULT_ROUTING_PATH = os.path.join(
@@ -180,6 +188,7 @@ def compute_recommended_play(
     keyword: str = "",
     service_like_tokens: Iterable[str] = (),
     routing: dict | None = None,
+    local_intent_markers: Iterable[str] = (),
 ) -> dict:
     """Compute the recommended_play verdict for one keyword profile.
 
@@ -191,6 +200,9 @@ def compute_recommended_play(
             (Query_Label != "P"), or None if no DA/feasibility data was fetched.
         keyword: the keyword text (used for service-like detection).
         service_like_tokens: serp_vocab.yml → service_like_tokens.
+        local_intent_markers: serp_vocab.yml → local_intent.markers. A keyword
+            carrying one states local intent in its own words, which routes it
+            to the local pivot the feasibility pass already recommends for it.
         routing: pre-loaded play_routing.yml dict. If None, loaded fresh.
 
     Returns the verdict dict documented at the top of this module. Absent data
@@ -217,6 +229,11 @@ def compute_recommended_play(
         "client_ranks_but_not_cited": bool(divergence.get("client_ranks_but_not_cited")),
         "is_service_like": _is_service_like(keyword, service_like_tokens),
         "has_local_pack": bool(profile.get("has_local_pack")),
+        "has_local_intent_marker": bool(
+            feasibility.keyword_local_marker(
+                keyword, tuple(str(m).lower() for m in
+                               (local_intent_markers or ())) or None)
+            if local_intent_markers else False),
     }
 
     # Honesty flags: which routing inputs were actually available.

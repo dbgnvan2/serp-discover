@@ -56,6 +56,8 @@ logger = logging.getLogger(__name__)
 # client's own city: the old fallback said Vancouver, which is a different
 # market from North Vancouver and would be measured without a word of warning.
 DEFAULT_LOCATION = "North Vancouver,British Columbia,Canada"
+#: Fallback only; the editorial home is `config.yml serpapi.maps_zoom`.
+DEFAULT_MAPS_ZOOM = 14
 
 # ---------------------------------------------------------------------------
 # Optional dependencies — degrade gracefully if missing
@@ -198,6 +200,12 @@ def _fetch_pivot_local_pack(keyword: str, config: dict) -> tuple[list[dict], boo
         "hl": serpapi_cfg.get("hl", "en"),
         "location": serpapi_cfg.get("location", DEFAULT_LOCATION),
         "type": "search",
+        # REQUIRED by SerpAPI whenever `location` is set: without it every
+        # Maps call answers 400 "Missing `z` or `m` parameter". The audit
+        # passed it and this pass did not, so the pivot local-pack check had
+        # never once succeeded — invisible until the gate fix of 2026-11-21
+        # produced a pivot to check (one home: serpapi.maps_zoom).
+        "z": str(serpapi_cfg.get("maps_zoom", DEFAULT_MAPS_ZOOM)),
     }
     try:
         resp = _requests.get("https://serpapi.com/search", params=params,
@@ -481,6 +489,8 @@ def run_feasibility_analysis(
             _pivot_profile.get("serp_intent"), kw_service_like,
             pivotable_intents, keyword=kw,
             local_intent_markers=local_intent_markers)
+        _pivot_base, _stripped_marker = feasibility_module.pivot_base_keyword(
+            kw, local_intent_markers)
 
         # Availability is decided per keyword, not per run. `bool(da_metrics)`
         # made one measured keyword score every unmeasured one, and one
@@ -507,8 +517,13 @@ def run_feasibility_analysis(
                 "no_measurement_reason":
                     feasibility_module.no_measurement_text(da_source, da_window),
                 "strategy": "",
-                "all_variants": [f"{kw} {nb}" for nb in neighborhoods]
+                # Built on the keyword without its trailing local marker,
+                # the same base the scored branch uses — the neighbourhood
+                # replaces "near me" rather than sitting beside it.
+                "all_variants": [f"{_pivot_base} {nb}" for nb in neighborhoods]
                                 if kw_pivotable else [],
+                "pivot_base_keyword": _pivot_base,
+                "stripped_local_marker": _stripped_marker,
                 # The unmeasured branch builds its own dict, so it has to
                 # carry the provenance too — the key was present on some
                 # pivot dicts and absent on others (D4b cold review, finding 5).

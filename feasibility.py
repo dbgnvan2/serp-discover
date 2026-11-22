@@ -900,6 +900,34 @@ def keyword_local_marker(keyword: str,
     return ""
 
 
+def pivot_base_keyword(keyword: str,
+                       markers: tuple[str, ...] | None = None) -> tuple[str, str]:
+    """The keyword with a TRAILING local marker removed, and the marker.
+
+    A neighbourhood pivot replaces the searcher's "near me" with a named
+    place, so the variant must be built on the keyword without it: the first
+    run after the marker gate shipped produced "family of origin therapist
+    near me West Vancouver", which nobody searches and which SerpAPI's Maps
+    engine refused with a 400.
+
+    Only a trailing marker is stripped. A marker in the middle of a keyword
+    ("therapist near my house") cannot be removed without changing what is
+    left, so the keyword is returned unchanged and the caller records that no
+    strip happened rather than publishing a mangled phrase.
+    """
+    text = (keyword or "").strip()
+    if not text:
+        return "", ""
+    lowered = text.lower()
+    for marker in (markers or DEFAULT_LOCAL_INTENT_MARKERS):
+        if marker and lowered.endswith(marker):
+            base = text[:len(text) - len(marker)].strip(" -,")
+            # Never return an empty keyword: a keyword that is nothing but the
+            # marker ("near me") has no service to pivot.
+            return (base or text), (marker if base else "")
+    return text, ""
+
+
 def _pivot_gate(serp_intent: dict | None,
                 is_service_like: bool,
                 pivotable_intents: tuple[str, ...] | None = None,
@@ -1150,7 +1178,11 @@ def generate_hyper_local_pivot(
             "recommended_play": None,
         }
 
-    all_variants = [f"{primary_keyword} {nb}" for nb in neighborhoods] if neighborhoods else []
+    # The neighbourhood replaces the searcher's "near me" rather than sitting
+    # beside it, so variants are built on the keyword without that phrase.
+    pivot_base, stripped_marker = pivot_base_keyword(primary_keyword,
+                                                     local_intent_markers)
+    all_variants = [f"{pivot_base} {nb}" for nb in neighborhoods] if neighborhoods else []
 
     if status == NOT_MEASURED:
         # No verdict is not a verdict of feasible. This fell into the branch
@@ -1170,6 +1202,10 @@ def generate_hyper_local_pivot(
             "gate_source": gate_source,
             "suggested_keyword": None,
             "all_variants": all_variants,
+            # What the variants were built on: the keyword without its
+            # trailing local marker, which the neighbourhood replaces.
+            "pivot_base_keyword": pivot_base,
+            "stripped_local_marker": stripped_marker,
             "strategy": (
                 "No feasibility verdict for this keyword — too little of the "
                 "result page has a Domain Authority record to say whether a "
@@ -1186,6 +1222,10 @@ def generate_hyper_local_pivot(
             "gate_source": gate_source,
             "suggested_keyword": None,
             "all_variants": all_variants,
+            # What the variants were built on: the keyword without its
+            # trailing local marker, which the neighbourhood replaces.
+            "pivot_base_keyword": pivot_base,
+            "stripped_local_marker": stripped_marker,
             "strategy": "Current keyword is feasible. No pivot required.",
             "avg_competitor_da": avg_da,
             "recommended_play": None,
@@ -1198,7 +1238,7 @@ def generate_hyper_local_pivot(
         # "first" and "all" both default to the first entry
         chosen = neighborhoods[0]
 
-    suggested = f"{primary_keyword} {chosen}"
+    suggested = f"{pivot_base} {chosen}"
 
     da_display = f"{avg_da:.0f}" if avg_da is not None else "unknown"
     explanation = (
@@ -1217,6 +1257,10 @@ def generate_hyper_local_pivot(
         "gate_source": gate_source,
         "suggested_keyword": suggested,
         "all_variants": all_variants,
+        # What the variants were built on: the keyword without its
+        # trailing local marker, which the neighbourhood replaces.
+        "pivot_base_keyword": pivot_base,
+        "stripped_local_marker": stripped_marker,
         "strategy": explanation,
         "avg_competitor_da": avg_da,
         "recommended_play": None,

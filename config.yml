@@ -8,6 +8,13 @@ serpapi:
   google_max_pages: 3
   google_max_results: 300
   maps_max_pages: 3
+  # Zoom level sent with a Maps query that pins its location by NAME. SerpAPI
+  # REQUIRES `z` (or `m`) whenever `location` is set and answers 400 without
+  # it, which is how every pivot local-pack check failed: the audit passed
+  # z=14 as a Python literal while the standalone feasibility pass sent none
+  # (2026-11-21). Editorial: the zoom decides how wide the local pack is — 14
+  # is roughly a town, lower is a region, higher is a few blocks.
+  maps_zoom: 14
   # Read and validated by `http_retry` alongside the `http_retry` block below,
   # with the same warnings and the same documented defaults: junk here used to
   # abort the run at import and a negative backoff reached time.sleep after the

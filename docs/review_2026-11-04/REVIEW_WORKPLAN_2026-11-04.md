@@ -1859,3 +1859,43 @@ Two checks that came back clean, recorded so they are not re-investigated:
   measured `commercial_investigation` block. 19 tests + 11 subtests in
   `tests/test_pivot_gate_reads_the_keyword.py`; both mutations of the decisive
   line (never matching, and matching inverted) fail the suite.
+
+## 2026-11-21 (later) — what the pivot fix exposed, from running it
+
+Three defects found by re-running feasibility with the gate fix in place. All
+three were inside the path the fix enabled, so all three were fixed in the
+same batch (rule 11).
+
+- The neighbourhood was appended to the whole keyword, so the first pivot the
+  fixed gate produced was `family of origin therapist near me West Vancouver`.
+  Nobody searches that phrase and SerpAPI's Maps engine refused it. Variants
+  and the suggestion are now built on `feasibility.pivot_base_keyword` — the
+  keyword with its TRAILING marker removed, since the neighbourhood names the
+  place the marker left unnamed — and the pivot reports `pivot_base_keyword`
+  and `stripped_local_marker`. A marker in the middle of a keyword is kept,
+  because removing it would change what is left.
+- Every pivot local-pack check had always failed. SerpAPI requires `z` (or
+  `m`) on a Maps query that pins its location by name and answers
+  `400 Missing \`z\` or \`m\` parameter` without it, so the pivot row read
+  "local pack not measured (validation fetch failed)" whenever a pivot
+  existed. `serp_audit.py` passed `z=14` as a literal; the standalone
+  feasibility pass passed nothing — the same fact in one module and absent
+  from the other, which is the pattern this review keeps finding. The zoom is
+  now `config.yml serpapi.maps_zoom` and both callers read it. With it the
+  check answers: the client is genuinely not in the West Vancouver local pack.
+- The report contradicted itself on one row. `play_routing.yml` keyed local
+  routing on the classified intent alone, so `family of origin therapist near
+  me` was routed to the extraction play on the same line that recommended
+  pivoting it to West Vancouver. Rule 3b routes a keyword carrying a local
+  marker to the local pivot play; the new signal is
+  `has_local_intent_marker`, and the rule keeps `is_service_like` so a marker
+  on a question still routes to extraction.
+- Verified end to end on the live run: the pivot is
+  `family of origin therapist West Vancouver`, ⚠️ Moderate against the
+  keyword's own 🔴 Low (+20), local pack measured and the client absent, play
+  `Local pivot play`. 37 tests + 19 subtests; four mutations gated (the marker
+  check, its inversion, the strip, the zoom, the routing rule). Full suite
+  2570 passed, 68 skipped, exit 0.
+- `serp_audit.py` was one line over its 2200-line ceiling after the first
+  commit of the day, which was reviewed without the full suite on the user's
+  instruction. The guard passes again; the module is at 2200.

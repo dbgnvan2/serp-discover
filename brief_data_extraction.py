@@ -75,6 +75,26 @@ def load_service_like_tokens(path=None):
     return tuple(vocab.get("service_like_tokens", []) or [])
 
 
+def load_local_intent_markers(path=None):
+    """Load ``local_intent.markers`` from serp_vocab.yml (editorial).
+
+    Read through ``feasibility.resolve_local_intent_markers`` so there is one
+    definition of how the key is read, including its documented default. A
+    missing or malformed file falls back to that default with a warning —
+    never silently to "no keyword states local intent", which is how the
+    local pivot came to be withheld from keywords that say "near me".
+    """
+    path = path or SERP_VOCAB_PATH
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            vocab = yaml.safe_load(fh) or {}
+    except (OSError, yaml.YAMLError) as exc:
+        logging.warning("Could not load local_intent.markers from %s: %s",
+                        path, exc)
+        return feasibility_module.DEFAULT_LOCAL_INTENT_MARKERS
+    return feasibility_module.resolve_local_intent_markers(vocab)
+
+
 def _domain_from_link(link):
     """Registrable host from a URL, lowercased, without a www. prefix."""
     return normalize_domain(link)
@@ -1213,7 +1233,8 @@ def index_feasibility_by_keyword(feasibility_rows):
 
 
 def attach_recommended_plays(keyword_profiles, feasibility_rows,
-                             service_like_tokens=None, routing=None):
+                             service_like_tokens=None, routing=None,
+                             local_intent_markers=None):
     """Compute recommended_play for every profile, from `feasibility_rows`.
 
     Purpose: One definition of "route the plays", so every producer of
@@ -1243,6 +1264,8 @@ def attach_recommended_plays(keyword_profiles, feasibility_rows,
         routing = load_play_routing()
     if service_like_tokens is None:
         service_like_tokens = load_service_like_tokens()
+    if local_intent_markers is None:
+        local_intent_markers = load_local_intent_markers()
 
     by_kw = index_feasibility_by_keyword(feasibility_rows)
     changed = 0
@@ -1254,6 +1277,7 @@ def attach_recommended_plays(keyword_profiles, feasibility_rows,
             keyword=kw,
             service_like_tokens=service_like_tokens,
             routing=routing,
+            local_intent_markers=local_intent_markers,
         )
         if (profile["recommended_play"] or {}).get("play") != previous:
             changed += 1

@@ -68,7 +68,8 @@
 #      writing anything new; feasibility/intent are moot (they already rank).
 #   2. rank_play      — High/Moderate feasibility → winnable by ranking.
 #   3–4. local_pivot_play — ONLY ever fires for service-like keywords with a
-#      local/transactional (or intent-indeterminate + local-pack) SERP.
+#      local/transactional (or intent-indeterminate + local-pack) SERP, or
+#      whose own text states local intent ("near me": rule 3b).
 #   5–6. extraction_play — Low/unknown feasibility + informational/commercial
 #      (or mixed) intent + an AI Overview present → GEO play.
 #   7. deprioritize   — nothing above applies (e.g. Low + navigational).
@@ -181,6 +182,18 @@ rules:
       feasibility: [low, unknown]
       is_service_like: true
       primary_intent: [local, transactional]
+
+  # 3b. Local pivot — the keyword says where it wants the service. "near me"
+  #     is the searcher's own words; the classified intent describes the page
+  #     Google served. Before this rule the table routed
+  #     "family of origin therapist near me" to the extraction play while the
+  #     feasibility pass recommended a neighbourhood pivot for the same
+  #     keyword, in the same report, on the same row (2026-11-21).
+  - play: local_pivot_play
+    match:
+      feasibility: [low, unknown]
+      is_service_like: true
+      has_local_intent_marker: true
 
   # 4. Local pivot — service-like keyword, intent indeterminate, but a local
   #    pack is present (has_local_pack only triggers a pivot when intent is

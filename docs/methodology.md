@@ -579,6 +579,22 @@ pivot, so a keyword carrying none is gated exactly as before.
 `local_intent.near_me_phrase` is the same word's one home for question
 generation (`profile_questions`), which held its own copy of it.
 
+Two things followed from that gate producing a pivot where none had been
+produced before. The variant is built on the keyword WITHOUT the marker
+(`feasibility.pivot_base_keyword`) because the neighbourhood names the place
+the marker left unnamed; only a trailing marker is stripped, and
+`pivot_base_keyword` / `stripped_local_marker` report what happened. And the
+pivot's local-pack validation fetch needed `z`: SerpAPI requires it with a
+named `location` and answers 400 without it, so every pivot Maps call had
+always failed. The zoom now lives in `config.yml serpapi.maps_zoom` and both
+Maps callers read it; `serp_audit.py` had carried `z=14` as a literal.
+
+The play table reads the marker too (`play_routing.yml` rule 3b, signal
+`has_local_intent_marker`). It keyed local routing on the classified intent
+alone, so the same report recommended the extraction play and a neighbourhood
+pivot for one keyword on one row. Rule 3b keeps `is_service_like`, so a marker
+on a question still routes to extraction.
+
 `feasibility.py` scores each keyword by the Domain Authority gap (avg competitor DA − client DA) into High / Moderate / Low Feasibility (thresholds in `docs/feasibility.md`). For **Low Feasibility** keywords `generate_hyper_local_pivot` may suggest a neighbourhood variant — but only when the keyword is **service-intent**. Whether a keyword is service-like is decided by the shared `query_variants.is_service_like` predicate, which matches the editorial `service_like_tokens` list in `serp_vocab.yml` against the de-localised keyword. Informational keywords (e.g. "how does birth order affect personality") get **no** pivot and **no** neighbourhood variants: a geographic variant is meaningless for them, and their play is content extractability, not proximity (the report flags them for the extraction play instead).
 
 D-M-19 / D4.10 changed which signal decides that. `is_service_like` is a token guess from the keyword *string*; by the time the pivot runs the SERP itself has been classified, so `generate_hyper_local_pivot` takes `serp_intent` and gates on the measured verdict (`feasibility.PIVOTABLE_INTENTS` — `local` or `transactional`, or a mixed SERP with one of them among its components). The token guess is the fallback for a keyword with no verdict, and the returned `gate_source` says which basis decided. Both branches of `run_feasibility` use the same gate; the unmeasured branch used to build neighbourhood variants from the guess alone.

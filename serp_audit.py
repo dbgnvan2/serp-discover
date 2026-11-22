@@ -143,6 +143,7 @@ OUTPUT_FILE, OUTPUT_JSON, OUTPUT_MD = _resolve_output_names(INPUT_FILE)
 LOCATION = CONFIG.get("serpapi", {}).get("location", DEFAULT_LOCATION)
 GOOGLE_ENGINE = CONFIG.get("serpapi", {}).get("engine", "google")
 GOOGLE_GL = CONFIG.get("serpapi", {}).get("gl", "ca")
+MAPS_ZOOM = str(CONFIG.get("serpapi", {}).get("maps_zoom", 14))  # SerpAPI requires `z` with `location` (docs/feasibility.md)
 GOOGLE_HL = CONFIG.get("serpapi", {}).get("hl", "en")
 GOOGLE_DEVICE = CONFIG.get("serpapi", {}).get("device", "desktop")
 GOOGLE_NUM = int(CONFIG.get("serpapi", {}).get("num", 100))
@@ -195,8 +196,6 @@ STOP_WORDS = set(SHARED_CONFIG.get("stop_words") or SERP_VOCAB["stop_words"])
 pattern_matching.STOP_WORDS = STOP_WORDS  # sync config-driven stop words
 PAA_CATEGORY_TRIGGERS = SERP_VOCAB["paa_category_triggers"]
 SERVICE_LIKE_TOKENS = tuple(SERP_VOCAB["service_like_tokens"])
-FEASIBILITY_LOCAL_INTENT_MARKERS = feasibility_module.resolve_local_intent_markers(
-    SERP_VOCAB)
 AI_ALTERNATIVE_TEMPLATES = SERP_VOCAB["ai_alternative_templates"]
 SITUATIONAL_TEMPLATES = query_variants.flatten_situational_templates(SERP_VOCAB["situational_templates"])  # persona-keyed map (Y.4); no profile in audit -> all blocks
 
@@ -681,8 +680,7 @@ def fetch_serp_data(keyword, run_id):
         else:
             # Fallback to string location if coordinates not found
             maps_params["location"] = LOCATION
-            # Required when using location (zoom level)
-            maps_params["z"] = "14"
+            maps_params["z"] = MAPS_ZOOM  # required with `location`; 400 without it
 
         maps_results = _fetch_serp_api(maps_params)
         if maps_results:
@@ -1714,7 +1712,7 @@ def _run(run_id):
         location=FEASIBILITY_LOCATION,
         neighborhoods=FEASIBILITY_NEIGHBORHOODS,
         pivotable_intents=FEASIBILITY_PIVOTABLE_INTENTS,
-        local_intent_markers=FEASIBILITY_LOCAL_INTENT_MARKERS,
+        local_intent_markers=feasibility_module.resolve_local_intent_markers(SERP_VOCAB),
         pivot_fetch=FEASIBILITY_PIVOT_FETCH,
         storage=storage if ENRICHMENT_ENABLED else None,
         run_id=run_id,
