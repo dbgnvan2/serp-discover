@@ -178,6 +178,11 @@ Editorial content currently lives in:
   wants a service in a place". `near_me_phrase` must be one of `markers` and a
   test enforces it; it was a Python literal in `profile_questions` while the
   gate knew nothing about it (added 2026-11-21)
+- `serp_vocab.yml` `ads_shortlist` — the Moz intent labels that make a phrase
+  worth paying for (`ad_grade_intents`) and the first-match-wins trigger words
+  that file it into a Google Ads ad group, for `keyword_enrich.py`. They were
+  Python literals in that script while it was untracked, beside a `local`
+  label Moz never returns (added 2026-11-22)
 - `serp_vocab.yml` `fetch_status` — the words a row's `Fetch_Status` can
   carry (`enriched`, `blocked` with `{status}`, `fetch_retryable`,
   `unreachable`, `not_attempted`, `not_destination_page`) plus

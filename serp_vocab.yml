@@ -140,6 +140,33 @@ local_intent:
     - around me
     - walking distance
 
+# Google Ads keyword shortlist (keyword_enrich.py). Both lists were Python
+# literals in that script, untracked, so nobody but its author could change
+# how a phrase is graded or grouped.
+# - ad_grade_intents: the Moz search-intent labels that make a phrase worth
+#   paying for. Moz has four labels (informational, navigational, commercial,
+#   transactional) and no `local`; an old copy listed `local`, which Moz never
+#   returns. A phrase with no Moz intent record is graded "unknown", one
+#   whose record names no primary intent "no primary intent", and any other
+#   "not ad-grade" — never a Moz label Moz did not give.
+# - ad_groups: first match wins, top = highest priority. Substring match on
+#   the lower-cased phrase. A phrase matching no trigger goes to
+#   default_group.
+ads_shortlist:
+  ad_grade_intents:
+    - transactional
+    - commercial
+  ad_groups:
+    - group: "Bowen (brand/theory)"
+      triggers: [bowen, family system]
+    - group: Couples
+      triggers: [couple, marriage, relationship]
+    - group: Family
+      triggers: [family, parent, sibling]
+    - group: Individual
+      triggers: [individual, anxiety, depression]
+  default_group: General counselling
+
 # E-E-A-T author-signal vocabulary (Spec: seo_geo_deferred_spec_v1.md#G.3).
 # Therapy is YMYL content: visible author credentials on ranking pages are
 # a signal both Google and AI answer engines weight.

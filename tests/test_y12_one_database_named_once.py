@@ -255,13 +255,11 @@ class TestTheNameLivesInOnePlace(_PathIsolation):
 
     #: The one module allowed to contain the string.
     #:
-    #: `keyword_enrich.py` holds a 25th copy of it — a separate entry point
-    #: with its own `--db` default and no config load, so it ignores
-    #: `database.path` entirely and caches Moz rows into a different database
-    #: than the run reads. It is untracked, so `_tracked_modules` cannot see
-    #: it and this guard will go red the moment it is committed. That is the
-    #: intended behaviour: it is recorded as an adjacent issue in the chunk's
-    #: plan, and committing the file is the moment to fix it.
+    #: `keyword_enrich.py` held a 25th copy of it while untracked — its own
+    #: `--db` default and no config load, so it cached Moz rows into a
+    #: different database than the run reads. It was fixed when it was
+    #: committed (2026-11-22): it now loads config.yml through
+    #: `process_config` and takes the path from `db_connect`.
     _OWNERS = {"db_connect"}
 
     @staticmethod

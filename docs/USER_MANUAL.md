@@ -2206,6 +2206,56 @@ DA gap analysis:
 
 ---
 
+## Google Ads keyword shortlist (`keyword_enrich.py`)
+
+A separate command, not a pipeline step. It takes a list of phrases (one per
+line, such as the Search Console phrases `~/gsc`'s `serp_candidates.py` mines)
+and writes a shortlist for Google Ads: each phrase's monthly volume and
+difficulty from Moz, its Moz search intent, a verdict, and an ad group.
+
+```bash
+./venv/bin/python keyword_enrich.py --csv phrases.csv --out shortlist_dir
+```
+
+It writes `enriched.json` and `shortlist.md` in `--out`. It never touches the
+Google Ads account.
+
+**What each column means**
+
+- **Verdict** — `ad-grade` when Moz's intent for the phrase is one of
+  `serp_vocab.yml ads_shortlist.ad_grade_intents` (transactional or commercial:
+  someone ready to book), `not ad-grade` when Moz's intent is something else,
+  `no primary intent` when Moz has a record but names no primary intent, and
+  `unknown` when Moz has no intent for the phrase. An `unknown` is not a low
+  score: nothing was measured.
+- **Ad group** — the first group in `ads_shortlist.ad_groups` whose trigger
+  words appear in the phrase, else `default_group`. Edit the groups in
+  `serp_vocab.yml`; no Python change is needed.
+- **Autocomplete expansions** — Google's suggestions for the ad-grade phrases
+  only, to find wording you had not thought of. A phrase whose call failed is
+  listed under "Not fetched" with the reason; a phrase Google answered with no
+  suggestions says so. These are different facts.
+
+**Why a cell says `— (skipped_quota)`** — an empty figure always names its
+reason, and the two coverage lines under the header count them:
+
+| Reason | Meaning | What to do |
+|---|---|---|
+| `skipped_quota` | the month's Moz rows would run out | wait for the period to reset |
+| `skipped_run_cap` | over `moz.<signal>.max_keywords` | raise the cap in `config.yml` |
+| `not_enabled` | `moz.<signal>.enabled` is false | switch it on if you want the signal |
+| `no_record` | Moz holds no figure for this phrase | nothing — it is a real absence |
+| `error` | the Moz call failed | re-run later |
+
+**What it costs.** It reads the same `config.yml` as a run: the database,
+the Moz locale, the per-run caps and the on/off switches. Keyword metrics bill
+4 Moz rows per phrase; search intent bills 1. Search intent is off by default
+(`moz.search_intent.enabled: false`), and with it off every verdict is
+`unknown`, so nothing is ad-grade and nothing is expanded — switch it on for a
+shortlist you mean to use. Both caps are 25 while the tool is being tested.
+
+---
+
 ## Stopping a run, and one run at a time
 
 - **Stop button** (beside "Run Selected Script"): enabled only while a script is running. It asks

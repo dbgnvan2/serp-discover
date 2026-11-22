@@ -80,8 +80,27 @@ contract changes both.
   tested: at 4 rows per keyword a full keyword-metrics pass was 200 rows, two
   thirds of a 750-row month, and is now 100.
 
+- `keyword_enrich.py`, the Google Ads keyword shortlist, is committed and reads
+  `config.yml` like every other entry point. Untracked, it named its own
+  `serp_data.db` beside the script, so it cached Moz rows into a different
+  database from the one a run reads; it called Moz with `max_keywords` set to
+  the number of phrases, so the per-run cap never applied; it called search
+  intent with `moz.search_intent.enabled: false`; and it filed a failed
+  autocomplete call as a phrase with no suggestions. It now takes the database
+  from `db_connect`, builds both Moz clients with `from_config` and honours
+  both switches, and calls SerpAPI through `serp_fetch` with the configured
+  timeout, retry policy and key redaction. Every empty cell in the shortlist
+  names its reason (`skipped_quota`, `not_enabled`, `no_record`...), and two
+  coverage lines count them. The grading and grouping words moved to
+  `serp_vocab.yml ads_shortlist`. `--locale` is gone: the locale is
+  `moz.keyword_metrics.locale`, as it is for a run.
+
 ### Known
 
+- `keyword_enrich.py` has no cap on SerpAPI autocomplete calls and does not
+  report how many it made; the Moz cap does not bound it for intent rows
+  already in the cache. It also reads the Moz quota when `moz.enabled` is
+  false. Found by the cold review of the commit that tracked it; not fixed.
 - `serp_audit.py` sat one line over its 2200-line ceiling after the gate fix
   was pushed, because that commit was reviewed without the full suite. The
   module is back at 2200 and the guard passes.
