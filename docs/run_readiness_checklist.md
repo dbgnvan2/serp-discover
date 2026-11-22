@@ -17,8 +17,8 @@ holes in it, not a wrong one.
 | | Variable | State on 2026-11-19 | What is missing from a run without it |
 |---|---|---|---|
 | ☑ | `SERPAPI_KEY` | present | nothing — SERP fetching works |
-| ☐ | `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | **absent** | Domain Authority, so the whole feasibility score and the DA-gap ranking. This is the primary pay-per-use provider and the single highest-value box on this list |
-| ☐ | `MOZ_TOKEN` | present, **rows spent** | the fallback DA provider and all keyword demand (monthly volume). Authenticates fine; returns HTTP 403 `insufficient-quota` |
+| ☑ | `DATAFORSEO_LOGIN` + `DATAFORSEO_PASSWORD` | present since 2026-11-21; answered 72 of 72 URLs that day | nothing — Domain Authority, the feasibility score and the DA-gap ranking all work. The primary pay-per-use provider |
+| ☐ | `MOZ_TOKEN` | present, **rows spent** (2026-11-21: 750 allotted, 769 used) | the fallback DA provider and all keyword demand (monthly volume). Authenticates fine; returns HTTP 403 `insufficient-quota` until the period resets |
 | ☑ | `ANTHROPIC_API_KEY` | exported in the shell, and in the key registry | nothing — the Claude engine runs |
 | ☑ | `OPENAI_API_KEY` | not in `.env`; filled from the key registry | nothing — the ChatGPT engine runs |
 | ☑ | `GEMINI_API_KEY` | not in `.env`; filled from the key registry | nothing — the Gemini engine runs |
