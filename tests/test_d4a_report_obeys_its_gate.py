@@ -309,10 +309,10 @@ class TestVolatilityReturnsTheKeysTheReportPrints(unittest.TestCase):
                 store.mark_run_completed(run_id, completed_at=date)
             store.save_serp_result("run_prev", "kw_old", "organic", 1, "",
                                    "https://example.com/a", "example.com", "",
-                                   query_label="A")
+                                   query_label="A", sent_query=None)
             store.save_serp_result("run_curr", "kw_new", "organic", 1, "",
                                    "https://example.com/a", "example.com", "",
-                                   query_label="A")
+                                   query_label="A", sent_query=None)
             with unittest.mock.patch.object(db_connect, "DATABASE_PATH", db_path):
                 result = metrics.get_volatility_metrics("run_curr")
 

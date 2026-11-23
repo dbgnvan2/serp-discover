@@ -430,17 +430,17 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
         _run("done", "2026-02-01T00:00:00")
         _run("aborted", "2026-02-02T00:00:00", completed=False)
         store.save_serp_result("done", "kw", "organic", 4, "", "https://a/1",
-                               "a.example", "", query_label="A")
+                               "a.example", "", query_label="A", sent_query=None)
         # A pivot row: the same keyword text, a different query.
         store.save_serp_result("done", "kw", "organic", 1, "", "https://b/1",
-                               "b.example", "", query_label="P")
+                               "b.example", "", query_label="P", sent_query=None)
         store.save_serp_result("aborted", "kw", "organic", 1, "",
                                "https://c/1", "c.example", "",
-                               query_label="A")
+                               query_label="A", sent_query=None)
         # Deeper than the chart's depth: excluded, and said so.
         store.save_serp_result("done", "kw", "organic", 14, "",
                                "https://d/1", "d.example", "",
-                               query_label="A")
+                               query_label="A", sent_query=None)
         return db
 
     def test_only_primary_rows_of_completed_runs_are_plotted(self):
@@ -479,7 +479,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
             store.mark_run_completed("old", completed_at="2026-02-01")
             store.save_serp_result("old", "kw", "organic", 3, "",
                                    "https://a/1", "a.example", "",
-                                   query_label="A")
+                                   query_label="A", sent_query=None)
             with sqlite3.connect(db) as conn:
                 conn.execute("UPDATE serp_results SET query_label = NULL")
             with mock.patch.object(db_connect, "DATABASE_PATH", db), \
@@ -501,7 +501,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
             store.save_run("aborted", "x")
             store.save_serp_result("aborted", "half run", "organic", 1, "",
                                    "https://b/1", "b.example", "",
-                                   query_label="A")
+                                   query_label="A", sent_query=None)
             with mock.patch.object(db_connect, "DATABASE_PATH", db):
                 self.assertEqual(vv.get_keywords(), [])
 
@@ -541,7 +541,7 @@ class TestTheChartPlotsTheRankHistory(unittest.TestCase):
             store.mark_run_completed("done", completed_at="2026-02-01")
             store.save_serp_result("done", "pivot kw", "organic", 1, "",
                                    "https://b/1", "b.example", "",
-                                   query_label="P")
+                                   query_label="P", sent_query=None)
             with mock.patch.object(db_connect, "DATABASE_PATH", db):
                 self.assertEqual(vv.get_keywords(), [])
 

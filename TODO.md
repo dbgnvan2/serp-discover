@@ -2,6 +2,21 @@
 
 Deferred and adjacent items surfaced during work, with enough context to act later.
 
+## Query location fix (2026-11-22) — review findings not fixed
+
+- **A partial rank-delta exclusion is only logged.** When some keywords are
+  left out of rank deltas because their search text changed, the "N of M not
+  compared" note goes to the INFO log only, and the brief labels those
+  keywords' client URLs `stability: "new"`, which its prompt defines as "no
+  prior data". On the first run after the fix every keyword is in this state.
+  Fix: return the note as the reason and give these URLs a "not comparable"
+  label the prompt defines (`metrics.get_rank_deltas`,
+  `brief_data_extraction` stability). Cold review, finding 2, low.
+- **A pivot with no local-pack check reads "not in local pack".**
+  `serp_audit.py` pivot rows set `Client_In_Local_Pack=False` when no pack was
+  returned and Maps was not fetched or failed. Predates the fix; now reachable
+  by setting `app.always_fetch_maps: false`. Fix: a "not checked" state (P1).
+
 ## Report content direction (CD, 2026-08-28) — sweep findings not fixed
 
 Two `learning-qa` sweeps ran over the CD.1–CD.11 work. Everything of medium

@@ -208,7 +208,7 @@ class TestTheDatabaseKeysOneSitePerRow(unittest.TestCase):
             db.save_run("r1", "hash")
             db.save_serp_result("r1", "kw", "organic", 1, "T",
                                 "https://WWW.Example.com/a",
-                                "WWW.Example.com", "s", query_label="A")
+                                "WWW.Example.com", "s", query_label="A", sent_query=None)
             db.save_domain_features("https://m.Example.com/b", "directory")
             import sqlite3
             with sqlite3.connect(os.path.join(tmp, "t.db")) as conn:

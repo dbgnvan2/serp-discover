@@ -328,8 +328,14 @@ class SerpStorage:
 
     def save_serp_result(self, run_id, keyword, result_type, rank, title, url,
                          domain, snippet, features=None, query_label=None,
-                         sent_query=None):
+                         *, sent_query):
         """Store one SERP row. *rank* is the absolute SERP position (D-C-01).
+
+        *sent_query* is the exact search text sent, and has no default: a
+        caller that forgot it would store NULL, which ``same_search_only``
+        reads as an older run and compares, the error it exists to stop
+        (query_location_fix cold review). Pass ``None`` only when no text was
+        sent.
 
         *query_label* says which query produced the row — "A" for the primary
         keyword, "A.1"/"A.2" for AI-alternative phrasings, "P" for a pivot

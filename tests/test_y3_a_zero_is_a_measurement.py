@@ -45,7 +45,7 @@ def _run(store, run_id, run_date, completed=True):
 
 def _result(store, run_id, keyword, rank, url, label="A"):
     store.save_serp_result(run_id, keyword, "organic", rank, "", url,
-                           "example.com", "", query_label=label)
+                           "example.com", "", query_label=label, sent_query=None)
 
 
 class TestVolatilityAlwaysSaysWhy(unittest.TestCase):
@@ -511,3 +511,19 @@ class TestAChangedSearchIsNotRankMovement(unittest.TestCase):
         self.assertEqual(vol["total_compared"], 1)
         self.assertIn("1 of 2 keywords not compared", vol["comparability_warning"])
         self.assertIn("kw1", vol["comparability_warning"])
+
+
+class TestSentQueryCannotBeForgotten(unittest.TestCase):
+    """Cold review of query_location_fix: a save that dropped sent_query
+    would store NULL, and NULL against NULL compares as two older runs."""
+
+    def test_omitting_sent_query_fails_loudly(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = _store(os.path.join(tmp, "t.db"))
+            with self.assertRaises(TypeError):
+                store.save_serp_result("r", "kw", "organic", 1, "", "https://a.example/",
+                                       "a.example", "", query_label="A")
+
+    def test_the_audit_passes_it(self):
+        src = open(os.path.join(REPO, "serp_audit.py"), encoding="utf-8").read()
+        self.assertIn('sent_query=query_metadata.get("sent_query")', src)

@@ -39,7 +39,7 @@ def _run(store, run_id, run_date, completed=True):
 
 def _result(store, run_id, keyword, rank, url=SHARED_URL, label="A"):
     store.save_serp_result(run_id, keyword, "organic", rank, "", url,
-                           "example.com", "", query_label=label)
+                           "example.com", "", query_label=label, sent_query=None)
 
 
 class TestRankDeltas(unittest.TestCase):
