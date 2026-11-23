@@ -164,7 +164,8 @@ RELATED_QUESTIONS_AI_FOLLOWUP = bool(
 RELATED_QUESTIONS_AI_MAX_CALLS = max(
     0, int(CONFIG.get("serpapi", {}).get("related_questions_ai_max_calls", 5))
 )
-FORCE_LOCAL_INTENT = CONFIG.get("app", {}).get("force_local_intent", True)
+# Spec: query_location_fix_spec_v1.md#QL.1/QL.3/QL.6 (replaces force_local_intent).
+APPEND_LOCATION_TO_QUERY, ALWAYS_FETCH_MAPS = query_variants.resolve_location_settings(CONFIG.get("app"))
 ENRICHMENT_ENABLED = CONFIG.get("enrichment", {}).get("enabled", True)
 MAX_URLS_TO_ENRICH = CONFIG.get(
     "enrichment", {}).get("max_urls_per_keyword", 5)
@@ -445,11 +446,8 @@ def fetch_serp_data(keyword, run_id):
     # A keyword that already names the place (or the wider place it sits in,
     # e.g. "vancouver" when the city is North Vancouver) is not given the
     # location again.
-    already_local = query_variants.names_place(keyword, _serp_city())
-    if FORCE_LOCAL_INTENT and not already_local:
-        query_term = f"{keyword} {LOCATION}"
-    else:
-        query_term = keyword
+    query_term = query_variants.build_query_term(
+        keyword, LOCATION, _serp_city(), APPEND_LOCATION_TO_QUERY)
 
     # Calculate params_hash for auditability
     # We hash the params before the API key is added (or we rely on the fact that API_KEY is constant)
@@ -486,7 +484,7 @@ def fetch_serp_data(keyword, run_id):
         # tool as a missing SERP (cold review of chunk Y8).
         return {}, aio_log, {"run_id": run_id, "created_at": created_at,
                              "google_url": "N/A", "params_hash": params_hash,
-                             "fetch_status": primary_status}
+                             "fetch_status": primary_status, "sent_query": query_term}
 
     google_url = primary_results.get(
         "search_metadata", {}).get("google_url", "N/A")
@@ -494,7 +492,7 @@ def fetch_serp_data(keyword, run_id):
     # Bundle metadata for downstream processing
     query_metadata = {"run_id": run_id, "created_at": created_at,
                       "google_url": google_url, "params_hash": params_hash,
-                      "fetch_status": primary_status}
+                      "fetch_status": primary_status, "sent_query": query_term}
 
     # Fetch additional Google pages, then merge.
     google_pages = [primary_results]
@@ -652,10 +650,10 @@ def fetch_serp_data(keyword, run_id):
             serp_checkpoint.save_raw_json(run_id, "google_related_questions", related_pages)
 
     # --- 3. Google Maps Request (Conditional) ---
-    # Logic: Call if 'local_results' are present OR if local intent is forced.
+    # Logic: call if 'local_results' are present OR always_fetch_maps is on.
     has_local_pack = "local_results" in primary_results
 
-    if has_local_pack or FORCE_LOCAL_INTENT:
+    if has_local_pack or ALWAYS_FETCH_MAPS:
         logging.info(
             "  - Fetching Google Maps results (Local Pack detected or Forced)...")
 
@@ -726,7 +724,8 @@ def parse_data(keyword, results, query_metadata):
         "Run_ID": query_metadata["run_id"],
         "Created_At": query_metadata["created_at"],
         "Google_URL": query_metadata["google_url"],
-        "Params_Hash": query_metadata["params_hash"]
+        "Params_Hash": query_metadata["params_hash"],
+        "Sent_Query": query_metadata.get("sent_query"),
     }
 
     if not primary_results:
@@ -1444,7 +1443,7 @@ def _run(run_id):
     print(f"--- AI fallback without location: {AI_FALLBACK_WITHOUT_LOCATION} ---")
     print(f"--- Queries to run: {len(query_jobs)} ---")
     print(f"--- AI priority actions for A.1/A.2: {sorted(get_effective_ai_priority_actions())} ---")
-    print(f"--- FORCE LOCAL INTENT: {FORCE_LOCAL_INTENT} ---")
+    print(f"--- Append location to query: {APPEND_LOCATION_TO_QUERY} | Always fetch Maps: {ALWAYS_FETCH_MAPS} ---")
     print(f"--- BRIDGE STRATEGY: Mapping Symptoms -> Systems ---")
 
     for i, (keyword, source_keyword, query_label) in enumerate(query_jobs):
@@ -1459,6 +1458,7 @@ def _run(run_id):
         aio_log["Source_Keyword"] = source_keyword
         aio_log["Query_Label"] = query_label
         aio_log["Executed_Query"] = keyword
+        aio_log["Sent_Query"] = query_metadata.get("sent_query")
         all_aio_logs.append(aio_log)
 
         if not raw_data_dict:
@@ -1526,7 +1526,7 @@ def _run(run_id):
                         storage.save_serp_result(
                             run_id, source_keyword, "organic", item.get("Rank"),
                             item.get("Title"), url, domain, item.get("Snippet"),
-                            query_label=query_label,
+                            query_label=query_label, sent_query=query_metadata.get("sent_query"),
                         )
 
                         # 2. Fetch & Enrich URL (Limit to top 5 to save
@@ -1722,8 +1722,8 @@ def _run(run_id):
 
     # --- PIVOT KEYWORD FETCH PASS ---
     # Secondary SERP + Maps fetch for Low Feasibility keywords.
-    # Maps is automatically included (FORCE_LOCAL_INTENT=true) so the local
-    # 3-pack can be checked for client domain presence.
+    # Maps is included when always_fetch_maps is on (the default) so the
+    # local 3-pack can be checked for client domain presence.
     if pending_pivot_jobs:
         print(f"\n{'='*60}")
         print(f"Running {len(pending_pivot_jobs)} pivot keyword fetch(es)...")
@@ -1830,7 +1830,7 @@ def _run(run_id):
         enabled=BING_CHECK_ENABLED,
         num=BING_CHECK_NUM,
         location=LOCATION,
-        force_local=FORCE_LOCAL_INTENT,
+        append_location=APPEND_LOCATION_TO_QUERY,
         fetch_fn=_fetch_serp_api,
         apply_no_cache=_apply_no_cache,
         api_key=API_KEY,

@@ -461,3 +461,53 @@ class TestTheColdReviewFindings(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestAChangedSearchIsNotRankMovement(unittest.TestCase):
+    """query_location_fix_spec_v1.md (Risks): a keyword whose two runs sent
+    different search text measured two searches, so its rank change is the
+    fix, not the market."""
+
+    def _db(self, tmp, prev_sent, curr_sent):
+        db = os.path.join(tmp, "t.db")
+        store = _store(db)
+        _run(store, "prev", "2026-02-01T00:00:00")
+        _run(store, "curr", "2026-02-02T00:00:00")
+        for run, sent in (("prev", prev_sent), ("curr", curr_sent)):
+            for kw in ("kw1", "kw2"):
+                store.save_serp_result(run, kw, "organic", 1 if run == "prev" else 5,
+                                       "", f"https://a.example/{kw}", "a.example", "",
+                                       query_label="A", sent_query=sent.get(kw))
+        return db
+
+    def test_changed_text_is_left_out_and_counted(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = self._db(tmp, {"kw1": "kw1 Place", "kw2": None},
+                          {"kw1": "kw1", "kw2": "kw2"})
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
+                vol = metrics.get_volatility_metrics("curr")
+                deltas, reason = metrics.get_rank_deltas("curr", with_reason=True)
+        self.assertEqual(vol["status"], "search_changed")
+        self.assertIn("2 of 2 keywords not compared", vol["msg"])
+        self.assertEqual(deltas, {})
+        self.assertIn("2 of 2 keywords not compared", reason)
+
+    def test_same_text_and_two_old_runs_still_compare(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = self._db(tmp, {"kw1": "kw1", "kw2": None}, {"kw1": "kw1", "kw2": None})
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
+                vol = metrics.get_volatility_metrics("curr")
+        self.assertEqual(vol["status"], "success")
+        self.assertEqual(vol["total_compared"], 2)
+        self.assertFalse(vol.get("comparability_warning"))
+
+    def test_a_partial_change_is_named_in_the_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            db = self._db(tmp, {"kw1": "kw1 Place", "kw2": "kw2"},
+                          {"kw1": "kw1", "kw2": "kw2"})
+            with mock.patch.object(db_connect, "DATABASE_PATH", db):
+                vol = metrics.get_volatility_metrics("curr")
+        self.assertEqual(vol["status"], "success")
+        self.assertEqual(vol["total_compared"], 1)
+        self.assertIn("1 of 2 keywords not compared", vol["comparability_warning"])
+        self.assertIn("kw1", vol["comparability_warning"])

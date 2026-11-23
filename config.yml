@@ -61,7 +61,14 @@ enrichment:
   user_agent: MarketIntelligenceBot/1.0
   enable_domain_age: false
 app:
-  force_local_intent: true
+  # Add the location to the search text ("golden child syndrome North
+  # Vancouver,British Columbia,Canada"). Off: Google gets the keyword as typed
+  # and the serpapi.location parameter geolocates it, which is what a local
+  # searcher sees. On 2026-11-22 the two versions of one query shared 1 of 10
+  # top sites. Keywords naming the place or saying "near me" are never changed.
+  append_location_to_query: false
+  # Fetch Google Maps for every keyword, not only when a local pack appears.
+  always_fetch_maps: true
   balanced_mode: true
   deep_research_mode: false
   ai_query_priority_actions:

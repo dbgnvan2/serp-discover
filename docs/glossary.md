@@ -77,7 +77,8 @@ python3 generate_insight_report.py --glossary-out docs/glossary.md
 | `Run_ID` | all | Timestamp identifying one run of the tool. Every row from the same run carries the same value, so you can separate runs when sheets are combined. |
 | `Root_Keyword / Source_Keyword` | most | The keyword from your CSV that this row came from. Source_Keyword is the specific search executed; Root_Keyword is the original seed it derived from. |
 | `Query_Label` | Overview, Keyword_Feasibility | Which variant of the search this row is. "A" is the keyword as you supplied it; "P" is a hyper-local pivot variant the tool generated. Pivot rows are suggestions, not measurements of your keyword. |
-| `Executed_Query` | most | The exact text sent to Google, after any location or variant handling. Check this when results look unrelated to the keyword you entered. |
+| `Executed_Query` | most | The search this row measures: your keyword, or the variant the tool generated from it. Sent_Query is the exact text Google was given. |
+| `Sent_Query` | most | The exact text sent to Google or Bing. It differs from Executed_Query only when app.append_location_to_query is on and the location was added. Check this when results look unrelated to the keyword you entered. |
 | `Params_Hash` | most | A fingerprint of the search parameters used. Two rows with the same hash were fetched under identical conditions and are directly comparable. |
 | `SERP_Features` | Overview | Which boxes Google showed besides the plain links (map pack, video row, answer box). "Standard Organic" is not a feature — it means none were found. |
 | `Rank` | Organic_Results | Position in the unpaid results. 1 is the top link. |

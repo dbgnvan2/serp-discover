@@ -369,7 +369,7 @@ class TestSerpAudit(unittest.TestCase):
         self.assertIsNotNone(aio_log["followup_latency_ms"])
         self.assertIsNone(aio_log["error"])
 
-    @patch('serp_audit.FORCE_LOCAL_INTENT', False)
+    @patch('serp_audit.ALWAYS_FETCH_MAPS', False)
     @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_google_pagination_merge(self, mock_fetch, mock_save):
@@ -399,7 +399,7 @@ class TestSerpAudit(unittest.TestCase):
             [1, 2],
         )
 
-    @patch('serp_audit.FORCE_LOCAL_INTENT', False)
+    @patch('serp_audit.ALWAYS_FETCH_MAPS', False)
     @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_ai_fallback_without_location(self, mock_fetch, mock_save):
@@ -419,7 +419,7 @@ class TestSerpAudit(unittest.TestCase):
             results["google_ai_overview_probe"]["snippet"], "AI fallback snippet")
         self.assertEqual(aio_log["ai_overview_mode"], "fallback_without_location")
 
-    @patch('serp_audit.FORCE_LOCAL_INTENT', False)
+    @patch('serp_audit.ALWAYS_FETCH_MAPS', False)
     @patch('serp_checkpoint.save_raw_json')
     @patch('serp_audit._fetch_serp_api')
     def test_fetch_serp_data_related_questions_ai_followup(self, mock_fetch, mock_save):
@@ -745,6 +745,95 @@ class TestSerpAudit(unittest.TestCase):
             "fail_keyword", "fail_run")
         self.assertEqual(result, {})
         self.assertEqual(metadata["run_id"], "fail_run")
+
+
+class TestQueryLocation(unittest.TestCase):
+    """query_location_fix_spec_v1.md QL.1-QL.3, QL.5, QL.6.
+
+    The retired force_local_intent appended the full location to every
+    keyword's search text, so Google answered a different search from the
+    one the report named (2026-11-22: 1 of 10 top sites in common).
+    """
+
+    LOC = "North Vancouver,British Columbia,Canada"
+    PAGE = {"organic_results": [], "serpapi_pagination": {},
+            "search_metadata": {"google_url": "u"}}
+
+    def _fetch(self, keyword, page=None, append=False, maps=False):
+        with patch.object(serp_audit, "LOCATION", self.LOC), \
+             patch.object(serp_audit, "APPEND_LOCATION_TO_QUERY", append), \
+             patch.object(serp_audit, "ALWAYS_FETCH_MAPS", maps), \
+             patch.object(serp_audit, "BALANCED_MODE", False), \
+             patch.object(serp_audit, "DEEP_RESEARCH_MODE", False), \
+             patch("serp_checkpoint.save_raw_json"), \
+             patch("serp_audit._fetch_serp_api",
+                   return_value=page or self.PAGE) as fetch:
+            _, _, meta = serp_audit.fetch_serp_data(keyword, "run1")
+        calls = [c.args[0] for c in fetch.call_args_list]
+        return calls, meta
+
+    def test_plain_query_keeps_location_param(self):
+        """QL.1"""
+        calls, _ = self._fetch("golden child syndrome")
+        self.assertEqual(calls[0]["q"], "golden child syndrome")
+        self.assertEqual(calls[0]["location"], self.LOC)
+
+    def test_append_skips_place_and_near_me(self):
+        """QL.2"""
+        import query_variants
+        city = "North Vancouver"
+        cases = {
+            ("golden child syndrome", False): "golden child syndrome",
+            ("golden child syndrome", True): f"golden child syndrome {self.LOC}",
+            ("family of origin therapist near me", True): "family of origin therapist near me",
+            ("counselling in vancouver", True): "counselling in vancouver",
+            ("counselling north vancouver", True): "counselling north vancouver",
+        }
+        for (kw, append), want in cases.items():
+            with self.subTest(kw=kw, append=append):
+                self.assertEqual(
+                    query_variants.build_query_term(kw, self.LOC, city, append), want)
+        calls, _ = self._fetch("golden child syndrome", append=True)
+        self.assertEqual(calls[0]["q"], f"golden child syndrome {self.LOC}")
+
+    def test_maps_gate_is_its_own_setting(self):
+        """QL.3"""
+        def maps(calls):
+            return [c for c in calls if c.get("engine") == "google_maps"]
+        calls, _ = self._fetch("kw", maps=False)
+        self.assertEqual(maps(calls), [], "no local pack and always_fetch_maps off")
+        calls, _ = self._fetch("kw", maps=True)
+        self.assertEqual([c["q"] for c in maps(calls)][:1], ["kw"],
+                         "Maps runs and its q is the plain keyword")
+        with_pack = {**self.PAGE, "local_results": [{"title": "x", "place_id": "p1"}]}
+        calls, _ = self._fetch("kw", page=with_pack, maps=False)
+        self.assertTrue(maps(calls), "a local pack still triggers Maps")
+
+    def test_sent_query_recorded(self):
+        """QL.5 — the exact q sent, beside the logical keyword."""
+        _, meta = self._fetch("golden child syndrome", append=True)
+        self.assertEqual(meta["sent_query"], f"golden child syndrome {self.LOC}")
+        m = serp_audit.parse_data("golden child syndrome",
+                                  {"google": self.PAGE}, meta)[0]
+        self.assertEqual(m["Sent_Query"], f"golden child syndrome {self.LOC}")
+        self.assertEqual(m["Root_Keyword"], "golden child syndrome")
+
+    def test_old_key_warns_and_is_ignored(self):
+        """QL.6 — the retired key warns once, names both new keys, sets nothing."""
+        import query_variants
+        with patch("logging.warning") as warn:
+            got = query_variants.resolve_location_settings({"force_local_intent": True})
+        self.assertEqual(got, (False, True), "defaults, not a guess at the old key's meaning")
+        warn.assert_called_once()
+        self.assertIn("append_location_to_query", warn.call_args.args[0])
+        self.assertIn("always_fetch_maps", warn.call_args.args[0])
+        with patch("logging.warning") as warn:
+            got = query_variants.resolve_location_settings(
+                {"append_location_to_query": True, "always_fetch_maps": False})
+        self.assertEqual(got, (True, False))
+        warn.assert_not_called()
+        self.assertNotIn("force_local_intent", serp_audit.CONFIG.get("app") or {},
+                         "the shipped config.yml carries the new keys only")
 
 
 class TestKeywordProfilesInAuditJson(unittest.TestCase):

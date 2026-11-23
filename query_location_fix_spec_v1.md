@@ -1,6 +1,6 @@
 # Query location fix — spec and plan v1
 
-Status: plan, awaiting approval (2026-11-22).
+Approved 2026-11-22.
 
 ## Problem
 

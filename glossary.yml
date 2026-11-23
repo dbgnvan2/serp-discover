@@ -81,8 +81,14 @@ columns:
   - column: Executed_Query
     sheet: most
     definition: >-
-      The exact text sent to Google, after any location or variant handling. Check
-      this when results look unrelated to the keyword you entered.
+      The search this row measures: your keyword, or the variant the tool
+      generated from it. Sent_Query is the exact text Google was given.
+  - column: Sent_Query
+    sheet: most
+    definition: >-
+      The exact text sent to Google or Bing. It differs from Executed_Query
+      only when app.append_location_to_query is on and the location was added.
+      Check this when results look unrelated to the keyword you entered.
   - column: Params_Hash
     sheet: most
     definition: >-

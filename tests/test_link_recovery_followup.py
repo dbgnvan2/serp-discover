@@ -155,7 +155,11 @@ class TestAlreadyLocalIsMatchedOnWordBoundaries:
         src = open(os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "serp_audit.py"), encoding="utf-8").read()
-        assert "query_variants.names_place(keyword, _serp_city())" in src
+        # Since query_location_fix QL.2 the audit reaches names_place through
+        # the shared query builder, which Bing uses too.
+        assert "query_variants.build_query_term(" in src
+        import query_variants
+        assert "names_place(keyword, city)" in open(query_variants.__file__, encoding="utf-8").read()
         assert "phrase in keyword.lower()" not in src
 
 

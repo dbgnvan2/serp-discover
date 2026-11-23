@@ -938,6 +938,26 @@ analysis_report:
   location: "North Vancouver, BC, Canada"
 ```
 
+#### The location is a setting, not part of the search
+
+`serpapi.location` tells Google where the searcher is. The keyword itself is
+sent as you typed it, so the results are what someone in North Vancouver sees
+when they search "golden child syndrome". Before 2026-11-22 the tool also
+added the place name to the search text ("golden child syndrome North
+Vancouver,British Columbia,Canada"). Google then answered a different search:
+the two versions shared 1 of 10 top sites, the related searches were about
+Canada, and the "People Also Ask" questions were about local services rather
+than the topic.
+
+`app.append_location_to_query` turns the old behaviour back on if you want it.
+Even then, a keyword that already names the place or says "near me" is left
+alone. `app.always_fetch_maps` (on by default) fetches Google Maps for every
+keyword so the local pack can be checked.
+
+Every row records the exact text sent in the **Sent_Query** column. A run
+made before this change measured different searches, so section 6 (market
+volatility) leaves those keywords out of the comparison and says how many.
+
 #### The two settings that name a market must agree
 
 `serpapi.location` decides which market Google is asked about.

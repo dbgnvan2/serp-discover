@@ -122,6 +122,54 @@ def ai_query_alternatives(base_keyword, city, service_tokens, templates_map):
     return out
 
 
+def build_query_term(keyword, location, city, append, markers=None):
+    """The search text sent to the engine for ``keyword``.
+
+    Spec: query_location_fix_spec_v1.md#QL.2. The location is geolocated by
+    the request's ``location`` parameter, so by default the keyword is sent as
+    typed. With ``append`` on, the location is added to the text unless the
+    keyword already names the place or carries a local-intent marker such as
+    "near me", which asks for local results in its own words. Shared by the
+    Google, Maps and Bing requests so the engines agree on what was sent.
+    ``markers`` defaults to ``serp_vocab.yml local_intent.markers``.
+    """
+    import feasibility  # local import: feasibility is heavy and only the marker test is needed
+    import pattern_matching
+
+    if markers is None:
+        markers = feasibility.resolve_local_intent_markers(pattern_matching.SERP_VOCAB)
+    keyword = str(keyword or "").strip()
+    if not append or not location:
+        return keyword
+    if names_place(keyword, city) or feasibility.keyword_local_marker(keyword, markers):
+        return keyword
+    return f"{keyword} {location}"
+
+
+RETIRED_FORCE_LOCAL_WARNING = (
+    "config.yml app.force_local_intent is retired and ignored. Set "
+    "app.append_location_to_query (add the location to the search text; "
+    "default false) and app.always_fetch_maps (fetch Maps for every keyword; "
+    "default true) instead.")
+
+
+def resolve_location_settings(app_cfg):
+    """``(append_location_to_query, always_fetch_maps)`` from ``config.yml app``.
+
+    Spec: query_location_fix_spec_v1.md#QL.6. The retired
+    ``force_local_intent`` did both jobs: it appended the location to every
+    keyword's search text, which made Google answer a different search, and
+    fetched Maps for every keyword. If it is still set it is warned about and
+    ignored, not mapped: guessing which job the user meant would apply a
+    setting nobody chose.
+    """
+    app_cfg = app_cfg or {}
+    if "force_local_intent" in app_cfg:
+        logging.warning(RETIRED_FORCE_LOCAL_WARNING)
+    return (bool(app_cfg.get("append_location_to_query", False)),
+            bool(app_cfg.get("always_fetch_maps", True)))
+
+
 def place_phrases(city):
     """The phrases that count as ``city`` already being named in a keyword.
 

@@ -37,7 +37,7 @@ def _load_fixture():
         return json.load(f)
 
 
-def _run_checks(keywords, response, enabled=True, num=20):
+def _run_checks(keywords, response, enabled=True, num=20, append_location=True):
     """Run bing_check.run_bing_checks with a mocked fetch; returns
     (rows, fetch_mock, printed_output)."""
     fetch = MagicMock(return_value=response)
@@ -47,7 +47,7 @@ def _run_checks(keywords, response, enabled=True, num=20):
                 keywords, "test_run",
                 enabled=enabled, num=num,
                 location="Vancouver, British Columbia, Canada",
-                force_local=True,
+                append_location=append_location,
                 fetch_fn=fetch,
                 apply_no_cache=lambda p: p,
                 api_key="KEY",
@@ -139,10 +139,23 @@ class TestRunChecks(unittest.TestCase):
     def test_query_text_mirrors_label_a_query(self):
         rows, fetch, _ = _run_checks(["family counselling"], _load_fixture())
         params = fetch.call_args_list[0][0][0]
-        # force_local appends the location, exactly like the Google A query.
+        # append_location adds the location, exactly like the Google A query.
         self.assertEqual(params["q"],
                          "family counselling Vancouver, British Columbia, Canada")
-        self.assertEqual(rows[0]["Executed_Query"], params["q"])
+        self.assertEqual(rows[0]["Sent_Query"], params["q"])
+        self.assertEqual(rows[0]["Executed_Query"], "family counselling")
+
+    def test_bing_uses_shared_query_builder(self):
+        """QL.4 — Bing builds q with the same function as Google."""
+        import query_variants
+        loc = "Vancouver, British Columbia, Canada"
+        for kw, append in (("family counselling", False), ("family counselling", True),
+                           ("therapist near me", True), ("counselling vancouver", True)):
+            with self.subTest(kw=kw, append=append):
+                _, fetch, _ = _run_checks([kw], _load_fixture(), append_location=append)
+                self.assertEqual(fetch.call_args_list[0][0][0]["q"],
+                                 query_variants.build_query_term(kw, loc, "Vancouver", append))
+                self.assertEqual(fetch.call_args_list[0][0][0]["location"], loc)
 
     def test_row_shape_and_client_rank(self):
         rows, _, _ = _run_checks(["family counselling"], _load_fixture())
@@ -173,7 +186,7 @@ class TestRunChecks(unittest.TestCase):
                     enabled=serp_audit.BING_CHECK_ENABLED,
                     num=serp_audit.BING_CHECK_NUM,
                     location=serp_audit.LOCATION,
-                    force_local=serp_audit.FORCE_LOCAL_INTENT,
+                    append_location=serp_audit.APPEND_LOCATION_TO_QUERY,
                     fetch_fn=serp_audit._fetch_serp_api,
                     apply_no_cache=serp_audit._apply_no_cache,
                     api_key="KEY",

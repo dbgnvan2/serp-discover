@@ -33,10 +33,39 @@ PRIMARY_QUERY_LABEL = "A"
 _RUNS_SQL = "SELECT run_id, run_date, completed_at FROM runs ORDER BY run_date DESC"
 
 _ORGANIC_SQL = """
-    SELECT keyword_text, url, rank
+    SELECT keyword_text, url, rank, sent_query
     FROM serp_results
     WHERE run_id = ? AND result_type = 'organic' AND query_label = ?
 """
+
+
+def same_search_only(curr_df, prev_df):
+    """Keep only keywords whose two runs sent the same search text.
+
+    Spec: query_location_fix_spec_v1.md (Risks). Runs before 2026-11-22 sent
+    the keyword with the location appended and recorded no ``sent_query``;
+    comparing them with a later run would report the change of search as
+    rank movement. A keyword is compared only when both runs sent the same
+    text. Two runs that both predate the column (NULL on both sides) ran
+    under the same rule and stay comparable; one recorded and one not is a
+    change of rule and is left out. Returns ``(curr, prev, note)``; ``note`` says
+    how many keywords were left out and why, or is ``None``.
+    """
+    def _texts(df):
+        return {k: set(g["sent_query"].dropna()) | ({None} if g["sent_query"].isna().any() else set())
+                for k, g in df.groupby("keyword_text")}
+    curr_t, prev_t = _texts(curr_df), _texts(prev_df)
+    shared = set(curr_t) & set(prev_t)
+    keep = {k for k in shared if curr_t[k] == prev_t[k]}
+    dropped = sorted(shared - keep)
+    if not dropped:
+        return curr_df, prev_df, None
+    note = (f"{len(dropped)} of {len(shared)} keywords not compared: the "
+            f"earlier run sent different search text, or did not record it "
+            f"(runs before 2026-11-22 added the location to the search). "
+            f"Not compared: {', '.join(dropped)}.")
+    return (curr_df[~curr_df["keyword_text"].isin(dropped)],
+            prev_df[~prev_df["keyword_text"].isin(dropped)], note)
 
 
 def _previous_completed_run(runs_df, current_date):
@@ -129,7 +158,9 @@ def get_volatility_metrics(current_run_id):
     Always returns a dict carrying ``status``. On ``"success"`` it carries the
     figures; on every other status it carries ``msg``, the reason the caller
     renders in its place: ``no_database``, ``insufficient_history``,
-    ``run_not_found``, ``empty_data``, ``no_shared_urls``, ``query_failed``.
+    ``run_not_found``, ``empty_data``, ``no_shared_urls``,
+    ``search_changed`` (every shared keyword sent different search text in the
+    two runs), ``query_failed``.
     Four of those used to be a bare ``None``, and report section 6 then
     vanished with no note, which reads as "the market did not move" rather
     than "this run could not be compared" (P1/P2, review chunk Y3).
@@ -166,7 +197,12 @@ def get_volatility_metrics(current_run_id):
 
         current_keywords = set(curr_df['keyword_text'].dropna().unique())
         previous_keywords = set(prev_df['keyword_text'].dropna().unique())
+        curr_df, prev_df, search_note = same_search_only(curr_df, prev_df)
         comparability_warning = None
+        if search_note and curr_df.empty:
+            return {"status": "search_changed", "msg": search_note,
+                    "keywords_current": sorted(current_keywords),
+                    "keywords_previous": sorted(previous_keywords)}
         if current_keywords != previous_keywords:
             missing_from_prev = sorted(current_keywords - previous_keywords)
             missing_from_curr = sorted(previous_keywords - current_keywords)
@@ -176,6 +212,9 @@ def get_volatility_metrics(current_run_id):
             if missing_from_curr:
                 parts.append(f"Only in previous run: {', '.join(missing_from_curr)}.")
             comparability_warning = " ".join(parts)
+        if search_note:
+            comparability_warning = " ".join(
+                p for p in (comparability_warning, search_note) if p)
 
         # Merge on keyword + url
         merged = pd.merge(curr_df, prev_df, on=[
@@ -363,6 +402,11 @@ def get_rank_deltas(current_run_id, with_reason=False):
         prev_df['rank'] = pd.to_numeric(prev_df['rank'], errors='coerce')
         curr_df = curr_df.dropna(subset=['rank'])
         prev_df = prev_df.dropna(subset=['rank'])
+        curr_df, prev_df, search_note = same_search_only(curr_df, prev_df)
+        if search_note:
+            logging.info("Rank deltas: %s", search_note)
+            if curr_df.empty:
+                return _out({}, search_note)
 
         merged = pd.merge(
             curr_df,

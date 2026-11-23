@@ -185,6 +185,13 @@ class SerpStorage:
             FOREIGN KEY(run_id) REFERENCES runs(run_id)
         )''')
 
+        # --- Migration: the exact search text sent (query_location_fix QL.5).
+        # Rank history compares a keyword across runs; a run that sent
+        # different text measured a different search. Rows written before
+        # this column carry NULL, read as "not recorded".
+        self.migrated_columns += _add_missing_columns(
+            c, "serp_results", [("sent_query", "TEXT")])
+
         # --- Migration: feasibility minima columns (review chunk D6) ---
         self.migrated_columns += _add_missing_columns(
             c, "keyword_feasibility", [
@@ -320,7 +327,8 @@ class SerpStorage:
                          (stamp, run_id))
 
     def save_serp_result(self, run_id, keyword, result_type, rank, title, url,
-                         domain, snippet, features=None, query_label=None):
+                         domain, snippet, features=None, query_label=None,
+                         sent_query=None):
         """Store one SERP row. *rank* is the absolute SERP position (D-C-01).
 
         *query_label* says which query produced the row — "A" for the primary
@@ -349,9 +357,9 @@ class SerpStorage:
         features_json = json.dumps(features) if features else "{}"
         with db_connect.connection(self.db_path) as conn:
             conn.execute('''INSERT INTO serp_results 
-                            (run_id, keyword_text, result_type, rank, title, url, domain, snippet, features_json, query_label)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                         (run_id, keyword, result_type, rank, title, url, domain, snippet, features_json, query_label))
+                            (run_id, keyword_text, result_type, rank, title, url, domain, snippet, features_json, query_label, sent_query)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
+                         (run_id, keyword, result_type, rank, title, url, domain, snippet, features_json, query_label, sent_query))
 
     def save_url_features(self, url, status_code, content_type, schema_types, word_count, evidence):
         fetched_at = datetime.now().isoformat()

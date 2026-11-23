@@ -51,6 +51,11 @@ carry NULL in both, which means *unknown* — not "completed" and not "primary".
   `(keyword_text, url)` without filtering produced cross-products and
   invented rank deltas. `metrics.py` filters `query_label = 'A'` in
   `get_volatility_metrics`, `get_rank_deltas` and `get_entity_dominance`.
+- **`serp_results.sent_query`** — the exact search text sent (added
+  2026-11-22, NULL on older rows). `metrics.same_search_only` leaves a keyword
+  out of volatility and rank deltas when its two runs sent different text, or
+  one recorded it and one did not, and says how many it left out: a change of
+  search is not rank movement.
 - **`serp_results.rank`** is the absolute SERP position, not SerpAPI's
   per-page `position` (see docs/methodology.md, Part 1 "Rank semantics
   (pagination)"), so `rank <= 10` in `get_entity_dominance` is the real top 10.

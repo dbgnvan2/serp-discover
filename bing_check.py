@@ -20,6 +20,7 @@ import re
 import time
 from datetime import datetime
 
+import query_variants
 from brief_data_extraction import _domain_from_link, _is_client_domain
 
 
@@ -81,19 +82,20 @@ def _save_raw_bing(run_id, keyword, results):
 
 
 def run_bing_checks(root_keywords, run_id, *, enabled, num, location,
-                    force_local, fetch_fn, apply_no_cache, api_key,
+                    append_location, fetch_fn, apply_no_cache, api_key,
                     client_domain, request_delay=0.0):
     """Run the Bing visibility pass; returns per-keyword rows.
 
     Zero SerpAPI calls when ``enabled`` is false (G.5.1). When enabled:
     exactly one ``engine=bing`` call per root keyword (G.5.3), routed
     through ``fetch_fn`` — serp_audit's standard retry wrapper. The query
-    text mirrors the label-"A" Google query (forced-local suffix
-    included) so Google and Bing ranks are comparable.
+    text is built by ``query_variants.build_query_term``, the same builder
+    as the label-"A" Google query, so Google and Bing ranks are comparable
+    (Spec: query_location_fix_spec_v1.md#QL.4).
 
     Row shape (analysis JSON ``bing_visibility`` list): Run_ID,
     Created_At, Source_Keyword, Query_Label ("A" — the root query text),
-    Executed_Query, Checked, Client_Rank, Client_URL, Top3_Domains,
+    Executed_Query (the keyword), Sent_Query (the exact ``q``), Checked, Client_Rank, Client_URL, Top3_Domains,
     Num_Requested. A failed fetch yields Checked=False, never a guess.
     Spec: seo_geo_deferred_spec_v1.md#G.5.
     """
@@ -101,14 +103,12 @@ def run_bing_checks(root_keywords, run_id, *, enabled, num, location,
         print("Bing check: disabled (0 SerpAPI calls)")
         return []
 
-    city_lower = (location or "").split(",")[0].strip().lower()
+    city = (location or "").split(",")[0].strip()
     rows = []
     calls_made = 0
     for keyword in root_keywords:
-        if force_local and city_lower and city_lower not in keyword.lower():
-            query_term = f"{keyword} {location}"
-        else:
-            query_term = keyword
+        query_term = query_variants.build_query_term(
+            keyword, location, city, append_location)
 
         params = apply_no_cache({
             "engine": "bing",
@@ -133,7 +133,8 @@ def run_bing_checks(root_keywords, run_id, *, enabled, num, location,
             "Created_At": datetime.now().isoformat(),
             "Source_Keyword": keyword,
             "Query_Label": "A",
-            "Executed_Query": query_term,
+            "Executed_Query": keyword,
+            "Sent_Query": query_term,
             "Checked": parsed["checked"],
             "Client_Rank": parsed["client_rank"],
             "Client_URL": parsed["client_url"],

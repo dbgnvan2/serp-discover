@@ -1058,3 +1058,16 @@ class TestEditorialSourceTab:
             assert "# a note" in tab.source_widget.get("1.0", "end")
         finally:
             root.destroy()
+
+
+class TestQueryLocationHelpText:
+    """query_location_fix_spec_v1.md#QL.8 — the GUI describes the two keys
+    that replaced force_local_intent, whose help text described something it
+    did not do."""
+
+    def test_help_names_both_new_keys_and_not_the_retired_one(self):
+        import config_manager
+        help_ = config_manager.HELP_BY_FIELD
+        assert "config.yml.app.force_local_intent" not in help_
+        assert "search text" in help_["config.yml.app.append_location_to_query"]
+        assert "Maps" in help_["config.yml.app.always_fetch_maps"]

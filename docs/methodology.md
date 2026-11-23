@@ -10,6 +10,23 @@ How SERP Intelligence Tool 1 produces its outputs.
 
 **Fetch:** `serp_audit.py` calls SerpAPI for each keyword, retrieving organic results, People Also Ask (PAA) questions, and local pack entries. A query that returns no usable data is counted, named in the log, and recorded in the output JSON as `fetch_summary` (`planned`, `fetched`, `failed`, plus `pivot_failed` for pivot-keyword fetches); the analysis covers only the fetched queries. A run in which no query returns data, or in which an output file cannot be written, exits non-zero. Each SerpAPI response is saved under `raw/<run_id>/calls/` as it arrives. The fetch itself is `serp_fetch.fetch`: it retries the failures a retry can fix — a timeout, a reset, a 5xx, a body that is not the JSON it claimed to be — to the configured budget, and does **not** retry anything else. A fault in the tool is logged as an internal error and the keyword is reported as failed, because every attempt costs a paid call and a `TypeError` is not a dead host; until review chunk Y8 the loop caught every exception the same way, and the checkpoint write and the link recovery ran inside it, so a fault in either — after a response had already been paid for — spent two further paid calls and was then counted beside genuine network failures (P1 in reverse, P40). Those two now run once, after the loop, on the response that succeeded. A run started with `SERP_RESUME_RUN_ID` reuses the stored responses of that earlier run when the request parameters are identical and the response is no older than `serpapi.resume_max_age_hours`; its results therefore mix fetch times, and `fetch_summary` records `resumed_from` and `reused_calls`. Rows built from a reused response carry the time of the resumed run, not the original fetch time. A stored response whose token follow-ups (AI Overview, related questions) were not completed is fetched again rather than reused.
 
+**The search text sent.** Each keyword is sent to Google as typed, with the
+market set by the request's `location` parameter (`serpapi.location`), which
+is how a searcher in that place sees it. `query_variants.build_query_term`
+builds the text for the Google, Maps and Bing requests alike. With
+`app.append_location_to_query: true` it adds the location to the text as
+well, except for a keyword that already names the place or carries a
+`local_intent.markers` phrase ("near me"). Until 2026-11-22 the retired
+`app.force_local_intent` added it to every keyword, which made Google answer a
+different search: for "golden child syndrome" the two versions shared 1 of 10
+top sites, and the appended one returned local social-service pages. Every row
+records the logical keyword as `Executed_Query` and the exact text as
+`Sent_Query`; `serp_results.sent_query` holds the same, and the run-over-run
+volatility and rank deltas leave out a keyword whose two runs sent different
+text, saying how many (`metrics.same_search_only`). Maps is fetched when
+Google shows a local pack or `app.always_fetch_maps` is true (default).
+*Spec: query_location_fix_spec_v1.md.*
+
 **Rank semantics (pagination).** SerpAPI restarts `position` at 1 on every
 paginated page, so page 2 of a three-page fetch reports positions 1..10 for
 results that sit at 11..20 on the SERP. `_merge_google_pages` therefore
@@ -1017,7 +1034,7 @@ Probe results feed exactly two surfaces: the probe rows land in the analysis JSO
 
 ### Bing secondary-index check (report Section 4)
 
-When `config.yml bing_check.enabled` is true (default OFF — decision gate D-4), `serp_audit.py` makes exactly one SerpAPI `engine=bing` call per root keyword after the main loop (`bing_check.run_bing_checks`, bound to the standard `_fetch_serp_api` retry wrapper). The query text mirrors the label-"A" Google query (forced-local suffix included) so ranks are comparable; `bing_check.num` (default 20) sets the result count requested. Raw responses are stored under `raw/{run_id}/bing_{kw}.json` (gitignored); Bing results are not enriched or classified — this is a visibility check, not a second market analysis. The run log states the paid call count.
+When `config.yml bing_check.enabled` is true (default OFF — decision gate D-4), `serp_audit.py` makes exactly one SerpAPI `engine=bing` call per root keyword after the main loop (`bing_check.run_bing_checks`, bound to the standard `_fetch_serp_api` retry wrapper). The query text comes from the same `query_variants.build_query_term` as the label-"A" Google query, so ranks are comparable, and the row records it as `Sent_Query`; `bing_check.num` (default 20) sets the result count requested. Raw responses are stored under `raw/{run_id}/bing_{kw}.json` (gitignored); Bing results are not enriched or classified — this is a visibility check, not a second market analysis. The run log states the paid call count.
 
 `bing_check.parse_bing_visibility` reads Bing's `organic_results` (position/link/title — shape pinned by `tests/fixtures/bing_serp_sample.json`) into per-keyword rows (client rank/URL via the same `_domain_from_link`/`_is_client_domain` matching as the Google analysis, plus the top-3 Bing domains), which land in the analysis JSON's `bing_visibility` list. `brief_data_extraction._build_bing_visibility` summarises them into the top-level `bing_visibility` block: `by_keyword` records (`checked`, `client_rank` — null with `checked: true` means measured absence, `client_url`, `top3_domains`) and a run summary (`keywords_checked`, `client_visible_count`). Report Section 4 closes with a Google-vs-Bing client-rank comparison per checked keyword; when nothing was checked the report states the check was disabled — it never guesses Bing standing. Rationale: ChatGPT search grounds substantially on Bing, so a Google-only view can miss an entire AI referral surface.
 
