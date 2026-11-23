@@ -2172,7 +2172,9 @@ what's the typical CTR when an AI Overview is present vs when it isn't?
    call returns a permission error.
 3. In `.env`, set `GSC_CREDENTIALS_PATH=/path/to/key.json`, and in
    `config.yml` set `gsc.enabled: true` (check `gsc.property` matches the
-   Search Console property, e.g. `sc-domain:livingsystems.ca`).
+   Search Console property the service account can read — for this client
+   the URL-prefix property `https://livingsystems.ca/`; a domain property
+   is written `sc-domain:example.com`).
 
 GSC is free — there is no API spend to guard — but the integration stays
 off (`gsc.enabled: false`) until the grant exists, and when disabled or

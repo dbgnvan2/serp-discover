@@ -23,7 +23,7 @@ holes in it, not a wrong one.
 | — | `OPENAI_API_KEY` | not used: ChatGPT is off (2026-11-22, the owner uses no OpenAI model) | nothing |
 | ☐ | `GEMINI_API_KEY` | not in `.env`; filled from the registry's `gemini-serp`, which is on Google's **free tier** | the Gemini engine. On 2026-11-22 `gemini-4-neon` answered HTTP 429 (free-tier per-day and per-minute limits) and still did after a minute's wait. Enable billing on the Google project behind that key, or name a paid key in `ai_visibility.key_registry_providers` |
 | ☐ | `PERPLEXITY_API_KEY` | **absent everywhere** | the Perplexity engine. The registry holds no Perplexity key, so this one needs `.env` |
-| ☐ | `GSC_CREDENTIALS_PATH` | absent | `run_gsc_analysis.py` entirely — real clicks, the CTR gap, the reformat shortlist |
+| ☐ | `GSC_CREDENTIALS_PATH` | not in `.env` — the owner adds `GSC_CREDENTIALS_PATH=/Users/davemini2/gsc/service-account.json` | `run_gsc_analysis.py` entirely — real clicks, the CTR gap, the reformat shortlist. The key file is valid and reads the property below |
 
 Three of the four AI-visibility engines now run. The probe reads the shared
 key registry (`~/.config/llm/keys.json`) for any key the environment does not
@@ -44,7 +44,7 @@ registry pass a connection test as of 2026-11-19.
 
 | | Key | State | Effect |
 |---|---|---|---|
-| ☐ | `gsc.enabled` | `false` | GSC is off by config as well as by credentials — both must change |
+| ☑ | `gsc.enabled` + `gsc.property` | `true`, `https://livingsystems.ca/` (2026-11-22) | nothing once the credential path is set. The service account can read only this URL-prefix property, not `sc-domain:livingsystems.ca` |
 | ☐ | `gsc.feed_strategic_flags` | `false` | GSC findings do not reach the strategic sections even once GSC runs |
 | ☑ | `feasibility.client_da` | `32`, `client_da_source: dataforseo 2026-11-21` | nothing while a DA provider answers — a measurement wins. When a run measures a different figure on the same provider it says the fallback is stale and prints the value to set |
 | ☐ | `thresholds_provenance` | partly blank | any family left blank prints as "editorial, uncalibrated" in report §A, which is honest but tells the reader the band was nobody's measurement |

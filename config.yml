@@ -455,11 +455,12 @@ database:
 
 gsc:
   # Google Search Console integration (run_gsc_analysis.py). Free
-  # first-party data, but off by default until the service-account grant
-  # (gate D-3) is in place: set GSC_CREDENTIALS_PATH and add the
-  # service-account email to the Search Console property.
-  enabled: false
-  property: sc-domain:livingsystems.ca
+  # first-party data. Needs GSC_CREDENTIALS_PATH in .env pointing at the
+  # service-account key. On 2026-11-22 that account (~/gsc/service-account.json)
+  # listed one property, the URL-prefix https://livingsystems.ca/ as
+  # siteFullUser; it cannot read sc-domain:livingsystems.ca.
+  enabled: true
+  property: https://livingsystems.ca/
   lookback_days: 90
   cache_ttl_days: 7
   # D5.1/D5.2 — the sponge rollup and the reformat shortlist both ignore

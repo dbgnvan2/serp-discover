@@ -408,12 +408,13 @@ class TestQueryCollection(unittest.TestCase):
 class TestDisabledAndIsolation(unittest.TestCase):
     """G.4.4 — clear message + zero calls when disabled; pipeline isolation."""
 
-    def test_config_yml_default_is_disabled(self):
+    def test_config_yml_gsc_block(self):
+        # Enabled 2026-11-22: the property is the one the service account can read.
         with open(os.path.join(_REPO_ROOT, "config.yml"), encoding="utf-8") as f:
             cfg = yaml.safe_load(f)
         self.assertIn("gsc", cfg)
-        self.assertFalse(cfg["gsc"]["enabled"])
-        self.assertEqual(cfg["gsc"]["property"], "sc-domain:livingsystems.ca")
+        self.assertTrue(cfg["gsc"]["enabled"])
+        self.assertEqual(cfg["gsc"]["property"], "https://livingsystems.ca/")
         self.assertEqual(cfg["gsc"]["lookback_days"], 90)
         self.assertFalse(cfg["gsc"]["feed_strategic_flags"])
 
